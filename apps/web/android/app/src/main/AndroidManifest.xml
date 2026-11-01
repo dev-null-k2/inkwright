@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Permissions -->
+
+    <!-- Google Drive sync, AI providers, and the one-time handwriting model download. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Paper-feel haptic grain and confirmation ticks. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!--
+      Audio notes: the web layer calls getUserMedia(); Capacitor's BridgeWebChromeClient then asks
+      for RECORD_AUDIO at runtime and grants the WebView's AUDIO_CAPTURE request. It also requests
+      MODIFY_AUDIO_SETTINGS and only grants when *both* are granted, so that (install-time)
+      permission must be declared here too.
+    -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!--
+      No CAMERA permission on purpose: <input capture> launches the system camera app through
+      ACTION_IMAGE_CAPTURE, which needs no permission as long as the app does not declare CAMERA.
+    -->
+
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
+    <application
+        android:allowBackup="true"
+        android:hardwareAccelerated="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+
+        <!--
+          Foldables (Razr Fold): the activity is resizeable and handles every configuration change a
+          fold/unfold, rotation, display move or dark-mode switch causes, so the WebView (and the
+          note being written) is never torn down and reloaded.
+        -->
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density|colorMode"
+            android:exported="true"
+            android:label="@string/title_activity_main"
+            android:launchMode="singleTask"
+            android:resizeableActivity="true"
+            android:theme="@style/AppTheme.NoActionBarLaunch"
+            android:windowSoftInputMode="adjustResize">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+        </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"></meta-data>
+        </provider>
+    </application>
+</manifest>

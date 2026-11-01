@@ -1,0 +1,30 @@
+{
+  "name": "@inkstone/mcp-server",
+  "version": "1.0.0",
+  "description": "Model Context Protocol server that lets AI agents read, search and write an Inkstone vault.",
+  "type": "module",
+  "bin": {
+    "inkstone-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/index.js --external:@resvg/resvg-js --banner:js=\"import { createRequire as __inkCreateRequire } from 'node:module'; const require = __inkCreateRequire(import.meta.url);\"",
+    "start": "tsx src/index.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@inkstone/core": "*"
+  },
+  "optionalDependencies": {
+    "@resvg/resvg-js": "^2.6.2"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
+  }
+}
