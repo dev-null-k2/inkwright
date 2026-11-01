@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Inkstone brand colours (see the favicon in apps/web/index.html). -->
+    <color name="ic_launcher_background">#1C232B</color>
+    <color name="inkstone_slate">#1C232B</color>
+    <color name="inkstone_paper">#F3F5F6</color>
+    <color name="inkstone_cinnabar">#B8432F</color>
+    <color name="inkstone_splash">#DDE2E6</color>
+</resources>

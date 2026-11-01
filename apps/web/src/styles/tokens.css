@@ -1,0 +1,110 @@
+/*
+ * Inkstone design tokens.
+ * Materials of the calligrapher's desk: slate inkstone, sumi ink, washi paper, the cinnabar seal.
+ * The chrome is cool stone so that paper — the content — is the warmest, brightest thing on screen.
+ */
+:root {
+  color-scheme: light;
+  /* Surfaces */
+  --desk: #dde2e6;          /* the stone desk the pages lie on */
+  --desk-grain: #d3d9de;
+  --chrome: #f3f5f6;        /* panels, bars */
+  --chrome-2: #e9edf0;      /* pressed / hovered chrome */
+  --raised: #ffffff;        /* menus, popovers */
+  /* Ink */
+  --ink: #1c232b;           /* sumi: primary text and primary buttons */
+  --ink-2: #4b5864;
+  --ink-3: #7d8a96;
+  --ink-inverse: #f3f5f6;
+  --line: rgba(28, 35, 43, 0.12);
+  --line-strong: rgba(28, 35, 43, 0.22);
+  /* Accents */
+  --seal: #b8432f;          /* cinnabar seal: active tool, recording, brand */
+  --seal-soft: #f4ded8;
+  --iron: #2f5d8a;          /* iron-gall blue: links, focus, selection */
+  --iron-soft: rgba(47, 93, 138, 0.14);
+  --moss: #3d7a5a;          /* success */
+  --ochre: #b07d1c;         /* warning */
+  /* Paper shadow: a sheet resting on stone */
+  --sheet-shadow: 0 0.5px 0 rgba(20, 30, 40, 0.10), 0 1px 2px rgba(20, 30, 40, 0.10), 0 10px 24px -14px rgba(20, 30, 40, 0.38);
+  --float-shadow: 0 1px 2px rgba(20, 30, 40, 0.08), 0 12px 32px -10px rgba(20, 30, 40, 0.28);
+  /* Type */
+  --font-ui: 'Hanken Grotesk Variable', 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-title: 'Newsreader Variable', 'Newsreader', 'Iowan Old Style', Georgia, serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, Menlo, monospace;
+  --font-hand: 'Caveat Variable', 'Caveat', 'Segoe Print', cursive;
+  --t-xs: 12px;
+  --t-sm: 13.5px;
+  --t-md: 15px;
+  --t-lg: 17px;
+  --t-xl: 21px;
+  --t-2xl: 28px;
+  --t-3xl: 40px;
+  /* Shape: crisp paper, soft hands-on controls */
+  --r-sheet: 2px;
+  --r-control: 10px;
+  --r-panel: 16px;
+  --r-pill: 999px;
+  /* Space */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --tap: 44px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --desk: #14181c;
+  --desk-grain: #181d22;
+  --chrome: #1d2227;
+  --chrome-2: #262c33;
+  --raised: #272e35;
+  --ink: #e7ebee;
+  --ink-2: #b2bcc5;
+  --ink-3: #85919c;
+  --ink-inverse: #14181c;
+  --line: rgba(231, 235, 238, 0.12);
+  --line-strong: rgba(231, 235, 238, 0.22);
+  --seal: #e0644d;
+  --seal-soft: rgba(224, 100, 77, 0.18);
+  --iron: #7fb0e0;
+  --iron-soft: rgba(127, 176, 224, 0.18);
+  --moss: #6fbf93;
+  --ochre: #e0b155;
+  --sheet-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 12px 28px -12px rgba(0, 0, 0, 0.7);
+  --float-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 16px 40px -12px rgba(0, 0, 0, 0.7);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --desk: #14181c;
+    --desk-grain: #181d22;
+    --chrome: #1d2227;
+    --chrome-2: #262c33;
+    --raised: #272e35;
+    --ink: #e7ebee;
+    --ink-2: #b2bcc5;
+    --ink-3: #85919c;
+    --ink-inverse: #14181c;
+    --line: rgba(231, 235, 238, 0.12);
+    --line-strong: rgba(231, 235, 238, 0.22);
+    --seal: #e0644d;
+    --seal-soft: rgba(224, 100, 77, 0.18);
+    --iron: #7fb0e0;
+    --iron-soft: rgba(127, 176, 224, 0.18);
+    --moss: #6fbf93;
+    --ochre: #e0b155;
+    --sheet-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 12px 28px -12px rgba(0, 0, 0, 0.7);
+    --float-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 16px 40px -12px rgba(0, 0, 0, 0.7);
+  }
+}

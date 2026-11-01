@@ -1,0 +1,11 @@
+{
+  "name": "@inkstone/core",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "types": "./src/index.ts",
+  "dependencies": {
+    "perfect-freehand": "^1.2.3"
+  }
+}
