@@ -4,6 +4,7 @@ import type { ServerContext } from './context.ts';
 import { dailyReviewArgs, dailyReviewPrompt, summarizeNoteArgs, summarizeNotePrompt, todosFromNotesArgs, todosFromNotesPrompt } from './prompts.ts';
 import { NOTE_TEMPLATE, PAGE_SVG_TEMPLATE, listNoteResources, readNoteResource, readPageSvgResource } from './resources.ts';
 import { TOOLS, type ToolDef } from './tools.ts';
+import { ActivityLog } from './activity.ts';
 import { VERSION } from './version.ts';
 
 const INSTRUCTIONS = `Inkstone is the user's handwriting notebook app. This server reads and writes their notes vault (plain files synced across their devices).
@@ -32,12 +33,15 @@ export function createMcpServer(ctx: ServerContext): McpServer {
     { instructions: INSTRUCTIONS + (ctx.readOnly ? '\nThis vault is mounted read-only: write tools are disabled.' : '') },
   );
 
+  // Writes by the connected agent are logged in the vault's AI activity, undoable in the app.
+  const activity = new ActivityLog(ctx, () => `${server.server.getClientVersion()?.title ?? server.server.getClientVersion()?.name ?? 'An agent'} (via MCP)`);
   for (const tool of activeTools(ctx)) {
     server.registerTool(
       tool.name,
       { title: tool.title, description: tool.description, inputSchema: tool.inputSchema, annotations: tool.annotations },
       async (args: unknown) => {
         try {
+          if (tool.write) return await activity.record(tool.name, (args ?? {}) as Record<string, any>, () => tool.handler(ctx, args ?? {}));
           return await tool.handler(ctx, args ?? {});
         } catch (e) {
           return errorResult(e);

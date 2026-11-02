@@ -74,6 +74,28 @@ Prompt builders and tolerant parsers for app buttons: `transcribeHandwriting` (p
 `suggestTags`, plus `answerFromNotes` (keyword retrieval + cited answer). Run one with
 `runSkill(skill, provider, model, input)`. `extractJson` pulls JSON out of fenced or chatty replies.
 
+## Assistant building blocks
+
+- **Agent Skills** (`agentskills.ts`, `builtin-skills.ts`): `parseSkillMd`/`validateSkillFrontmatter`
+  follow the agentskills.io spec; `skillFromFiles` (folder or unzipped archive) and
+  `skillFromMarkdown` build bundles; `SkillStore` keeps them in a vault under `ai/skills/`;
+  `skillsPromptSection` + `createSkillTools` (`load_skill`, `read_skill_resource`) give progressive
+  disclosure. The nine built-ins are `skills/<name>/SKILL.md`.
+- **Memory** (`memory.ts`): `MemoryStore` (`ai/memory.json`), `memoryPromptSection`, and
+  `createRememberTool`, which only proposes.
+- **Activity and undo** (`activity.ts`): `RecordingNoteToolHost` records reversible ops into a
+  `RunRecorder`/`ActivityStore`; `undoOp`/`undoRun` revert them against an `UndoTarget`
+  (`VaultUndoTarget` for a plain vault).
+- **Routines** (`routines.ts`): triggers, `dueTimeTriggers`/`dueDateEvents`/`findDateMentions`,
+  `RoutineScheduler` (injected clock and timers), `RoutineStore`, `ROUTINE_TEMPLATES`.
+- **MCP client** (`mcp/`): `McpConnection` over `@modelcontextprotocol/client` (Streamable HTTP,
+  2026-07-28 with 2025 fallback), `McpOAuthProvider` (PKCE, issuer-keyed secrets),
+  `createMcpAgentTools` (per-tool on/off and ask-first), Tasks extension support
+  (`taskAwareFetch`, `getTask`/`updateTask`/`cancelTask`), `explainMcpError` (CORS diagnosis),
+  `KNOWN_MCP_SERVERS`.
+- **Speech** (`transcribe.ts`): the `Transcriber` interface and OpenAI-compatible/Gemini
+  implementations (`transcriberForProvider`).
+
 ## API keys
 
 `WebCryptoSecretStore` encrypts each key with AES-GCM under a non-extractable device key kept in

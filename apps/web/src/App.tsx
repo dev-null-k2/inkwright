@@ -10,6 +10,9 @@ import { Prompts } from './ui/prompts.tsx';
 import { Toasts } from './ui/Toasts.tsx';
 import { BrandMark } from './ui/Brand.tsx';
 import { isNative } from './platform/env.ts';
+import { initAgentHub } from './lib/agent/hub.ts';
+import { startAgents } from './lib/agent/routines.ts';
+import { AgentDialogs } from './ui/agent/shared.tsx';
 
 export function App() {
   const { ready, route, error, setVault, refresh, navigate } = useApp();
@@ -51,6 +54,9 @@ export function App() {
         await v.buildIndex();
         await v.vault.purgeTrash();
         startSyncLoop();
+        // Assistant: activity log, memory, skills, routines (run while open) and connected apps.
+        // A problem here must never keep the notes from opening.
+        await initAgentHub(v).then(() => { void startAgents(v).catch((e) => console.warn('Routines could not start', e)); }, (e) => console.warn('Assistant features could not start', e));
       } catch (e) {
         console.error(e);
         useApp.setState({ error: (e as Error).message });
@@ -95,6 +101,7 @@ export function App() {
       {route.name === 'editor' && <Editor key={route.noteId} noteId={route.noteId} initialPage={route.page} />}
       {route.name === 'settings' && <Settings section={route.section} />}
       <Prompts />
+      <AgentDialogs />
       <Toasts />
     </>
   );
