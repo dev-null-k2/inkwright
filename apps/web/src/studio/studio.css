@@ -1,0 +1,123 @@
+/* ---- Studio: guides, sticky notes, layers, view, version history, locked notes ------------------- */
+
+/* Snapping guides: thin jade lines while something is dragged ("you are here" for alignment). */
+.ink-guides { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 3; }
+.ink-guides line { stroke: var(--eye); stroke-width: 1; shape-rendering: crispEdges; }
+.ink-guides line.is-paper { stroke-dasharray: 3 3; opacity: 0.8; }
+.ink-guides line.is-margin { stroke-dasharray: 6 3; }
+
+/* Tape tool cursor */
+.ed-canvas[data-tool='tape'] { cursor: crosshair; }
+
+/* Sticky notes */
+.studio-layer { position: absolute; inset: 0; pointer-events: none; z-index: 8; }
+.studio-layer > * > *, .studio-layer > button { pointer-events: auto; }
+.sticky-grip {
+  position: absolute; z-index: 8; display: grid; place-items: center; width: 24px; height: 24px; padding: 0;
+  border: 1px solid var(--line); border-radius: 7px; background: var(--raised); color: var(--ink-3);
+  opacity: 0.7; transition: opacity 0.12s, color 0.12s; touch-action: none;
+}
+.sticky-grip:hover { opacity: 1; color: var(--ink); }
+.sticky-grip.is-on { opacity: 1; color: var(--iron); border-color: var(--iron); cursor: move; }
+.editor.is-writing .sticky-grip:not(.is-on) { opacity: 0.25; }
+.sticky-size { position: absolute; z-index: 9; width: 18px; height: 18px; border: 2px solid var(--iron); border-radius: 50%; background: var(--raised); cursor: nwse-resize; touch-action: none; }
+.sticky-ghost { position: absolute; z-index: 7; border: 1.5px dashed var(--iron); border-radius: 4px; background: var(--iron-soft); pointer-events: none !important; }
+.sticky-bar {
+  position: absolute; z-index: 11; display: flex; align-items: center; gap: 4px; padding: 4px 6px;
+  background: var(--raised); border: 1px solid var(--line); border-radius: var(--r-pill); box-shadow: var(--float-shadow);
+}
+.sticky-bar .swatch { width: 22px; height: 22px; }
+.sticky-bar .swatch.is-on { box-shadow: 0 0 0 2px var(--raised), 0 0 0 3.5px var(--iron); }
+.sticky-bar-sep { width: 1px; align-self: stretch; margin: 6px 2px; background: var(--line-strong); }
+.sticky-icon { position: absolute; z-index: 8; padding: 0; border: 0; background: transparent; border-radius: 4px; cursor: pointer; }
+.sticky-icon:focus-visible { outline: 2px solid var(--iron); outline-offset: 2px; }
+.sticky-text {
+  position: absolute; z-index: 12; box-sizing: border-box; margin: 0; resize: none; border: 1.5px solid var(--iron); border-radius: 3px;
+  outline: none; background: transparent; color: #1b1f24; box-shadow: 0 0 0 3px var(--iron-soft); overflow: hidden;
+}
+
+/* Drawing layer indicator */
+.layer-pill {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 9; padding: 6px 13px; border-radius: var(--r-pill);
+  background: var(--raised); color: var(--ink-2); border: 1px solid var(--line); font-size: var(--t-sm); font-weight: 560;
+  box-shadow: var(--float-shadow); pointer-events: none; white-space: nowrap;
+}
+.editor.is-writing .layer-pill { opacity: 0.35; }
+
+/* Eraser: what it erases */
+.tool-filter-badge { position: absolute; right: 7px; bottom: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--iron); }
+.eraser-filters .menu-item { flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; padding: 7px 12px; min-width: 240px; }
+.eraser-filters .menu-label { flex: none; }
+.eraser-filters .menu-hint { max-width: none; white-space: normal; }
+.eraser-filters .menu-item.is-on .menu-label { color: var(--iron); }
+.tape-options { border-top: 1px solid var(--line); }
+
+/* ••• › View */
+.view-panel { min-width: 300px; max-width: min(92vw, 380px); }
+.view-panel .pop-title { margin: 0; font-size: var(--t-sm); color: var(--ink-2); font-weight: 600; }
+.layer-rows { display: flex; flex-direction: column; gap: 4px; }
+.layer-row { display: flex; align-items: center; gap: 2px; border-radius: var(--r-control); padding: 2px; }
+.layer-row.is-on { background: var(--iron-soft); }
+.layer-pick { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 6px 10px; border: 0; background: transparent; border-radius: var(--r-control); text-align: left; color: var(--ink); }
+.layer-pick:disabled { opacity: 0.5; }
+.layer-name { font-weight: 600; font-size: var(--t-md); }
+.layer-row.is-on .layer-name { color: var(--iron); }
+.layer-hint { font-size: var(--t-xs); color: var(--ink-3); }
+
+/* Version history */
+.history { display: grid; grid-template-columns: minmax(180px, 220px) 1fr; gap: 16px; min-height: 320px; max-height: 60vh; }
+.history-list { list-style: none; margin: 0; padding: 0 4px 0 0; overflow: auto; }
+.history-list ul { list-style: none; margin: 0 0 10px; padding: 0; }
+.history-day { margin: 6px 0 4px; font-size: var(--t-xs); font-weight: 600; color: var(--ink-3); }
+.history-item {
+  width: 100%; display: grid; grid-template-columns: auto auto 1fr; grid-template-rows: auto auto; column-gap: 7px; align-items: center;
+  padding: 7px 9px; border: 0; border-radius: var(--r-control); background: transparent; color: var(--ink); text-align: left;
+}
+.history-item svg { color: var(--ink-3); grid-row: span 2; }
+.history-item:hover { background: var(--chrome); }
+.history-item.is-on { background: var(--iron-soft); }
+.history-item.is-on svg, .history-item.is-on .history-time { color: var(--iron); }
+.history-time { font-weight: 600; font-size: var(--t-sm); }
+.history-why { font-size: var(--t-xs); color: var(--ink-2); }
+.history-pages { grid-column: 2 / 4; font-size: var(--t-xs); color: var(--ink-3); }
+.history-preview { overflow: auto; }
+.history-meta { margin: 0 0 8px; font-family: var(--font-title); font-size: var(--t-lg); color: var(--ink); }
+.history-pages-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.history-page { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.history-page img { width: 100%; border-radius: var(--r-sheet); box-shadow: var(--sheet-shadow); background: #fff; }
+.history-page figcaption { display: flex; align-items: center; justify-content: space-between; font-size: var(--t-xs); color: var(--ink-2); }
+@media (max-width: 699px) {
+  .history { grid-template-columns: 1fr; max-height: none; }
+  .history-list { max-height: 34vh; }
+}
+
+/* Locked notes */
+.lock-gate { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; background: var(--desk); }
+.lock-gate-back { position: absolute; top: 10px; left: 10px; }
+.lock-card {
+  width: min(360px, 100%); display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 28px 24px;
+  background: var(--raised); border-radius: var(--r-panel); box-shadow: var(--float-shadow); text-align: center;
+}
+.lock-seal { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: var(--chrome); color: var(--ink-2); }
+.lock-title { margin: 0; font-family: var(--font-title); font-weight: 520; font-size: var(--t-xl); color: var(--ink); overflow-wrap: anywhere; }
+.lock-sub { margin: 0; color: var(--ink-2); font-size: var(--t-sm); }
+.lock-input { width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: var(--r-control); background: var(--raised); color: var(--ink); font: inherit; text-align: center; letter-spacing: 0.1em; }
+.lock-input:focus { outline: 2px solid var(--iron); outline-offset: 1px; }
+.lock-card .btn { width: 100%; }
+.lock-error { margin: 0; color: var(--seal); font-size: var(--t-sm); }
+.lock-form { display: flex; flex-direction: column; gap: 12px; }
+.lock-form p { margin: 0; }
+.lock-warning { padding: 10px 12px; border-radius: var(--r-control); background: var(--seal-soft); color: var(--ink); font-size: var(--t-sm); line-height: 1.45; }
+.lock-ack { display: flex; gap: 8px; align-items: flex-start; font-size: var(--t-sm); color: var(--ink-2); }
+.lock-ack input { margin-top: 2px; }
+
+/* Pen settings: eight pen types (with the calligraphy pen) in two rows of four */
+.pen-types { grid-template-columns: repeat(4, 1fr); row-gap: 4px; }
+
+/* Library: a locked note's frosted cover */
+.locked-cover { position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden; background: #fffdf5; }
+.locked-lines {
+  position: absolute; inset: -12px; filter: blur(5px); opacity: 0.55;
+  background: repeating-linear-gradient(to bottom, transparent 0 13px, rgba(80, 110, 150, 0.35) 13px 14px), linear-gradient(160deg, rgba(43, 35, 48, 0.18), transparent 60%);
+}
+.locked-seal { position: relative; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--raised); color: var(--ink-2); box-shadow: var(--float-shadow); }

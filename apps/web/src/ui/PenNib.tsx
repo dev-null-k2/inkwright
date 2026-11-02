@@ -68,6 +68,15 @@ export function PenNib({ pen, color, size = 1 }: { pen: PenType; color: string; 
           <path d="M8.5 13 L8.5 6 L19.5 9 L19.5 13 Z" fill={ink} stroke={bodyEdge} strokeWidth="0.6" />
         </svg>
       );
+    case 'calligraphy':
+      return (
+        <svg {...common}>
+          <rect x="8" y="30" width="12" height="36" rx="2.5" fill={body} stroke={bodyEdge} />
+          <path d="M7 30 L9 18 L19 18 L21 30 Z" fill="#c9cdd2" stroke={bodyEdge} strokeWidth="0.8" />
+          <path d="M8.6 18 L8.6 6 L19.4 3.5 L19.4 18 Z" fill={ink} stroke={bodyEdge} strokeWidth="0.6" />
+          <line x1="14" y1="7" x2="14" y2="15" stroke={bodyEdge} strokeWidth="0.8" />
+        </svg>
+      );
     case 'dashed':
       return (
         <svg {...common}>

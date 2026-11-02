@@ -15,6 +15,9 @@ reference implementation is `packages/core/src/codec.ts` + `vault.ts`.
   notes/<noteId>/assets/<name>          images, PDFs, audio recordings referenced by pages/notes
   notes/<noteId>/assets/<clipId>.transcript.json  transcript of a recording (+ its summary)
   notes/<noteId>/assets/page-summaries.json       summaries of the note's pages, by page id
+
+  notes/<noteId>/history/<id>.json      version history: one manifest per snapshot (see "Version history")
+  notes/<noteId>/history/blobs/<h>.json page contents shared by snapshots, content-addressed
   ai/skills/<name>/SKILL.md             Agent Skills the user imported (+ their bundled files)
   ai/skills.json                        which skills are switched off
   ai/memory.json                        assistant memory: instructions, facts, proposals
@@ -48,11 +51,15 @@ Rules
       "shape": "rectangle",                 // optional, when snapped to a shape
       "input": "pen",                       // optional: pen | touch | mouse — how it was written in Inkstone
       "origin": "ai",                       // optional: ai | solver | recognized | import — not handwriting
+      "nib": 40,                            // optional, calligraphy pen only: nib angle in degrees
+      "layer": "drawing",                   // optional: the drawing layer (absent = writing layer)
       "points": [[x, y, t, p?, tilt?, orient?], …] }   // t = ms since stroke start; p 0..1; radians
   ],
   "texts":  [{ "id", "x", "y", "width", "text" /* Markdown */, "fontSize", "color", "font": "sans|serif|mono|hand", "createdAt", "origin?" }],
   "images": [{ "id", "x", "y", "width", "height", "asset", "rotation", "createdAt", "origin?" }],
-  "objects": [ … ],                                                            // optional: tables, solved results, graphs (below)
+  "objects": [ … ],                                                            // optional: tables, solved results, graphs, sticky notes, tape (below)
+  "layers": { "drawing": { "hidden": true, "locked": true } },                 // optional: layer state (below)
+  "sealed": { "v": 1, "iv": "…", "data": "…" },                                // only in locked notes (see "Locked notes")
   "authorship": { "v": 1, "events": [ … ] },                                   // optional: hash chain (docs/AUTHORSHIP.md)
   "background": { "kind": "pdf|image", "asset": "file.pdf", "pageNumber": 1, "rotation": 90 },   // optional
   "paper": { … }, "size": { … },                                               // optional per-page overrides
@@ -72,7 +79,21 @@ recognizers such as ML Kit). Search results and AI citations use it to point at 
 handwriting. It always describes the current `recognizedText`; writers that replace the text
 without line anchors drop it. Readers that don't know it ignore it.
 
-Pens: `fountain | ballpoint | pencil | brush | marker | highlighter | dashed`. Missing pressure /
+Pens: `fountain | ballpoint | pencil | brush | calligraphy | marker | highlighter | dashed`.
+
+**Calligraphy pen.** A broad, flat nib: the outline is the area a nib `size` wide (with a hairline
+thickness of 7 % of that) sweeps along the points while held at `nib` degrees, measured clockwise
+from the page's x axis (default 40). Moving across the nib draws the full width, moving along it a
+hairline. Pressure, when present, opens the nib between 72 % and 128 %. The reference is
+`calligraphyOutline` in `packages/core/src/outline.ts`; readers that don't know the pen can draw it
+as a fountain pen of the same size.
+
+**Layers.** A stroke with `"layer": "drawing"` is on the page's drawing layer, drawn before (under)
+all writing-layer strokes; otherwise it is on the writing layer. `PageInk.layers` holds each layer's
+`hidden` (not drawn or exported) and `locked` (can't be erased, selected or scratched out) flags;
+absent means shown and unlocked. Layers apply to strokes only — page objects keep their own places.
+
+Missing pressure /
 tilt / orientation are omitted from the point array (or `-1` when a later field is present).
 
 `input` and `origin` (strokes, texts, images) say how content was made; see
@@ -115,6 +136,25 @@ from, in a handwriting-style font with a faint wash so they are never mistaken f
 `input` is plain ASCII maths. `origin` is `solver` when the device read and solved it, `ai` when
 an AI read the handwriting (the answer is still checked by the on-device solver when it can).
 
+**Sticky notes and tape** are *overlays*: drawn over the ink and typed text, in list order.
+
+```jsonc
+{ "type": "sticky", "id", "x", "y", "createdAt", "width": 180, "height": 180,
+  "color": "#FFFCE58A",                  // the note's paper
+  "text": "Call Mum",                    // optional typed text, shown at the top
+  "strokes": [ /* InkStroke, coordinates relative to the sticky's top-left */ ],
+  "collapsed": false }                   // true: folded to a 26-unit icon at (x, y)
+
+{ "type": "tape", "id", "x", "y", "createdAt",
+  "dx": 240, "dy": 0,                    // the strip runs from (x, y) to (x + dx, y + dy)
+  "width": 20, "color": "#FF8FA7B8" }    // thickness (page units) and opaque colour
+```
+
+A sticky's handwriting belongs to it, so it moves and folds with the note; its `text` is included
+in search and `note.md` ("Sticky note: …"). Tape always covers what is under it in files, exports and
+thumbnails; revealing a strip (tapping it, or "Reveal all tape") is a view state of the open note
+and never saved. Writers must keep overlays they don't draw, like any object.
+
 **Graphs** plot each `expr` as y = f(x) over `view`. Expressions use the syntax in
 `packages/core/src/mathexpr.ts`: `+ - * / ^`, implicit multiplication (`2x`, `3sin(x)`),
 `sqrt abs exp ln log(=log10) sin cos tan asin acos atan sinh cosh tanh sec csc cot floor ceil`,
@@ -135,6 +175,8 @@ an AI read the handwriting (the answer is still checked by the on-device solver 
   "certificate": { "asset": "authorship-1730000000000.json", "signedAt": 1730000000000 }   // optional, latest signed authorship certificate
 }
 ```
+
+`lock` is present while the note is locked with a passcode (see "Locked notes").
 
 `certificate` points at the note's latest signed authorship certificate in `assets/` (format in
 [AUTHORSHIP.md](AUTHORSHIP.md)).
@@ -240,6 +282,77 @@ remapped to the new stroke ids), and `{{date}}`, `{{date:FORMAT}}`, `{{time}}`, 
 `{{weekday}}`, `{{yesterday}}`, `{{tomorrow}}` in typed text are filled in (Moment-style formats,
 as in Obsidian). Files used by the template's pages are under `templates/<id>/assets/` and are
 copied into the new note.
+
+## Locked notes
+
+A note locked with a passcode keeps its content encrypted at rest — on the device and in every
+synced copy. The key is derived from the passcode and never stored. The reference implementation is
+`packages/core/src/lock.ts` (with `Vault.lockNote`, `removeLock`, `unlock`, `forget`); the threat
+model is in [PRIVACY.md](PRIVACY.md).
+
+```jsonc
+// note.json
+"lock": {
+  "v": 1,
+  "kdf": { "name": "PBKDF2", "hash": "SHA-256", "iterations": 600000, "salt": "<base64url, 16 bytes>" },
+  "cipher": "AES-GCM-256",
+  "check": { "v": 1, "iv": "<base64url, 12 bytes>", "data": "<base64url>" },   // AES-GCM("inkstone-lock-check-v1"), AAD "inkstone:check"
+  "meta":  { "v": 1, "iv": "…", "data": "…" },                                 // optional: sealed { summary, forms, properties }
+  "lockedAt": 1730000000000 }
+```
+
+- **Key:** PBKDF2-HMAC-SHA-256 over the passcode (Unicode NFKC) with `salt` and `iterations` →
+  a 256-bit AES-GCM key. A passcode is right when `check` decrypts to `inkstone-lock-check-v1`.
+- **Pages:** each `pages/<pageId>.ink.json` is `{ "id", "formatVersion", "strokes": [], "sealed": {…} }`,
+  where `sealed` is AES-GCM (random 96-bit IV) of the page file's normal JSON, with associated data
+  `inkstone:page:<pageId>`. Readers that don't know locks see a blank page; the derived SVG and
+  `note.md` are blank too.
+- **Metadata:** `summary`, `forms` and `properties` move into `lock.meta` (AAD `inkstone:meta:<noteId>`).
+  The title, tags, notebook, dates, page ids and sizes and recording list stay readable, so the
+  library can list and sort the note.
+- **Assets:** every file in `assets/` is `"INKSEAL1"` ‖ 12-byte IV ‖ AES-GCM ciphertext, with AAD
+  `inkstone:asset:<file name>`.
+- **History:** snapshots are sealed too (see "Version history").
+- **Writers** that don't hold the key must not write a locked note's pages or assets (the reference
+  `Vault` refuses with `NoteLockedError`); metadata-only changes (rename, tags, move, pin, trash) are
+  fine. Removing a lock writes every file back in plain form and deletes `lock`.
+- **Sync** treats sealed files like any other: `sealed` merges field-wise (the newer side wins if both
+  devices changed the same locked page offline — the other side's version survives in its version
+  history only if that device had the note open).
+
+## Version history
+
+Automatic snapshots of a note: when it is opened and closed, every ten minutes while it is being
+edited, before the assistant, a routine or an outside agent changes it, and before a version is
+restored. A snapshot identical to the latest one is not written. Reference: `VersionHistory` in
+`packages/core/src/history.ts`.
+
+```jsonc
+// notes/<noteId>/history/<snapshotId>.json      (snapshot ids are ordinary time-sortable ids)
+{ "v": 1, "id", "noteId", "takenAt": 1730000000000,
+  "reason": "open|close|interval|agent|restore|manual",
+  "blobs": ["<hash>", …],                // page contents in page order
+  "digest": "<hex>",                     // fingerprint of meta + blobs, to skip duplicates
+  "meta": { /* NoteMeta at the time, without lock */ }, "pageIds": ["…"],   // plain notes
+  "sealed": { "v": 1, "iv", "data" },    // locked notes instead: { meta, pageIds } encrypted, AAD "inkstone:snapshot:<id>"
+  "device": "Kitchen tablet" }           // optional
+// notes/<noteId>/history/blobs/<hash>.json
+<the page file's JSON>                   // locked notes: a sealed box of it, AAD "inkstone:history:<hash>"
+```
+
+`<hash>` is the first 40 hex digits of SHA-256 of the page JSON (of `lockSalt + ":" + JSON` for a
+locked note), so unchanged pages are stored once. Every file is written once and never modified, so
+devices can't conflict over them; sync copies them as whole files.
+
+**Retention** (`retainSnapshots`): everything from the last two hours; the newest snapshot of each
+hour for a day; of each day for 30 days; of each week for a year; at most 300; the newest snapshot is
+always kept. Pruning deletes manifests outside these rules and then blobs no manifest uses; it never
+needs the key.
+
+**Restoring** replaces the note's pages, page order, and title, tags, paper, page size, summary and
+form values with the snapshot's, through ordinary edits (so the authorship chain records them and
+undo steps back), after taking a "restore" snapshot of the current state. A single page can instead
+be copied into the note with fresh ids.
 
 ## NotebookMeta (`notebook.json`)
 

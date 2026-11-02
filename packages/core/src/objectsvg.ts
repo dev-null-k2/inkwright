@@ -12,13 +12,15 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 const SANS = "Inter, 'Helvetica Neue', Arial, sans-serif";
 const HAND = "'Caveat', 'Segoe Print', cursive";
 
+/** Objects drawn under the ink (overlays — stickies, tape — are drawn over it by `overlaysSvg`). */
 export function objectsSvg(objects: readonly PageObject[] | undefined): string {
+  objects = objects?.filter((o) => o.type !== 'sticky' && o.type !== 'tape');
   if (!objects?.length) return '';
   const parts: string[] = ['<g id="objects">'];
   for (const o of objects) {
     if (o.type === 'table') parts.push(tableSvg(o));
     else if (o.type === 'math') parts.push(mathSvg(o));
-    else parts.push(graphSvg(o));
+    else if (o.type === 'graph') parts.push(graphSvg(o));
   }
   parts.push('</g>');
   return parts.join('\n');

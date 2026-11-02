@@ -4,7 +4,7 @@
  * sync-friendly writes as MCP clients: atomic files, re-read before save, retries when another
  * device wrote in between. `RecordingVaultHost` logs every write as an undoable Activity op.
  */
-import { VaultLayout, pageText, type NoteMeta } from '@inkstone/core';
+import { VaultLayout, VersionHistory, pageText, type NoteMeta } from '@inkstone/core';
 import type { NewActivityOp, NoteContent, NoteInfo, NoteListItem, NotePatch, NoteSearchHit, NoteToolHost, NotebookInfo } from '@inkstone/ai';
 import { RecordingNoteToolHost } from '@inkstone/ai';
 import { notebookPath, readNoteFresh, type ServerContext } from '../context.ts';
@@ -88,6 +88,9 @@ export class VaultNoteToolHost implements NoteToolHost {
 
   async appendText(noteId: string, text: string, pageIndex?: number) {
     this.touch(noteId);
+    // Version history: the note as it was before an agent changed it (locked notes can't be changed here).
+    const found = await readNoteFresh(this.ctx, noteId).catch(() => null);
+    if (found && !found.note.lock) await new VersionHistory(this.ctx.vault).take(found.note, await this.ctx.vault.readPages(found.note), 'agent').catch(() => null);
     const r = await appendTextToNote(this.ctx, { id: noteId, text, ...(pageIndex != null ? { page: pageIndex + 1 } : {}) });
     this.touch(noteId);
     this.lastAppend = r;

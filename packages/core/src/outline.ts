@@ -1,5 +1,5 @@
 import { getStroke, type StrokeOptions } from 'perfect-freehand';
-import type { InkPoint, InkStroke, PenType } from './model.ts';
+import { DEFAULT_NIB_ANGLE, type InkPoint, type InkStroke, type PenType } from './model.ts';
 
 /**
  * How each pen looks. One geometry function feeds the screen renderer, thumbnails, SVG, PDF and
@@ -55,6 +55,10 @@ export function outlineOptions(pen: PenType, size: number, hasPressure: boolean,
       return { ...base, thinning: 0, simulatePressure: false, smoothing: 0.7, streamline: 0.2, start: { cap: false }, end: { cap: false } };
     case 'dashed':
       return { ...base, thinning: 0, simulatePressure: false };
+    case 'calligraphy':
+      // Not drawn by perfect-freehand (see `calligraphyOutline`); these options only size things
+      // that need a nominal width (the hover cursor, nominalWidth).
+      return { ...base, thinning: 0, simulatePressure: false };
   }
 }
 
@@ -82,10 +86,71 @@ function toFreehand(points: ReadonlyArray<InkPoint>, pen?: PenType): number[][] 
   });
 }
 
+/**
+ * Outline of a broad-nib (calligraphy) stroke: the area a flat nib of width `size` held at
+ * `nibDeg` sweeps along the path — the Minkowski sum of the path with the nib. Moving across the
+ * nib gives a full-width stroke, moving along it a hairline, exactly like an italic or chisel pen.
+ *
+ * The nib is a thin rectangle (width × hairline). At every sample the boundary point on each side
+ * is the nib corner furthest out along that side's normal, so the left and right edges never cross
+ * and the polygon fills cleanly with the nonzero rule in canvas, SVG and PDF. Pressure (when the
+ * device reports it) opens the nib a little, like pressing a dip pen. Pure and deterministic, so
+ * every renderer and export draws identical strokes.
+ */
+export function calligraphyOutline(points: ReadonlyArray<InkPoint>, size: number, nibDeg = DEFAULT_NIB_ANGLE): number[][] {
+  // Drop repeats so directions are defined.
+  const pts: InkPoint[] = [];
+  for (const p of points) {
+    const q = pts[pts.length - 1];
+    if (!q || Math.hypot(p.x - q.x, p.y - q.y) > 0.05) pts.push(p);
+  }
+  if (!pts.length) return [];
+  const a = (nibDeg * Math.PI) / 180;
+  const ux = Math.cos(a), uy = Math.sin(a);
+  const half = size / 2;
+  const hair = Math.max(0.3, size * 0.07);
+  const mx = -uy * hair, my = ux * hair;
+  const hasPressure = pts.some((p) => p.p >= 0);
+  const k = (p: InkPoint) => (hasPressure ? 0.72 + 0.56 * Math.min(1, Math.max(0, p.p >= 0 ? p.p : 0.5)) : 1);
+  if (pts.length === 1) {
+    const p = pts[0]!, s = k(p);
+    const nx = ux * half * s, ny = uy * half * s;
+    return [[p.x + nx + mx, p.y + ny + my], [p.x + nx - mx, p.y + ny - my], [p.x - nx - mx, p.y - ny - my], [p.x - nx + mx, p.y - ny + my]];
+  }
+  // Light smoothing of positions (endpoints fixed) steadies the direction on noisy input.
+  const sm = pts.map((p, i) => {
+    if (i === 0 || i === pts.length - 1) return { x: p.x, y: p.y };
+    const a0 = pts[i - 1]!, a1 = pts[i + 1]!;
+    return { x: (a0.x + 2 * p.x + a1.x) / 4, y: (a0.y + 2 * p.y + a1.y) / 4 };
+  });
+  const left: number[][] = [];
+  const right: number[][] = [];
+  let lastNx = 0, lastNy = 1;
+  for (let i = 0; i < sm.length; i++) {
+    const p0 = sm[Math.max(0, i - 1)]!, p1 = sm[Math.min(sm.length - 1, i + 1)]!;
+    let dx = p1.x - p0.x, dy = p1.y - p0.y;
+    const len = Math.hypot(dx, dy);
+    // Normal to the direction of travel (kept from the previous sample when the pen pauses).
+    let nx = lastNx, ny = lastNy;
+    if (len > 1e-6) { dx /= len; dy /= len; nx = -dy; ny = dx; lastNx = nx; lastNy = ny; }
+    const s = k(pts[i]!);
+    const hx = ux * half * s, hy = uy * half * s;
+    // The nib corner furthest along the normal: ±half-width along the nib, ±hairline across it.
+    const sa = hx * nx + hy * ny >= 0 ? 1 : -1;
+    const sb = mx * nx + my * ny >= 0 ? 1 : -1;
+    const cx = sa * hx + sb * mx, cy = sa * hy + sb * my;
+    const p = sm[i]!;
+    left.push([p.x + cx, p.y + cy]);
+    right.push([p.x - cx, p.y - cy]);
+  }
+  return left.concat(right.reverse());
+}
+
 /** Filled outline polygon of a stroke, as [x, y] pairs. */
-export function strokeOutline(stroke: Pick<InkStroke, 'pen' | 'size' | 'points'> & { shape?: InkStroke['shape'] }, last = true): number[][] {
+export function strokeOutline(stroke: Pick<InkStroke, 'pen' | 'size' | 'points'> & { shape?: InkStroke['shape']; nib?: number }, last = true): number[][] {
   const pts = stroke.points;
   if (pts.length === 0) return [];
+  if (stroke.pen === 'calligraphy') return calligraphyOutline(pts, stroke.size, stroke.nib ?? DEFAULT_NIB_ANGLE);
   const hasPressure = pts.some((p) => p.p >= 0);
   const opts = outlineOptions(stroke.pen, stroke.size, hasPressure, last);
   if (stroke.shape) {

@@ -48,6 +48,9 @@ export function feelOf(texture: PaperTexture, pen: PenType | 'eraser'): FeelProf
       return { ...p, hapticStrength: p.hapticStrength * 0.85, soundGain: p.soundGain * 0.85, crackle: p.crackle * 0.6, soundQ: p.soundQ * 1.1 };
     case 'ballpoint':
       return { ...p, soundBaseHz: p.soundBaseHz * 0.85, soundGain: p.soundGain * 0.8, crackle: p.crackle * 0.4, texture: p.texture * 0.6 };
+    case 'calligraphy':
+      // A broad steel nib: the edge drags a little more than a round fountain tip, a touch lower in pitch.
+      return { ...p, grainPitchMm: p.grainPitchMm * 1.15, hapticStrength: p.hapticStrength * 0.95, soundBaseHz: p.soundBaseHz * 0.9, soundGain: p.soundGain * 0.95, crackle: p.crackle * 0.8, soundQ: p.soundQ * 1.05 };
     case 'brush':
       return { ...p, grainPitchMm: p.grainPitchMm * 1.6, hapticStrength: p.hapticStrength * 0.5, soundBaseHz: p.soundBaseHz * 0.7, soundGain: p.soundGain * 0.5, crackle: p.crackle * 0.2, texture: p.texture * 0.5 };
     case 'marker':

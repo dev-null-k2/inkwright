@@ -14,6 +14,7 @@ import './styles/palettes.css';
 import './styles/localai.css';
 import './styles/listen.css';
 import './styles/knowledge.css';
+import './studio/studio.css';
 import { App } from './App.tsx';
 import { BUILD_TARGET, isNative } from './platform/env.ts';
 import { handleOAuthRedirect } from './lib/agent/oauth-callback.ts';

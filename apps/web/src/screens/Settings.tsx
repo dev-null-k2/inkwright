@@ -146,6 +146,11 @@ function InputSection() {
         <Switch label="Scribble to erase" hint="Scratch back and forth over ink to delete it" checked={s.input.scratchToErase} onChange={(v) => setInput({ scratchToErase: v })} />
         {isNative && nativePlatform === 'android' && <Switch label="Instant ink" hint="The newest part of each stroke is drawn natively, straight to the screen, so ink keeps up with the nib. Turn off if the tip ever looks offset." checked={s.input.instantInk} onChange={(v) => setInput({ instantInk: v })} />}
         <Switch label="Hold to perfect shapes" hint="Pause at the end of a line, circle, box or triangle to snap it" checked={s.input.holdToShape} onChange={(v) => setInput({ holdToShape: v })} />
+        <Switch label="Snap to guides" hint="Moving or resizing lines things up with other items, the margins and the paper’s lines. Hold Alt or rest a second finger to place freely." checked={s.input.snapping !== false} onChange={(v) => setInput({ snapping: v })} />
+        <label className="field-row">
+          <span className="row-label">Two-page view</span>
+          <Segmented label="Two-page view" value={s.pageView} onChange={(v) => s.update(() => ({ pageView: v }))} options={[{ value: 'auto', label: 'Auto' }, { value: 'single', label: 'One page' }, { value: 'spread', label: 'Two pages' }]} />
+        </label>
         <Switch label="Smart ink suggestions" hint="After a pause, offer to turn a drawn grid into a table, solve “… =”, or add a circled date to your calendar" checked={s.smartInk.suggestions} onChange={(v) => s.update(() => ({ smartInk: { suggestions: v } }))} />
       </Group>
       <Group title="Keyboard shortcuts">
