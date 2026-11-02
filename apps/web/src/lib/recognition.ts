@@ -1,4 +1,4 @@
-import { segmentLines, type InkStroke } from '@inkstone/core';
+import { segmentLines, type InkStroke, type RecognizedLine } from '@inkstone/core';
 import { InkstoneNative, hasNativePlugin } from '../platform/native.ts';
 import { useSettings } from '../state/settings.ts';
 
@@ -46,13 +46,17 @@ export async function availableEngine(): Promise<RecognitionEngine> {
   return s.autoAI ? 'ai' : 'none';
 }
 
-/** Recognizes the handwriting of one page with a local engine. Null when none is available. */
-export async function recognizeLocally(strokes: InkStroke[]): Promise<{ text: string; engine: RecognitionEngine } | null> {
+/**
+ * Recognizes the handwriting of one page with a local engine. Null when none is available.
+ * `lines` pairs each recognized line with the strokes that wrote it, so handwritten `[[links]]`
+ * can be laid over exactly that ink.
+ */
+export async function recognizeLocally(strokes: InkStroke[]): Promise<{ text: string; engine: RecognitionEngine; lines?: RecognizedLine[] } | null> {
   const engine = await availableEngine();
   if (engine !== 'native' && engine !== 'browser') return null;
   const lang = useSettings.getState().recognition.language;
   const lines = segmentLines(strokes);
-  if (!lines.length) return { text: '', engine };
+  if (!lines.length) return { text: '', engine, lines: [] };
   if (engine === 'native') {
     let pre = '';
     const payload = lines.map((l) => {
@@ -66,10 +70,11 @@ export async function recognizeLocally(strokes: InkStroke[]): Promise<{ text: st
       return item;
     });
     const r = await InkstoneNative.recognize({ language: lang, lines: payload });
-    return { text: r.lines.filter((x) => x.trim()).join('\n'), engine };
+    return { text: r.lines.filter((x) => x.trim()).join('\n'), engine, lines: r.lines.map((text, i) => ({ text, strokeIds: (lines[i]?.strokes ?? []).map((s) => s.id) })) };
   }
   const rec = await getBrowserRecognizer(lang);
   const out: string[] = [];
+  const pairs: RecognizedLine[] = [];
   for (const l of lines) {
     const drawing = rec.startDrawing({ recognitionType: 'text', inputType: 'stylus', textContext: out[out.length - 1] ?? '' });
     for (const s of l.strokes) {
@@ -78,8 +83,11 @@ export async function recognizeLocally(strokes: InkStroke[]): Promise<{ text: st
       drawing.addStroke(st);
     }
     const preds = await drawing.getPrediction();
-    if (preds?.[0]?.text) out.push(preds[0].text);
+    if (preds?.[0]?.text) {
+      out.push(preds[0].text);
+      pairs.push({ text: preds[0].text, strokeIds: l.strokes.map((s) => s.id) });
+    }
     drawing.clear?.();
   }
-  return { text: out.join('\n'), engine };
+  return { text: out.join('\n'), engine, lines: pairs };
 }

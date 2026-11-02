@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { useApp, routeFromHash } from './state/app.ts';
 import { useSettings } from './state/settings.ts';
 import { AppVault } from './lib/vault.ts';
@@ -13,11 +13,16 @@ import { isNative } from './platform/env.ts';
 import { initAgentHub } from './lib/agent/hub.ts';
 import { startAgents } from './lib/agent/routines.ts';
 import { AgentDialogs } from './ui/agent/shared.tsx';
+import { useKnowledgeShortcuts } from './ui/knowledge/shortcuts.ts';
+
+// The graph (three.js) loads only when opened, so it never slows the library or the editor.
+const GraphView = lazy(() => import('./graph/GraphView.tsx'));
 
 export function App() {
   const { ready, route, error, setVault, refresh, navigate } = useApp();
   const theme = useSettings((s) => s.theme);
   const palette = useSettings((s) => s.palette);
+  useKnowledgeShortcuts();
 
   useEffect(() => {
     const root = document.documentElement;
@@ -47,6 +52,11 @@ export function App() {
           const { createNote } = await import('./lib/actions.ts');
           const id = await createNote();
           navigate(id ? { name: 'editor', noteId: id } : { name: 'library' }, { replace: true });
+        } else if (location.hash === '#today') {
+          // App shortcut: today's daily note.
+          navigate({ name: 'library' }, { replace: true });
+          const { openToday } = await import('./lib/knowledge.ts');
+          await openToday();
         } else navigate(routeFromHash(location.hash), { replace: true });
         // Files the system opened Inkstone with (desktop file handler, share target, Android "Open with").
         void import('./lib/openFiles.ts').then((m) => m.installOpenHandlers());
@@ -100,6 +110,7 @@ export function App() {
       {route.name === 'library' && <Library />}
       {route.name === 'editor' && <Editor key={route.noteId} noteId={route.noteId} initialPage={route.page} />}
       {route.name === 'settings' && <Settings section={route.section} />}
+      {route.name === 'graph' && <Suspense fallback={<div className="boot" aria-live="polite"><BrandMark size={44} /></div>}><GraphView /></Suspense>}
       <Prompts />
       <AgentDialogs />
       <Toasts />

@@ -2,6 +2,7 @@ import { NoteDocument, type NoteMeta, type PageInk } from '@inkstone/core';
 import { mergeNote, mergePage } from '@inkstone/sync';
 import { useApp } from '../state/app.ts';
 import { recognizeLocally } from './recognition.ts';
+import { applyRecognizedLinks, syncDocInlineTags } from './docLinks.ts';
 import { scheduleSync } from './sync.ts';
 import type { AppVault } from './vault.ts';
 
@@ -56,6 +57,8 @@ export class EditorSession {
   flush(): Promise<void> {
     if (this.saveTimer) { clearTimeout(this.saveTimer); this.saveTimer = null; }
     this.saving = this.saving.then(async () => {
+      // #tags written on the pages become the note's tags before it is written.
+      if (this.doc.isDirty) syncDocInlineTags(this.doc);
       const snap = this.doc.takeDirty();
       if (!snap) return;
       this.onSaved?.('saving');
@@ -91,7 +94,11 @@ export class EditorSession {
       if (i < 0 || this.closed) return;
       try {
         const r = await recognizeLocally(this.doc.page(i).strokes);
-        if (r) this.doc.setRecognizedText(id, r.text, r.engine);
+        if (r) {
+          this.doc.setRecognizedText(id, r.text, r.engine);
+          // Handwritten [[links]] turn the line's ink into a link.
+          applyRecognizedLinks(this.doc, id, r.lines);
+        }
       } catch (e) {
         console.warn('recognition failed', e);
       }

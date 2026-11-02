@@ -30,6 +30,7 @@ import { askConfirm, askText } from '../ui/prompts.tsx';
 import { isAIReady, transcribePage } from '../lib/ai.ts';
 import { FillLayer, FilledExportDialog, noteHasPdf } from '../fill/FillLayer.tsx';
 import { insertFilesIntoNote, useFileDrop } from '../lib/openFiles.ts';
+import { KnowledgeEditorParts, useKnowledgeEditor } from '../ui/knowledge/EditorParts.tsx';
 
 declare const __E2E__: boolean;
 /** Test builds (`vite build --mode e2e`) expose the document to end-to-end tests; releases never do. */
@@ -55,7 +56,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   const [sel, setSel] = useState<SelectionInfo | null>(null);
   const [editingText, setEditingText] = useState<{ pageIndex: number; box: TextBox; isNew: boolean } | null>(null);
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'error'>('saved');
-  const [panel, setPanel] = useState<'pages' | 'ai' | null>(null);
+  const [panel, setPanel] = useState<'pages' | 'ai' | 'links' | null>(null);
   const [aiRequest, setAiRequest] = useState<AIRequest | null>(null);
   const [paperOpen, setPaperOpen] = useState(false);
   const [menu, setMenu] = useState<'export' | 'insert' | 'more' | 'feel' | null>(null);
@@ -423,15 +424,10 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
     }
   };
 
-  // [[Wiki links]]: open the note with that title, or create it (like Obsidian).
-  const openWikiLink = async (title: string) => {
-    await session?.flush();
-    const target = useApp.getState().notes.find((n) => n.title.trim().toLowerCase() === title.toLowerCase());
-    if (target) return navigate({ name: 'editor', noteId: target.id });
-    const { createNote } = await import('../lib/actions.ts');
-    const id = await createNote({ title, notebookId: doc?.meta.notebookId });
-    if (id) navigate({ name: 'editor', noteId: id });
-  };
+  // Links, backlinks, ink links, templates (ui/knowledge/EditorParts.tsx).
+  const kb = useKnowledgeEditor({ doc, engine, session, onPanel: () => setPanel('links') });
+  // [[Wiki links]]: open the note with that title (at its page), or create it (like Obsidian).
+  const openWikiLink = (title: string) => kb.follow(title);
 
   // ---- Render ----------------------------------------------------------------------------------
   if (missing) {
@@ -452,7 +448,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
     <div ref={(el) => { root.current = el; setRootEl(el); }} className={cx('editor', wide && 'is-wide', panel && 'has-panel')}>
       <header className="ed-top">
         <IconButton label="Back to library" onClick={() => navigate({ name: 'library' })}><ArrowLeft size={20} /></IconButton>
-        <button type="button" className="ed-title" onClick={async () => { if (!doc) return; const t = await askText('Rename note', 'Title', doc.meta.title, 'Rename'); if (t) doc.rename(t); }}>
+        <button type="button" className="ed-title" onClick={async () => { if (!doc) return; const t = await askText('Rename note', 'Title', doc.meta.title, 'Rename'); if (t) kb.rename(t); }}>
           <span className="ed-title-text">{meta?.title ?? ''}</span>
           <span className={cx('save-dot', `is-${saveState}`)} title={saveState === 'saving' ? 'Saving…' : saveState === 'error' ? 'Not saved — retrying' : 'Saved'} aria-label={saveState === 'saved' ? 'Saved' : saveState} />
         </button>
@@ -482,16 +478,17 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
               onDelete={() => engine.deleteSelection()} onDuplicate={() => engine.duplicateSelection()} onCopy={copySel}
               onCut={() => { copySel(); engine.deleteSelection(); }} onRecolor={(c) => engine.recolorSelection(c)}
               onAsk={askAboutSelection} onConvert={() => void convertSelection()} onEditText={editSelectedText}
-              links={[...new Set((engine.getSelectionItems()?.texts ?? []).flatMap((t) => [...t.text.matchAll(/\[\[([^\]]+)\]\]/g)].map((m) => m[1]!.trim())))]}
-              onOpenLink={(title) => void openWikiLink(title)} />
+              links={kb.selectionLinks()}
+              onOpenLink={(title) => void openWikiLink(title)} onLink={kb.canLinkSelection() ? kb.linkSelection : undefined} onUnlink={kb.selectionHasInkLink() ? kb.unlinkSelection : undefined} />
           )}
           {editingText && editingScreen && engine && (
-            <TextOverlay key={editingText.box.id} box={editingText.box} screen={editingScreen} zoom={engine.zoom} onChange={(b) => { latestText.current = b; }} onDone={commitText} />
+            <TextOverlay key={editingText.box.id} box={editingText.box} screen={editingScreen} zoom={engine.zoom} noteId={doc?.meta.id} onChange={(b) => { latestText.current = b; }} onDone={commitText} />
           )}
           {doc && engine && vault && session && host.current && noteHasPdf(doc) && (
             <FillLayer doc={doc} engine={engine} vault={vault} session={session} host={host.current} active={fill} onActive={setFill}
               sel={sel} onTool={setTool} onExport={() => setFillExport(true)} view={view} />
           )}
+          {doc && engine && host.current && <KnowledgeEditorParts kb={kb} doc={doc} engine={engine} host={host.current} view={view} editingTextId={editingText?.box.id} />}
           {dropping && <div className="drop-hint" aria-live="polite"><FileUp size={22} /> Drop to add to this note</div>}
           {latched && <div className="latch-pill" role="status">{settings.input.buttonAction === 'lasso' ? 'Lasso' : settings.input.buttonAction === 'highlighter' ? 'Highlighter' : 'Eraser'} on — press the pen button to switch back</div>}
           {clips.length > 0 && (
@@ -530,6 +527,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
             vault={vault!} onOpenNote={(id) => void session?.flush().then(() => navigate({ name: 'editor', noteId: id }))}
             onDelete={async (i) => { if (await askConfirm(`Delete page ${i + 1}?`, 'The page and its ink are removed from this note.', 'Delete page', true)) doc!.deletePage(i); }} />
         )}
+        {sidePanel && panel === 'links' && kb.panel(() => setPanel(null))}
         {sidePanel && panel === 'ai' && (
           <AIPanel session={session!} engine={engine!} request={aiRequest} onClose={() => setPanel(null)} onOpenSettings={() => navigate({ name: 'settings', section: 'ai' })} />
         )}
@@ -587,6 +585,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
         <Menu onClose={() => setMenu(null)} items={[
           ...(noteHasPdf(doc) ? [{ label: fill ? 'Stop filling in' : 'Fill & sign', icon: <Signature size={16} />, onClick: () => setFill(!fill) }] : []),
           { label: 'Pages', icon: <Layers size={16} />, hint: doc && doc.pageCount > 1 ? `${doc.pageCount}` : undefined, onClick: () => setPanel('pages') },
+          kb.menuItem(),
           { label: 'Paper', icon: <Files size={16} />, onClick: () => setTimeout(() => setPaperOpen(true), 0) },
           { label: 'Writing sound & feel', icon: <AudioLines size={16} />, hint: settings.feel.sound ? `${Math.round(settings.feel.soundVolume * 100)}%` : 'Off', onClick: () => setTimeout(() => setMenu('feel'), 0) },
           { label: 'Insert', icon: <ImageIcon size={16} />, onClick: () => setTimeout(() => setMenu('insert'), 0) },
@@ -596,6 +595,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
           { label: 'Tags', icon: <Tag size={16} />, hint: meta?.tags.join(', ') || 'None', onClick: async () => { if (!doc) return; const t = await askText('Tags', 'Comma-separated', doc.meta.tags.join(', ')); if (t != null) { doc.setTags(t.split(',')); await session?.flush(); await setTags(doc.meta.id, doc.meta.tags); } } },
           { label: 'Fit to width', icon: <Maximize2 size={16} />, hint: `${modKey}0`, onClick: () => engine?.fitWidth() },
           { label: 'Duplicate note', icon: <Copy size={16} />, onClick: async () => { await session?.flush(); await duplicateNote(noteId); toast({ text: 'Duplicated', tone: 'success' }); } },
+          kb.templateMenuItem(),
           { label: 'Save now', icon: <CloudUpload size={16} />, hint: `${modKey}S`, onClick: () => void session?.flush().then(() => toast({ text: 'Saved', tone: 'success' })) },
           'sep',
           { label: 'Move to Trash', icon: <Trash2 size={16} />, danger: true, onClick: async () => { await session?.flush(); await trashNote(noteId); navigate({ name: 'library' }); } },

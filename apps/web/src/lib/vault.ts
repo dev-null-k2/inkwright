@@ -1,4 +1,5 @@
 import {
+  KnowledgeIndex,
   MemoryFS,
   SearchIndex,
   Vault,
@@ -22,6 +23,8 @@ import { seedWelcome } from './welcome.ts';
 export class AppVault {
   readonly vault: Vault;
   readonly search = new SearchIndex();
+  /** Links, backlinks, mentions, tags and relatedness (lib/knowledge.ts, the graph). */
+  readonly knowledge = new KnowledgeIndex();
   private thumbs = new Map<string, { at: number; url: string }>();
   private thumbJobs = new Map<string, Promise<string | null>>();
   readonly assets: AssetCache;
@@ -31,6 +34,12 @@ export class AppVault {
     this.vault = new Vault(fs);
     this.persistent = persistent;
     this.assets = new AssetCache((noteId, name) => this.vault.readAsset(noteId, name), () => {});
+    // Metadata-only changes (rename, move, trash) and deletions reach the knowledge index here;
+    // content changes come through indexNote.
+    this.vault.onChange((c) => {
+      if (c.type === 'note-deleted') this.knowledge.remove(c.noteId);
+      else if (c.type === 'note') void this.vault.readNote(c.noteId).then((n) => { if (n) this.knowledge.updateMeta(n); });
+    });
   }
 
   static async open(): Promise<AppVault> {
@@ -66,9 +75,12 @@ export class AppVault {
   /** Indexes every note (title, tags, summary, typed text, recognized handwriting). */
   async buildIndex(): Promise<void> {
     this.search.clear();
+    this.knowledge.clear();
     for (const n of await this.vault.listNotes({ includeTrashed: true })) {
       try {
-        this.search.indexNote(n, await this.vault.readPages(n));
+        const pages = await this.vault.readPages(n);
+        this.search.indexNote(n, pages);
+        this.knowledge.update(n, pages);
       } catch (e) {
         console.warn(`Skipping unreadable note ${n.id}`, e);
       }
@@ -77,6 +89,7 @@ export class AppVault {
 
   indexNote(note: NoteMeta, pages: PageInk[]) {
     this.search.indexNote(note, pages);
+    this.knowledge.update(note, pages);
   }
 
   /** First-page thumbnail as a data URL, cached per note version. */
