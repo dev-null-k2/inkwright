@@ -148,6 +148,31 @@ class InkstoneNativePlugin : Plugin() {
         )
     }
 
+    /**
+     * Opens the calendar app's "new event" screen prefilled (title, begin/end epoch ms, all-day),
+     * for a date circled in a note. Resolves { opened: false } when no calendar app handles it.
+     */
+    @PluginMethod
+    fun insertCalendarEvent(call: PluginCall) {
+        val begin = call.getLong("beginTime") ?: return call.reject("beginTime is required")
+        val intent = app.inkstone.calendar.CalendarIntents.insert(
+            app.inkstone.calendar.CalendarIntents.Event(
+                title = call.getString("title") ?: "",
+                beginMs = begin,
+                endMs = call.getLong("endTime") ?: (begin + 3_600_000L),
+                allDay = call.getBoolean("allDay", false) ?: false,
+                description = call.getString("description"),
+                location = call.getString("location"),
+            ),
+        )
+        try {
+            (activity ?: context).startActivity(intent)
+            call.resolve(JSObject().put("opened", true))
+        } catch (e: android.content.ActivityNotFoundException) {
+            call.resolve(JSObject().put("opened", false))
+        }
+    }
+
     @PluginMethod
     fun feelBegin(call: PluginCall) {
         val data = call.data

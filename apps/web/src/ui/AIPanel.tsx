@@ -106,7 +106,7 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
     const ys = [...page.strokes.flatMap((s) => s.points.map((p) => p.y)), ...(page.texts ?? []).map((t) => t.y + 60)];
     const y = ys.length ? Math.max(...ys) + 32 : 96;
     const width = (doc.meta.pageSize.width || 794) - 128;
-    const box: TextBox = { id: newId(), x: 64, y, width, text, fontSize: 16, color: '#FF1B1F24', font: 'sans', createdAt: Date.now() };
+    const box: TextBox = { id: newId(), x: 64, y, width, text, fontSize: 16, color: '#FF1B1F24', font: 'sans', createdAt: Date.now(), origin: 'ai' };
     doc.upsertText(i, box, 'AI text');
     toast({ text: 'Added to the page', action: { label: 'Undo', run: () => engine.undo() } });
   };

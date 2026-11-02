@@ -178,6 +178,18 @@ export class NoteDocument {
     this.touch(page.id);
   }
 
+  /**
+   * Applies an automatic follow-up change that is not an undo step of its own (a table growing
+   * to fit the ink just written in it, recognized text stored in a cell): undoing goes straight
+   * back to what the user did. Still saved, synced and recorded in the authorship chain.
+   */
+  adjust(pageIndex: number, diff: PageDiff): void {
+    if (isEmptyDiff(diff) || !this.pageList[pageIndex]) return;
+    const page = this.pageList[pageIndex]!;
+    this.pageList[pageIndex] = this.chain(applyDiff(page, diff), diff, 'other');
+    this.touch(page.id);
+  }
+
   /** Appends the diff's authorship chain events (docs/AUTHORSHIP.md) to the page. */
   private chain(page: PageInk, d: PageDiff, how: ChainCause): PageInk {
     const changes: ChainChange[] = [];
@@ -354,7 +366,7 @@ export class NoteDocument {
    * Adds or replaces (by id) page objects, optionally replacing strokes in the same undo step —
    * e.g. a drawn grid's strokes become a table, or a table and its cell ink move together.
    */
-  editObjects(pageIndex: number, label: string, change: { upsert?: PageObject[]; removeObjects?: Set<string>; addStrokes?: InkStroke[]; replaceStrokes?: Map<string, InkStroke>; removeStrokes?: Set<string> }): void {
+  editObjects(pageIndex: number, label: string, change: { upsert?: PageObject[]; removeObjects?: Set<string>; addStrokes?: InkStroke[]; replaceStrokes?: Map<string, InkStroke>; removeStrokes?: Set<string> }, opts: { undoable?: boolean } = {}): void {
     const page = this.pageList[pageIndex];
     if (!page) return;
     const objs = page.objects ?? [];
@@ -375,7 +387,9 @@ export class NoteDocument {
     });
     const kept = page.strokes.length - (change.removeStrokes?.size ? page.strokes.filter((s) => change.removeStrokes!.has(s.id)).length : 0);
     (change.addStrokes ?? []).forEach((s, k) => sd.added.push({ index: kept + k, item: s }));
-    this.commit(pageIndex, { label, objects: od.removed.length || od.added.length ? od : undefined, strokes: sd.removed.length || sd.added.length ? sd : undefined });
+    const diff: PageDiff = { label, objects: od.removed.length || od.added.length ? od : undefined, strokes: sd.removed.length || sd.added.length ? sd : undefined };
+    if (opts.undoable === false) this.adjust(pageIndex, diff);
+    else this.commit(pageIndex, diff);
   }
 
   clearPage(pageIndex: number): boolean {

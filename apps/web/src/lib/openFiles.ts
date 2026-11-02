@@ -71,7 +71,7 @@ export function textToPages(text: string, size: PageSize, opts: { fontSize?: num
   }
   return pages.map((lines) => {
     const body = lines.join('\n');
-    return body.trim() ? [{ id: makeId(), x: margin, y: margin, width, text: body, fontSize, color: '#FF1B1F24', font: 'sans', createdAt: opts.now ?? Date.now() } as TextBox] : [];
+    return body.trim() ? [{ id: makeId(), x: margin, y: margin, width, text: body, fontSize, color: '#FF1B1F24', font: 'sans', createdAt: opts.now ?? Date.now(), origin: 'import' } as TextBox] : [];
   });
 }
 
@@ -126,13 +126,13 @@ export async function insertFilesIntoNote(vault: AppVault, doc: NoteDocument, en
         const size = pageSizeOf(doc.meta, doc.page(pageIndex));
         const k = Math.min(1, ((size.width || 800) * 0.7) / dim.width, ((size.height || 800) * 0.6) / dim.height);
         const w = dim.width * k, h = dim.height * k;
-        doc.addImage(pageIndex, { id: newId(), x: at.x - w / 2 + offset, y: at.y - h / 2 + offset, width: w, height: h, asset, rotation: 0, createdAt: Date.now() });
+        doc.addImage(pageIndex, { id: newId(), x: at.x - w / 2 + offset, y: at.y - h / 2 + offset, width: w, height: h, asset, rotation: 0, createdAt: Date.now(), origin: 'import' });
         offset += 24;
       } else if (kind === 'text') {
         const text = await readText(f);
         const size = pageSizeOf(doc.meta, doc.page(pageIndex));
         const width = Math.max(200, Math.min(520, (size.width || 900) - at.x - 24));
-        doc.upsertText(pageIndex, { id: newId(), x: at.x, y: at.y, width, text: text.trim(), fontSize: 16, color: '#FF1B1F24', font: 'sans', createdAt: Date.now() }, 'Add text');
+        doc.upsertText(pageIndex, { id: newId(), x: at.x, y: at.y, width, text: text.trim(), fontSize: 16, color: '#FF1B1F24', font: 'sans', createdAt: Date.now(), origin: 'import' }, 'Add text');
       } else {
         app.fail(`${f.name} isn't a PDF, image or text file.`);
       }

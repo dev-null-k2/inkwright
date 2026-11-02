@@ -210,6 +210,26 @@ export function compileNode(n: MathNode): (env: Record<string, number>) => numbe
   }
 }
 
+/**
+ * Writes a parsed expression back as explicit ASCII maths (every product has a `*`), for a
+ * computer-algebra system. `rename` maps function names to the target's (e.g. log → log10).
+ */
+export function formatMath(n: MathNode, rename: Record<string, string> = {}): string {
+  const prec = (x: MathNode) => (x.t === 'bin' ? ({ '+': 1, '-': 1, '*': 2, '/': 2, '^': 4 } as const)[x.op] : x.t === 'neg' ? 1.5 : 5);
+  const wrap = (x: MathNode, min: number) => (prec(x) < min ? `(${formatMath(x, rename)})` : formatMath(x, rename));
+  switch (n.t) {
+    case 'num': return Number.isInteger(n.v) || Math.abs(n.v) > 1e-6 ? String(n.v === Math.PI ? 'pi' : n.v === Math.E ? 'e' : n.v) : n.v.toExponential();
+    case 'var': return n.name;
+    case 'neg': return `-${wrap(n.a, 4)}`;
+    case 'fact': return `${wrap(n.a, 5)}!`;
+    case 'call': return `${rename[n.fn] ?? n.fn}(${n.args.map((a) => formatMath(a, rename)).join(',')})`;
+    case 'bin':
+      if (n.op === '^') return `${wrap(n.a, 5)}^${wrap(n.b, 4)}`;
+      if (n.op === '-' || n.op === '/') return `${wrap(n.a, prec(n))}${n.op}${wrap(n.b, prec(n) + 1)}`;
+      return `${wrap(n.a, prec(n))}${n.op}${wrap(n.b, prec(n))}`;
+  }
+}
+
 /** Variables an expression uses (constants and function names excluded). */
 export function variablesOf(n: MathNode, out = new Set<string>()): Set<string> {
   if (n.t === 'var') out.add(n.name);
