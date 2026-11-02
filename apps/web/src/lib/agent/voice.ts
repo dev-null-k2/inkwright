@@ -1,22 +1,27 @@
 /**
  * Talking to the assistant: push-to-talk speech input and optional spoken replies.
  *
- * Input uses the browser's speech recognition (Web Speech API) when it exists, otherwise records
- * audio and sends it to the configured provider's transcription endpoint (`Transcriber` from
- * @inkstone/ai — an on-device engine can be added by implementing that interface). Spoken replies
- * use the system voices (speechSynthesis) and are off by default.
+ * Input uses the browser's speech recognition (Web Speech API) when it exists; in the Android app
+ * (whose WebView has none) Android's own recognizer, on the phone; otherwise it records audio and
+ * hands it to a `Transcriber` (@inkstone/ai) — the configured provider's transcription endpoint,
+ * or Android's on-device recognizer for recordings. Spoken replies use the system voices
+ * (speechSynthesis) and are off by default.
  */
 import { create } from 'zustand';
 import { getProviderInfo, transcriberForProvider, type Transcriber } from '@inkstone/ai';
 import { safeStorage } from '../../platform/env.ts';
 import { useSettings } from '../../state/settings.ts';
 import { getSecret } from '../secrets.ts';
+import { initNativeAI, listenNatively, nativeSpeechAvailable, nativeTranscriber } from '../native-ai.ts';
 
 export interface VoicePrefs {
   /** Read the assistant's replies aloud. */
   speakReplies: boolean;
-  /** `auto`: browser recognition when available, else the AI provider. */
-  input: 'auto' | 'browser' | 'provider';
+  /**
+   * `auto`: browser recognition when available, else this phone's recognizer (Android app), else
+   * the AI provider. `device`: only this phone's recognizer.
+   */
+  input: 'auto' | 'browser' | 'device' | 'provider';
 }
 
 const KEY = 'inkstone.voice.v1';
@@ -68,7 +73,8 @@ export async function providerTranscriber(): Promise<Transcriber | null> {
 }
 
 export interface Listening {
-  engine: 'browser' | 'provider';
+  /** `device`: Android's recognizer on this phone. */
+  engine: 'browser' | 'device' | 'provider';
   /** Stops listening and resolves with the transcript. */
   stop(): Promise<string>;
   cancel(): void;
@@ -76,16 +82,28 @@ export interface Listening {
 
 /** Can the assistant hear you here at all? */
 export async function voiceInputAvailable(): Promise<boolean> {
+  await initNativeAI();
   const p = useVoicePrefs.getState().input;
-  if (p !== 'provider' && browserSpeechSupported()) return true;
-  return typeof MediaRecorder !== 'undefined' && !!(await providerTranscriber());
+  if ((p === 'auto' || p === 'browser') && browserSpeechSupported()) return true;
+  if ((p === 'auto' || p === 'device') && nativeSpeechAvailable()) return true;
+  return typeof MediaRecorder !== 'undefined' && !!(p === 'device' ? nativeTranscriber() : ((await providerTranscriber()) ?? nativeTranscriber()));
 }
 
 /** Starts push-to-talk. `onPartial` receives live text where the engine provides it. */
 export async function startListening(opts: { language?: string; onPartial?: (text: string) => void } = {}): Promise<Listening> {
+  await initNativeAI();
   const pref = useVoicePrefs.getState().input;
   const SR = speechRecognition();
-  if (SR && pref !== 'provider') {
+  if ((pref === 'device' || (pref === 'auto' && !SR)) && nativeSpeechAvailable()) {
+    try {
+      const l = await listenNatively({ language: opts.language || navigator.language, onPartial: opts.onPartial });
+      return { engine: 'device', stop: () => l.stop(), cancel: () => l.cancel() };
+    } catch (e) {
+      // Live recognition refused (no permission, busy): a recording can still be transcribed below.
+      if (pref === 'device' && !nativeTranscriber()) throw e;
+    }
+  }
+  if (SR && (pref === 'auto' || pref === 'browser')) {
     const rec = new SR();
     rec.lang = opts.language || navigator.language || 'en-US';
     rec.continuous = true;
@@ -117,7 +135,7 @@ export async function startListening(opts: { language?: string; onPartial?: (tex
       cancel() { rec.abort(); },
     };
   }
-  const t = await providerTranscriber();
+  const t = pref === 'device' ? nativeTranscriber() : ((await providerTranscriber()) ?? nativeTranscriber());
   if (!t || typeof MediaRecorder === 'undefined') throw new Error('Voice input needs a browser with speech recognition, or an AI provider that can transcribe (OpenAI, Groq or Gemini).');
   const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
   const mime = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm', 'audio/ogg'].find((m) => MediaRecorder.isTypeSupported?.(m)) ?? '';
@@ -127,7 +145,7 @@ export async function startListening(opts: { language?: string; onPartial?: (tex
   mr.start(250);
   const release = () => stream.getTracks().forEach((x) => x.stop());
   return {
-    engine: 'provider',
+    engine: t.onDevice ? 'device' : 'provider',
     async stop() {
       const stopped = new Promise<void>((r) => (mr.onstop = () => r()));
       mr.stop();
