@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { exportAuditJsonl, readChain, serializePolicy, parsePolicy, createScriptedProvider, verifyAudit, type CallToolResult } from '@inkstone/ai';
+import { exportAuditJsonl, readChain, serializePolicy, parsePolicy, createScriptedProvider, verifyAudit } from '@inkstone/ai';
 import type { CallToolResult as McpResult } from '@modelcontextprotocol/server';
 import { audit, parseAgentCli } from '../src/agent-cli.ts';
 import { parseCli } from '../src/cli.ts';
@@ -178,7 +178,7 @@ describe('security review: MCP and HTTP surface', () => {
     for (const t of withId) {
       for (const bad of HOSTILE_IDS) {
         const key = Object.keys(t.inputSchema).includes('id') ? 'id' : 'noteId';
-        let r: CallToolResult | McpResult | null = null;
+        let r: McpResult | null = null;
         try {
           r = await t.handler(ctx, { [key]: bad, text: 'x', title: 'x' });
         } catch (e) {

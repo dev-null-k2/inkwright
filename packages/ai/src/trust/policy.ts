@@ -125,6 +125,11 @@ export interface AIPolicy {
     spotlight: boolean;
     /** After untrusted content that looks like instructions, ask before any write. */
     confirmWritesAfterSuspicious: boolean;
+    /**
+     * Strict: after the assistant reads any note, page or app result, every change asks first —
+     * independent of detection (which is a heuristic; docs/TRUST.md publishes its misses).
+     */
+    confirmWritesAfterAnyRead?: boolean;
   };
   /** Tool names agents may never call (e.g. `notion__delete_page`), and an optional allowlist. */
   tools: { deny: string[]; allowOnly?: string[] };
@@ -311,6 +316,8 @@ export function parsePolicy(input: string | unknown): PolicyParse {
       if (sp !== undefined) policy.injection.spotlight = sp;
       const cw = bool(raw.injection.confirmWritesAfterSuspicious, 'injection.confirmWritesAfterSuspicious', errors);
       if (cw !== undefined) policy.injection.confirmWritesAfterSuspicious = cw;
+      const ca = bool(raw.injection.confirmWritesAfterAnyRead, 'injection.confirmWritesAfterAnyRead', errors);
+      if (ca !== undefined) policy.injection.confirmWritesAfterAnyRead = ca;
     }
   }
 
@@ -425,6 +432,7 @@ export function mergeManagedPolicy(managed: AIPolicy, user: AIPolicy): AIPolicy 
   out.injection = {
     spotlight: managed.injection.spotlight || user.injection.spotlight,
     confirmWritesAfterSuspicious: managed.injection.confirmWritesAfterSuspicious || user.injection.confirmWritesAfterSuspicious,
+    ...(managed.injection.confirmWritesAfterAnyRead || user.injection.confirmWritesAfterAnyRead ? { confirmWritesAfterAnyRead: true } : {}),
   };
   out.tools = {
     deny: [...new Set([...managed.tools.deny, ...user.tools.deny])],

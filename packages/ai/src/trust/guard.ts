@@ -289,15 +289,18 @@ export function createGuardedProvider(o: GuardOptions): GuardedProvider {
  * first (`needsConfirmation`, checked by `runAgent` before each call).
  */
 export function guardAgentTools(tools: readonly AgentTool[], policy: AIPolicy, run: TrustRun): AgentTool[] {
+  if (policy.injection.confirmWritesAfterAnyRead) run.taint.strict = true;
   return tools.filter((t) => toolAllowed(policy, t.name)).map((t) => {
-    if (!policy.injection.confirmWritesAfterSuspicious || t.readOnly) return t;
+    if ((!policy.injection.confirmWritesAfterSuspicious && !policy.injection.confirmWritesAfterAnyRead) || t.readOnly) return t;
     const inner = t.needsConfirmation;
     return {
       ...t,
       execute: t.execute.bind(t),
       needsConfirmation: (args: unknown) => run.taint.needsConfirmation(t) || !!inner?.(args),
       get confirmReason() {
-        return run.taint.suspicious ? 'Something the assistant read looks like instructions planted for it, so it asks before changing anything.' : t.confirmReason;
+        if (run.taint.suspicious) return 'Something the assistant read looks like instructions planted for it, so it asks before changing anything.';
+        if (run.taint.strict && run.taint.sawUntrusted) return 'Your AI policy asks before any change once the assistant has read notes, pages or app results.';
+        return t.confirmReason;
       },
     } as AgentTool;
   });
