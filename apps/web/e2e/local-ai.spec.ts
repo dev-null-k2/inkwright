@@ -1,5 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { openApp } from './helpers.ts';
+import { modKey, openApp } from './helpers.ts';
 
 /** Picks MiniLM as this device's search model (smallest; same files for every device class). */
 async function useMiniLM(page: Page) {
@@ -127,7 +127,7 @@ test('real on-device embeddings find notes by meaning (opt-in, downloads 24 MB)'
   }
   await expect(done).toBeVisible({ timeout: 180_000 });
   await expect(page.locator('.lai-row', { hasText: 'passages ready' })).toContainText(/(\d+) of \1 passages ready/, { timeout: 120_000 });
-  await page.keyboard.press('Control+k');
+  await page.keyboard.press(`${await modKey(page)}+k`);
   // No keyword overlap with "Everything is saved as plain files … sync them with Google Drive".
   await page.locator('.pal-input').fill('where does my data live');
   await expect(page.locator('.pal-foot')).toContainText('Searching by meaning', { timeout: 60_000 });
@@ -144,7 +144,7 @@ test('real on-device chat answers Ask from the notes (opt-in, downloads ~0.6 GB)
   await page.route('https://huggingface.co/**', relayToHuggingFace);
   await page.addInitScript(() => localStorage.setItem('inkwright.localai.v1', JSON.stringify({ chatModel: 'granite-4.0-350m', embedModel: 'minilm-l6', embeddings: 'off' })));
   await openApp(page);
-  await page.keyboard.press('Control+k');
+  await page.keyboard.press(`${await modKey(page)}+k`);
   await page.getByRole('radio', { name: 'Ask' }).click();
   await page.locator('.pal-input').fill('How does Inkwright save my notes?');
   await page.locator('.pal-input').press('Enter');

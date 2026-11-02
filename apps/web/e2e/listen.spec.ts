@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { newNote, openApp, pen, pointer, word } from './helpers';
+import { modKey, newNote, openApp, pen, pointer, word } from './helpers';
 
 /**
  * Notes that listen, end to end in Chromium: a real microphone path (Chromium's fake capture
@@ -196,7 +196,7 @@ test('search finds what was said and opens that moment', async ({ page }) => {
   await page.getByRole('button', { name: 'Stop recording' }).click();
   await expect(page.locator('.lis-where')).toContainText('Transcribed by your AI provider');
   await page.getByRole('button', { name: 'Back to library' }).click();
-  await page.keyboard.press('Control+k');
+  await page.keyboard.press(`${await modKey(page)}+k`);
   await page.locator('.pal-input').fill('flips one signal');
   const row = page.locator('.pal-row', { hasText: 'what was said at' }).first();
   await expect(row).toBeVisible();

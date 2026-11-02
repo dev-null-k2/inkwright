@@ -59,23 +59,28 @@ function svg(blocks, { width, height, theme, seconds = 4, animate = true, pad = 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-pad} ${-pad} ${width + 2 * pad} ${height + 2 * pad}" width="${width + 2 * pad}" height="${height + 2 * pad}" role="img">${css}${paths.join('')}</svg>\n`;
 }
 
+let written = 0;
 function write(name, make) {
   for (const theme of Object.keys(THEMES)) {
     const file = join(out, `${name}-${theme}.svg`);
     writeFileSync(file, make(theme));
+    written++;
   }
 }
 
 // Hero: the name in script, a hand-drawn underline, the line beneath in print.
-write('hero', (theme) => {
+function hero(theme, animate) {
   const name = handwrite('inkwright', { x: 40, y: 52, xHeight: 34, style: 'script', seed: 11, messiness: 0.3, startTime: 0 });
   const underline = {
     strokes: [{ createdAt: name.strokes[name.strokes.length - 1].createdAt + 300, points: Array.from({ length: 60 }, (_, i) => ({ x: 46 + i * 7.4, y: 176 + Math.sin(i / 9) * 3 - i * 0.05, t: i * 9 })) }],
     width: 3.2, color: 'accent',
   };
   const tag = handwrite('the notebook that writes back', { x: 70, y: 200, xHeight: 13, style: 'print', seed: 5, messiness: 0.25, startTime: underline.strokes[0].createdAt + 900 });
-  return svg([{ strokes: name.strokes, width: 4.6 }, underline, { strokes: tag.strokes, width: 2.1, color: 'accent' }], { width: 560, height: 236, theme, seconds: 4.5 });
-});
+  return svg([{ strokes: name.strokes, width: 4.6 }, underline, { strokes: tag.strokes, width: 2.1, color: 'accent' }], { width: 560, height: 236, theme, seconds: 4.5, animate });
+}
+write('hero', (theme) => hero(theme, true));
+// A still version for places that don't animate (social preview, store graphics).
+write('hero-static', (theme) => hero(theme, false));
 
 // Section headings for the README, written in script.
 const sections = [['why', 'why it exists'], ['features', 'what it does'], ['agents', 'for your agents'], ['start', 'start in a minute'], ['story', 'the story'], ['under', 'under the hood'], ['roadmap', 'where it goes next']];
@@ -87,4 +92,4 @@ sections.forEach(([id, label], i) =>
   }),
 );
 
-console.log(`wrote ${2 * (1 + sections.length)} SVGs to ${out}`);
+console.log(`wrote ${written} SVGs to ${out}`);

@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { readZip } from '../../../packages/sync/src/zip.ts';
-import { newNote, openApp, pen, pointer, texts, word, noteId } from './helpers.ts';
+import { modKey, newNote, openApp, pen, pointer, texts, word, noteId } from './helpers.ts';
 
 const VAULT = fileURLToPath(new URL('./fixtures/obsidian-vault', import.meta.url));
 
@@ -79,7 +79,7 @@ test.describe('links', () => {
     const ta = await textBox(page);
     await ta.fill('Chemistry exam on Friday #exams');
     await page.getByRole('button', { name: 'Done' }).click();
-    await page.keyboard.press('Control+s');
+    await page.keyboard.press(`${await modKey(page)}+s`);
     await back(page);
     await expect(page.locator('.nav-item', { hasText: 'exams' })).toBeVisible();
     await page.locator('.note-card', { hasText: 'Chemistry' }).first().locator('.note-open').click();

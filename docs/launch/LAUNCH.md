@@ -87,3 +87,17 @@ Title pattern: "I built an open-source handwriting notebook where the AI answers
 - Web app opens.
 - APK downloads.
 - Issues filed by real stylus users. They are the best signal.
+
+---
+
+## GitHub repository settings (before going public)
+
+- **About:** "The handwriting notebook that writes back. Paper-feel ink, an agent that answers in ink, notes as plain files. Local-first, any AI, no server."
+- **Website:** https://karthikkasukurti.github.io/inkwright/
+- **Topics:** `handwriting`, `note-taking`, `stylus`, `local-first`, `ai-agents`, `mcp`, `model-context-protocol`, `byok`, `on-device-ai`, `obsidian`, `pwa`, `capacitor`, `android`, `typescript`, `knowledge-graph`
+- **Social preview:** upload `docs/media/social.png` (Settings › General › Social preview).
+- **Pages:** Settings › Pages › Source: GitHub Actions. The `pages.yml` workflow publishes the landing page and the app under `/app/`.
+- **Features:** turn on Discussions (categories: Q&A, Show and tell, Ideas). Turn on private vulnerability reporting (Security › Advisories).
+- **Branch protection on `main`:** require the CI and Security workflows to pass.
+- **Release:** `git tag v1.0.0 && git push --tags` runs `release.yml`. Add the signing secrets first (docs/PUBLISHING.md).
+- **Pin the repo** on your profile, and add it to your profile README.
