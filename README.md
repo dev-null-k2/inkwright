@@ -135,7 +135,7 @@ Every number below comes from an eval or test in this repository and can be re-r
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/section-start-dark.svg"><img alt="Start in a minute" src="docs/media/section-start-light.svg" height="52"></picture>
 
 - **In a browser:** [open the app](https://dev-null-k2.github.io/inkwright/app/). It installs as an offline app on Mac, Windows, Linux, ChromeOS and iPad. Your notes stay in the browser until you connect Google Drive, WebDAV or a folder.
-- **Android:** download the APK from [Releases](https://github.com/dev-null-k2/inkwright/releases/latest). Google Play is coming.
+- **Android:** download `Inkwright-<version>-arm64-v8a.apk` from [Releases](https://github.com/dev-null-k2/inkwright/releases/latest) (`armeabi-v7a` for older 32-bit phones). Google Play is coming.
 - **From source:**
 
 ```sh

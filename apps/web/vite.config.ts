@@ -116,7 +116,9 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: single ? 'dist-single' : e2e ? 'dist-e2e' : native ? 'dist-native' : 'dist',
       target: 'es2022',
-      sourcemap: !single,
+      // Native builds leave source maps out of the APK unless asked for (INKWRIGHT_SOURCEMAPS=1,
+      // for chrome://inspect sessions): they were 8.8 MB of the debug APK (docs/PERFORMANCE.md).
+      sourcemap: native ? process.env.INKWRIGHT_SOURCEMAPS === '1' : !single,
       assetsInlineLimit: single ? 100_000_000 : 4096,
       chunkSizeWarningLimit: 4000,
     },
