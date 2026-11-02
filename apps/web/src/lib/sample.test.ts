@@ -26,7 +26,7 @@ describe('sample library', () => {
           expect(p.x).toBeLessThan(page.size?.width ?? 900);
         }
       }
-      expect(page.recognizedText.length).toBeGreaterThan(10);
+      expect(page.recognizedText?.length ?? 0).toBeGreaterThan(10);
     }
     // Searchable before any AI is configured.
     const lecture = notes.find((n) => n.title.startsWith('Lecture 7'))!;
@@ -35,6 +35,6 @@ describe('sample library', () => {
     // The design review links to the lecture.
     const review = notes.find((n) => n.title.startsWith('Design review'))!;
     const rp = (await vault.readPage(review.id, (await vault.readNote(review.id))!.pageIds[0]!))!;
-    expect(rp.texts.flatMap((t) => parseWikiLinks(t.text).map((l) => l.target))).toContain('Lecture 7 — Fourier series');
+    expect((rp.texts ?? []).flatMap((t) => parseWikiLinks(t.text).map((l) => l.target))).toContain('Lecture 7 — Fourier series');
   });
 });

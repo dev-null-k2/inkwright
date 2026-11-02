@@ -2,6 +2,7 @@ import { watch, statSync, type FSWatcher } from 'node:fs';
 import { SearchIndex, Vault, VaultLayout, decodeNote, isSafeId, type NoteMeta, type NotebookMeta } from '@inkstone/core';
 import { NodeFS, TEMP_PREFIX } from './nodefs.ts';
 import { loadResvgRenderer, type PngRenderer } from './render.ts';
+import { PolicySource, PolicyVault, createServerTrust, loadAuditSigner, type ServerTrust } from './trust.ts';
 
 export interface ContextOptions {
   /** Absolute or relative path of the vault folder. Must exist. */
@@ -15,6 +16,10 @@ export interface ContextOptions {
   renderPng?: PngRenderer | null;
   /** Caches are re-validated at least this often even when the watcher is quiet (default 30 s). */
   maxStaleMs?: number;
+  /** A managed AI policy file (enterprise deployments): users can tighten it but not loosen it. */
+  managedPolicyFile?: string;
+  /** P-256 private JWK file that signs the audit trail (default: a key for this process). */
+  auditKeyFile?: string;
 }
 
 /**
@@ -24,7 +29,12 @@ export interface ContextOptions {
 export interface ServerContext {
   readonly root: string;
   readonly fs: NodeFS;
-  readonly vault: Vault;
+  /** The vault as the AI policy lets agents see it (hidden and local-only notes are missing). */
+  readonly vault: PolicyVault;
+  /** The AI policy (`ai/policy.json`, plus the managed policy), re-read on refresh. */
+  readonly policy: PolicySource;
+  /** Audit trail, usage meter, proposals and originals for the trust layer (trust.ts). */
+  readonly trust: ServerTrust;
   readonly readOnly: boolean;
   readonly clock: () => number;
   /** True when this context created `inkstone.json` (the folder was not a vault yet). */
@@ -46,19 +56,23 @@ export async function createContext(opts: ContextOptions): Promise<ServerContext
   if (!st || !st.isDirectory()) throw new Error(`Vault folder not found: ${opts.root}`);
   const clock = opts.clock ?? Date.now;
   const fs = new NodeFS(opts.root);
-  const vault = new Vault(fs, clock);
+  const policy = new PolicySource(fs, opts.managedPolicyFile);
+  const vault = new PolicyVault(fs, clock, () => policy.current);
   const readOnly = Boolean(opts.readOnly);
   let createdVault = false;
   if (!readOnly && (await fs.readText(VaultLayout.MANIFEST)) == null) {
     await vault.init();
     createdVault = true;
   }
+  await policy.refresh();
+  const trust = createServerTrust(fs, fs.root, () => policy.current, { signer: await loadAuditSigner(opts.auditKeyFile), clock });
 
   const maxStaleMs = opts.maxStaleMs ?? 30_000;
   let generation = 1;
   let watcher: FSWatcher | null = null;
   let warmTimer: ReturnType<typeof setTimeout> | null = null;
-  const index = new IncrementalIndex(fs, vault);
+  // The index sees every note; search results are filtered through the policy vault.
+  const index = new IncrementalIndex(fs, new Vault(fs, clock));
 
   if (opts.watch ?? true) {
     try {
@@ -97,8 +111,11 @@ export async function createContext(opts: ContextOptions): Promise<ServerContext
     readOnly,
     clock,
     createdVault,
+    policy,
+    trust,
     async refresh() {
       if (fresh(vaultCheckedGen, vaultCheckedAt)) return;
+      await policy.refresh();
       vaultCheckedGen = generation;
       vaultCheckedAt = clock();
       vault.invalidate();
@@ -126,6 +143,9 @@ export async function createContext(opts: ContextOptions): Promise<ServerContext
       return r ? r(svg, width) : null;
     },
     close() {
+      // Shutdown flushes first (index.ts, agent-cli.ts); closing never writes after the fact.
+      trust.audit.close();
+      trust.usage.close();
       if (warmTimer) clearTimeout(warmTimer);
       watcher?.close();
       watcher = null;
@@ -205,7 +225,9 @@ export async function readNoteFresh(ctx: ServerContext, id: string): Promise<{ n
   if (raw == null) return null;
   try {
     const note = decodeNote(raw);
-    return note.id === id ? { note, raw } : null;
+    // Notes the AI policy hides from agents read as missing here too.
+    if (note.id !== id || !(await ctx.vault.visible(note))) return null;
+    return { note, raw };
   } catch {
     return null;
   }

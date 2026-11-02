@@ -199,6 +199,22 @@ Every agent run — a chat in the panel or a routine — is assembled by `prepar
   an always-on runner on a computer take over automatic triggers; the app then defers to it and
   says so on the Routines screen.
 
+### Trust and cost (`packages/ai/src/trust/`, `apps/web/src/lib/trust/`, see docs/TRUST.md)
+
+- **One choke point for model calls.** `getActiveAI(opts)` hands every caller a provider made by
+  `createGuardedProvider`: per call it routes by the AI policy (`ai/policy.json`: task routes,
+  local-only notes the run has read, monthly budgets), scans tool results for injection, shortens
+  large context reversibly (originals stay on the device; `retrieve_original` is answered inside
+  the guard), spotlights untrusted content, redacts personal data before cloud calls and puts it
+  back in the answer, meters cost (`ai/usage/`) and writes a signed, hash-chained audit event
+  (`ai/audit/`). The server wraps its AI the same way.
+- **One choke point for note access.** `AccessControlledNoteToolHost` (app and server agents) and
+  `PolicyVault` (every MCP tool, resource and prompt) apply per-notebook/tag permissions; the run
+  learns which notes' content it carries (`TrustRun`). `guardAgentTools` removes denied tools and
+  asks before writes after suspicious content; `ProposingNoteToolHost` turns writes into proposals.
+- **Managed policy.** `mergeManagedPolicy` lets a deployment's policy tighten, never loosen, the
+  user's (docs/ENTERPRISE.md).
+
 ### Outside agents (`apps/mcp-server`, see docs/AGENTS.md)
 
 One Node program set over the vault folder, sharing `@inkstone/core` (files) and `@inkstone/ai`

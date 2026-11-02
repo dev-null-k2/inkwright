@@ -1,0 +1,52 @@
+/* Trust and cost: Settings › AI › Routing & privacy, AI usage, Audit trail, and proposed changes
+   in Activity. Duan tokens only; jade stays for selection, cinnabar only for problems. */
+
+.trust-routing code { font-family: var(--font-mono); font-size: 12px; }
+.trust-managed { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--chrome); color: var(--ink-2); font-size: var(--t-sm); }
+.trust-errors { padding: 10px 12px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--ochre) 40%, var(--line)); background: color-mix(in srgb, var(--ochre) 10%, var(--raised)); font-size: var(--t-sm); display: flex; flex-direction: column; gap: 4px; }
+.trust-errors ul { margin: 0; padding-left: 18px; color: var(--ink-2); }
+.trust-forced { flex-basis: 100%; color: var(--ochre); }
+
+.trust-rule { align-items: flex-start; }
+.trust-rule-controls { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.trust-rule-controls .segmented { max-width: 100%; }
+.trust-add-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.trust-add-row select, .trust-tag-form input, .trust-price-form input, .trust-budget input, .trust-days input { min-height: 36px; border: 1px solid var(--line-strong); border-radius: var(--r-control); background: var(--raised); color: var(--ink); padding: 0 10px; font: inherit; }
+.trust-tag-form, .trust-price-form { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.trust-tag-form input { width: 140px; }
+.trust-price-form input { width: 96px; }
+.trust-price-form input:first-child { width: 180px; }
+.trust-budget-controls { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.trust-usd, .trust-days { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-2); }
+.trust-usd input { width: 96px; }
+.trust-days input { width: 80px; }
+
+.trust-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 0; }
+.trust-stats > div { padding: 12px 14px; border-radius: 14px; background: var(--raised); border: 1px solid var(--line); }
+.trust-stats dt { font-size: var(--t-xs); color: var(--ink-3); }
+.trust-stats dd { margin: 2px 0 0; font-family: var(--font-title); font-size: var(--t-xl); font-weight: 560; }
+.trust-cost { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: var(--t-sm); }
+.trust-days-chart { display: flex; align-items: flex-end; gap: 3px; height: 96px; padding: 8px 4px 0; border-bottom: 1px solid var(--line); }
+.trust-day { flex: 1; max-width: 22px; height: 100%; position: relative; }
+.trust-day > span { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 3px 3px 0 0; }
+.trust-day-used { background: var(--ink-2); }
+.trust-day-saved { background: var(--chrome-2); }
+
+.trust-verify { padding: 10px 12px; border-radius: 12px; font-size: var(--t-sm); border: 1px solid var(--line); background: var(--raised); }
+.trust-verify.is-ok strong { color: var(--moss); }
+.trust-verify.is-bad { border-color: color-mix(in srgb, var(--seal) 40%, var(--line)); }
+.trust-verify.is-bad strong { color: var(--seal); }
+.trust-verify ul { margin: 4px 0 0; padding-left: 18px; }
+.trust-events { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.trust-event { display: flex; gap: 10px; padding: 8px 2px; border-top: 1px solid var(--line); font-size: var(--t-sm); }
+.trust-event:first-child { border-top: 0; }
+.trust-event-icon { color: var(--ink-3); display: inline-grid; padding-top: 2px; }
+.trust-event.is-blocked .trust-event-icon { color: var(--ochre); }
+.trust-event-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.trust-event-text { overflow-wrap: anywhere; }
+
+.trust-proposal { background: var(--raised); border-color: var(--line-strong); }
+.trust-diff-toggle { align-self: flex-start; min-height: 28px; padding: 0 6px; }
+.trust-diff { margin: 4px 0 0; max-height: 220px; overflow: auto; font-family: var(--font-mono); font-size: 11.5px; background: var(--chrome); border-radius: 8px; padding: 6px 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.trust-diff-add { color: var(--moss); }
+.trust-diff-remove { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--line-strong); }

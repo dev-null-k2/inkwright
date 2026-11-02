@@ -29,3 +29,4 @@ export * from './local/index.ts';
 export * from './tools/memory.ts';
 export * from './speech/index.ts';
 export * from './compiler/index.ts';
+export * from './trust/index.ts';
