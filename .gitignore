@@ -11,7 +11,7 @@ playwright-report/
 .env
 .env.*
 !.env.example
-dist-e2e/
+dist-e2e*/
 dist-single/
 dist-native/
 apps/web/android/build/
