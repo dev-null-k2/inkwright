@@ -4,6 +4,7 @@ import { rect, rectExpand, rectHeight, rectIsEmpty, rectUnion, rectWidth, type R
 import { PAPER_TINTS, isInfinite, pagePaper, pageSizeOf, type ImageItem, type NoteMeta, type PageInk, type TextBox } from './model.ts';
 import { centerlineSvgPath, formatNumber as f, outlineToSvgPath, penLook, strokeOutline } from './outline.ts';
 import { paperElements, paperRoleColor } from './paper.ts';
+import { liveInkLinks } from './links.ts';
 
 export const xmlEscape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -164,6 +165,9 @@ export function exportMarkdown(note: NoteMeta, pages: PageInk[]): string {
     if (text) out.push(text, '');
     else if (page.strokes.length) out.push('_(handwriting not yet recognized)_', '');
     else out.push('_(blank)_', '');
+    // Links made on handwriting, so agents and Markdown readers see them too.
+    const inkLinks = liveInkLinks(page);
+    if (inkLinks.length) out.push(`Linked in handwriting: ${[...new Set(inkLinks.map((l) => `[[${l.target}]]`))].join(' · ')}`, '');
     out.push(`![Page ${i + 1}](pages/${page.id}.svg)`, '');
   });
   return out.join('\n');

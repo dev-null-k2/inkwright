@@ -192,6 +192,20 @@ export interface PageBackground {
   rotation?: number;
 }
 
+/**
+ * Handwriting that links to another note: the user lassoed ink and chose "Link to note…", or
+ * recognized handwriting contained `[[…]]`. The ink stays ink; the link rides on top of it.
+ * `target` is a wiki-link target (`Title`, `Title#Page 2`), `noteId` the note it resolved to when
+ * the link was made, so renaming the target never breaks it.
+ */
+export interface InkLink {
+  id: string;
+  strokeIds: string[];
+  target: string;
+  noteId?: string;
+  createdAt: number;
+}
+
 /** Content of one page file. */
 export interface PageInk {
   id: string;
@@ -199,6 +213,8 @@ export interface PageInk {
   texts?: TextBox[];
   images?: ImageItem[];
   background?: PageBackground;
+  /** Links carried by handwriting on this page (see `InkLink`). */
+  links?: InkLink[];
   /** Per-page overrides (e.g. imported PDF pages with their own size). */
   paper?: PaperSpec;
   size?: PageSize;
@@ -245,6 +261,19 @@ export interface NoteMeta {
    * written into a copy on export. See `FormFieldValue`.
    */
   forms?: Record<string, Record<string, FormFieldValue>>;
+  /**
+   * Tags that came from `#tags` written or typed in the note (kept in `tags` too). Remembered
+   * separately so deleting the `#tag` from the page removes it again without touching tags the
+   * user added by hand.
+   */
+  inlineTags?: string[];
+  /** Set on daily notes ("Today"): the local calendar day, `YYYY-MM-DD`. */
+  daily?: string;
+  /**
+   * Front-matter properties brought in from Markdown/Obsidian that Inkstone has no field for
+   * (`aliases`, `status`, …). Kept as-is and written back on Obsidian export.
+   */
+  properties?: Record<string, unknown>;
   formatVersion: number;
 }
 
