@@ -153,7 +153,7 @@ function ModelRow() {
       <div className="lai-row">
         <div className="lai-row-main">
           <span className="prov-name">Open model</span>
-          <span className="muted">This phone doesn’t have enough memory for an on-device model.</span>
+          <span className="muted">This phone can’t run an open model: it needs a 64-bit phone with at least 4 GB of memory.</span>
         </div>
       </div>
     );
