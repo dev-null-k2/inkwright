@@ -92,12 +92,19 @@ export function detectScratchOut(candidate: InkStroke, existing: InkStroke[], op
   const nearby = existing.filter((s) => s.id !== candidate.id && s.points.length > 0 && rectIntersects(rectExpand(boundsOf(s.points), s.size / 2), region));
   if (nearby.length === 0) return no('no ink underneath');
 
+  // How big the writing under the scribble is, across its own line (people write uphill on
+  // phones, and large): letter height sets how far a crossing-out reaches beyond the ink.
+  const line = writingFrame(nearby, region);
+  // Only a clear back-and-forth earns the wider reach: one loop around a word (circling it) is not
+  // crossing it out.
+  const strong = reversals >= 4;
+  const reach = strong ? pad + 0.3 * line.letterHeight : pad;
   const step = Math.max(1, Math.floor(pts.length / 96));
   let overInk = 0, sampled = 0;
   for (let i = 0; i < pts.length; i += step) {
     sampled++;
     const p = pts[i]!;
-    if (nearby.some((s) => distanceToPolyline(p.x, p.y, s.points) <= s.size / 2 + pad)) overInk++;
+    if (nearby.some((s) => distanceToPolyline(p.x, p.y, s.points) <= s.size / 2 + reach)) overInk++;
   }
   const onInk = overInk / sampled;
   if (onInk < o.minScratchOverInk) return { ...no('scribble mostly off ink'), onInk, reversals };
@@ -105,9 +112,58 @@ export function detectScratchOut(candidate: InkStroke, existing: InkStroke[], op
 
   const hull = inflate(convexHull(pts), candidate.size / 2 + Math.min(o.overInkTolerance, 3));
   const box = rectExpand(bounds, pad);
-  const targets = new Set(nearby.filter((s) => coverage(s, hull, box) >= o.minTargetCoverage && !encloses(s, pts)).map((s) => s.id));
+  // A strike through the middle of a word crosses out the whole word, ascenders and descenders
+  // included: the covered band reaches across the writing line by most of a letter's height (but
+  // not along it, so the next word is safe).
+  // Three or more passes, or a quick back-and-forth that stays on the ink (striking a word out).
+  const band = reversals >= 3 || (reversals >= 2 && onInk >= 0.75) ? crossLineBand(pts, line, candidate.size / 2) : null;
+  const targets = new Set(nearby.filter((s) => Math.max(coverage(s, hull, box), band ? bandCoverage(s, band) : 0) >= o.minTargetCoverage && !encloses(s, pts)).map((s) => s.id));
   if (targets.size === 0) return { ...no('nothing mostly covered'), onInk, reversals };
   return { isScratch: true, targetIds: targets, reason: 'scratch-out', onInk, reversals };
+}
+
+/** The writing line's direction and typical letter height, from the ink near a scribble. */
+interface WritingFrame { angle: number; letterHeight: number }
+function writingFrame(nearby: InkStroke[], region: Rect): WritingFrame {
+  const sample: Vec2[] = [];
+  for (const s of nearby) {
+    const st = Math.max(1, Math.floor(s.points.length / 16));
+    for (let i = 0; i < s.points.length; i += st) { const p = s.points[i]!; if (rectContains(region, p.x, p.y)) sample.push(p); }
+  }
+  // A line of writing is longer than it is tall; one letter alone gives no reliable direction.
+  let angle = sample.length >= 8 ? principalAxisAngle(sample) : 0;
+  const box = boundsOf(sample.length ? sample : nearby.flatMap((s) => s.points));
+  if (rectWidth(box) < rectHeight(box) * 1.3 && Math.abs(Math.sin(angle)) > 0.71) angle = 0;
+  const heights = nearby.map((s) => {
+    const v = projectOnAxis(s.points, angle + Math.PI / 2);
+    let lo = Infinity, hi = -Infinity;
+    for (const x of v) { if (x < lo) lo = x; if (x > hi) hi = x; }
+    return hi - lo;
+  }).filter((h) => h > 0).sort((a, b) => a - b);
+  const median = heights.length ? heights[Math.floor(heights.length / 2)]! : 0;
+  return { angle, letterHeight: Math.min(median, 60) };
+}
+
+/** The scribble's span along the writing line, and across it widened by `extend` each side. */
+interface Band { angle: number; u0: number; u1: number; v0: number; v1: number }
+function crossLineBand(pts: InkPoint[], f: WritingFrame, pad: number): Band {
+  const u = projectOnAxis(pts, f.angle), v = projectOnAxis(pts, f.angle + Math.PI / 2);
+  // Trim the ends of the sweep along the line (loops and overshoot past the last letter): the band
+  // covers the middle 84 %; the scribble's own hull still covers the letters at its ends.
+  const su = [...u].sort((a, b) => a - b), sv = [...v].sort((a, b) => a - b);
+  const q = (arr: number[], t: number) => arr[Math.min(arr.length - 1, Math.max(0, Math.round(t * (arr.length - 1))))]!;
+  const v0 = q(sv, 0), v1 = q(sv, 1);
+  // A band thinner than the letters (a strike through the middle) widens to a full letter height;
+  // a scribble that already spans the letters isn't widened, so lines above and below are safe.
+  const extend = Math.max(0, (1.2 * f.letterHeight - (v1 - v0)) / 2) + pad;
+  return { angle: f.angle, u0: q(su, 0.08), u1: q(su, 0.92), v0: v0 - extend, v1: v1 + extend };
+}
+function bandCoverage(stroke: InkStroke, b: Band): number {
+  if (stroke.points.length === 0) return 0;
+  const u = projectOnAxis(stroke.points, b.angle), v = projectOnAxis(stroke.points, b.angle + Math.PI / 2);
+  let inside = 0;
+  for (let i = 0; i < u.length; i++) if (u[i]! >= b.u0 && u[i]! <= b.u1 && v[i]! >= b.v0 && v[i]! <= b.v1) inside++;
+  return inside / u.length;
 }
 
 /** Most direction changes along the principal axis or across it. */
