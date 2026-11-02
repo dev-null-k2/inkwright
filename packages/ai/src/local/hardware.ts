@@ -1,4 +1,4 @@
-import { LOCAL_MODELS, getLocalModel, type LocalDevice, type LocalModelSpec, type LocalModelVariant } from './catalog.ts';
+import { LOCAL_MODELS, getLocalModel, type LocalDevice, type LocalModelRole, type LocalModelSpec, type LocalModelVariant } from './catalog.ts';
 
 /**
  * What this device can do for on-device AI. Read once from WebGPU adapter limits and the
@@ -157,8 +157,29 @@ export function recommendLocal(hw: HardwareInfo): LocalRecommendation {
 }
 
 /** Every model of a role this device can run, best first for its tier. */
-export function runnableModels(hw: HardwareInfo, role: 'chat' | 'embed'): ModelChoice[] {
+export function runnableModels(hw: HardwareInfo, role: LocalModelRole): ModelChoice[] {
   return LOCAL_MODELS.filter((m) => m.role === role)
     .map((spec) => ({ spec, variant: pickVariant(spec, hw) }))
     .filter((c): c is ModelChoice => !!c.variant);
+}
+
+/**
+ * The speech-to-text model for this device and language. English speech gets Moonshine, which
+ * costs time in proportion to the audio instead of always padding to 30 s, so live transcripts keep
+ * up even on a phone's CPU; other languages get Whisper. Big GPUs get Whisper Large v3 Turbo, the
+ * most accurate model that runs in a browser. Null when nothing fits.
+ */
+export function recommendAsr(hw: HardwareInfo, language = 'en'): ModelChoice | null {
+  const tier = deviceTier(hw);
+  const english = /^en\b/i.test(language) || !language;
+  const order: string[] =
+    tier === 'gpu-large' ? ['whisper-large-v3-turbo', english ? 'moonshine-base' : 'whisper-base']
+      : tier === 'cpu' ? (english ? ['moonshine-tiny', 'whisper-base'] : ['whisper-base'])
+        : english ? ['moonshine-base', 'whisper-base'] : ['whisper-base'];
+  for (const id of order) {
+    const spec = getLocalModel(id);
+    const variant = spec && pickVariant(spec, hw);
+    if (spec && variant) return { spec, variant };
+  }
+  return null;
 }

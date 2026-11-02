@@ -19,12 +19,17 @@ export interface ModelRef {
   bytes: number;
   embed?: { dims: number; truncate?: boolean; pooling: 'mean' | 'cls' };
   thinkingToggle?: boolean;
+  /** Per-ONNX-file dtypes (encoder–decoder speech models). */
+  moduleDtypes?: Record<string, LocalModelVariant['dtype']>;
+  asr?: { family: 'whisper' | 'moonshine'; timestamps: boolean };
 }
 
 export function modelRef(spec: LocalModelSpec, variant: LocalModelVariant & { device: LocalDevice }): ModelRef {
   const ref: ModelRef = { id: spec.id, repo: spec.repo, onnxBase: spec.onnxBase, loader: spec.loader, device: variant.device, dtype: variant.dtype, bytes: variant.bytes };
   if (spec.embed) ref.embed = { dims: spec.embed.dims, truncate: spec.embed.truncate, pooling: spec.embed.pooling };
   if (spec.thinkingToggle) ref.thinkingToggle = true;
+  if (variant.moduleDtypes) ref.moduleDtypes = { ...variant.moduleDtypes };
+  if (spec.asr) ref.asr = { family: spec.asr.family, timestamps: spec.asr.timestamps };
   return ref;
 }
 
@@ -55,6 +60,19 @@ export interface GenerateResult {
   stopReason: 'stop' | 'length';
 }
 
+/** Speech to transcribe: mono PCM at 16 kHz (what Whisper and Moonshine take). */
+export interface TranscribeRequest {
+  audio: Float32Array;
+  /** ISO-639-1 language ("en", "de"); Whisper only. Omitted: detect. */
+  language?: string;
+}
+
+export interface TranscribeResult {
+  text: string;
+  /** Timestamped pieces, seconds from the start of `audio` (Whisper). */
+  chunks?: { text: string; start: number; end: number | null }[];
+}
+
 export interface ModelStatus {
   installed: boolean;
   /** Bytes already on the device (complete or partial). */
@@ -70,13 +88,15 @@ export interface LocalEngine {
   /** L2-normalized embeddings, one per input. */
   embed(model: ModelRef, inputs: string[], signal?: AbortSignal): Promise<Float32Array[]>;
   generate(model: ModelRef, req: GenerateRequest, onDelta?: (text: string) => void, signal?: AbortSignal): Promise<GenerateResult>;
+  /** Speech to text (speech models only). Optional so engines without speech still satisfy the type. */
+  transcribe?(model: ModelRef, req: TranscribeRequest, signal?: AbortSignal): Promise<TranscribeResult>;
   /** Frees memory held by a loaded model (all models without an id). */
   unload(modelId?: string): Promise<void>;
 }
 
 // ---- Wire format ------------------------------------------------------------------------------
 
-type Method = 'status' | 'download' | 'remove' | 'embed' | 'generate' | 'unload';
+type Method = 'status' | 'download' | 'remove' | 'embed' | 'generate' | 'transcribe' | 'unload';
 
 export type ClientMessage =
   | { kind: 'call'; id: number; method: Method; args: unknown[] }
@@ -131,6 +151,10 @@ export function serveLocalEngine(port: PortLike, engine: LocalEngine): () => voi
           break;
         }
         case 'generate': value = await engine.generate(model, extra as GenerateRequest, (text) => send({ kind: 'delta', id: m.id, text }), ac.signal); break;
+        case 'transcribe':
+          if (!engine.transcribe) throw new Error('This on-device runtime cannot transcribe speech.');
+          value = await engine.transcribe(model, extra as TranscribeRequest, ac.signal);
+          break;
         case 'unload': value = await engine.unload(m.args[0] as string | undefined); break;
         default: throw new Error(`Unknown method ${(m as { method: string }).method}`);
       }
@@ -180,7 +204,7 @@ export class LocalEngineClient implements LocalEngine {
     }
   }
 
-  private call<T>(method: Method, args: unknown[], hooks: Omit<Pending, 'resolve' | 'reject'> = {}, signal?: AbortSignal): Promise<T> {
+  private call<T>(method: Method, args: unknown[], hooks: Omit<Pending, 'resolve' | 'reject'> = {}, signal?: AbortSignal, transfer?: Transferable[]): Promise<T> {
     if (signal?.aborted) return Promise.reject(abortError());
     const id = ++this.seq;
     return new Promise<T>((resolve, reject) => {
@@ -188,7 +212,7 @@ export class LocalEngineClient implements LocalEngine {
       signal?.addEventListener('abort', onAbort, { once: true });
       const done = () => signal?.removeEventListener('abort', onAbort);
       this.pending.set(id, { ...hooks, resolve: (v) => { done(); resolve(v); }, reject: (e) => { done(); reject(e); } });
-      this.port.postMessage({ kind: 'call', id, method, args } satisfies ClientMessage);
+      this.port.postMessage({ kind: 'call', id, method, args } satisfies ClientMessage, transfer);
     });
   }
 
@@ -197,6 +221,12 @@ export class LocalEngineClient implements LocalEngine {
   remove(model: ModelRef) { return this.call<void>('remove', [model]); }
   embed(model: ModelRef, inputs: string[], signal?: AbortSignal) { return this.call<Float32Array[]>('embed', [model, inputs], {}, signal); }
   generate(model: ModelRef, req: GenerateRequest, onDelta?: (text: string) => void, signal?: AbortSignal) { return this.call<GenerateResult>('generate', [model, req], { onDelta }, signal); }
+  /** The audio buffer is transferred to the worker (the caller's copy becomes empty). */
+  transcribe(model: ModelRef, req: TranscribeRequest, signal?: AbortSignal) {
+    const whole = req.audio.byteOffset === 0 && req.audio.byteLength === req.audio.buffer.byteLength;
+    const audio = whole ? req.audio : req.audio.slice();
+    return this.call<TranscribeResult>('transcribe', [model, { ...req, audio }], {}, signal, [audio.buffer as ArrayBuffer]);
+  }
   unload(modelId?: string) { return this.call<void>('unload', [modelId]); }
 
   /** Rejects everything in flight (the worker died or the app is shutting the runtime down). */

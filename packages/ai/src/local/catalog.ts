@@ -7,7 +7,8 @@
  * downloader re-reads them live and shows those.
  */
 
-export type LocalModelRole = 'chat' | 'embed';
+/** `asr`: speech to text (recordings, live transcripts, dictation). */
+export type LocalModelRole = 'chat' | 'embed' | 'asr';
 export type LocalDevice = 'webgpu' | 'wasm';
 
 /** How the worker loads a model with transformers.js. */
@@ -17,7 +18,9 @@ export type LocalLoader =
   /** The feature-extraction pipeline (BERT-style encoders). */
   | 'feature-extraction'
   /** A multimodal embedding model loaded text-only (vision/audio encoders left out of the config). */
-  | 'text-embedding-multimodal';
+  | 'text-embedding-multimodal'
+  /** The automatic-speech-recognition pipeline (encoder–decoder: Whisper, Moonshine). */
+  | 'speech-to-text';
 
 export interface LocalModelVariant {
   device: LocalDevice;
@@ -25,6 +28,20 @@ export interface LocalModelVariant {
   dtype: 'q4f16' | 'q4' | 'int8' | 'quantized' | 'fp16' | 'fp32';
   /** Total download in bytes (model + tokenizer + config). */
   bytes: number;
+  /**
+   * Per-ONNX-file dtypes for encoder–decoder models (`onnxModules`), e.g. a full-precision audio
+   * encoder with a 4-bit decoder, as transformers.js recommends for Whisper on WebGPU. Modules not
+   * listed use `dtype`, which also names the variant.
+   */
+  moduleDtypes?: Readonly<Record<string, LocalModelVariant['dtype']>>;
+}
+
+export interface LocalAsrConfig {
+  family: 'whisper' | 'moonshine';
+  /** The model returns its own timestamps within a window (Whisper). */
+  timestamps: boolean;
+  /** Longest audio it takes in one call, ms (Whisper's 30 s context). */
+  maxWindowMs: number;
 }
 
 export interface LocalEmbeddingConfig {
@@ -47,6 +64,8 @@ export interface LocalModelSpec {
   repo: string;
   /** File base name inside `onnx/` (model, decoder_model_merged, …). */
   onnxBase: string;
+  /** Several ONNX files (encoder–decoder models); `onnxBase` is then the first of them. */
+  onnxModules?: readonly string[];
   loader: LocalLoader;
   licence: string;
   licenceUrl: string;
@@ -61,6 +80,7 @@ export interface LocalModelSpec {
   /** Chat models: the chat template takes `enable_thinking` (Qwen3 hybrid thinking). */
   thinkingToggle?: boolean;
   embed?: LocalEmbeddingConfig;
+  asr?: LocalAsrConfig;
 }
 
 const egQuery = (q: string) => `task: search result | query: ${q}`;
@@ -121,6 +141,50 @@ export const LOCAL_MODELS: readonly LocalModelSpec[] = [
     blurb: 'Smallest; runs on the CPU of almost any device.', params: '350M', languages: 'multilingual', contextTokens: 4096,
     variants: [{ device: 'webgpu', dtype: 'q4f16', bytes: 357_179_055 }, { device: 'wasm', dtype: 'q4', bytes: 582_606_856 }],
   },
+  // ---- Speech to text ----------------------------------------------------------------------------
+  // Moonshine (Useful Sensors, MIT; English) computes in proportion to the audio's length instead of
+  // padding every window to 30 s like Whisper, so it is the fastest choice for live English
+  // transcripts. Whisper (OpenAI, Apache-2.0 / MIT) covers ~100 languages and returns timestamps.
+  {
+    id: 'moonshine-tiny', role: 'asr', label: 'Moonshine Tiny', repo: 'onnx-community/moonshine-tiny-ONNX', onnxBase: 'encoder_model', onnxModules: ['encoder_model', 'decoder_model_merged'],
+    loader: 'speech-to-text', licence: 'MIT', licenceUrl: 'https://huggingface.co/UsefulSensors/moonshine-tiny',
+    blurb: 'Fast English transcripts on any device.', params: '27M', languages: 'english',
+    variants: [
+      { device: 'webgpu', dtype: 'q4', moduleDtypes: { encoder_model: 'fp32', decoder_model_merged: 'q4' }, bytes: 79_431_703 },
+      { device: 'wasm', dtype: 'quantized', bytes: 32_079_635 },
+    ],
+    asr: { family: 'moonshine', timestamps: false, maxWindowMs: 30_000 },
+  },
+  {
+    id: 'moonshine-base', role: 'asr', label: 'Moonshine Base', repo: 'onnx-community/moonshine-base-ONNX', onnxBase: 'encoder_model', onnxModules: ['encoder_model', 'decoder_model_merged'],
+    loader: 'speech-to-text', licence: 'MIT', licenceUrl: 'https://huggingface.co/UsefulSensors/moonshine-base',
+    blurb: 'More accurate English transcripts; still light.', params: '61M', languages: 'english',
+    variants: [
+      { device: 'webgpu', dtype: 'q4', moduleDtypes: { encoder_model: 'fp32', decoder_model_merged: 'q4' }, bytes: 157_499_298 },
+      { device: 'wasm', dtype: 'quantized', bytes: 66_910_622 },
+    ],
+    asr: { family: 'moonshine', timestamps: false, maxWindowMs: 30_000 },
+  },
+  {
+    id: 'whisper-base', role: 'asr', label: 'Whisper Base', repo: 'onnx-community/whisper-base', onnxBase: 'encoder_model', onnxModules: ['encoder_model', 'decoder_model_merged'],
+    loader: 'speech-to-text', licence: 'Apache-2.0', licenceUrl: 'https://huggingface.co/openai/whisper-base',
+    blurb: 'Transcribes about 100 languages, with timestamps.', params: '74M', languages: 'multilingual',
+    variants: [
+      { device: 'webgpu', dtype: 'q4', moduleDtypes: { encoder_model: 'fp32', decoder_model_merged: 'q4' }, bytes: 208_876_857 },
+      { device: 'wasm', dtype: 'quantized', bytes: 79_700_989 },
+    ],
+    asr: { family: 'whisper', timestamps: true, maxWindowMs: 30_000 },
+  },
+  {
+    id: 'whisper-large-v3-turbo', role: 'asr', label: 'Whisper Large v3 Turbo', repo: 'onnx-community/whisper-large-v3-turbo', onnxBase: 'encoder_model', onnxModules: ['encoder_model', 'decoder_model_merged'],
+    loader: 'speech-to-text', licence: 'MIT', licenceUrl: 'https://huggingface.co/openai/whisper-large-v3-turbo',
+    blurb: 'Most accurate, any language; for computers with a good GPU.', params: '809M', languages: 'multilingual',
+    variants: [
+      { device: 'webgpu', dtype: 'q4f16', bytes: 566_284_958 },
+      { device: 'webgpu', dtype: 'q4', bytes: 761_895_860 },
+    ],
+    asr: { family: 'whisper', timestamps: true, maxWindowMs: 30_000 },
+  },
 ];
 
 export function getLocalModel(id: string | null | undefined): LocalModelSpec | undefined {
@@ -146,9 +210,13 @@ export interface RepoFile {
  * the ONNX graph, its external-data shards, and the tokenizer/config side files present.
  */
 export function variantFiles(spec: LocalModelSpec, variant: LocalModelVariant, tree: readonly RepoFile[]): RepoFile[] {
-  const base = `onnx/${spec.onnxBase}${DTYPE_SUFFIX[variant.dtype]}.onnx`;
-  const weights = tree.filter((f) => f.path === base || (f.path.startsWith(`${base}_data`) && /^_data(_\d+)?$/.test(f.path.slice(base.length))));
-  if (!weights.some((f) => f.path === base)) throw new Error(`${spec.label}: ${base} is missing from ${spec.repo}.`);
+  const weights: RepoFile[] = [];
+  for (const module of spec.onnxModules ?? [spec.onnxBase]) {
+    const base = `onnx/${module}${DTYPE_SUFFIX[variant.moduleDtypes?.[module] ?? variant.dtype]}.onnx`;
+    const files = tree.filter((f) => f.path === base || (f.path.startsWith(`${base}_data`) && /^_data(_\d+)?$/.test(f.path.slice(base.length))));
+    if (!files.some((f) => f.path === base)) throw new Error(`${spec.label}: ${base} is missing from ${spec.repo}.`);
+    weights.push(...files);
+  }
   const side = tree.filter((f) => (MODEL_SIDE_FILES as readonly string[]).includes(f.path));
   return [...side, ...weights.sort((a, b) => a.path.localeCompare(b.path))];
 }
