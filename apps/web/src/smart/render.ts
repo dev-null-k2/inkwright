@@ -16,7 +16,7 @@ export function drawPageObjects(ctx: CanvasRenderingContext2D, page: Pick<PageIn
     ctx.save();
     if (o.type === 'table') drawTable(ctx, o);
     else if (o.type === 'math') drawMath(ctx, o);
-    else drawGraph(ctx, o, !!opts.dark);
+    else if (o.type === 'graph') drawGraph(ctx, o, !!opts.dark);
     ctx.restore();
   }
 }

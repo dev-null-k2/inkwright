@@ -34,6 +34,7 @@ import { getSecret } from './secrets.ts';
 import type { AppVault } from './vault.ts';
 import { recognizeLocally } from './recognition.ts';
 import { chatChoice, isInstalled, localActiveAI, pickAssistant } from './localai.ts';
+import { snapshotBeforeAgentEdit } from '../studio/versions.ts';
 
 export const CLAUDE_BUILTIN_ID = '__claude_builtin__';
 
@@ -114,6 +115,8 @@ export class AppNoteToolHost implements NoteToolHost {
   constructor(private vault: AppVault, private open: NoteDocument | null) {}
 
   private async pagesOf(n: NoteMeta): Promise<PageInk[]> {
+    // Locked notes stay away from the assistant, even while open.
+    if (n.lock) throw new Error('This note is locked. Inkstone keeps locked notes away from the assistant.');
     if (this.open && this.open.meta.id === n.id) return [...this.open.pages];
     return this.vault.vault.readPages(n);
   }
@@ -171,6 +174,8 @@ export class AppNoteToolHost implements NoteToolHost {
     const n = await this.metaOf(noteId);
     if (!n) throw new Error(`No note with id "${noteId}"`);
     const pages = await this.pagesOf(n);
+    // Version history: the note as it was before the assistant changed it.
+    await snapshotBeforeAgentEdit(this.vault, noteId);
     const i = Math.max(0, Math.min(pages.length - 1, pageIndex ?? pages.length - 1));
     const page = pages[i]!;
     const b = contentBounds(page);
