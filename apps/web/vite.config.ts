@@ -71,7 +71,9 @@ export default defineConfig(({ mode }) => {
     define: {
       __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '1.0.0'),
       __BUILD_TARGET__: JSON.stringify(single ? 'single' : 'web'),
-      __E2E__: JSON.stringify(e2e),
+      // INKSTONE_E2E_HOOK=1 adds the test hook to other builds too: the Android emulator suite
+      // (e2e-android/) drives a native debug build and reads the document through it.
+      __E2E__: JSON.stringify(e2e || process.env.INKSTONE_E2E_HOOK === '1'),
     },
     worker: { format: 'es' },
     build: {

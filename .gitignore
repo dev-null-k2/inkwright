@@ -22,3 +22,4 @@ apps/web/android/keystore.properties
 *.jks
 *.keystore
 apps/mcp-server/dist/
+apps/web/test-artifacts/
