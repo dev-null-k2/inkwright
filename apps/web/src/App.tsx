@@ -16,6 +16,7 @@ import { CompilerDialogs } from './compiler/ui/dialogs.tsx';
 import { AgentDialogs } from './ui/agent/shared.tsx';
 import { useKnowledgeShortcuts } from './ui/knowledge/shortcuts.ts';
 import { DevGlobal } from './dev/DevGlobal.tsx';
+import { PeerGlobal } from './peer/PeerGlobal.tsx';
 import { isModuleOn, startModules, useModule } from './modules/registry.ts';
 import { registerBuiltinModules } from './modules/builtin.ts';
 
@@ -130,6 +131,7 @@ export function App() {
       <Prompts />
       {assistantOn && <AgentDialogs />}
       <DevGlobal />
+      <PeerGlobal />
       {compilerOn && <CompilerDialogs />}
       <Toasts />
     </>

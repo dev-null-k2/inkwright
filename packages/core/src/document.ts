@@ -1,6 +1,6 @@
 import { detectScratchOut, type ScratchOutOptions } from './gestures.ts';
 import { newId as defaultNewId } from './ids.ts';
-import { newPage, type ImageItem, type InkLink, type InkStroke, type NoteMeta, type PageBackground, type PageInk, type PageSize, type PaperSpec, type RecognizedLine, type TextBox } from './model.ts';
+import { newPage, type ImageItem, type InkLink, type InkStroke, type ItemAuthor, type NoteMeta, type PageBackground, type PageInk, type PageSize, type PaperSpec, type RecognizedLine, type TextBox } from './model.ts';
 import type { PageObject } from './objects.ts';
 import { appendEvents, eventsFor, type ChainCause, type ChainChange } from './authorship.ts';
 import { editableStroke, withLayerState } from './layers.ts';
@@ -180,10 +180,26 @@ export class NoteDocument {
    */
   authorshipDevice: string | undefined;
 
-  /** Commits a diff on a page as one undo step. */
-  commit(pageIndex: number, diff: PageDiff, how: ChainCause = 'other'): void {
+  /**
+   * Commits a diff on a page as one undo step.
+   *
+   * With `opts.author` the diff is a live collaborator's edit (docs/COLLABORATION.md): every
+   * stroke and text box it adds is stamped with that author (so it can never count as this
+   * owner's handwriting, whatever the sender claimed), its chain events record `by`, and it is
+   * not an undo step here — undo only ever steps back through what this person did.
+   */
+  commit(pageIndex: number, diff: PageDiff, how: ChainCause = 'other', opts: { author?: ItemAuthor } = {}): void {
     if (isEmptyDiff(diff) || !this.pageList[pageIndex]) return;
     const page = this.pageList[pageIndex]!;
+    if (opts.author) {
+      const by = opts.author;
+      const stamp = <T extends { author?: ItemAuthor }>(l?: ListDiff<T & Item>): ListDiff<T & Item> | undefined =>
+        l && { removed: l.removed, added: l.added.map((a) => ({ index: a.index, item: a.item.author?.id === by.id && a.item.author.name === by.name ? a.item : { ...a.item, author: { id: by.id, name: by.name } } })) };
+      const stamped: PageDiff = { ...diff, strokes: stamp(diff.strokes), texts: stamp(diff.texts) };
+      this.pageList[pageIndex] = this.chain(applyDiff(page, stamped), stamped, how, by.id);
+      this.touch(page.id);
+      return;
+    }
     this.pageList[pageIndex] = this.chain(applyDiff(page, diff), diff, how);
     this.history.record(page.id, diff);
     this.touch(page.id);
@@ -202,7 +218,7 @@ export class NoteDocument {
   }
 
   /** Appends the diff's authorship chain events (docs/AUTHORSHIP.md) to the page. */
-  private chain(page: PageInk, d: PageDiff, how: ChainCause): PageInk {
+  private chain(page: PageInk, d: PageDiff, how: ChainCause, by?: string): PageInk {
     const changes: ChainChange[] = [];
     const add = (kind: ChainChange['kind'], l?: ListDiff<Item & { createdAt?: number }>) => {
       if (l && (l.removed.length || l.added.length)) changes.push({ kind, removed: l.removed.map((x) => x.item) as never[], added: l.added.map((x) => x.item) as never[] });
@@ -211,7 +227,7 @@ export class NoteDocument {
     add('t', d.texts);
     add('i', d.images);
     add('o', d.objects);
-    return appendEvents(page, eventsFor(changes, how, this.clock(), this.authorshipDevice));
+    return appendEvents(page, eventsFor(changes, how, this.clock(), this.authorshipDevice, by));
   }
 
   /**

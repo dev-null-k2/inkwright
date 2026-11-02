@@ -45,6 +45,7 @@ export async function serveHttp(ctx: ServerContext, o: CliOptions, ai: AgentAI |
     ...(o.host ? { host: o.host } : {}),
     ...(o.publicUrl ? { publicUrl: o.publicUrl } : {}),
     auth,
+    ...(o.signalToken ? { signal: { token: o.signalToken } } : {}),
     ...(o.a2a
       ? {
           a2a: async (publicUrl, gate) => {
@@ -77,6 +78,7 @@ export async function serveHttp(ctx: ServerContext, o: CliOptions, ai: AgentAI |
   });
   const how = auth.kind === 'oauth' ? `OAuth (issuer ${auth.settings.issuer})` : auth.kind === 'token' ? 'bearer token required' : 'no token; loopback clients only';
   log(`MCP (Streamable HTTP, 2026-07-28 + 2025) on ${http.url} — ${how}`);
+  if (o.signalToken) log(`Peer-link signalling relay at ${http.baseUrl}/signal/v1 (its own token; sealed messages only)`);
   if (o.api) log(`REST API at ${http.baseUrl}/api/v1 — reference at ${http.baseUrl}/api/v1/docs${o.embeddings ? ` (semantic search with ${o.embeddings.model})` : ''}`);
   if (o.a2a) log(`A2A agent card at ${http.baseUrl}/.well-known/agent-card.json, JSON-RPC at ${http.baseUrl}/a2a${ai ? '' : ' (no AI configured: only structured search works)'}`);
   return { http, services };

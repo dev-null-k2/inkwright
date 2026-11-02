@@ -314,6 +314,14 @@ Settings › AI › Routing & privacy; docs/TRUST.md):
 
 For a self-hosted, no-egress deployment with Docker, see docs/ENTERPRISE.md.
 
+## Peer-link signalling relay
+
+`--signal-token <secret>` (or `INKSTONE_SIGNAL_TOKEN`, HTTP mode only, ≥ 16 characters) adds a
+tiny mailbox at `/signal/v1` that lets paired Inkstone devices find each other without exchanging
+codes by hand. It has its own token — handing it to a device opens the mailbox, never the vault —
+and it stores only sealed, unlinkable messages in memory for ten minutes. See
+[COLLABORATION.md](COLLABORATION.md#signalling-without-a-server--and-with-one-you-run).
+
 ## Troubleshooting
 
 - **401 from the server:** wrong or missing token; with OAuth, check `iss` and `aud` in your

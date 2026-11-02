@@ -48,6 +48,8 @@ export interface ChainEvent {
   from?: string;
   /** Short fingerprint of the device key that recorded the event, when known. */
   dev?: string;
+  /** The live collaborator whose edit this was (their `ItemAuthor.id`); absent for this device's own edits. */
+  by?: string;
 }
 
 export interface PageAuthorship {
@@ -141,13 +143,13 @@ export interface ChainChange {
  * `createdAt` and pen — moved, recoloured, split by the precise eraser) are recorded as `edit`s
  * of it, so the handwriting they came from is still counted.
  */
-export function eventsFor(changes: readonly ChainChange[], how: ChainCause, t: number, dev?: string): ChainEvent[] {
+export function eventsFor(changes: readonly ChainChange[], how: ChainCause, t: number, dev?: string, by?: string): ChainEvent[] {
   const out: ChainEvent[] = [];
   for (const ch of changes) {
     // Replacing an item with identical content (a graph panned, a table re-saved) is not an edit.
     const removedDigest = new Map(ch.removed.map((r) => [r.id, itemDigest(ch.kind, r)]));
     const unchanged = new Set(ch.added.filter((x) => removedDigest.get(x.id) === itemDigest(ch.kind, x)).map((x) => x.id));
-    for (const x of ch.removed) if (!unchanged.has(x.id)) out.push(ev('-', ch.kind, x, t, undefined, undefined, dev));
+    for (const x of ch.removed) if (!unchanged.has(x.id)) out.push(ev('-', ch.kind, x, t, undefined, undefined, dev, by));
     for (const x of ch.added) {
       if (unchanged.has(x.id)) continue;
       let cause: ChainCause = how;
@@ -158,17 +160,18 @@ export function eventsFor(changes: readonly ChainChange[], how: ChainCause, t: n
         const parent = same ?? ch.removed.find((r) => r.createdAt === x.createdAt && (ch.kind !== 's' || (r as InkStroke).pen === (x as InkStroke).pen));
         if (parent) { cause = 'edit'; from = parent.id; }
       }
-      out.push(ev('+', ch.kind, x, t, cause, from, dev));
+      out.push(ev('+', ch.kind, x, t, cause, from, dev, by));
     }
   }
   return out;
 }
 
-function ev(op: '+' | '-', k: ChainKind, x: AnyItem, t: number, how?: ChainCause, from?: string, dev?: string): ChainEvent {
+function ev(op: '+' | '-', k: ChainKind, x: AnyItem, t: number, how?: ChainCause, from?: string, dev?: string, by?: string): ChainEvent {
   const e: ChainEvent = { op, k, id: x.id, d: itemDigest(k, x), t };
   if (op === '+' && how) e.how = how;
   if (from) e.from = from;
   if (dev) e.dev = dev;
+  if (by) e.by = by;
   return e;
 }
 
@@ -227,6 +230,11 @@ export interface ContentCounts {
   importedPages: number;
   /** Tables, solved results and graphs (machine-made). */
   objects: number;
+  /**
+   * Strokes and text boxes a live collaborator wrote or changed (docs/COLLABORATION.md). Present
+   * only when non-zero, so certificates made before live collaboration keep verifying.
+   */
+  collaborator?: number;
 }
 
 export interface WritingRhythm {
@@ -255,7 +263,7 @@ export const ZERO_COUNTS: ContentCounts = { handwritten: 0, penWithPressure: 0, 
 
 export function addCounts(a: ContentCounts, b: ContentCounts): ContentCounts {
   const out = { ...a };
-  for (const k of Object.keys(out) as (keyof ContentCounts)[]) out[k] = a[k] + b[k];
+  for (const k of new Set([...Object.keys(a), ...Object.keys(b)]) as Set<keyof ContentCounts>) out[k] = (a[k] ?? 0) + (b[k] ?? 0);
   return out;
 }
 
@@ -269,7 +277,10 @@ export function classifyPage(page: PageInk): { counts: ContentCounts; handwritte
   const { live } = replayChain(page.authorship?.events ?? []);
   const c: ContentCounts = { ...ZERO_COUNTS };
   const hand: InkStroke[] = [];
+  const collab = () => { c.collaborator = (c.collaborator ?? 0) + 1; };
   for (const s of page.strokes) {
+    // A collaborator's ink is theirs, whatever else it claims: never this owner's handwriting.
+    if (s.author) { collab(); continue; }
     if (s.origin === 'ai') { c.aiInk++; continue; }
     if (isMachine(s.origin)) { c.copied++; continue; }
     const e = live.get(`s:${s.id}`);
@@ -284,7 +295,8 @@ export function classifyPage(page: PageInk): { counts: ContentCounts; handwritte
     else c.unattested++;
   }
   for (const t of page.texts ?? []) {
-    if (t.origin === 'ai') c.aiText++;
+    if (t.author) collab();
+    else if (t.origin === 'ai') c.aiText++;
     else if (t.origin === 'recognized') c.recognizedText++;
     else if (!t.origin) c.typedText++;
     else if (t.origin === 'import') c.importedText++;
@@ -455,6 +467,7 @@ function actionsFor(t: ContentCounts): AuthorshipClaim['actions'] {
   const ai = t.aiInk + t.aiText + t.aiImages;
   if (ai) a.push({ action: 'c2pa.created', digitalSourceType: SOURCE_TYPES.ai, count: ai, description: 'Content made by an AI model' });
   if (t.objects || t.recognizedText) a.push({ action: 'c2pa.created', digitalSourceType: SOURCE_TYPES.solver, count: t.objects + t.recognizedText, description: 'Tables, solved results, graphs and recognized text made by the app' });
+  if (t.collaborator) a.push({ action: 'c2pa.placed', digitalSourceType: SOURCE_TYPES.imported, count: t.collaborator, description: 'Written or changed by a collaborator in a live session' });
   const imp = t.importedImages + t.importedPages + t.importedText + t.copied + t.unattested;
   if (imp) a.push({ action: 'c2pa.placed', digitalSourceType: SOURCE_TYPES.imported, count: imp, description: 'Imported, pasted or unattested content' });
   return a;

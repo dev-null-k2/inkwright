@@ -65,6 +65,16 @@ AI-made, solved, recognized or imported can ever be counted as handwriting.
 a new head, so a certificate signed before the merge reports "history merged from another
 device" when compared with the current note; it still verifies on its own evidence.
 
+**Live collaboration.** In a live session ([COLLABORATION.md](COLLABORATION.md)) a
+collaborator's edits are committed with an `author` (`NoteDocument.commit(…, { author })`): the
+receiving device stamps `"author": { "id", "name" }` on every stroke and text box the edit adds —
+never trusting the sender's claim — records `"by": "<author id>"` on the chain events, and keeps
+those edits off the local undo stack. Classification checks `author` first: such an item counts
+as `collaborator` (a new, optional count, present only when non-zero so older certificates keep
+verifying) and never as handwriting, whatever its root, input or origin. Anything a collaborator
+changes — even one of your own strokes, moved — becomes theirs: the count can only err on the
+side of claiming less as yours.
+
 ## The device key
 
 `apps/web/src/authorship/keys.ts`: an ECDSA P-256 key pair made with WebCrypto with

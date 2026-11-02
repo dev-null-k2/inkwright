@@ -39,6 +39,8 @@ export interface CliOptions {
   policyFile?: string;
   /** P-256 private JWK that signs the audit trail. */
   auditKey?: string;
+  /** Token for the peer-link signalling relay at /signal/v1 (off when absent). */
+  signalToken?: string;
   help: boolean;
   version: boolean;
 }
@@ -75,6 +77,8 @@ HTTP:
   --host <address>         Listen on another interface (needs --token or --oauth-issuer).
   --public-url <url>       The URL clients use (tunnel / reverse proxy), e.g. https://notes.example.com.
   --a2a                    Also serve the A2A agent: /.well-known/agent-card.json and /a2a (needs an AI).
+  --signal-token <secret>  Also relay sealed peer-link offers at /signal/v1 (docs/COLLABORATION.md;
+                           default $INKSTONE_SIGNAL_TOKEN). Its own token: it opens no notes.
 
 Sign-in (HTTP):
   (none)                   Only loopback clients on this computer.
@@ -155,6 +159,7 @@ export const SHARED_OPTIONS = {
   'oauth-read-scope': { type: 'string' },
   'oauth-write-scope': { type: 'string' },
   a2a: { type: 'boolean' },
+  'signal-token': { type: 'string' },
   'ai-provider': { type: 'string' },
   'ai-model': { type: 'string' },
   'ai-base-url': { type: 'string' },
@@ -258,6 +263,13 @@ export function resolveOptions(values: Record<string, unknown>, env: NodeJS.Proc
       const policyFile = (values.policy as string | undefined) ?? env.INKSTONE_POLICY_FILE ?? cfg.trust?.policyFile;
       const auditKey = (values['audit-key'] as string | undefined) ?? env.INKSTONE_AUDIT_KEY ?? cfg.trust?.auditKey;
       return { ...(policyFile ? { policyFile: path.resolve(expandHome(policyFile)) } : {}), ...(auditKey ? { auditKey: path.resolve(expandHome(auditKey)) } : {}) };
+    })(),
+    ...(() => {
+      const signalToken = (values['signal-token'] as string | undefined) ?? env.INKSTONE_SIGNAL_TOKEN;
+      if (!signalToken) return {};
+      if (http === undefined) throw new CliError('--signal-token only applies with --http <port>.');
+      if (signalToken.length < 16) throw new CliError('--signal-token must be at least 16 characters (e.g. openssl rand -hex 16).');
+      return { signalToken };
     })(),
     help: Boolean(values.help),
     version: Boolean(values.version),

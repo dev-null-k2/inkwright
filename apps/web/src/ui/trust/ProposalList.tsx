@@ -11,6 +11,7 @@ import { requireHub } from '../../lib/agent/hub.ts';
 import { currentPolicy, labelForMeta, noteLabelOf, trustServices, useTrust } from '../../lib/trust/state.ts';
 import { useApp } from '../../state/app.ts';
 import { relativeTime } from '../primitives.tsx';
+import { TryOnBranchButton } from '../../timeline/BranchList.tsx';
 
 export function ProposalList() {
   const version = useTrust((s) => s.version);
@@ -90,6 +91,7 @@ function ProposalCard({ p }: { p: Proposal }) {
       </div>
       <div className="ag-row-acts">
         <button type="button" className="btn btn-sm" disabled={busy} onClick={() => void decide(false)}>Don’t apply</button>
+        <TryOnBranchButton p={p} disabled={busy} onDone={() => useTrust.setState((s) => ({ version: s.version + 1 }))} />
         <button type="button" className="btn btn-sm btn-primary" disabled={busy} onClick={() => void decide(true)}>Approve</button>
       </div>
     </div>
