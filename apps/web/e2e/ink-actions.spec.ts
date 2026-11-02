@@ -43,7 +43,7 @@ async function addProvider(page: Page) {
   await page.getByRole('button', { name: 'Back' }).click();
 }
 
-const ink = (page: Page, i = 0) => page.evaluate((k) => (window as any).__inkstone.doc.page(k).strokes.map((s: any) => ({ id: s.id, origin: s.origin ?? null, color: s.color, n: s.points.length })), i);
+const ink = (page: Page, i = 0): Promise<{ id: string; origin: string | null; color: string; n: number }[]> => page.evaluate((k) => (window as any).__inkstone.doc.page(k).strokes.map((s: any) => ({ id: s.id, origin: s.origin ?? null, color: s.color, n: s.points.length })), i);
 const objects = (page: Page, i = 0) => page.evaluate((k) => (window as any).__inkstone.doc.page(k).objects ?? [], i);
 
 /** Adds a typed text box through the document (what the text tool produces). */
@@ -86,19 +86,14 @@ test.describe('AI answers in ink', () => {
     await page.screenshot({ path: 'test-results/ink-answer.png' });
   });
 
-  test('"Answer on the page in: typed text" puts an AI text box instead; the assistant can write in ink', async ({ page }) => {
-    let n = 0;
-    await mockLLM(page, (body) => {
-      n++;
-      // The assistant panel: first a write_in_ink tool call is not scripted here; reply plainly.
-      return body.tools ? 'Here is a short answer: 42.' : 'Forty-two.';
-    });
+  test('"Answer on the page in: typed text" puts an AI text box instead; the assistant panel offers it too', async ({ page }) => {
+    await mockLLM(page, (body) => (body.tools ? 'Here is a short answer: 42.' : 'Forty-two.'));
     await openApp(page);
     await addProvider(page);
     await page.getByRole('button', { name: 'Settings' }).click();
     await page.getByRole('button', { name: 'Ink actions' }).click();
     await page.getByRole('radio', { name: 'Typed text' }).click();
-    await page.getByRole('button', { name: 'Back' }).click();
+    await page.getByRole('button', { name: 'Back', exact: true }).click();
     await newNote(page);
     await typeBox(page, 'Answer to everything?', 80, 100);
     await page.keyboard.press(`${await modKey(page)}+a`);
@@ -110,7 +105,31 @@ test.describe('AI answers in ink', () => {
     await page.locator('.ai-input textarea').press('Enter');
     await page.getByRole('button', { name: 'Write the answer here' }).click();
     await expect.poll(() => page.evaluate(() => ((window as any).__inkstone.doc.page(0).texts ?? []).length)).toBe(3);
-    expect(n).toBeGreaterThanOrEqual(2);
+  });
+
+  test('the assistant writes on the open page with write_in_ink', async ({ page }) => {
+    let i = 0;
+    await page.route('https://mock-llm.test/v1/chat/completions', async (route: Route) => {
+      const body = route.request().postDataJSON();
+      const chunk = (delta: object, finish: string | null = null) => `data: ${JSON.stringify({ id: 'c', object: 'chat.completion.chunk', choices: [{ index: 0, delta, finish_reason: finish }] })}\n\n`;
+      let sse: string;
+      if (i++ === 0) {
+        expect(body.tools.map((t: any) => t.function.name)).toContain('write_in_ink');
+        const noteId = /\(id ([^,]+),/.exec(JSON.stringify(body.messages))![1];
+        const args = JSON.stringify({ noteId, page: 1, text: 'Remember the milk', near: { x: 60, y: 60, width: 200, height: 30 } });
+        sse = chunk({ role: 'assistant', tool_calls: [{ index: 0, id: 'call_1', type: 'function', function: { name: 'write_in_ink', arguments: args } }] }) + chunk({}, 'tool_calls');
+      } else sse = chunk({ role: 'assistant', content: 'I wrote it on your page.' }) + chunk({}, 'stop');
+      await route.fulfill({ status: 200, headers: { 'content-type': 'text/event-stream', 'access-control-allow-origin': '*' }, body: sse + 'data: [DONE]\n\n' });
+    });
+    await openApp(page);
+    await addProvider(page);
+    await newNote(page);
+    await page.locator('.ai-btn').click();
+    await page.locator('.ai-input textarea').fill('Write "remember the milk" on my page in ink');
+    await page.locator('.ai-input textarea').press('Enter');
+    await expect(page.locator('.ai-msg.is-assistant').last()).toContainText('I wrote it on your page.');
+    await expect.poll(async () => (await ink(page)).length).toBeGreaterThan(12);
+    expect((await ink(page)).every((s) => s.origin === 'ai')).toBe(true);
   });
 });
 
