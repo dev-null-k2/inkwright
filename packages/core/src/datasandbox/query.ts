@@ -35,7 +35,12 @@ export interface RepairOutcome {
 }
 
 const FORBIDDEN = /\b(insert|update|delete|drop|alter|create|attach|detach|copy|export|import|install|load|pragma|vacuum|checkpoint|truncate|grant|revoke)\b/i;
-const FILE_FUNCS = /\b(read_csv|read_csv_auto|read_json|read_json_auto|read_parquet|read_text|read_blob|parquet_scan|glob|sqlite_scan|httpfs|readfile|writefile|load_extension)\s*\(/i;
+const FILE_FUNCS = /\b(read_\w+|\w+_scan|parquet_\w+|sniff_csv|glob|httpfs|readfile|writefile|load_extension|query|query_table|getvariable)\s*\(/i;
+// After `skeleton`, a string literal is `''` and a quoted identifier `""`. DuckDB reads a file or
+// URL named by a string where a table goes (`FROM 'https://…'`), and calls a quoted function name
+// like any other (`"read_csv"(…)`): both slipped past the list above (security review SR-02).
+const FILE_AS_TABLE = /\b(from|join)\s*(\(\s*)*''/i;
+const QUOTED_CALL = /""\s*\(/;
 
 /** Strips comments and string literals so keyword checks don't trip over data. */
 function skeleton(sql: string): string {
@@ -54,7 +59,7 @@ export function readOnlySql(sql: string): string {
   if (sk.includes(';')) throw new Error('Only one statement at a time');
   if (!/^\s*(with|select|values|from|table|describe|summarize)\b/i.test(sk)) throw new Error('Only SELECT queries can run here');
   if (FORBIDDEN.test(sk)) throw new Error(`Not allowed in the sandbox: ${FORBIDDEN.exec(sk)![0].toUpperCase()} (quote it with double quotes if it is a column name)`);
-  if (FILE_FUNCS.test(sk)) throw new Error('Reading files from SQL is not allowed; drop the file on the page instead');
+  if (FILE_FUNCS.test(sk) || FILE_AS_TABLE.test(sk) || QUOTED_CALL.test(sk)) throw new Error('Reading files from SQL is not allowed; drop the file on the page instead');
   return s;
 }
 
