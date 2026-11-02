@@ -34,6 +34,7 @@ import { getSecret } from './secrets.ts';
 import type { AppVault } from './vault.ts';
 import { recognizeLocally } from './recognition.ts';
 import { chatChoice, isInstalled, localActiveAI, pickAssistant } from './localai.ts';
+import { nativeEngineReady, nativeProofread } from './native-ai.ts';
 
 export const CLAUDE_BUILTIN_ID = '__claude_builtin__';
 
@@ -70,7 +71,7 @@ export function hasBuiltinClaude(): boolean {
 
 export function isAIReady(): boolean {
   const s = useSettings.getState().ai;
-  return (!!s.activeId && s.providers.some((p) => p.id === s.activeId)) || hasBuiltinClaude() || isInstalled(chatChoice());
+  return (!!s.activeId && s.providers.some((p) => p.id === s.activeId)) || hasBuiltinClaude() || isInstalled(chatChoice()) || nativeEngineReady();
 }
 
 export async function providerFromConfig(cfg: AIProviderConfig, keyOverride?: string): Promise<Provider> {
@@ -261,6 +262,7 @@ export async function transcribePage(vault: AppVault, doc: NoteDocument, pageInd
     return runSkill(transcribeHandwriting, ai.provider, ai.model, { image: { mediaType: img.mediaType, data: img.base64 }, mode, languageHint: lang, context: doc.meta.title });
   }
   const local = await recognizeLocally(strokes ?? page.strokes);
-  if (local) return local.text;
+  // On Gemini Nano phones, ML Kit's proofreading fixes recognition slips (unchanged elsewhere).
+  if (local) return nativeProofread(local.text);
   throw new Error('Add an AI provider with vision in Settings › AI (or use the Android app for on-device recognition) to convert handwriting.');
 }

@@ -267,6 +267,15 @@ describe('choosing who answers', () => {
     expect(chooseAssistant({ ...base, preference: 'chrome', providerConfigured: true })).toEqual({ kind: 'provider' });
     expect(chooseAssistant({ ...base, preference: 'provider' })).toEqual({ kind: 'offer-download' });
   });
+  it('prefers a ready native engine on Android even when the person chose this device', () => {
+    // Without preferNative (desktop, web) a downloaded in-browser model keeps its place.
+    expect(chooseAssistant({ ...base, preference: 'device', nativeReady: true, deviceInstalled: true })).toEqual({ kind: 'device' });
+    expect(chooseAssistant({ ...base, preference: 'device', nativeReady: true, deviceInstalled: true, preferNative: true })).toEqual({ kind: 'native' });
+    expect(chooseAssistant({ ...base, preference: 'device', nativeReady: false, deviceInstalled: true, preferNative: true })).toEqual({ kind: 'device' });
+    expect(chooseAssistant({ ...base, preference: 'auto', nativeReady: true, deviceInstalled: true, preferNative: true })).toEqual({ kind: 'native' });
+    // A provider the person chose still wins.
+    expect(chooseAssistant({ ...base, preference: 'provider', providerConfigured: true, nativeReady: true, preferNative: true })).toEqual({ kind: 'provider' });
+  });
   it('falls back to keyword search instead of failing when no embedder is available', () => {
     expect(chooseEmbedder({ preference: 'device', deviceInstalled: false, providerEmbeddings: false })).toEqual({ kind: 'offer-download' });
     expect(chooseEmbedder({ preference: 'device', deviceInstalled: true, providerEmbeddings: true })).toEqual({ kind: 'device' });

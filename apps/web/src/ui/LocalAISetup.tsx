@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Cpu, X } from 'lucide-react';
 import { formatBytes } from '@inkstone/ai';
+import { NativeAIOffer, useNativeOffer } from './NativeAISettings.tsx';
 import { cancelDownload, chatChoice, downloadModel, embedChoice, initLocalAI, isInstalled, localAISupported, modelKey, refOf, useLocalAI } from '../lib/localai.ts';
 
 /**
@@ -10,7 +11,10 @@ import { cancelDownload, chatChoice, downloadModel, embedChoice, initLocalAI, is
  */
 export function LocalAISetup({ onReady, compact }: { onReady?: () => void; compact?: boolean }) {
   const st = useLocalAI();
+  const native = useNativeOffer();
   useEffect(() => { void initLocalAI(); }, []);
+  // Android: Gemini Nano or an open model through the phone's own runtime beats the WebView one.
+  if (native) return <NativeAIOffer kind={native} onReady={onReady} compact={compact} />;
   if (!localAISupported() || !st.ready) return null;
   const chat = chatChoice();
   if (!chat) {

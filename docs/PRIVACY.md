@@ -22,13 +22,15 @@ Inkstone is a note-taking app. Your notes stay under your control.
 
 **On-device handwriting recognition** (Android) runs entirely on the phone. Google's language model is downloaded once, and your handwriting never leaves the device.
 
+**On-device AI in the Android app** (Gemini Nano through Android's AICore, its summary, proofreading and image-description tools, or an open model such as Gemma 4 run by Inkstone) works on the phone: your notes and questions are not sent anywhere. Android downloads Gemini Nano itself; open models are downloaded once from Hugging Face (a plain file download — no notes or account details are sent). Android applies its own usage quotas to Gemini Nano.
+
 **Signatures and initials** you save for Fill & sign stay on your device, encrypted, and are never synced. A signature is only copied into a document when you place it there.
 
 **Smart ink** (tables, solving maths, circled dates) works on your device. Handwriting is read by on-device recognition where available; it is sent to your AI provider only when you tap an action that needs it, or if you turned on automatic AI recognition. Calendar events are files you download or your calendar app's own "new event" screen — Inkstone never reads your calendar.
 
 **Proof of authorship:** each page keeps a history of edits (what changed and when, as content fingerprints) so you can sign a certificate of your handwriting. The signing key is made on your device and cannot be exported. Certificates contain the signed handwriting, its timing and your key's fingerprint; they leave your device only when you share them or export a PDF with one attached (Settings › Authorship can turn that off).
 
-**Microphone:** used only while you record an audio note, dictate, or hold the microphone button to talk to the assistant. Recordings are saved with the note.
+**Microphone:** used only while you record an audio note, dictate, or hold the microphone button to talk to the assistant. Recordings are saved with the note. Speech for the assistant is turned into text by your browser's speech recognition (which may use the browser maker's servers); in the Android app by Android's speech recognition, on the phone where the phone supports it (Settings › AI says whether it does; otherwise Android works offline when the language is downloaded and may use Google's servers when it isn't); or, where none is available, by your AI provider. It is not stored.
 
 **Transcripts (speech to text):** while you record, Inkstone can write down what is said, line it up with your writing and summarize each page. Inkstone always shows where the audio is being turned into text:
 

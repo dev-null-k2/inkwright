@@ -1,4 +1,4 @@
-import { CallbackProvider, toLocalMessages, withPromptTools, ThinkFilter, stripThinking, type LocalChatMessage, type Provider } from '@inkstone/ai';
+import { CallbackProvider, toLocalMessages, withPromptTools, ThinkFilter, stripThinking, type ChatMessage, type ContentPart, type LocalChatMessage, type Provider } from '@inkstone/ai';
 
 /**
  * Hook for a native on-device model provided by the host app — on Android, Gemini Nano through
@@ -41,27 +41,64 @@ export interface NativeLLM {
   generate(req: NativeLLMRequest, onDelta: (text: string) => void, signal?: AbortSignal): Promise<{ text: string }>;
   /** Optional native embeddings (L2-normalized), used for semantic search when present. */
   embed?(inputs: string[]): Promise<Float32Array[]>;
+  /**
+   * Optional on-device image description (Android: ML Kit GenAI). Lets a text-only native model
+   * answer about an attached image from its description. `image` is base64 PNG/JPEG.
+   */
+  describeImage?(image: string, signal?: AbortSignal): Promise<string>;
 }
 
-let registered: NativeLLM | null = null;
+/**
+ * Several native engines can be registered (Android: Gemini Nano and a LiteRT-LM model). They are
+ * tried in registration order — the shell registers the one it prefers first — and the first that
+ * reports `available` answers.
+ */
+let registered: NativeLLM[] = [];
+let ready: NativeLLM | null = null;
 
-/** Called once by the native shell at startup. */
+/** Registers (or, with the same id, replaces) a native engine; `null` removes them all. */
 export function registerNativeLLM(llm: NativeLLM | null): void {
-  registered = llm;
+  if (!llm) {
+    registered = [];
+    ready = null;
+    return;
+  }
+  const i = registered.findIndex((r) => r.id === llm.id);
+  if (i >= 0) registered = registered.map((r, k) => (k === i ? llm : r));
+  else registered = [...registered, llm];
+  if (ready?.id === llm.id) ready = llm;
 }
 
-export function nativeLLM(): NativeLLM | null {
+/** Removes the engine with this id. */
+export function unregisterNativeLLM(id: string): void {
+  registered = registered.filter((r) => r.id !== id);
+  if (ready?.id === id) ready = null;
+}
+
+/** Every registered engine, in preference order. */
+export function nativeLLMs(): readonly NativeLLM[] {
   return registered;
 }
 
-/** Whether a registered native model can answer right now. */
+/** The engine that last reported ready (see `nativeLLMReady`), else the first registered. */
+export function nativeLLM(): NativeLLM | null {
+  return ready ?? registered[0] ?? null;
+}
+
+/** Whether a registered native model can answer right now; remembers which one for `nativeLLM()`. */
 export async function nativeLLMReady(): Promise<boolean> {
-  if (!registered) return false;
-  try {
-    return (await registered.availability()) === 'available';
-  } catch {
-    return false;
+  for (const llm of registered) {
+    try {
+      if ((await llm.availability()) === 'available') {
+        ready = llm;
+        return true;
+      }
+    } catch {
+      /* this engine can't answer; try the next */
+    }
   }
+  ready = null;
+  return false;
 }
 
 /** A Provider over the native model (tools through the text protocol, like other local models). */
@@ -74,7 +111,8 @@ export function createNativeProvider(llm: NativeLLM): Provider {
       capabilities: { vision: false, tools: false, streaming: true, listModels: false, json: false },
       handler: async (req, emit) => {
         const maxTokens = Math.min(req.maxTokens ?? 1024, Math.floor(context / 2));
-        const messages = toLocalMessages(req.messages, { budgetTokens: context - maxTokens - 64, json: req.json });
+        const described = llm.describeImage ? await describeImages(req.messages, llm.describeImage, req.signal) : req.messages;
+        const messages = toLocalMessages(described, { budgetTokens: context - maxTokens - 64, json: req.json });
         const filter = new ThinkFilter((s) => emit({ type: 'text', delta: s }));
         const r = await llm.generate({ messages, maxTokens, temperature: req.temperature }, (d) => filter.push(d), req.signal);
         filter.end();
@@ -82,4 +120,34 @@ export function createNativeProvider(llm: NativeLLM): Provider {
       },
     }),
   );
+}
+
+/**
+ * Replaces attached images with their on-device description, so a text-only model can still talk
+ * about a sketch or photo. An image that can't be described keeps the default "text only" note.
+ */
+export async function describeImages(messages: ChatMessage[], describe: NonNullable<NativeLLM['describeImage']>, signal?: AbortSignal): Promise<ChatMessage[]> {
+  const out: ChatMessage[] = [];
+  for (const m of messages) {
+    if (typeof m.content === 'string' || !m.content.some((p) => p.type === 'image')) {
+      out.push(m);
+      continue;
+    }
+    const parts: ContentPart[] = [];
+    for (const p of m.content) {
+      if (p.type !== 'image') {
+        parts.push(p);
+        continue;
+      }
+      let text: string | null = null;
+      try {
+        text = (await describe(p.data, signal)).trim() || null;
+      } catch (e) {
+        if ((e as Error).name === 'AbortError') throw e;
+      }
+      parts.push(text ? { type: 'text', text: `[Attached image, described on this phone: ${text}]` } : p);
+    }
+    out.push({ ...m, content: parts });
+  }
+  return out;
 }

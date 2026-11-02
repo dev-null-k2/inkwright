@@ -32,6 +32,7 @@ import { AgentMenuButton, MicButton, PanelAgentView, PanelWaiting } from './agen
 import type { AgentViewId } from './agent/shared.tsx';
 import { LocalAISetup } from './LocalAISetup.tsx';
 import { linkLiveCitations, liveAskContext, useListen } from '../lib/listen/session.ts';
+import { nativeSummary } from '../lib/native-ai.ts';
 
 export type AIRequest = { kind: 'selection'; pageIndex: number; strokeIds: string[]; textIds: string[]; at: number };
 
@@ -162,7 +163,8 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
       if (kind === 'summary') {
         push({ role: 'user', text: 'Summarize this note' });
         const id = push({ role: 'assistant', text: '…' });
-        const s = await runSkill(summarizeNote, a.provider, a.model, { title: doc.meta.title, text: fullText, style: 'bullets' }, { signal, onText: (_d, so) => patch(id, { text: so }) });
+        const s = (await nativeSummary(a, fullText, 'bullets', (so) => patch(id, { text: so }), signal))
+          ?? await runSkill(summarizeNote, a.provider, a.model, { title: doc.meta.title, text: fullText, style: 'bullets' }, { signal, onText: (_d, so) => patch(id, { text: so }) });
         patch(id, { text: s, actions: [{ label: 'Save as note summary', run: () => { doc.updateMeta((m) => ({ ...m, summary: s })); toast({ text: 'Summary saved — it appears in the library and is given to agents' }); } }, { label: 'Insert on page', run: () => insertText(`## Summary\n${s}`) }] });
       } else if (kind === 'todos') {
         push({ role: 'user', text: 'Pull out the to-dos' });
