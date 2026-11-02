@@ -80,6 +80,7 @@ Rules
   "sealed": { "v": 1, "iv": "…", "data": "…" },                                // only in locked notes (see "Locked notes")
   "authorship": { "v": 1, "events": [ … ] },                                   // optional: hash chain (docs/AUTHORSHIP.md)
   "background": { "kind": "pdf|image", "asset": "file.pdf", "pageNumber": 1, "rotation": 90 },   // optional
+  "underlay": { "asset": "….png", "width": 1400, "height": 1980, "kind": "photo" },   // optional: hidden photo the ink was traced from (below)
   "paper": { … }, "size": { … },                                               // optional per-page overrides
   "recognizedText": "…", "recognizedAt": 0, "recognizedBy": "mlkit|gemini-2.5-flash|…",  // optional
   "recognizedLines": [                                                         // optional
@@ -730,3 +731,69 @@ is not 64 hex characters are ignored, so a plaintext key can never be accepted.
 
 Webhook subscriptions and their signing secrets are not in the vault: the server keeps them in
 its state folder (`--state-dir`), so secrets never sync to a cloud drive.
+
+## Ink actions (docs/INK_ACTIONS.md)
+
+All optional; readers that don't know them ignore them, and sync merges them like the rest of a
+page (objects by id, other page fields field-wise).
+
+**Photo underlay** (`PageInk.underlay`). The straightened photo a page's strokes were traced from
+("Photo to ink"): a PNG asset of the note covering the whole page, `width` × `height` pixels.
+Never drawn, thumbnailed or exported; the app can show it over the ink to compare. The traced
+strokes are ordinary strokes with `origin: "import"`.
+
+```jsonc
+"underlay": { "asset": "01JD….png", "width": 1400, "height": 1980, "kind": "photo" }
+```
+
+**Data tables** (`TableObject.data`). A table showing data from the data sandbox: the grid holds a
+preview (header + first rows) and `data` points at the full data. `asset` is the note asset with
+the data ("" for a query result kept on the page), `table` its SQL table name, `query` the SQL
+that produced a result table.
+
+```jsonc
+{ "type": "table", …, "origin": "import|solver",
+  "data": { "asset": "sales.csv", "table": "sales", "rowCount": 1204,
+            "columns": [{ "name": "region", "type": "text" }, { "name": "amount", "type": "number" }],
+            "query": "SELECT …" } }
+```
+
+**Data files** (`notes/<id>/assets/`). The shared data-attachment format of the data sandbox and
+the developer module's runbook SQL blocks: each `.csv`, `.tsv`, `.json` (and, for the sandbox,
+`.ndjson`) asset is one table named after the file by `sqlIdent` ("Sales 2024.csv" →
+`sales_2024`). Spreadsheets are kept as dropped (`.xlsx`, `.xls`, `.ods`) and converted to one
+`<book>-<sheet>.csv` per sheet (`<book>.csv` for a single sheet). The app's own JSON assets
+(`provenance.json`, `page-summaries.json`, `*.transcript.json`, `authorship-*.json`) are not data.
+
+**Query log** (`notes/<id>/assets/data-queries.jsonl`). One JSON object per line, appended for
+every query run on the note's data — by the user or the assistant — with every attempt of the
+repair loop:
+
+```jsonc
+{ "at": 1730000000000, "by": "you|assistant", "question": "total by region", "ok": true,
+  "attempts": [{ "sql": "…", "ok": false, "error": "Binder Error: …", "ms": 4, "engine": "DuckDB" },
+               { "sql": "…", "ok": true, "rowCount": 3, "ms": 6, "engine": "DuckDB" }] }
+```
+
+**Overlay origin.** Sticky notes (and tape) may carry `origin` like other objects; executable
+diagrams keep step results as stickies with `origin: "ai"` (an AI step) or `"solver"` (computed on
+the device).
+
+**AI ink.** Answers written in handwriting are ordinary strokes with `origin: "ai"`. Their
+provenance, while the compiler is on, is in the note's `provenance.json` under `ink:<first stroke
+id>` (typed answers: `text:<id>`).
+
+**Paper notes** (`NoteMeta.properties`). A paper in the library of papers is a note tagged
+`paper` (in the "Papers" notebook) whose properties hold the reference: readable fields that
+become YAML front matter on Obsidian export, plus the full CSL-JSON item, and the attached PDF's
+asset once one is matched.
+
+```jsonc
+"properties": {
+  "citekey": "lecun2015", "reference-type": "article-journal",
+  "authors": ["Yann LeCun", "Yoshua Bengio", "Geoffrey Hinton"], "year": 2015,
+  "container": "Nature", "doi": "10.1038/nature14539",
+  "csl": { "id": "lecun2015", "type": "article-journal", "title": "Deep learning", … },
+  "pdf": "01JD….pdf"
+}
+```

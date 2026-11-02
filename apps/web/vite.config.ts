@@ -93,6 +93,8 @@ export default defineConfig(({ mode }) => {
     resolve: single ? { alias: [
       { find: /^\.\.\/ai\/spawn\.ts$/, replacement: fileURLToPath(new URL('./src/ai/spawn-unavailable.ts', import.meta.url)) },
       { find: /^\.\/wasm-assets\.ts$/, replacement: fileURLToPath(new URL('./src/dev/wasm-assets-unavailable.ts', import.meta.url)) },
+      // And the data sandbox's DuckDB and SQLite (src/datasandbox/engine-assets-unavailable.ts).
+      { find: /^\.\/engine-assets\.ts$/, replacement: fileURLToPath(new URL('./src/datasandbox/engine-assets-unavailable.ts', import.meta.url)) },
     ] } : undefined,
     define: {
       __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '1.0.0'),

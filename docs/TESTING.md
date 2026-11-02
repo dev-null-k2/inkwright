@@ -127,6 +127,15 @@ The emulator still runs when there is no `/dev/kvm`: QEMU emulates the x86_64 CP
 | End-to-end | `cd apps/web && PW_PORT=4193 npx playwright test e2e/trust.spec.ts --project desktop` | the provider never sees an email the user does; AI usage and the audit trail (verify, JSONL export); Routing & privacy writes `ai/policy.json`; a local-only notebook stops a cloud run, a hidden one is invisible; dry run → proposal with a diff → approve |
 | Appliance | `docker compose -f deploy/docker-compose.yml config` | compose file validity (no daemon needed); `docker build -f deploy/Dockerfile --target server .` where a daemon is available |
 
+### Ink actions
+
+| Layer | Command | What it covers |
+|---|---|---|
+| Unit | `npx vitest run --project core packages/core/test/papers.test.ts packages/core/test/datasandbox.test.ts packages/core/test/canvasdag.test.ts packages/core/test/photoink.test.ts packages/core/test/inkanswer.test.ts` | BibTeX/CSL-JSON parsing (macros, LaTeX, names), round trips, APA 7 and IEEE formatting, citations and autocomplete, PDF matching; CSV/JSON typing, read-only SQL, the repair loop, charts; diagram graphs from messy sketches (boxes four ways, heads, hooks, frames, cycles), ops, running, cancel and re-run; page detection, homography, Sauvola, Zhang–Suen and tracing measured by Chamfer distance on synthetic photos; answer placement, layout, write-on and authorship; read-aloud order |
+| Unit | `npx vitest run --project web apps/web/src/inkactions` | AI ink through the document (one undo step), SQLite engine with real errors in the repair loop, data tables, bibliography of a note, module registration and tools |
+| Eval | `npx vitest run --project evals packages/core/evals/canvasdag.eval.ts` | graph extraction over 120 synthetic sketches (bar in docs/INK_ACTIONS.md) |
+| End-to-end | `cd apps/web && PW_PORT=4195 npx playwright test e2e/ink-actions.spec.ts e2e/a11y.spec.ts --project desktop` | answers in ink and typed, the assistant's `write_in_ink`, a drawn diagram run with fetch, local and AI steps, re-run and keep, loops refused, CSV drop → DuckDB → ask with repair → table and chart, spreadsheets, photo to ink with corners and underlay, read aloud with highlighting and the reading view, BibTeX import → PDF by DOI → `[@` autocomplete → APA/IEEE → BibTeX export, modules switched off; axe-core over library/editor/settings, keyboard paths, reduced motion and contrast |
+
 ## Testing on a device
 
 The pen-on-glass feel, haptics, Bluetooth pen buttons and real latency can only be judged on hardware. On the Razr Fold:

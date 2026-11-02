@@ -34,6 +34,7 @@ import { LocalAISetup } from './LocalAISetup.tsx';
 import { linkLiveCitations, liveAskContext, useListen } from '../lib/listen/session.ts';
 import { nativeSummary } from '../lib/native-ai.ts';
 import type { Passage } from '@inkstone/core';
+import { inkReplyActions } from '../inkanswer/answer.ts';
 import { collectPassages, explainAnswer, genFor, insertAnswer, notePassages, recordSummaryProvenance } from '../compiler/explain.ts';
 
 export type AIRequest = { kind: 'selection'; pageIndex: number; strokeIds: string[]; textIds: string[]; at: number };
@@ -267,7 +268,7 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
       if (!res.text && !replyId) push({ role: 'assistant', text: 'Done.' });
       if (replyId && res.text) {
         const gen = genFor(a);
-        patch(replyId, { actions: [{ label: 'Explain', run: () => void explainAnswer('Answer', res.text, read, gen) }, { label: 'Insert on page', run: () => void insertAnswer(doc, engine.currentPageIndex, res.text, read, gen).then(() => toast({ text: 'Added to the page', action: { label: 'Undo', run: () => engine.undo() } })) }] });
+        patch(replyId, { actions: [{ label: 'Explain', run: () => void explainAnswer('Answer', res.text, read, gen) }, { label: 'Insert on page', run: () => void insertAnswer(doc, engine.currentPageIndex, res.text, read, gen).then(() => toast({ text: 'Added to the page', action: { label: 'Undo', run: () => engine.undo() } })) }, ...inkReplyActions(doc, engine, res.text, read, gen)] });
       }
       const run = await prep.recorder.finish('done', { reply: res.text });
       if (run.ops.length) {

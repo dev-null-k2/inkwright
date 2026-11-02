@@ -336,6 +336,17 @@ Notes that maintain themselves and can be trusted (details: [COMPILER.md](COMPIL
   vault for changes; `webhooks.ts` delivers them per Standard Webhooks with a persisted retry
   queue. `@inkstone/sdk` is generated from the document. See docs/API.md.
 
+## Ink that does things (`packages/core/src/{inkanswer,canvasdag,datasandbox,photoink,readaloud,papers}`, `apps/web/src/{inkanswer,canvasdag,datasandbox,photoink,a11y,papers,inkactions}`)
+
+Six modules, each switchable (details: [INK_ACTIONS.md](INK_ACTIONS.md)): AI answers written in
+`handwrite()` ink next to the lassoed question (one undo step, `origin: 'ai'`, provenance kept);
+hand-drawn diagrams read into a typed graph and run step by step (local verbs or the AI); a data
+sandbox over note data files with DuckDB-WASM (SQLite fallback) and a logged SQL repair loop for
+the assistant; photos of paper traced into real strokes (Sauvola, Zhang–Suen) with the photo kept
+as a hidden underlay; read aloud with ink highlighting and a reading view; and a paper workbench
+(BibTeX/CSL-JSON, PDFs matched by DOI, `[@key]` citations, APA/IEEE). Pure geometry, parsing and
+formatting live in core with tests and an eval; the editor gets one hook (`useInkActions`).
+
 ## Platforms
 
 | Platform | How | Native extras |
