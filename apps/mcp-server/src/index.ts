@@ -2,6 +2,7 @@
 import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import { CliError, USAGE, parseCli } from './cli.ts';
 import { createContext } from './context.ts';
+import { applyServerRetention, logPolicy, trustedAI } from './trust.ts';
 import { aiFromOptions, serveHttp } from './serve.ts';
 import { createMcpServer, createServices } from './server.ts';
 import { VERSION } from './version.ts';
@@ -47,15 +48,18 @@ async function main(): Promise<void> {
     process.exit(2);
   }
 
-  const ctx = await createContext({ root: opts.vault, readOnly: opts.readOnly, watch: opts.watch });
+  const ctx = await createContext({ root: opts.vault, readOnly: opts.readOnly, watch: opts.watch, ...(opts.policyFile ? { managedPolicyFile: opts.policyFile } : {}), ...(opts.auditKey ? { auditKeyFile: opts.auditKey } : {}) });
   if (ctx.createdVault) log(`No inkstone.json found; initialized a new vault at ${ctx.root}`);
-  const ai = aiFromOptions(opts, log);
+  logPolicy(ctx, log);
+  if (!ctx.readOnly) void applyServerRetention(ctx).catch((e) => log(`Retention: ${(e as Error).message}`));
+  // The server's AI goes through the trust layer (routing, privacy firewall, meter, audit).
+  const ai = trustedAI(aiFromOptions(opts, log), ctx.trust);
   let shuttingDown = false;
   let closeAll: () => Promise<void> = async () => {};
   const shutdown = (code = 0) => {
     if (shuttingDown) return;
     shuttingDown = true;
-    void closeAll().finally(() => {
+    void closeAll().then(() => Promise.all([ctx.trust.audit.flush(), ctx.trust.usage.flush()])).finally(() => {
       ctx.close();
       process.exit(code);
     });

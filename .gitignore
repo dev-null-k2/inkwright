@@ -24,3 +24,4 @@ apps/web/android/keystore.properties
 apps/mcp-server/dist/
 apps/web/test-artifacts/
 .claude/worktrees/
+sbom.cdx.json

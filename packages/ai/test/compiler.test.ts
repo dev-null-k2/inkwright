@@ -7,7 +7,7 @@ import {
   VaultUndoTarget,
   VaultWikiTarget,
   adjudicate,
-  applyProposal,
+  applyWikiProposal,
   compileWiki,
   createCompilerTools,
   createScriptedProvider,
@@ -63,7 +63,7 @@ function draftingModel(): CompilerAI & { calls: number } {
 
 const choiceAll = (p: { items: { id: string }[] }) => Object.fromEntries(p.items.map((i) => [i.id, { accept: true }]));
 
-describe('compileWiki and applyProposal', () => {
+describe('compileWiki and applyWikiProposal', () => {
   it('compiles sources into a proposal, writes pages with provenance on accept, and logs undoable ops', async () => {
     const { vault, store, write } = await setup();
     const req = await write('Requirements', 'Latency must stay under 50 ms.\nEmbedding: a vector that represents meaning.', { tags: ['atlas'] });
@@ -80,7 +80,7 @@ describe('compileWiki and applyProposal', () => {
 
     const activity = new ActivityStore(vault.fs);
     const rec = new RunRecorder(activity, { source: 'assistant', label: 'Compiled wiki' });
-    const res = await applyProposal(p, choiceAll(p), { store, target: new VaultWikiTarget(vault), record: rec.record, now: T0 + 5000 });
+    const res = await applyWikiProposal(p, choiceAll(p), { store, target: new VaultWikiTarget(vault), record: rec.record, now: T0 + 5000 });
     expect(res).toMatchObject({ applied: 3, rejected: 0, problems: [] });
     const run = await rec.finish('done');
     expect(run.ops.map((o) => o.kind)).toEqual(['note_created', 'note_created', 'note_created']);
@@ -110,7 +110,7 @@ describe('compileWiki and applyProposal', () => {
     expect(item.added.map((c) => c.s)).toContain('Latency must stay under 80 ms.');
     expect(item.removed.map((c) => c.s)).toContain('Latency must stay under 50 ms.');
     const rec2 = new RunRecorder(activity, { source: 'assistant', label: 'Compiled wiki' });
-    await applyProposal(upd.proposal!, { [item.id]: { accept: true } }, { store, target: new VaultWikiTarget(vault), record: rec2.record, now: T0 + 8000 });
+    await applyWikiProposal(upd.proposal!, { [item.id]: { accept: true } }, { store, target: new VaultWikiTarget(vault), record: rec2.record, now: T0 + 8000 });
     const run2 = await rec2.finish('done');
     expect(run2.ops.map((o) => o.kind)).toEqual(['text_replaced']);
     expect(await new VaultWikiTarget(vault).readText(page.noteId, page.pageId, page.textId)).toContain('80 ms');
@@ -128,7 +128,7 @@ describe('compileWiki and applyProposal', () => {
     const cur = (pg: any) => vaultCurrentClaims(vault, pg);
     const first = (await compileWiki({ store, sources: await sources(), ai: null, reason: 'x', now: T0, currentClaims: cur })).proposal!;
     expect(first.gen.by).toMatch(/without AI/);
-    await applyProposal(first, choiceAll(first), { store, target: new VaultWikiTarget(vault), record: () => {}, now: T0 });
+    await applyWikiProposal(first, choiceAll(first), { store, target: new VaultWikiTarget(vault), record: () => {}, now: T0 });
     const page = (await store.state()).pages['topic:plan']!;
     const target = new VaultWikiTarget(vault);
     const t0 = (await target.readText(page.noteId, page.pageId, page.textId))!;
@@ -145,11 +145,11 @@ describe('compileWiki and applyProposal', () => {
     const p2 = (await compileWiki({ store, sources: await sources(), ai: null, reason: 'x', now: T0 + 2, currentClaims: cur })).proposal!;
     const it2 = p2.items.find((i) => i.key === 'topic:plan')!;
     // Reject: the same change is not proposed again.
-    await applyProposal(p2, { [it2.id]: { accept: false } }, { store, target, record: () => {}, now: T0 + 3 });
+    await applyWikiProposal(p2, { [it2.id]: { accept: false } }, { store, target, record: () => {}, now: T0 + 3 });
     expect((await compileWiki({ store, sources: await sources(), ai: null, reason: 'x', now: T0 + 4, currentClaims: cur })).proposal).toBeNull();
     // Force (re-check) proposes it again; accept keeps "My own reminder line."
     const p3 = (await compileWiki({ store, sources: await sources(), ai: null, reason: 'x', now: T0 + 5, currentClaims: cur, force: true, only: new Set(['topic:plan']) })).proposal!;
-    await applyProposal(p3, choiceAll(p3), { store, target, record: () => {}, now: T0 + 6 });
+    await applyWikiProposal(p3, choiceAll(p3), { store, target, record: () => {}, now: T0 + 6 });
     const t3 = (await target.readText(page.noteId, page.pageId, page.textId))!;
     expect(t3).toContain('Dec 5');
     expect(t3).toContain('## Your notes\n- My own reminder line.');
@@ -160,7 +160,7 @@ describe('compileWiki and applyProposal', () => {
     const n = await write('Lonely', 'Only line here.');
     const cur = (pg: any) => vaultCurrentClaims(vault, pg);
     const p = (await compileWiki({ store, sources: await vaultSources(vault, await store.config()), ai: null, reason: 'x', now: T0, currentClaims: cur })).proposal!;
-    await applyProposal(p, choiceAll(p), { store, target: new VaultWikiTarget(vault), record: () => {}, now: T0 });
+    await applyWikiProposal(p, choiceAll(p), { store, target: new VaultWikiTarget(vault), record: () => {}, now: T0 });
     await vault.trashNote(n.id);
     const p2 = (await compileWiki({ store, sources: await vaultSources(vault, await store.config()), ai: null, reason: 'x', now: T0 + 1, currentClaims: cur })).proposal!;
     expect(p2.items.map((i) => i.action)).toContain('archive');

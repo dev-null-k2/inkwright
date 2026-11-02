@@ -3,6 +3,9 @@ import { VersionHistory, type NoteMeta, type PageInk, type SnapshotReason } from
 import type { EditorSession } from '../lib/session.ts';
 import type { AppVault } from '../lib/vault.ts';
 import { useSettings } from '../state/settings.ts';
+import { historyPruneOptions } from '@inkstone/ai';
+// Retention and legal hold for version history come from the AI policy (docs/TRUST.md).
+import { currentPolicy } from '../lib/trust/state.ts';
 
 /**
  * Automatic version history for the open note (core history.ts stores and prunes it):
@@ -49,7 +52,7 @@ export class NoteVersioning {
 
   async start() {
     await this.take('open');
-    void this.history.prune(this.session.doc.meta.id).catch(() => {});
+    void this.history.prune(this.session.doc.meta.id, undefined, historyPruneOptions(currentPolicy())).catch(() => {});
   }
 
   /** While editing: a snapshot once the note has been edited for `interval` since the last one. */
@@ -65,7 +68,7 @@ export class NoteVersioning {
     await this.take('close');
     this.closed = true;
     if (open.get(this.session.doc.meta.id) === this) open.delete(this.session.doc.meta.id);
-    void this.history.prune(this.session.doc.meta.id).catch(() => {});
+    void this.history.prune(this.session.doc.meta.id, undefined, historyPruneOptions(currentPolicy())).catch(() => {});
   }
 }
 

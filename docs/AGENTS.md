@@ -293,6 +293,26 @@ Any provider Inkstone supports works:
 vision model. `--ai-key-env NAME` reads the key from another variable. Keys never belong in
 command lines or service files.
 
+## Trust: the AI policy, dry run and the audit trail
+
+The server, the A2A agent and the runner follow the vault's AI policy (`ai/policy.json`, edited in
+Settings › AI › Routing & privacy; docs/TRUST.md):
+
+- Notebooks and tags set to **hidden**, and notes that **stay on the device**, don't exist for
+  MCP clients or the server's agent; **read-only** notes can't be changed, moved or trashed.
+- With **Outside agents: Propose**, MCP write tools record a proposal you approve in the app's
+  Activity instead of changing notes.
+- Reads and writes by every client, and every call the server's own AI makes, go into the signed
+  audit trail (`ai/audit/srv-…/`). Check it with `node apps/mcp-server/dist/agent.js audit
+  --vault "…"` (exit code 1 if anything was changed after it was written).
+- The server's AI goes through the same router, privacy firewall and budget as the app's; pass
+  `--ai-on-premises` when it runs inside your network so local-only routes may use it.
+- `--policy <file>` adds a managed policy users can only tighten; `--audit-key <file>` signs the
+  audit trail with a key you control. Every option also has an environment variable
+  (`inkstone-mcp --help`); `GET /healthz` answers without credentials for health checks.
+
+For a self-hosted, no-egress deployment with Docker, see docs/ENTERPRISE.md.
+
 ## Troubleshooting
 
 - **401 from the server:** wrong or missing token; with OAuth, check `iss` and `aud` in your

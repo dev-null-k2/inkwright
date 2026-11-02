@@ -125,6 +125,8 @@ export async function startHttpServer(services: ServerServices, opts: HttpOption
 
   const handle = async (req: IncomingMessage, res: ServerResponse) => {
     const path = new URL(req.url ?? '/', 'http://localhost').pathname;
+    // Liveness for containers and load balancers: no auth, and nothing about the vault.
+    if (path === '/healthz') return sendJson(res, 200, { ok: true }, { 'cache-control': 'no-store' });
     if (path.startsWith('/.well-known/oauth-protected-resource')) {
       const doc = await gate.resourceMetadata(path);
       return doc ? sendJson(res, 200, doc, { 'access-control-allow-origin': '*', 'cache-control': 'public, max-age=300' }) : sendJson(res, 404, { error: 'not_found', error_description: 'This server does not use OAuth.' });
