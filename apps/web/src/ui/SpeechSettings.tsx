@@ -4,6 +4,7 @@ import { asrChoice, initLocalAI, localAISupported, useLocalAI } from '../lib/loc
 import { resolveSpeech, speechLanguage, useSpeechPrefs, type ResolvedSpeech } from '../lib/listen/engines.ts';
 import { ModelPicker } from './LocalAISettings.tsx';
 import { Segmented, Switch } from './primitives.tsx';
+import { useSettings } from '../state/settings.ts';
 import { WhereBadge } from './TranscriptPanel.tsx';
 
 /**
@@ -15,8 +16,9 @@ export function SpeechSettings() {
   const p = useSpeechPrefs();
   const st = useLocalAI();
   const [now, setNow] = useState<ResolvedSpeech | null>(null);
+  const providers = useSettings((s) => s.ai);
   useEffect(() => { void initLocalAI(); }, []);
-  useEffect(() => { void resolveSpeech().then(setNow); }, [p.engine, p.language, st.installed, st.asrModel, st.ready]);
+  useEffect(() => { void resolveSpeech().then(setNow); }, [p.engine, p.language, st.installed, st.asrModel, st.ready, providers]);
   const supported = localAISupported() && !!st.hardware;
   const lang = speechLanguage();
   const current = supported ? asrChoice(lang) : null;
