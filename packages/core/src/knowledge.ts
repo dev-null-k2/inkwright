@@ -5,7 +5,7 @@
  * milliseconds; nothing is stored, so nothing can go stale on disk.
  */
 import { pageText } from './export.ts';
-import { findMentions, contextLine, noteLinkOccurrences, normalizeTitle, parseTags, resolveWikiTarget, type LinkOccurrence, type LinkSource } from './links.ts';
+import { findMentions, contextLine, noteLinkOccurrences, normalizeTitle, parseTags, resolveWikiTarget, stripWikiLinks, type LinkOccurrence, type LinkSource } from './links.ts';
 import type { NoteMeta, NotebookMeta, PageInk } from './model.ts';
 import { tokenize } from './search.ts';
 
@@ -139,6 +139,15 @@ export class KnowledgeIndex {
 
   note(id: string): NoteMeta | undefined {
     return this.entries.get(id)?.note;
+  }
+
+  /** A short plain-text preview of a note: its summary, else its first typed or recognized text. */
+  snippet(id: string, max = 160): string {
+    const e = this.entries.get(id);
+    if (!e) return '';
+    const text = e.note.summary?.trim() || e.pages.map((p) => [...p.boxes.map((b) => b.text), p.recognized].join('\n')).join('\n').trim();
+    const flat = stripWikiLinks(text).replace(/^#{1,6}\s+/gm, '').replace(/\s+/g, ' ').trim();
+    return flat.length > max ? flat.slice(0, max - 1).trimEnd() + '…' : flat;
   }
 
   /** The note's tags: set by hand plus `#tags` written in it. */

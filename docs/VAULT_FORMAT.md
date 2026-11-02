@@ -18,6 +18,8 @@ reference implementation is `packages/core/src/codec.ts` + `vault.ts`.
   ai/memory.json                        assistant memory: instructions, facts, proposals
   ai/routines/<routineId>.json          routines (background agents) and their run state
   ai/activity/<runId>.json              AI activity log: what agents changed, for undo
+  templates/<templateId>/template.json  note templates (see "Templates")
+  templates/<templateId>/assets/<name>  files a template's pages use
 ```
 
 Rules
@@ -104,6 +106,47 @@ kept on each device only, encrypted with the app's WebCrypto secret store, and n
 Paper styles: `blank ruled_narrow ruled_wide dot_grid square_grid graph_mm isometric cornell music
 planner_day planner_week todo`. Tints: `white ivory cream recycled kraft mint blush slate midnight`.
 Textures: `smooth standard toothy`.
+
+## Links, tags and daily notes
+
+- **Wiki links** are text: `[[Title]]`, `[[Title#Page 2]]`, `[[Title|alias]]`, `[[Folder/Title]]`,
+  `![[Title]]`, in a text box's Markdown or in `recognizedText`. Titles match case-insensitively
+  (whitespace collapsed, a `.md` suffix ignored); a `Folder/Title` path picks the note in that
+  notebook; ties go to the linking note's notebook, then the most recently edited note.
+  `packages/core/src/links.ts` is the reference.
+- **Links on handwriting** live on the page:
+
+  ```jsonc
+  "links": [{ "id", "strokeIds": ["…"], "target": "Title#Page 2", "noteId": "…?", "createdAt" }]
+  ```
+
+  The ink stays ink; the link rides on its strokes. `target` is a wiki-link target; `noteId` is the
+  note it resolved to when made (resolution prefers it, so renames never break it). A link whose
+  strokes are all erased is ignored. Sync merges `links` by id like texts and images.
+- **Inline tags.** `#tags` in typed text or recognized handwriting (Obsidian's rule: `#` after
+  whitespace or punctuation, letters/digits/`_`/`-`/`/`, at least one non-digit; not in links,
+  code or URLs) are added to `tags`. `inlineTags` remembers which ones came from the text, so
+  deleting the `#tag` removes it again without touching tags set by hand.
+- **Daily notes** carry `"daily": "YYYY-MM-DD"` (local day) and are titled with that day, in the
+  "Journal" notebook. `[[2026-11-02]]` opens (or starts) that day's note.
+- **`properties`** (optional object) holds front-matter properties imported from Markdown that
+  Inkstone has no field for; they are written back on Obsidian export (docs/OBSIDIAN.md).
+- Renaming a note in the app rewrites `[[Old title…]]` links (and ink link targets) in the notes
+  that pointed to it. Other writers should do the same or leave links to resolve by `noteId`.
+
+## Templates (`templates/<id>/template.json`)
+
+```jsonc
+{ "id", "name", "kind": "paged|board", "paper": { … }, "pageSize": { … }, "tags": ["…"],
+  "pages": [ /* PageInk without recognition results; ids are placeholders */ ],
+  "createdAt", "updatedAt", "formatVersion": 2 }
+```
+
+A note made from a template gets fresh ids for itself, its pages and every item (ink links are
+remapped to the new stroke ids), and `{{date}}`, `{{date:FORMAT}}`, `{{time}}`, `{{title}}`,
+`{{weekday}}`, `{{yesterday}}`, `{{tomorrow}}` in typed text are filled in (Moment-style formats,
+as in Obsidian). Files used by the template's pages are under `templates/<id>/assets/` and are
+copied into the new note.
 
 ## NotebookMeta (`notebook.json`)
 
