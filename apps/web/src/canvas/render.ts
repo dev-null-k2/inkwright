@@ -1,4 +1,7 @@
 import {
+  stripWikiLinks,
+  parseWikiLinks,
+  linkLabel,
   PAPER_TINTS,
   argbToCss,
   centerlineSvgPath,
@@ -282,7 +285,8 @@ export function layoutText(ctx: CanvasRenderingContext2D, t: TextBox): { lines: 
       const b = /^\s*[-*•]\s+(.*)$/.exec(text);
       if (b) { bullet = true; text = b[1]!; indent = size * 1.1; }
     }
-    text = text.replace(/\*\*(.+?)\*\*/g, '$1').replace(/__(.+?)__/g, '$1').replace(/\[\[(.+?)\]\]/g, '$1');
+    // [[Links]] show their label (alias, or "Title › Page 2").
+    text = stripWikiLinks(text.replace(/\*\*(.+?)\*\*/g, '$1').replace(/__(.+?)__/g, '$1'));
     ctx.font = `${weight} ${size}px ${fam}`;
     const maxW = Math.max(20, t.width - indent);
     const words = text.split(/(\s+)/);
@@ -384,4 +388,40 @@ export function drawImageItem(ctx: CanvasRenderingContext2D, im: ImageItem, bmp:
 export function paperColorFor(note: NoteMeta, page: PageInk | undefined): string {
   const tint = (page?.paper ?? note.paper).tint;
   return argbToCss((PAPER_TINTS[tint] ?? PAPER_TINTS.ivory).color);
+}
+
+/**
+ * Where each `[[link]]` of a text box sits on the page (one rect per link, on the line where its
+ * label starts), for the link chips the editor lays over the canvas.
+ */
+export function textLinkRects(ctx: CanvasRenderingContext2D, t: TextBox): { target: string; label: string; rect: Rect }[] {
+  const links = parseWikiLinks(t.text);
+  if (!links.length) return [];
+  const fam = FONT_FAMILIES[t.font] ?? FONT_FAMILIES.sans;
+  const { lines, lineHeights } = layoutText(ctx, t);
+  const out: { target: string; label: string; rect: Rect }[] = [];
+  let li = 0;
+  let from = 0;
+  let y = t.y;
+  const ys = lineHeights.map((h) => { const top = y; y += h; return top; });
+  for (const l of links) {
+    const label = linkLabel(l);
+    // Labels appear in order; search from where the previous one was found. A label split over
+    // two lines isn't found; the search then resumes where it was for the next link.
+    const [li0, from0] = [li, from];
+    for (; li < lines.length; li++, from = 0) {
+      const line = lines[li]!;
+      const at = line.text.indexOf(label, from);
+      if (at < 0) continue;
+      ctx.font = `${line.weight} ${line.size}px ${fam}`;
+      const x0 = t.x + line.x + ctx.measureText(line.text.slice(0, at)).width;
+      const w = ctx.measureText(label).width;
+      const top = ys[li]!;
+      out.push({ target: l.target, label, rect: { minX: x0, minY: top, maxX: x0 + w, maxY: top + line.size * 1.25 } });
+      from = at + label.length;
+      break;
+    }
+    if (li >= lines.length) [li, from] = [li0, from0];
+  }
+  return out;
 }

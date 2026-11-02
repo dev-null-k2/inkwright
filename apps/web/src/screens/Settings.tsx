@@ -21,6 +21,8 @@ import { saveFile, pickFiles } from '../platform/files.ts';
 import { importFiles } from '../lib/actions.ts';
 import { BrandMark } from '../ui/Brand.tsx';
 import { AgentSettings } from '../ui/agent/AgentSettings.tsx';
+import { Waypoints } from 'lucide-react';
+import { KnowledgeSettings } from '../ui/knowledge/KnowledgeSettings.tsx';
 
 const SECTIONS = [
   { id: 'writing', label: 'Writing feel', icon: <Vibrate size={17} /> },
@@ -30,6 +32,7 @@ const SECTIONS = [
   { id: 'sync', label: 'Account & sync', icon: <Cloud size={17} /> },
   { id: 'agents', label: 'Agents (MCP)', icon: <Plug size={17} /> },
   { id: 'appearance', label: 'Appearance & paper', icon: <Palette size={17} /> },
+  { id: 'knowledge', label: 'Notes, links & Obsidian', icon: <Waypoints size={17} /> },
   { id: 'about', label: 'About', icon: <Info size={17} /> },
 ] as const;
 
@@ -70,6 +73,7 @@ export function Settings({ section }: { section?: string }) {
             {active === 'sync' && <SyncSection />}
             {active === 'agents' && <AgentsSection />}
             {active === 'appearance' && <AppearanceSection />}
+            {active === 'knowledge' && <KnowledgeSettings />}
             {active === 'about' && <AboutSection />}
           </main>
         )}

@@ -6,6 +6,7 @@ import { PaperPreview } from './PaperPreview.tsx';
 import { useSettings } from '../state/settings.ts';
 import { useApp } from '../state/app.ts';
 import { createNote } from '../lib/actions.ts';
+import { TemplateChoices } from './knowledge/TemplateChoices.tsx';
 
 export const STYLE_ORDER: PaperStyle[] = ['blank', 'ruled_narrow', 'ruled_wide', 'dot_grid', 'square_grid', 'graph_mm', 'isometric', 'cornell', 'todo', 'planner_day', 'planner_week', 'music'];
 
@@ -73,6 +74,7 @@ export function NewNoteSheet({ anchor, open, onClose, notebookId, onImport }: { 
           <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
           <span>Use this paper for new notes</span>
         </label>
+        <TemplateChoices open={open} notebookId={notebookId} onCreated={(id) => { onClose(); navigate({ name: 'editor', noteId: id }); }} />
         <div className="new-sheet-actions">
           <button type="button" className="btn" onClick={onImport}><FileUp size={16} /> Open file</button>
           <button type="button" className="btn btn-primary" onClick={() => void create()}>Create</button>

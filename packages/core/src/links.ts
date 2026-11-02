@@ -374,3 +374,69 @@ export function inkLinksFromRecognition(page: PageInk, lines: readonly Recognize
   }
   return out;
 }
+
+
+// ---- Suggestions -----------------------------------------------------------------------------
+
+const fold = (s: string) => s.normalize('NFD').replace(/\p{Mn}+/gu, '').toLowerCase();
+
+/**
+ * How well [query] matches [text] for link autocomplete; negative when it doesn't. Substrings win
+ * (more at the start or at a word start), then in-order letters ("bio lb" → "Biology lab").
+ */
+export function fuzzyScore(query: string, text: string): number {
+  const q = fold(query).trim();
+  const t = fold(text);
+  if (!q) return 1;
+  const at = t.indexOf(q);
+  if (at >= 0) {
+    const wordStart = at === 0 || /[^\p{L}\p{N}]/u.test(t[at - 1]!);
+    return 100 + (at === 0 ? 40 : wordStart ? 20 : 0) - at * 0.3 - (t.length - q.length) * 0.05;
+  }
+  let score = 0;
+  let ti = 0;
+  let run = 0;
+  for (const ch of q) {
+    if (ch === ' ') { run = 0; continue; }
+    const found = t.indexOf(ch, ti);
+    if (found < 0) return -1;
+    run = found === ti ? run + 1 : 1;
+    const wordStart = found === 0 || /[^\p{L}\p{N}]/u.test(t[found - 1]!);
+    score += 1 + run * 0.6 + (wordStart ? 2 : 0) - Math.min(3, (found - ti) * 0.08);
+    ti = found + 1;
+  }
+  return score;
+}
+
+/** Notes for `[[…` autocomplete: best fuzzy title matches, ties to the most recently edited. */
+export function suggestNotes(query: string, notes: readonly NoteMeta[], opts: { limit?: number; exclude?: string } = {}): NoteMeta[] {
+  return notes
+    .filter((n) => n.trashedAt == null && n.id !== opts.exclude)
+    .map((n) => ({ n, s: fuzzyScore(query, n.title) }))
+    .filter((x) => x.s >= 0)
+    .sort((a, b) => b.s - a.s || b.n.updatedAt - a.n.updatedAt)
+    .slice(0, opts.limit ?? 8)
+    .map((x) => x.n);
+}
+
+export type LinkTrigger =
+  | { kind: 'note'; query: string; start: number }
+  | { kind: 'page'; title: string; query: string; start: number }
+  | { kind: 'tag'; query: string; start: number };
+
+/**
+ * What the user is typing at the caret: an open `[[link` (with the note part and, after `#`, the
+ * page part) or a `#tag`. Null when neither.
+ */
+export function linkTrigger(textBefore: string): LinkTrigger | null {
+  const m = /\[\[([^[\]\n|]*)$/.exec(textBefore);
+  if (m) {
+    const inner = m[1]!;
+    const hash = inner.indexOf('#');
+    if (hash >= 0) return { kind: 'page', title: inner.slice(0, hash), query: inner.slice(hash + 1), start: m.index };
+    return { kind: 'note', query: inner, start: m.index };
+  }
+  const t = /(^|[\s(,;])#([\p{L}\p{N}_/-]*)$/u.exec(textBefore);
+  if (t) return { kind: 'tag', query: t[2]!, start: t.index + t[1]!.length };
+  return null;
+}

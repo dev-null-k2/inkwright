@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  NoteDocument, findMentions, formatWikiLink, inkLinksFromRecognition, linkFirstMention, linkLabel, newNote, newPage, noteLinkOccurrences,
+  NoteDocument, findMentions, formatWikiLink, fuzzyScore, inkLinksFromRecognition, linkTrigger, suggestNotes, linkFirstMention, linkLabel, newNote, newPage, noteLinkOccurrences,
   parseTags, parseWikiLinks, renameLinksInPage, renameLinksInText, resolveWikiTarget, stripWikiLinks, syncInlineTags,
   type NoteMeta, type NotebookMeta, type PageInk,
 } from '../src/index.ts';
@@ -155,5 +155,26 @@ describe('ink links in the document', () => {
     const dup = doc.page(i);
     expect(dup.links![0]!.strokeIds).toEqual([dup.strokes[0]!.id]);
     expect(dup.links![0]!.id).not.toBe('L');
+  });
+});
+
+
+describe('suggestions', () => {
+  it('ranks fuzzy title matches', () => {
+    const notes = [note('1', 'Biology lab', { updatedAt: 1 }), note('2', 'Microbiology'), note('3', 'Big ideas'), note('4', 'Chemistry'), note('5', 'Biology', { trashedAt: 1 })];
+    expect(suggestNotes('bio', notes).map((n) => n.title)).toEqual(['Biology lab', 'Microbiology']);
+    expect(suggestNotes('bg id', notes).map((n) => n.title)).toEqual(['Big ideas']);
+    expect(suggestNotes('', notes, { limit: 2 })).toHaveLength(2);
+    expect(fuzzyScore('xyz', 'Biology')).toBeLessThan(0);
+  });
+
+  it('detects what is being typed at the caret', () => {
+    expect(linkTrigger('see [[Bio')).toEqual({ kind: 'note', query: 'Bio', start: 4 });
+    expect(linkTrigger('see [[Bio#Pa')).toEqual({ kind: 'page', title: 'Bio', query: 'Pa', start: 4 });
+    expect(linkTrigger('see [[Bio]] and')).toBeNull();
+    expect(linkTrigger('see [[Bio|ali')).toBeNull();
+    expect(linkTrigger('idea #proj')).toEqual({ kind: 'tag', query: 'proj', start: 5 });
+    expect(linkTrigger('#')).toEqual({ kind: 'tag', query: '', start: 0 });
+    expect(linkTrigger('issue#1')).toBeNull();
   });
 });

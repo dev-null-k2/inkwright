@@ -13,6 +13,7 @@ import { BrandMark } from '../ui/Brand.tsx';
 import { InkRipple, NotebookCover } from '../ui/Cover.tsx';
 import { syncNow, useSync } from '../lib/sync.ts';
 import { OPENABLE, useFileDrop } from '../lib/openFiles.ts';
+import { GraphNavItem, TodayNavItem } from '../ui/knowledge/LibraryParts.tsx';
 
 export function Library() {
   const { notes, trash, notebooks, filter, setFilter, query, setQuery, navigate, vault } = useApp();
@@ -90,9 +91,11 @@ export function Library() {
         {!wide && <IconButton label="Close" onClick={() => setDrawer(false)}><X size={18} /></IconButton>}
       </div>
       <NavItem icon={<BookOpen size={17} />} label="All notes" count={notes.length} on={filter.kind === 'all'} onClick={() => { setFilter({ kind: 'all' }); setDrawer(false); }} />
+      <TodayNavItem onDone={() => setDrawer(false)} />
       <NavItem icon={<Pin size={17} />} label="Pinned" count={notes.filter((n) => n.pinned).length} on={filter.kind === 'pinned'} onClick={() => { setFilter({ kind: 'pinned' }); setDrawer(false); }} />
       <NavItem icon={<Clock size={17} />} label="This week" on={filter.kind === 'recent'} onClick={() => { setFilter({ kind: 'recent' }); setDrawer(false); }} />
       <NavItem icon={<Inbox size={17} />} label="Unfiled" on={filter.kind === 'unfiled'} onClick={() => { setFilter({ kind: 'unfiled' }); setDrawer(false); }} />
+      <GraphNavItem />
       <div className="lib-nav-head">
         <span>Notebooks</span>
         <IconButton label="New notebook" onClick={async () => { const nb = await createNotebook(); if (nb) setFilter({ kind: 'notebook', id: nb.id }); }}><Plus size={16} /></IconButton>
