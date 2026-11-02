@@ -3,13 +3,14 @@
  * a vault and reports drift; the MCP tools are exercised through the official SDK client.
  */
 import { execFile } from 'node:child_process';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { CodeIndex, CodeStore, codeRefStates, newPage, withCodeBaselines, type NoteMeta } from '@inkstone/core';
+import { parseSkillMd, validateSkillFrontmatter } from '@inkstone/ai';
 import { REPO } from '../../../packages/core/test/dev/fixture-repo.ts';
 import { scanFolderIntoVault } from '../src/dev/repo.ts';
 import { createServices } from '../src/server.ts';
@@ -152,5 +153,15 @@ describe('MCP developer tools', () => {
     } finally {
       await c.close();
     }
+  });
+});
+
+describe('the Agent Skill for coding agents (skills/inkstone-code-notes)', () => {
+  it('is a valid Agent Skill whose commands and tools exist', async () => {
+    const md = await readFile(path.join(repoRoot, 'skills/inkstone-code-notes/SKILL.md'), 'utf8');
+    const { frontmatter, body } = parseSkillMd(md);
+    expect(validateSkillFrontmatter(frontmatter, 'inkstone-code-notes')).toMatchObject({ ok: true, errors: [] });
+    for (const tool of ['code_search', 'code_symbol', 'validate_diagram', 'get_runbook']) expect(body).toContain(tool);
+    for (const cmd of ['scan <repo-folder> --vault', 'drift <vault-folder> --check']) expect(body).toContain(cmd);
   });
 });
