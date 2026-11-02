@@ -1,0 +1,70 @@
+/*
+ * Settings › Modules, Plugins and Developer, plugin frames and panels (modules/, plugins/,
+ * developer/). Duan tokens only; jade (--iron) marks the chosen preset, cinnabar (--seal) only
+ * high-risk permissions.
+ */
+
+.link-btn { padding: 0; border: 0; background: none; color: var(--iron); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+
+/* ---- Modules ---------------------------------------------------------------------------------- */
+.mod-presets { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.mod-preset { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-control); background: var(--raised); color: var(--ink); cursor: pointer; font: inherit; }
+.mod-preset:hover { background: var(--chrome); }
+.mod-preset.is-on { border-color: var(--iron); box-shadow: inset 0 0 0 1px var(--iron); }
+.mod-preset-name { font-family: var(--font-title); font-size: var(--t-lg, 17px); }
+.mod-preset-desc { font-size: 13px; color: var(--ink-2); line-height: 1.4; }
+.mod-list { gap: 0; }
+.mod-row { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.mod-row:last-child { border-bottom: 0; }
+.mod-meta { display: flex; gap: 12px; align-items: center; padding: 0 0 4px; flex-wrap: wrap; }
+.mod-needs { font-size: 12.5px; color: var(--ink-3); }
+.mod-more { display: inline-flex; align-items: center; gap: 4px; padding: 2px 0; border: 0; background: none; color: var(--ink-2); font: inherit; font-size: 13px; cursor: pointer; }
+.mod-chev { transition: transform 0.15s var(--ease-out); }
+.mod-chev.is-open { transform: rotate(180deg); }
+.mod-adds { display: grid; gap: 6px; margin: 4px 0 8px; padding: 10px 12px; background: var(--chrome); border-radius: var(--r-control); font-size: 13px; }
+.mod-adds > div { display: grid; grid-template-columns: minmax(110px, 30%) 1fr; gap: 10px; }
+.mod-adds dt { color: var(--ink-3); }
+.mod-adds dd { margin: 0; color: var(--ink-2); }
+
+/* ---- Plugins ---------------------------------------------------------------------------------- */
+.plg-card { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.plg-card:last-child { border-bottom: 0; }
+.plg-head { display: flex; flex-direction: column; }
+.plg-details { padding: 4px 0 10px; display: grid; gap: 8px; }
+.plg-h { margin: 8px 0 2px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.plg-by { margin: -6px 0 6px; color: var(--ink-3); font-size: 13px; }
+.plg-perms, .plg-adds { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.plg-adds li { font-size: 13.5px; color: var(--ink-2); }
+.plg-perm { display: grid; gap: 2px; padding: 4px 0 4px 10px; border-left: 2px solid var(--line-strong); }
+.plg-perm.is-high { border-left-color: var(--seal); }
+.plg-perm.is-medium { border-left-color: var(--ochre); }
+.plg-cat { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.plg-cat:last-child { border-bottom: 0; }
+.plg-cat-main { display: grid; gap: 2px; min-width: 0; }
+.plg-name { display: inline-flex; align-items: center; gap: 6px; font-weight: 550; }
+.plg-url { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.plg-url .field { flex: 1 1 280px; }
+.plg-settings { display: grid; gap: 8px; }
+.plg-log { font-size: 13px; display: grid; gap: 6px; max-height: 240px; overflow: auto; }
+.plg-log-line.is-error { color: var(--seal); }
+.plugin-frame { width: 100%; border: 0; background: transparent; display: block; color-scheme: normal; }
+.plugin-frame.is-hidden { position: fixed; width: 0; height: 0; left: -10px; top: -10px; visibility: hidden; pointer-events: none; }
+.plg-panel-head { display: flex; align-items: center; gap: 8px; padding: 12px 12px 8px 18px; border-bottom: 1px solid var(--line); }
+.plg-panel-head h2 { margin: 0; font-family: var(--font-title); font-weight: 520; font-size: var(--t-lg, 18px); }
+.plg-panel-head .muted { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plg-panel-body { padding: 14px 18px; overflow: auto; flex: 1; min-height: 0; }
+.plg-panel-body .plugin-frame { height: var(--plg-h, 160px); min-height: 80px; }
+
+/* ---- Developer -------------------------------------------------------------------------------- */
+.dev-key { display: flex; align-items: center; gap: 12px; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.dev-key.is-revoked { opacity: 0.6; }
+.dev-key-main { display: grid; gap: 2px; min-width: 0; }
+.dev-key-shown { padding: 10px 12px; border: 1px solid var(--iron); border-radius: var(--r-control); background: var(--iron-soft); }
+.dev-key-shown p { margin: 0 0 6px; }
+.dev-key-shown pre { user-select: all; word-break: break-all; white-space: pre-wrap; }
+.dev-key-new { display: grid; gap: 10px; padding-top: 8px; }
+.dev-scopes { display: grid; gap: 4px; }
+.dev-check { display: flex; gap: 8px; align-items: baseline; font-size: 14px; cursor: pointer; }
+.dev-links { display: grid; gap: 10px; margin: 0; }
+.dev-links dt code { word-break: break-all; font-size: 12.5px; }
+.dev-links dd { margin: 2px 0 0; color: var(--ink-2); font-size: 13.5px; }

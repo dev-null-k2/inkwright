@@ -1,0 +1,27 @@
+{
+  "$schema": "../../../packages/plugin-api/manifest.schema.json",
+  "id": "app.inkstone.examples.word-count",
+  "name": "Word count & reading time",
+  "version": "1.0.0",
+  "author": "Inkstone",
+  "description": "A panel with the words, characters and reading time of the open note and your selection (typed text and recognized handwriting). Also a command, an assistant tool and a plain-text exporter.",
+  "entry": "main.js",
+  "minAppVersion": "1.0.0",
+  "apiVersion": 1,
+  "permissions": ["notes:read", "editor:read", "events", "ai:tools"],
+  "activation": "onUse",
+  "contributes": {
+    "panels": [{ "id": "stats", "title": "Word count" }],
+    "commands": [{ "id": "count", "title": "Count words in this note", "keywords": "statistics length reading time", "context": "editor" }],
+    "aiTools": [
+      {
+        "name": "reading_time",
+        "description": "Words, characters and estimated reading time (at the user's reading speed) of one note.",
+        "parameters": { "type": "object", "properties": { "noteId": { "type": "string", "description": "Note id." } }, "required": ["noteId"] },
+        "readOnly": true
+      }
+    ],
+    "exporters": [{ "id": "plain-text", "title": "Plain text", "extension": "txt", "mimeType": "text/plain" }],
+    "settings": [{ "key": "wordsPerMinute", "type": "number", "title": "Reading speed (words a minute)", "default": 230 }]
+  }
+}

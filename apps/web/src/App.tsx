@@ -12,10 +12,13 @@ import { BrandMark } from './ui/Brand.tsx';
 import { Palette } from './ui/Palette.tsx';
 import { attachMemory } from './lib/memory.ts';
 import { isNative } from './platform/env.ts';
-import { initAgentHub } from './lib/agent/hub.ts';
-import { startAgents } from './lib/agent/routines.ts';
 import { AgentDialogs } from './ui/agent/shared.tsx';
 import { useKnowledgeShortcuts } from './ui/knowledge/shortcuts.ts';
+import { isModuleOn, startModules, useModule } from './modules/registry.ts';
+import { registerBuiltinModules } from './modules/builtin.ts';
+
+// Every feature declares itself as a module (Settings › Modules); see modules/builtin.ts.
+registerBuiltinModules();
 
 // The graph (three.js) loads only when opened, so it never slows the library or the editor.
 const GraphView = lazy(() => import('./graph/GraphView.tsx'));
@@ -24,6 +27,10 @@ export function App() {
   const { ready, route, error, setVault, refresh, navigate } = useApp();
   const theme = useSettings((s) => s.theme);
   const palette = useSettings((s) => s.palette);
+  const themesOn = useModule('themes');
+  const graphOn = useModule('graph');
+  const searchOn = useModule('search');
+  const assistantOn = useModule('assistant');
   useKnowledgeShortcuts();
 
   useEffect(() => {
@@ -34,12 +41,12 @@ export function App() {
 
   useEffect(() => {
     const root = document.documentElement;
-    if (!palette || palette === 'duan') root.removeAttribute('data-palette');
+    if (!palette || palette === 'duan' || !themesOn) root.removeAttribute('data-palette');
     else root.setAttribute('data-palette', palette);
     // Status bar / browser chrome follows the desk colour.
     const desk = getComputedStyle(root).getPropertyValue('--desk').trim();
     if (desk) document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', desk));
-  }, [palette, theme]);
+  }, [palette, theme, themesOn]);
 
   useEffect(() => {
     let alive = true;
@@ -48,7 +55,7 @@ export function App() {
         const v = await AppVault.open();
         if (!alive) return;
         setVault(v);
-        attachMemory(v); // before the first index build, so search-everything starts complete
+        if (isModuleOn('search')) attachMemory(v); // before the first index build, so search-everything starts complete
         await refresh();
         if (location.hash === '#new') {
           // App shortcut / home-screen action: start writing immediately.
@@ -67,9 +74,10 @@ export function App() {
         await v.buildIndex();
         await v.vault.purgeTrash();
         startSyncLoop();
-        // Assistant: activity log, memory, skills, routines (run while open) and connected apps.
-        // A problem here must never keep the notes from opening.
-        await initAgentHub(v).then(() => { void startAgents(v).catch((e) => console.warn('Routines could not start', e)); }, (e) => console.warn('Assistant features could not start', e));
+        // Modules that are on start their background work: the assistant (activity log, memory,
+        // skills, routines, connected apps), plugins, links from other apps… A problem in one
+        // must never keep the notes from opening.
+        startModules();
       } catch (e) {
         console.error(e);
         useApp.setState({ error: (e as Error).message });
@@ -113,10 +121,11 @@ export function App() {
       {route.name === 'library' && <Library />}
       {route.name === 'editor' && <Editor key={route.noteId} noteId={route.noteId} initialPage={route.page} />}
       {route.name === 'settings' && <Settings section={route.section} />}
-      {route.name === 'graph' && <Suspense fallback={<div className="boot" aria-live="polite"><BrandMark size={44} /></div>}><GraphView /></Suspense>}
-      <Palette />
+      {route.name === 'graph' && !graphOn && <Library />}
+      {route.name === 'graph' && graphOn && <Suspense fallback={<div className="boot" aria-live="polite"><BrandMark size={44} /></div>}><GraphView /></Suspense>}
+      {searchOn && <Palette />}
       <Prompts />
-      <AgentDialogs />
+      {assistantOn && <AgentDialogs />}
       <Toasts />
     </>
   );
