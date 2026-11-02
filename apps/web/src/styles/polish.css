@@ -99,6 +99,20 @@
 .dock.is-right-edge .pen.is-on svg { transform: translate(-42%, -50%) rotate(-90deg); }
 .dock.is-right-edge .pen:hover:not(.is-on) svg { transform: translate(-28%, -50%) rotate(-90deg); }
 
+/* ---------- Device check (devicecheck/DeviceCheck.tsx) ---------- */
+.dc-test { display: flex; flex-direction: column; gap: 12px; }
+.dc-test p { margin: 0; }
+.dc-pad-wrap { position: relative; }
+/* touch-action: none so a finger draws instead of scrolling the dialog. */
+.dc-pad { display: block; width: 100%; height: clamp(160px, 32vh, 260px); border-radius: var(--r-control); background: var(--chrome); border: 1px dashed var(--line-strong); touch-action: none; cursor: crosshair; }
+.dc-count { position: absolute; left: 12px; bottom: 8px; font-size: var(--t-xs); color: var(--ink-3); pointer-events: none; font-variant-numeric: tabular-nums; }
+.dc-clear { position: absolute; right: 6px; top: 6px; }
+.dc-fit { margin: 0; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.dc-fit-bad { color: var(--ochre); font-weight: 600; }
+.dc-report { display: flex; flex-direction: column; gap: 8px; }
+.dc-text { margin: 0; max-height: min(52vh, 460px); overflow: auto; padding: 12px 14px; border-radius: var(--r-control); background: var(--chrome); font-family: var(--font-mono); font-size: var(--t-xs); line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+.dialog-actions { flex-wrap: wrap; }
+
 /* A setting found by search: a brief jade ring ("you are here"), then calm again. */
 .is-found { border-radius: 12px; animation: set-found 1.8s var(--ease-out); }
 @keyframes set-found { 0%, 55% { box-shadow: 0 0 0 3px var(--iron-soft), 0 0 0 1px var(--iron); background: var(--iron-soft); } 100% { box-shadow: 0 0 0 0 transparent; } }

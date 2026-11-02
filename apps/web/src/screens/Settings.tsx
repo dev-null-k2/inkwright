@@ -34,6 +34,7 @@ import { isModuleOn } from '../modules/registry.ts';
 import { SettingsLayout } from '../settings/SettingsLayout.tsx';
 import { TrustSection, TRUST_VIEWS } from '../settings/TrustSection.tsx';
 import type { SectionId } from '../settings/groups.ts';
+import { DeviceCheckButton } from '../devicecheck/DeviceCheck.tsx';
 import { MemoryEvalSection } from '../compiler/ui/MemoryEvalSection.tsx';
 import { InkActionsSettings, ReadingSettings } from '../inkactions/Settings.tsx';
 import { DevicesSection } from '../peer/DevicesSection.tsx';
@@ -494,6 +495,11 @@ function AboutSection() {
         <p>{notes.length} notes · {vault?.persistent ? 'stored on this device' : 'this session only (storage blocked)'}{usage ? ` · ${usage}` : ''}</p>
         <p className="muted small">Everything is plain files in an open format (docs/VAULT_FORMAT.md). No account is required and nothing is sent anywhere unless you turn on sync or use AI.</p>
       </Group>
+      {isModuleOn('device-check') && (
+        <Group title="This device" note="Measures the pen, the screen and how fast ink appears, and makes a report you can copy or share, for example with a bug report.">
+          <div className="row-buttons"><DeviceCheckButton /></div>
+        </Group>
+      )}
       <Group title="Reset">
         <button type="button" className="btn btn-danger-ghost" onClick={async () => { if (await askConfirm('Reset settings?', 'Pens, gestures, feel and AI choices go back to defaults. Your notes and saved keys are not touched.', 'Reset', true)) s.update(() => ({ ...DEFAULT_SETTINGS, ai: s.ai, sync: s.sync, onboardingDone: s.onboardingDone })); }}>Reset settings to defaults</button>
       </Group>

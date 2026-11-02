@@ -244,6 +244,13 @@ export const BUILTIN_MODULES: ModuleDefinition[] = [
   },
   // Ink that does things: AI answers in ink, executable diagrams, data, photo to ink, reading, papers.
   ...INK_ACTION_MODULES,
+  {
+    id: 'device-check',
+    name: 'Device check',
+    description: 'Settings › About › Check this device: measures the pen, the screen and how fast ink appears on this device, and makes a report to copy or share.',
+    defaultEnabled: true,
+    contributes: { panels: ['Check this device'] },
+  },
 ];
 
 const ALL = BUILTIN_MODULES.map((m) => m.id);
