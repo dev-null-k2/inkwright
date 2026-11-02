@@ -24,6 +24,13 @@ export interface AskDeps {
   search: (q: string, opts: { limit: number; signal?: AbortSignal }) => Promise<{ results: RankedChunk[]; semantic: boolean }>;
   ai: { provider: Provider; model: string; label: string };
   updatedAt?: (noteId: string) => number | undefined;
+  /**
+   * The AI policy's view of notes (from lib/trust): passages from notes AI may not see are
+   * dropped, and the notes that are used are reported so a local-only one keeps the answer on
+   * this device.
+   */
+  canSee?: (noteId: string) => boolean;
+  saw?: (noteIds: string[]) => void;
 }
 
 export const SOURCE_KIND: Record<AskSource['source'], string> = { text: 'typed text', handwriting: 'handwriting', pdf: 'PDF', meta: 'note details', speech: 'what was said' };
@@ -62,7 +69,10 @@ export async function askNotes(
   deps: AskDeps,
   hooks: { onSources?: (s: AskSource[], semantic: boolean) => void; onDelta?: (textSoFar: string) => void; signal?: AbortSignal; limit?: number } = {},
 ): Promise<{ answer: string; sources: AskSource[]; label: string }> {
-  const { results, semantic } = await deps.search(question, { limit: hooks.limit ?? 8, signal: hooks.signal });
+  const found = await deps.search(question, { limit: hooks.limit ?? 8, signal: hooks.signal });
+  const { semantic } = found;
+  const results = deps.canSee ? found.results.filter((r) => deps.canSee!(r.noteId)) : found.results;
+  deps.saw?.([...new Set(results.map((r) => r.noteId))]);
   const sources = toSources(results);
   hooks.onSources?.(sources, semantic);
   const day = (t?: number) => (t ? new Date(t).toISOString().slice(0, 10) : undefined);

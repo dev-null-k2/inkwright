@@ -4,6 +4,7 @@ import type { MemoryHit, MemorySearchHost } from '@inkstone/ai';
 import { loadPdfJs } from '../canvas/assets.ts';
 import type { AppVault } from './vault.ts';
 import { currentEmbedder, onLocalAIChange, type Embedder } from './localai.ts';
+import { aiMaySend } from './trust/state.ts';
 import { loadNoteTranscripts } from './listen/transcripts.ts';
 
 /**
@@ -237,7 +238,11 @@ export class AppMemory implements MemorySearchHost {
         if (emb.key !== this.embedderKey) await this.loadVectors(emb);
         const batch: MemoryChunk[] = [];
         const seen = new Set<string>();
+        // A provider's embedding endpoint is a cloud call: notes the AI policy keeps on the device
+        // (or hides from AI) are not sent; they stay findable by keyword.
+        const remote = emb.key.startsWith('provider:');
         for (const noteId of [...this.pending]) {
+          if (remote && !aiMaySend(noteId)) { this.pending.delete(noteId); continue; }
           const missing = this.corpus.chunksOf(noteId).filter((c) => !this.vectors.has(c.hash) && !seen.has(c.hash));
           if (!missing.length) { this.pending.delete(noteId); continue; }
           for (const c of missing) { seen.add(c.hash); if (batch.length < 24) batch.push(c); }

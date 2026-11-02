@@ -546,3 +546,18 @@ export class PolicyBlockedError extends Error {
 export function isPolicyBlocked(e: unknown): e is PolicyBlockedError {
   return !!e && typeof e === 'object' && (e as { code?: string }).code === 'policy_blocked';
 }
+
+/**
+ * Whether an endpoint runs on this machine (Ollama, LM Studio, llama.cpp on localhost): such a
+ * provider counts as "this device" for routing and is not redacted. A LAN or company server does
+ * not count unless the deployment says so (the server's `--ai-on-premises`).
+ */
+export function isLoopbackUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  try {
+    const h = new URL(url).hostname.replace(/^\[|\]$/g, '');
+    return h === 'localhost' || h.endsWith('.localhost') || h === '::1' || /^127\.\d+\.\d+\.\d+$/.test(h);
+  } catch {
+    return false;
+  }
+}
