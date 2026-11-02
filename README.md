@@ -8,13 +8,13 @@
 **A handwriting notebook that feels like paper, thinks with any AI, and answers you in ink.**<br>
 Local-first. Bring your own model, or none. Open source. No server of ours, anywhere.
 
-[Open the app](https://karthikkasukurti.github.io/inkwright/app/) ·
-[Download for Android](https://github.com/karthikkasukurti/inkwright/releases/latest) ·
+[Open the app](https://dev-null-k2.github.io/inkwright/app/) ·
+[Download for Android](https://github.com/dev-null-k2/inkwright/releases/latest) ·
 [Docs](docs/ARCHITECTURE.md) ·
 [API](docs/API.md) ·
 [中文](docs/i18n/README.zh-CN.md) · [日本語](docs/i18n/README.ja.md) · [Español](docs/i18n/README.es.md)
 
-[![CI](https://github.com/karthikkasukurti/inkwright/actions/workflows/ci.yml/badge.svg)](https://github.com/karthikkasukurti/inkwright/actions/workflows/ci.yml)
+[![CI](https://github.com/dev-null-k2/inkwright/actions/workflows/ci.yml/badge.svg)](https://github.com/dev-null-k2/inkwright/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-2b2330)](LICENSE)
 ![Runs on](https://img.shields.io/badge/runs_on-Android_·_iPad_·_Mac_·_Windows_·_Linux_·_web-356b53)
 ![Server](https://img.shields.io/badge/server_required-none-356b53)
@@ -134,12 +134,12 @@ Every number below comes from an eval or test in this repository and can be re-r
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/section-start-dark.svg"><img alt="Start in a minute" src="docs/media/section-start-light.svg" height="52"></picture>
 
-- **In a browser:** [open the app](https://karthikkasukurti.github.io/inkwright/app/). It installs as an offline app on Mac, Windows, Linux, ChromeOS and iPad. Your notes stay in the browser until you connect Google Drive, WebDAV or a folder.
-- **Android:** download the APK from [Releases](https://github.com/karthikkasukurti/inkwright/releases/latest). Google Play is coming.
+- **In a browser:** [open the app](https://dev-null-k2.github.io/inkwright/app/). It installs as an offline app on Mac, Windows, Linux, ChromeOS and iPad. Your notes stay in the browser until you connect Google Drive, WebDAV or a folder.
+- **Android:** download the APK from [Releases](https://github.com/dev-null-k2/inkwright/releases/latest). Google Play is coming.
 - **From source:**
 
 ```sh
-git clone https://github.com/karthikkasukurti/inkwright && cd inkwright
+git clone https://github.com/dev-null-k2/inkwright && cd inkwright
 npm install
 npm run dev        # http://localhost:5173
 npm test           # unit tests and evals
@@ -182,6 +182,6 @@ See [ROADMAP.md](ROADMAP.md). Next up: the iOS App Store build, Google Play, liv
 
 An *inkwright* is someone who makes ink. The name fits a tool that makes ink do more: it turns strokes into meaning, and meaning back into strokes. The headings in this README were written by the app's own pen (`packages/core/src/handwrite.ts`, using single-line fonts under the OFL) and replay in the timing the synthesiser produced. Run `npm run art` to regenerate them.
 
-Inkwright is built by [Karthik Kasukurti](https://github.com/karthikkasukurti). Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md). Security reports go through [SECURITY.md](SECURITY.md).
+Inkwright is built by [Karthik Kasukurti](https://github.com/dev-null-k2). Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md). Security reports go through [SECURITY.md](SECURITY.md).
 
 Licensed under [Apache-2.0](LICENSE). Fonts and third-party notices are listed in [NOTICE](NOTICE).

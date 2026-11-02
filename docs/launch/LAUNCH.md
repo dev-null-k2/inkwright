@@ -34,7 +34,7 @@ A few things that might be interesting to HN:
 - **The notebook is also an MCP server** (spec 2026-07-28), an A2A agent, and a REST API with OpenAPI 3.1 and webhooks. `[[code:src/api.ts#createOrder]]` links a note to a function and flags it when the signature drifts.
 - **No server of ours.** It's static files plus your own Google Drive, WebDAV or folder, plus your own key or an on-device model.
 
-Repo: https://github.com/karthikkasukurti/inkwright. The web app runs in the browser, and there's an Android APK. I'd love feedback from anyone who writes with a stylus, and from anyone who has thoughts on the trust layer's design.
+Repo: https://github.com/dev-null-k2/inkwright. The web app runs in the browser, and there's an Android APK. I'd love feedback from anyone who writes with a stylus, and from anyone who has thoughts on the trust layer's design.
 
 ---
 
@@ -50,7 +50,7 @@ Repo: https://github.com/karthikkasukurti/inkwright. The web app runs in the bro
 
 5/ It's also an MCP server, an A2A agent and a REST API. Your notebook becomes context for Claude Code, Cursor and your scripts. Notes linked to code get flagged when the code drifts.
 
-6/ Apache-2.0. Web, Android, iPad, Mac, Windows. github.com/karthikkasukurti/inkwright ⭐
+6/ Apache-2.0. Web, Android, iPad, Mac, Windows. github.com/dev-null-k2/inkwright ⭐
 
 ---
 
@@ -93,7 +93,7 @@ Title pattern: "I built an open-source handwriting notebook where the AI answers
 ## GitHub repository settings (before going public)
 
 - **About:** "The handwriting notebook that writes back. Paper-feel ink, an agent that answers in ink, notes as plain files. Local-first, any AI, no server."
-- **Website:** https://karthikkasukurti.github.io/inkwright/
+- **Website:** https://dev-null-k2.github.io/inkwright/
 - **Topics:** `handwriting`, `note-taking`, `stylus`, `local-first`, `ai-agents`, `mcp`, `model-context-protocol`, `byok`, `on-device-ai`, `obsidian`, `pwa`, `capacitor`, `android`, `typescript`, `knowledge-graph`
 - **Social preview:** upload `docs/media/social.png` (Settings › General › Social preview).
 - **Pages:** Settings › Pages › Source: GitHub Actions. The `pages.yml` workflow publishes the landing page and the app under `/app/`.

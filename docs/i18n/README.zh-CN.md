@@ -5,7 +5,7 @@
 **像纸一样书写，与任何 AI 一起思考，并用墨迹回答你的手写笔记本。**<br>
 本地优先 · 自带模型（或完全不用）· 开源 · 不需要我们的任何服务器
 
-[打开应用](https://karthikkasukurti.github.io/inkwright/app/) · [下载 Android 版](https://github.com/karthikkasukurti/inkwright/releases/latest) · [English](../../README.md)
+[打开应用](https://dev-null-k2.github.io/inkwright/app/) · [下载 Android 版](https://github.com/dev-null-k2/inkwright/releases/latest) · [English](../../README.md)
 
 </div>
 
@@ -26,7 +26,7 @@ Inkwright 从笔开始：墨迹在下一帧之前就出现在笔尖下，涂抹�
 ## 开始使用
 
 ```sh
-git clone https://github.com/karthikkasukurti/inkwright && cd inkwright
+git clone https://github.com/dev-null-k2/inkwright && cd inkwright
 npm install
 npm run dev
 ```

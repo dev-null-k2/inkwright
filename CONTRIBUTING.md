@@ -13,7 +13,7 @@ Thanks for wanting to help. Inkwright is a handwriting-first notebook with an ag
 ## Setting up
 
 ```bash
-git clone https://github.com/karthikkasukurti/inkwright && cd inkwright
+git clone https://github.com/dev-null-k2/inkwright && cd inkwright
 npm install
 npm run dev            # http://localhost:5173
 ```

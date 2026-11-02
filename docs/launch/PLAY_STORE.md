@@ -11,7 +11,7 @@ Everything Play asks for is already in this repository. This page walks through 
 | App icon 512×512 | `fastlane/metadata/android/en-US/images/icon.png` |
 | Feature graphic 1024×500 | `fastlane/metadata/android/en-US/images/featureGraphic.jpg` |
 | Phone, 7-inch and 10-inch screenshots | `fastlane/metadata/android/en-US/images/{phone,sevenInch,tenInch}Screenshots/`. Regenerate them with `STORE=docs/store/screenshots npx playwright test e2e/store.spec.ts --project desktop` (run in `apps/web`), then `node scripts/brand/store-frames.mjs`. |
-| Privacy policy URL | `https://karthikkasukurti.github.io/inkwright/privacy.html`, built from `docs/PRIVACY.md` by the Pages workflow |
+| Privacy policy URL | `https://dev-null-k2.github.io/inkwright/privacy.html`, built from `docs/PRIVACY.md` by the Pages workflow |
 | Release notes | `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt` |
 | Target API level | `targetSdk 36` (Android 16), which is what Play requires for new apps and updates from 31 August 2026 |
 
@@ -33,7 +33,7 @@ Play Console › **Create app**:
 
 | Section | Answer |
 |---|---|
-| Privacy policy | `https://karthikkasukurti.github.io/inkwright/privacy.html` |
+| Privacy policy | `https://dev-null-k2.github.io/inkwright/privacy.html` |
 | App access | All functionality is available without special access |
 | Ads | No ads |
 | Content rating | Fill in the questionnaire. Category: Productivity/Utility. No violence, sexual content, gambling or drugs. Users can share content and the app connects to AI chat services the user chooses, so answer **Yes** to "users can interact or exchange content" only if you count live page sharing; it's between the user's own invitees. You'll most likely get *Everyone* or *Teen*. |

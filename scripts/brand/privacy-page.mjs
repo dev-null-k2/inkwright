@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Renders docs/PRIVACY.md to site/privacy.html — the public privacy policy URL Google Play needs
- * (https://karthikkasukurti.github.io/inkwright/privacy.html). The Markdown stays the source of
+ * (https://dev-null-k2.github.io/inkwright/privacy.html). The Markdown stays the source of
  * truth; the Pages workflow regenerates this file on every deploy.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -12,7 +12,7 @@ import { marked } from 'marked';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const md = readFileSync(join(root, 'docs', 'PRIVACY.md'), 'utf8')
   // Links to other docs point at the repository.
-  .replace(/\]\((?!https?:)([A-Z_]+\.md)(#[^)]*)?\)/g, '](https://github.com/karthikkasukurti/inkwright/blob/main/docs/$1$2)');
+  .replace(/\]\((?!https?:)([A-Z_]+\.md)(#[^)]*)?\)/g, '](https://github.com/dev-null-k2/inkwright/blob/main/docs/$1$2)');
 const body = marked.parse(md);
 const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
