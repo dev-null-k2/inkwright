@@ -210,9 +210,15 @@ export async function signIn(id: string): Promise<void> {
 }
 
 /** Completes a sign-in from the redirect's query string (popup message or full-page return). */
+const handledStates = new Set<string>();
+
 export async function completeSignIn(search: string): Promise<{ ok: boolean; message?: string }> {
   const cb = parseOAuthCallback(search);
   if (!cb) return { ok: false, message: 'Not a sign-in response.' };
+  // The popup reports through two channels (BroadcastChannel and postMessage): redeem once.
+  const state = cb.params.get('state') ?? '';
+  if (handledStates.has(state)) return { ok: true };
+  handledStates.add(state);
   const cfg = config(cb.serverId);
   if (!cfg) return { ok: false, message: 'That connection was removed.' };
   if (cb.error) {
@@ -268,7 +274,11 @@ export function setToolSettings(id: string, tool: string, patch: Partial<McpTool
 }
 
 /** Connects every enabled server (on start) and resumes polling of background tasks. */
+let started = false;
+
 export async function startConnectedApps(): Promise<void> {
+  if (started) return;
+  started = true;
   if (typeof BroadcastChannel !== 'undefined') {
     const ch = new BroadcastChannel(OAUTH_CHANNEL);
     ch.onmessage = (e) => { if (typeof e.data?.search === 'string') void completeSignIn(e.data.search); };
