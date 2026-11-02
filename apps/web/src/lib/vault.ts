@@ -88,12 +88,16 @@ export class AppVault {
   }
 
   indexNote(note: NoteMeta, pages: PageInk[]) {
+    // Never index the content of a locked note (callers pass blank views; this is the backstop).
+    if (note.lock) pages = pages.map((p) => ({ id: p.id, strokes: [], formatVersion: p.formatVersion }));
     this.search.indexNote(note, pages);
     this.knowledge.update(note, pages);
   }
 
   /** First-page thumbnail as a data URL, cached per note version. */
   async thumbnail(note: NoteMeta): Promise<string | null> {
+    // Locked notes show a frosted cover instead (their pages are encrypted).
+    if (note.lock) return null;
     const c = this.thumbs.get(note.id);
     if (c && c.at === note.updatedAt) return c.url;
     const key = `${note.id}@${note.updatedAt}`;

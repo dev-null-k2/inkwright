@@ -109,7 +109,9 @@ export function SmartLayer({ doc, engine, vault, host, tool, apiRef }: SmartLaye
       const key = `read:${enc.loopId}`;
       if (dismissed.current.has(key)) return;
       void (async () => {
-        const auto = await canReadAutomatically();
+        // Locked notes are never sent to an AI on their own.
+        const auto0 = await canReadAutomatically();
+        const auto = doc.meta.lock && auto0 === 'ai' ? false : auto0;
         if (auto) {
           const c = await readForActions(ctx, pageIndex, enc.enclosedIds, auto === 'ai').catch(() => null);
           if (c && (c.event || c.links.length || c.tasks)) setCard({ ...c, anchor: enc.rect });
@@ -234,11 +236,18 @@ export function SmartLayer({ doc, engine, vault, host, tool, apiRef }: SmartLaye
     const t0 = active, pageIndex = activeTable.pageIndex;
     let last = { dx: 0, dy: 0 };
     setDrag({ kind, index, dx: 0, dy: 0 });
-    const move = (ev: PointerEvent) => { last = { dx: (ev.clientX - x0) / zoom, dy: (ev.clientY - y0) / zoom }; setDrag({ kind, index, ...last }); };
+    const box = { minX: t0.x, minY: t0.y, maxX: colEdges(t0).at(-1)!, maxY: rowEdges(t0).at(-1)! };
+    const move = (ev: PointerEvent) => {
+      last = { dx: (ev.clientX - x0) / zoom, dy: (ev.clientY - y0) / zoom };
+      // Moving and stretching a table snaps to guides (studio snapping).
+      if (kind === 'move' || kind === 'size') last = engine.snapDrag(pageIndex, box, last.dx, last.dy, { exclude: new Set([t0.id]), mode: kind === 'size' ? 'size' : 'move', free: ev.altKey });
+      setDrag({ kind, index, ...last });
+    };
     const up = () => {
       el.removeEventListener('pointermove', move);
       el.removeEventListener('pointerup', up);
       el.removeEventListener('pointercancel', up);
+      engine.clearGuides();
       setDrag(null);
       const { dx, dy } = last;
       if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;

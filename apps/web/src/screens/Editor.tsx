@@ -4,7 +4,7 @@ import {
   AudioLines, Mic, MoreHorizontal, Pause, Play, Sparkles, Square, Tag, Trash2, Maximize2, FilePlus2, Copy, Scan, Search,
   Signature, FileUp, Fingerprint,
 } from 'lucide-react';
-import { newId, PAGE_SIZE_PRESETS, pagePaper, pageSizeOf, type ImageItem, type InkStroke, type TextBox } from '@inkstone/core';
+import { newId, NoteLockedError, PAGE_SIZE_PRESETS, pagePaper, pageSizeOf, type ImageItem, type InkStroke, type TextBox } from '@inkstone/core';
 import { InkEngine, type SelectionInfo, type Tool, type ToolState } from '../canvas/engine.ts';
 import { inspectPdf } from '../canvas/assets.ts';
 import { EditorSession } from '../lib/session.ts';
@@ -35,6 +35,8 @@ import { SmartLayer, SmartSelectionActions, type SmartApi } from '../smart/Smart
 import { AuthorshipDialog, useAuthorshipDevice } from '../authorship/AuthorshipPanel.tsx';
 import { useFocusRequests } from '../lib/focus.ts';
 import { openPalette, usePaletteActions } from '../lib/palette.ts';
+import { currentLayer, useStudio } from '../studio/EditorStudio.tsx';
+import { LockGate } from '../studio/LockDialogs.tsx';
 
 declare const __E2E__: boolean;
 /** Test builds (`vite build --mode e2e`) expose the document to end-to-end tests; releases never do. */
@@ -83,6 +85,9 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   // Smart ink (tables, solving, dates) and proof of authorship.
   const smartApi = useRef<SmartApi | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
+  // Locked notes: the passcode gate shows until the note is unlocked, then the note opens.
+  const [lockedGate, setLockedGate] = useState(false);
+  const [openTick, setOpenTick] = useState(0);
 
   // ---- Open the note ---------------------------------------------------------------------------
   useEffect(() => {
@@ -94,10 +99,11 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
       if (!x) return setMissing(true);
       s = x;
       x.onSaved = (st) => setSaveState(st === 'saving' ? 'saving' : st === 'error' ? 'error' : 'saved');
+      setLockedGate(false);
       setSession(x);
-    });
+    }).catch((e) => { if (e instanceof NoteLockedError) setLockedGate(true); else throw e; });
     return () => { alive = false; void s?.close(); };
-  }, [vault, noteId]);
+  }, [vault, noteId, openTick]);
 
   const doc = session?.doc ?? null;
   useEffect(() => (doc ? doc.subscribe(() => bump((x) => x + 1)) : undefined), [doc]);
@@ -111,7 +117,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
 
   const toolState = useCallback((t: Tool): ToolState => {
     const s = useSettings.getState();
-    return { tool: t, preset: activePreset(s), eraserMode: s.eraserMode, eraserSize: s.eraserSize };
+    return { tool: t, preset: activePreset(s), eraserMode: s.eraserMode, eraserSize: s.eraserSize, eraserFilter: s.eraserFilter, tape: s.tape, layer: currentLayer() };
   }, []);
 
   // ---- Engine ----------------------------------------------------------------------------------
@@ -389,7 +395,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   };
 
   // The text tool in a table cell types into the cell.
-  live.current = { seekTo, editText: (req) => { if (req.isNew && smartApi.current?.editCellAt(req.pageIndex, req.box.x, req.box.y + 12)) return; startTextEdit(req); } };
+  live.current = { seekTo, editText: (req) => { if (req.isNew && (studio.editStickyAt(req.pageIndex, req.box.x, req.box.y + 12) || smartApi.current?.editCellAt(req.pageIndex, req.box.x, req.box.y + 12))) return; startTextEdit(req); } };
 
   // Leaving the editor stops playback and frees the audio.
   useEffect(() => () => {
@@ -448,10 +454,16 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
 
   // Links, backlinks, ink links, templates (ui/knowledge/EditorParts.tsx).
   const kb = useKnowledgeEditor({ doc, engine, session, onPanel: () => setPanel('links') });
+  // Two-page view, layers, sticky notes, tape, snapping, version history, locking (studio/).
+  const studio = useStudio({ doc, engine, session, vault, host: host.current, tool, view, menuAnchor: btn.more.current });
   // [[Wiki links]]: open the note with that title (at its page), or create it (like Obsidian).
   const openWikiLink = (title: string) => kb.follow(title);
 
   // ---- Render ----------------------------------------------------------------------------------
+  if (lockedGate && vault) {
+    return <LockGate vault={vault} noteId={noteId} onUnlocked={() => setOpenTick((t) => t + 1)} onBack={() => navigate({ name: 'library' })} />;
+  }
+
   if (missing) {
     return (
       <div className="editor-missing">
@@ -484,9 +496,9 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
             {recording != null ? <Square size={16} fill="currentColor" /> : <Mic size={19} />}
           </IconButton>}
           {recording != null && <span className="rec-time">{formatDuration(Date.now() - recording)}</span>}
-          <button type="button" className={cx('ai-btn', panel === 'ai' && 'is-on')} onClick={() => setPanel(panel === 'ai' ? null : 'ai')} aria-pressed={panel === 'ai'}>
+          {!studio.locked && <button type="button" className={cx('ai-btn', panel === 'ai' && 'is-on')} onClick={() => setPanel(panel === 'ai' ? null : 'ai')} aria-pressed={panel === 'ai'}>
             <Sparkles size={17} /><span>AI</span>
-          </button>
+          </button>}
           <button ref={btn.more} type="button" className="icon-btn" aria-label="More" title="More" onClick={() => setMenu('more')}><MoreHorizontal size={19} /></button>
         </div>
       </header>
@@ -496,7 +508,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
           <div ref={host} className="ed-canvas" data-tool={tool} />
           {!session && <div className="ed-loading" aria-live="polite">Opening…</div>}
           {sel && engine && !editingText && (
-            <SelectionBar sel={sel} aiReady={aiReady}
+            <SelectionBar sel={sel} aiReady={aiReady && !studio.locked}
               onDelete={() => engine.deleteSelection()} onDuplicate={() => engine.duplicateSelection()} onCopy={copySel}
               onCut={() => { copySel(); engine.deleteSelection(); }} onRecolor={(c) => engine.recolorSelection(c)}
               onAsk={askAboutSelection} onConvert={() => void convertSelection()} onEditText={editSelectedText}
@@ -515,6 +527,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
           {doc && engine && vault && host.current && (
             <SmartLayer doc={doc} engine={engine} vault={vault} host={host.current} tool={tool} view={view} apiRef={smartApi} />
           )}
+          {studio.parts}
           {dropping && <div className="drop-hint" aria-live="polite"><FileUp size={22} /> Drop to add to this note</div>}
           {latched && <div className="latch-pill" role="status">{settings.input.buttonAction === 'lasso' ? 'Lasso' : settings.input.buttonAction === 'highlighter' ? 'Highlighter' : 'Eraser'} on — press the pen button to switch back</div>}
           {clips.length > 0 && (
@@ -545,7 +558,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
           )}
           <PenDock vertical={sideDock} compact={narrow} tool={tool} activePresetId={settings.activePresetId} latched={latched}
             canUndo={!!doc?.canUndo} canRedo={!!doc?.canRedo} onTool={setTool} onPreset={selectPreset}
-            onUndo={() => engine?.undo()} onRedo={() => engine?.redo()}
+            onUndo={() => engine?.undo()} onRedo={() => engine?.redo()} onAddSticky={studio.addSticky}
             onClearPage={async () => { if (doc && engine && (await askConfirm('Clear this page?', 'Everything on this page is removed. You can undo this.', 'Clear page', true))) doc.clearPage(engine.currentPageIndex); }} />
         </div>
         {sidePanel && panel === 'pages' && (
@@ -617,6 +630,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
           { label: 'Paper', icon: <Files size={16} />, onClick: () => setTimeout(() => setPaperOpen(true), 0) },
           { label: 'Writing sound & feel', icon: <AudioLines size={16} />, hint: settings.feel.sound ? `${Math.round(settings.feel.soundVolume * 100)}%` : 'Off', onClick: () => setTimeout(() => setMenu('feel'), 0) },
           { label: 'Insert', icon: <ImageIcon size={16} />, onClick: () => setTimeout(() => setMenu('insert'), 0) },
+          ...studio.menuItems,
           ...(narrow && !isArtifact ? [{ label: recording != null ? 'Stop recording' : 'Record audio', icon: <Mic size={16} />, onClick: () => void toggleRecording() }] : []),
           { label: 'Export and share', icon: <Download size={16} />, onClick: () => setTimeout(() => setMenu('export'), 0) },
           { label: 'Authorship', icon: <Fingerprint size={16} />, hint: doc?.meta.certificate ? 'Signed' : undefined, onClick: () => setAuthOpen(true) },

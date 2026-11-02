@@ -8,6 +8,7 @@ import {
   paperRoleColor,
   penLook,
   strokeOutline,
+  visibleStrokes,
   type NoteMeta,
   type PageInk,
   type PageSize,
@@ -139,8 +140,10 @@ export async function drawPageItems(pdf: PDFDocument, p: PDFPage, page: PageInk,
     const { drawPageObjectsPdf } = await import('../smart/pdf.ts');
     await drawPageObjectsPdf(pdf, p, page, H, fonts.sans, await pdf.embedFont(StandardFonts.HelveticaBold));
   }
-  const under = page.strokes.filter((s) => penLook(s.pen).underlay);
-  const over = page.strokes.filter((s) => !penLook(s.pen).underlay);
+  // Hidden layers are left out; the drawing layer is drawn before the writing layer.
+  const shown = visibleStrokes(page);
+  const under = shown.filter((s) => penLook(s.pen).underlay);
+  const over = shown.filter((s) => !penLook(s.pen).underlay);
   for (const s of [...under, ...over]) {
     const look = penLook(s.pen);
     const c = hexRgb(s.color);
@@ -182,6 +185,11 @@ export async function drawPageItems(pdf: PDFDocument, p: PDFPage, page: PageInk,
       const png = await pdf.embedPng(await canvasBytes(cv, 'image/png'));
       p.drawImage(png, { x: t.x * K, y: H - (t.y + cv.height / k) * K, width: (cv.width / k) * K, height: (cv.height / k) * K });
     }
+  }
+  // Sticky notes and tape lie over everything.
+  if (page.objects?.some((o) => o.type === 'sticky' || o.type === 'tape')) {
+    const { drawOverlaysPdf } = await import('../studio/pdf.ts');
+    drawOverlaysPdf(p, page, H, fonts.sans);
   }
 }
 

@@ -22,7 +22,7 @@ export async function drawPageObjectsPdf(pdf: PDFDocument, p: PDFPage, page: Pag
   for (const o of page.objects ?? []) {
     if (o.type === 'table') tablePdf(p, o, H, font, bold);
     else if (o.type === 'graph') graphPdf(p, o, H, font);
-    else await mathPdf(pdf, p, o, H);
+    else if (o.type === 'math') await mathPdf(pdf, p, o, H);
   }
 }
 

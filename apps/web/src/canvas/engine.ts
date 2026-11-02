@@ -14,6 +14,27 @@ import {
   argbToCss,
   nominalWidth,
   penLook,
+  DEFAULT_NIB_ANGLE,
+  TAPE_COLORS,
+  TAPE_DEFAULT_WIDTH,
+  editableStroke,
+  eraserAccepts,
+  hitTape,
+  isOverlay,
+  objectRect,
+  overlayAt,
+  snapMove,
+  snapScale,
+  snapSize,
+  snapTargets,
+  strokeIntoSticky,
+  tapeFromDrag,
+  visibleStrokes,
+  type EraserFilter,
+  type PageObject,
+  type SnapGuide,
+  type SnapTargets,
+  type StrokeLayer,
   type AddResult,
   type ImageItem,
   type InkPoint,
@@ -27,7 +48,8 @@ import {
 } from '@inkstone/core';
 import { AssetCache, type AssetLoader } from './assets.ts';
 import { drawPageObjectsFor } from '../smart/render.ts';
-import { PAGE_GAP, Viewport, layoutPages, nearestSlot, slotAt, type DocLayout, type PageSlot } from './layout.ts';
+import { PAGE_GAP, Viewport, layoutPages, nearestSlot, rowHeight, slotAt, type DocLayout, type PageSlot } from './layout.ts';
+import { drawOverlays, drawTape } from '../studio/render.ts';
 import {
   cachedBounds,
   drawImageItem,
@@ -41,7 +63,7 @@ import {
   type DrawContext,
 } from './render.ts';
 
-export type Tool = 'pen' | 'eraser' | 'lasso' | 'text' | 'hand' | 'laser';
+export type Tool = 'pen' | 'eraser' | 'lasso' | 'text' | 'hand' | 'laser' | 'tape';
 export type ButtonAction = 'eraser' | 'precise' | 'lasso' | 'highlighter' | 'none';
 
 export interface PenPreset {
@@ -49,6 +71,8 @@ export interface PenPreset {
   pen: PenType;
   color: string;
   size: number;
+  /** Calligraphy pen: nib angle in degrees (see `InkStroke.nib`). */
+  nibAngle?: number;
 }
 
 export interface ToolState {
@@ -57,6 +81,12 @@ export interface ToolState {
   eraserMode: 'stroke' | 'precise';
   /** Eraser diameter in screen px. */
   eraserSize: number;
+  /** Selective eraser: what the eraser removes (default everything). */
+  eraserFilter?: EraserFilter;
+  /** The layer new strokes go on (default the writing layer). */
+  layer?: StrokeLayer;
+  /** Tape tool: strip width (page units) and colour. */
+  tape?: { width: number; color: string };
 }
 
 export interface InputPrefs {
@@ -69,6 +99,8 @@ export interface InputPrefs {
   pressureCurve: number;
   /** Android: draw the newest part of each pen stroke natively, straight to the screen. */
   instantInk: boolean;
+  /** Snap moved and resized things to guides (default on). A second finger or Alt turns it off for one drag. */
+  snapping?: boolean;
   highlighter: PenPreset;
 }
 
@@ -129,8 +161,9 @@ type Gesture =
   | { kind: 'stroke'; pointerId: number; pageIndex: number; slot: PageSlot; points: InkPoint[]; predicted: InkPoint[]; t0: number; wall: number; preset: PenPreset; shape: InkStroke | null; holdX: number; holdY: number; holdTimer: number; lastTs: number; pen: boolean; raw: boolean; input: PointerKind }
   | { kind: 'erase'; pointerId: number; pageIndex: number; slot: PageSlot; before: PageInk; working: PageInk; last: Vec2 | null; precise: boolean; t0: number }
   | { kind: 'lasso'; pointerId: number; pageIndex: number; slot: PageSlot; points: Vec2[] }
-  | { kind: 'move'; pointerId: number; startX: number; startY: number; dx: number; dy: number; scale: number; mode: 'move' | 'scale'; anchor: Vec2; startDist: number }
-  | { kind: 'pan'; pointerId: number; lastX: number; lastY: number; vx: number; vy: number; lastT: number }
+  | { kind: 'move'; pointerId: number; startX: number; startY: number; dx: number; dy: number; scale: number; mode: 'move' | 'scale'; anchor: Vec2; startDist: number; box: Rect; targets: SnapTargets | null }
+  | { kind: 'pan'; pointerId: number; lastX: number; lastY: number; vx: number; vy: number; lastT: number; sx?: number; sy?: number; st?: number }
+  | { kind: 'tape'; pointerId: number; pageIndex: number; slot: PageSlot; a: Vec2; b: Vec2 }
   | { kind: 'pinch' }
   | { kind: 'laser'; pointerId: number }
   | { kind: 'tap'; pointerId: number; x: number; y: number; t: number; tool: Tool };
@@ -179,6 +212,17 @@ export class InkEngine {
   private destroyed = false;
   private wetDirtyRect: { x: number; y: number; w: number; h: number } | null = null;
   private flash: { el: HTMLDivElement; pageIndex: number; rect: Rect; timer: number } | null = null;
+  /** Two-page view: pages side by side in spreads. */
+  private spreads = false;
+  private restoredView = false;
+  /** Page last written on or scrolled to; picks the current page within a spread. */
+  private focusPage = -1;
+  /** Study mode: tape strips revealed on screen (never saved). */
+  private revealed = new Set<string>();
+  private revealAll = false;
+  private editingStickyId: string | null = null;
+  private guidesSvg: SVGSVGElement;
+  private guides: { pageIndex: number; list: SnapGuide[] } | null = null;
 
   tool: ToolState;
   prefs: InputPrefs;
@@ -201,15 +245,19 @@ export class InkEngine {
     this.cursor = el('div', 'ink-cursor') as HTMLDivElement;
     this.lassoSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     this.lassoSvg.classList.add('ink-lasso');
-    this.overlay.append(this.lassoSvg, this.cursor);
+    this.guidesSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    this.guidesSvg.classList.add('ink-guides');
+    this.guidesSvg.setAttribute('aria-hidden', 'true');
+    this.overlay.append(this.lassoSvg, this.guidesSvg, this.cursor);
     container.append(this.base, this.wet, this.overlay);
     this.bctx = this.base.getContext('2d', { alpha: false })!;
     // Desynchronized: low-latency presentation path for the wet ink layer.
     this.wctx = (this.wet.getContext('2d', { desynchronized: true, alpha: true }) as CanvasRenderingContext2D | null) ?? this.wet.getContext('2d')!;
-    this.layout = layoutPages(doc.meta, doc.pages);
+    this.layout = layoutPages(doc.meta, doc.pages, { spreads: this.spreads });
     if (opts.initialViewport) {
       Object.assign(this.viewport, opts.initialViewport);
       this.fitted = true;
+      this.restoredView = true;
     }
     this.unsubDoc = doc.subscribe(() => this.onDocChanged());
     this.resizeObs = new ResizeObserver(() => this.resize());
@@ -268,9 +316,11 @@ export class InkEngine {
       this.viewport.panY = 40;
     } else {
       const margin = vw < 600 ? 10 : 48;
-      // Phones/foldables fill the width; big screens stop near physical size so a page isn't huge.
-      const z = Math.min(vw >= 1000 ? 1.25 : 2.2, (vw - margin * 2) / this.layout.width);
       const cur = nearestSlot(this.layout, this.viewport.toDoc(0, this.viewport.height / 3).y);
+      // Phones/foldables fill the width; big screens stop near physical size so a page isn't huge.
+      let z = Math.min(vw >= 1000 ? 1.25 : 2.2, (vw - margin * 2) / this.layout.width);
+      // Two-page view fits the whole spread on screen.
+      if (this.layout.spreads) z = Math.min(z, (this.viewport.height - 40) / rowHeight(this.layout, cur));
       this.viewport.zoom = z;
       this.viewport.panX = (vw - this.layout.width * z) / 2;
       this.viewport.panY = this.fitted ? -cur.y * z + 16 : 16;
@@ -283,6 +333,7 @@ export class InkEngine {
   scrollToPage(index: number) {
     const s = this.layout.slots[index];
     if (!s || this.layout.infinite) return;
+    this.focusPage = index;
     this.viewport.panY = -s.y * this.viewport.zoom + 16;
     this.clampView();
     this.invalidate();
@@ -295,6 +346,7 @@ export class InkEngine {
   flashRegion(pageIndex: number, r: Rect, ms = 2200) {
     const slot = this.layout.slots[pageIndex];
     if (!slot) return;
+    this.focusPage = pageIndex;
     const v = this.viewport;
     const ox = slot.infinite ? 0 : slot.x, oy = slot.infinite ? 0 : slot.y;
     const cx = (r.minX + r.maxX) / 2 + ox, cy = (r.minY + r.maxY) / 2 + oy;
@@ -325,7 +377,13 @@ export class InkEngine {
   get currentPageIndex(): number {
     if (this.layout.infinite) return 0;
     const c = this.viewport.toDoc(this.viewport.width / 2, this.viewport.height / 3);
-    return nearestSlot(this.layout, c.y).index;
+    const near = nearestSlot(this.layout, c.y, this.layout.spreads ? c.x : undefined);
+    // In a spread, the page last written on or scrolled to is the current one.
+    if (this.layout.spreads && this.focusPage >= 0) {
+      const f = this.layout.slots[this.focusPage];
+      if (f && f.y === near.y) return f.index;
+    }
+    return near.index;
   }
 
   /** Centre of the visible area of the current page, in page coordinates. */
@@ -351,7 +409,7 @@ export class InkEngine {
   selectAll() {
     const i = this.currentPageIndex;
     const p = this.doc.page(i);
-    this.setSelection({ pageIndex: i, strokes: new Set(p.strokes.map((s) => s.id)), texts: new Set((p.texts ?? []).map((t) => t.id)), images: new Set((p.images ?? []).map((m) => m.id)) });
+    this.setSelection({ pageIndex: i, strokes: new Set(p.strokes.filter((s) => editableStroke(p, s)).map((s) => s.id)), texts: new Set((p.texts ?? []).map((t) => t.id)), images: new Set((p.images ?? []).map((m) => m.id)) });
   }
 
   selectItems(pageIndex: number, sel: { strokes?: Iterable<string>; texts?: Iterable<string>; images?: Iterable<string> }) {
@@ -423,6 +481,107 @@ export class InkEngine {
     this.schedule();
   }
 
+  /**
+   * Two-page view: pages side by side like an open book. Refits so the current spread fills the
+   * screen and keeps the current page in view.
+   */
+  setSpreads(on: boolean, opts: { initial?: boolean } = {}) {
+    if (on === this.spreads) return;
+    const cur = this.currentPageIndex;
+    this.spreads = on;
+    this.layout = layoutPages(this.doc.meta, this.doc.pages, { spreads: on });
+    // Opening a note in two-page view keeps where the reader left off (the saved view was taken in it).
+    if (opts.initial && this.restoredView) { this.clampView(); this.invalidate(); return; }
+    this.fitWidth();
+    this.scrollToPage(cur);
+  }
+
+  get spreadsOn() { return this.spreads; }
+
+  /** Study mode: shows or covers what one tape strip hides (on screen only). */
+  toggleTape(id: string) {
+    if (this.revealed.has(id)) this.revealed.delete(id);
+    else this.revealed.add(id);
+    this.feel?.confirm();
+    this.bumpScene();
+  }
+
+  /** Study mode: reveal or cover every tape strip in the note. */
+  setRevealAll(on: boolean) {
+    this.revealAll = on;
+    this.revealed.clear();
+    this.bumpScene();
+  }
+
+  get tapeRevealAll() { return this.revealAll; }
+  isTapeRevealed(id: string) { return this.revealAll || this.revealed.has(id); }
+
+  /** The sticky note whose text is being typed (its canvas text steps aside for the editor). */
+  setEditingSticky(id: string | null) {
+    this.editingStickyId = id;
+    this.bumpScene();
+  }
+
+  /**
+   * Snapping for things dragged by other layers (tables, sticky notes): returns the snapped move
+   * (or, for `size`, the snapped width/height change) and shows the guides. `free` (Alt, or a
+   * second finger on the page) turns snapping off for this drag, as does the setting.
+   */
+  snapDrag(pageIndex: number, box: Rect, dx: number, dy: number, opts: { exclude?: Set<string>; mode?: 'move' | 'size'; free?: boolean } = {}): { dx: number; dy: number } {
+    if (opts.free || this.prefs.snapping === false || this.touches.size > 0) { this.clearGuides(); return { dx, dy }; }
+    const targets = this.snapTargetsFor(pageIndex, { objects: opts.exclude });
+    const tol = 7 / this.viewport.zoom;
+    if (opts.mode === 'size') {
+      const r = snapSize(box, box.maxX - box.minX + dx, box.maxY - box.minY + dy, targets, tol);
+      this.setGuides(pageIndex, r.guides);
+      return { dx: r.width - (box.maxX - box.minX), dy: r.height - (box.maxY - box.minY) };
+    }
+    const r = snapMove(box, dx, dy, targets, tol);
+    this.setGuides(pageIndex, r.guides);
+    return { dx: r.dx, dy: r.dy };
+  }
+
+  clearGuides() {
+    if (!this.guides) return;
+    this.guides = null;
+    this.guidesSvg.innerHTML = '';
+  }
+
+  private setGuides(pageIndex: number, list: SnapGuide[]) {
+    this.guides = list.length ? { pageIndex, list } : null;
+    this.renderGuides();
+  }
+
+  /** Thin jade lines where a dragged thing lines up (screen coordinates, follow the view). */
+  private renderGuides() {
+    const g = this.guides;
+    if (!g) { this.guidesSvg.innerHTML = ''; return; }
+    const out: string[] = [];
+    for (const l of g.list) {
+      const r = l.axis === 'x' ? this.pageRectToScreen(g.pageIndex, { minX: l.v, minY: l.from, maxX: l.v, maxY: l.to }) : this.pageRectToScreen(g.pageIndex, { minX: l.from, minY: l.v, maxX: l.to, maxY: l.v });
+      out.push(`<line class="is-${l.source}" x1="${r.x.toFixed(1)}" y1="${r.y.toFixed(1)}" x2="${(r.x + r.w).toFixed(1)}" y2="${(r.y + r.h).toFixed(1)}"/>`);
+    }
+    this.guidesSvg.innerHTML = out.join('');
+  }
+
+  /** What a drag on a page can snap to: other items, page edges/centre/margins, the paper's lines. */
+  private snapTargetsFor(pageIndex: number, exclude: { strokes?: Set<string>; texts?: Set<string>; images?: Set<string>; objects?: Set<string> }): SnapTargets {
+    const page = this.doc.page(pageIndex);
+    const slot = this.layout.slots[pageIndex];
+    const items: Rect[] = [];
+    for (const im of page.images ?? []) if (!exclude.images?.has(im.id)) items.push(imageRect(im));
+    for (const t of page.texts ?? []) if (!exclude.texts?.has(t.id)) items.push(textBoxRect(this.bctx, t));
+    for (const o of page.objects ?? []) if (!exclude.objects?.has(o.id)) items.push(objectRect(o as PageObject));
+    // Snapped shapes are drawn things worth lining up with; plain handwriting is not.
+    for (const st of page.strokes) if (st.shape && !exclude.strokes?.has(st.id) && editableStroke(page, st)) items.push(cachedBounds(st));
+    return snapTargets({
+      items,
+      page: slot && !slot.infinite ? { width: slot.w, height: slot.h } : null,
+      paper: page.background ? null : pagePaper(this.doc.meta, page),
+      minPaperGap: 10 / this.viewport.zoom,
+    });
+  }
+
   /** Renders one page (paper, background, ink, text) into a canvas for export and thumbnails. */
   async renderPageToCanvas(pageIndex: number, scale: number, opts: { paper?: boolean } = {}): Promise<HTMLCanvasElement> {
     return renderPageStandalone(this.doc, pageIndex, scale, this.assets, opts);
@@ -444,7 +603,7 @@ export class InkEngine {
   // ---- Layout & rendering ---------------------------------------------------------------------
 
   private onDocChanged() {
-    this.layout = layoutPages(this.doc.meta, this.doc.pages);
+    this.layout = layoutPages(this.doc.meta, this.doc.pages, { spreads: this.spreads });
     if (this.selection) {
       // Drop ids that no longer exist (undo, erase).
       const p = this.doc.pages[this.selection.pageIndex];
@@ -495,6 +654,7 @@ export class InkEngine {
       this.needsBase = false;
       this.renderBase();
       this.updateSelectionOverlay();
+      this.renderGuides();
       this.positionFlash();
       this.emitViewport();
     }
@@ -675,6 +835,8 @@ export class InkEngine {
     const slot = this.layout.slots[pageIndex];
     const page = this.doc.pages[pageIndex];
     if (!slot || !page) return;
+    // Drawing-layer ink goes under the writing; overlays lie on top: those need a full redraw.
+    if (stroke.layer === 'drawing' || page.objects?.some(isOverlay)) return;
     const ox = slot.infinite ? 0 : slot.x, oy = slot.infinite ? 0 : slot.y;
     const ctx = b.ctx;
     ctx.save();
@@ -705,7 +867,7 @@ export class InkEngine {
     }
     drawPageObjectsFor(ctx, note, page);
     const playback = this.playback;
-    drawStrokes(dc, page.strokes, {
+    drawStrokes(dc, visibleStrokes(page), {
       paperColor: paperColorFor(note, page),
       hidden: hidden?.strokes,
       selected: sel && !moving ? sel.strokes : undefined,
@@ -715,6 +877,8 @@ export class InkEngine {
       if (hidden?.texts.has(t.id)) continue;
       drawTextBox(ctx, t, { editing: t.id === this.editingTextId, selected: !!sel?.texts.has(t.id) && !moving });
     }
+    // Sticky notes and tape lie on top of everything.
+    drawOverlays(ctx, page, { revealed: this.revealed, revealAll: this.revealAll, editingSticky: this.editingStickyId });
   }
 
   /** Draws the in-progress stroke (plus prediction), the laser trail, or nothing. */
@@ -752,6 +916,17 @@ export class InkEngine {
       const z = v.toScreen(b.maxX + ox, b.maxY + oy);
       const pad = 8;
       this.wetDirtyRect = { x: Math.floor((a.x - pad) * dpr), y: Math.floor((a.y - pad) * dpr), w: Math.ceil((z.x - a.x + pad * 2) * dpr), h: Math.ceil((z.y - a.y + pad * 2) * dpr) };
+    } else if (g.kind === 'tape') {
+      const ox = g.slot.infinite ? 0 : g.slot.x, oy = g.slot.infinite ? 0 : g.slot.y;
+      const scale = dpr * v.zoom;
+      ctx.setTransform(scale, 0, 0, scale, dpr * (v.panX + ox * v.zoom), dpr * (v.panY + oy * v.zoom));
+      const t = this.tapeTool();
+      if (Math.hypot(g.b.x - g.a.x, g.b.y - g.a.y) > 1) {
+        ctx.save();
+        ctx.globalAlpha = 0.85;
+        drawTape(ctx, { type: 'tape', id: 'wet', x: g.a.x, y: g.a.y, dx: g.b.x - g.a.x, dy: g.b.y - g.a.y, width: t.width, color: t.color, createdAt: 0 }, false);
+        ctx.restore();
+      }
     } else if (this.laserTrail.length) {
       const now = performance.now();
       this.laserTrail = this.laserTrail.filter((p) => now - p.t < 650);
@@ -783,7 +958,19 @@ export class InkEngine {
   }
 
   private wetStroke(g: Extract<Gesture, { kind: 'stroke' }>): InkStroke {
-    return { id: 'wet', pen: g.preset.pen, color: g.preset.color, size: g.preset.size, points: g.predicted.length ? g.points.concat(g.predicted) : g.points, createdAt: g.wall };
+    return { id: 'wet', pen: g.preset.pen, color: g.preset.color, size: g.preset.size, points: g.predicted.length ? g.points.concat(g.predicted) : g.points, createdAt: g.wall, ...this.strokeExtras(g.preset) };
+  }
+
+  /** What a new stroke carries besides its geometry: the calligraphy nib angle and the active layer. */
+  private strokeExtras(preset: PenPreset): Partial<InkStroke> {
+    const out: Partial<InkStroke> = {};
+    if (preset.pen === 'calligraphy') out.nib = preset.nibAngle ?? DEFAULT_NIB_ANGLE;
+    if (this.tool.layer === 'drawing') out.layer = 'drawing';
+    return out;
+  }
+
+  private tapeTool() {
+    return this.tool.tape ?? { width: TAPE_DEFAULT_WIDTH, color: TAPE_COLORS[0] };
   }
 
   private emitViewport() {
@@ -996,7 +1183,9 @@ export class InkEngine {
         const b = this.selectionBounds()!;
         const sb = this.pageRectToScreen(this.selection.pageIndex, b);
         const anchor = { x: b.minX, y: b.minY };
-        this.gesture = { kind: 'move', pointerId: e.pointerId, startX: p.x, startY: p.y, dx: 0, dy: 0, scale: 1, mode: hit, anchor, startDist: Math.hypot(p.x - sb.x, p.y - sb.y) };
+        const sel = this.selection;
+        const targets = this.prefs.snapping === false ? null : this.snapTargetsFor(sel.pageIndex, { strokes: sel.strokes, texts: sel.texts, images: sel.images });
+        this.gesture = { kind: 'move', pointerId: e.pointerId, startX: p.x, startY: p.y, dx: 0, dy: 0, scale: 1, mode: hit, anchor, startDist: Math.hypot(p.x - sb.x, p.y - sb.y), box: b, targets };
         e.preventDefault();
         return;
       }
@@ -1008,7 +1197,7 @@ export class InkEngine {
 
     switch (resolved.tool) {
       case 'hand':
-        this.gesture = { kind: 'pan', pointerId: e.pointerId, lastX: p.x, lastY: p.y, vx: 0, vy: 0, lastT: now };
+        this.gesture = { kind: 'pan', pointerId: e.pointerId, lastX: p.x, lastY: p.y, vx: 0, vy: 0, lastT: now, sx: p.x, sy: p.y, st: now };
         this.container.classList.add('is-panning');
         return;
       case 'laser':
@@ -1028,6 +1217,11 @@ export class InkEngine {
     }
     e.preventDefault();
     const pp = this.pagePoint(slot, p.x, p.y);
+    this.focusPage = slot.index;
+    if (resolved.tool === 'tape') {
+      this.gesture = { kind: 'tape', pointerId: e.pointerId, pageIndex: slot.index, slot, a: pp, b: pp };
+      return;
+    }
     if (resolved.tool === 'eraser') {
       const page = this.doc.page(slot.index);
       this.gesture = { kind: 'erase', pointerId: e.pointerId, pageIndex: slot.index, slot, before: page, working: page, last: null, precise: resolved.precise, t0: e.timeStamp };
@@ -1124,16 +1318,28 @@ export class InkEngine {
         this.drawLasso();
         return;
       case 'move': {
+        // Snapping: off with the setting, with Alt held, or while a second finger rests on the page.
+        const free = !g.targets || this.touches.size > 0 || e.altKey;
+        const tol = 7 / this.viewport.zoom;
+        let guides: SnapGuide[] = [];
         if (g.mode === 'move') {
           g.dx = (p.x - g.startX) / this.viewport.zoom;
           g.dy = (p.y - g.startY) / this.viewport.zoom;
+          if (!free) ({ dx: g.dx, dy: g.dy, guides } = snapMove(g.box, g.dx, g.dy, g.targets!, tol));
         } else {
-          const sb = this.pageRectToScreen(this.selection!.pageIndex, this.selectionBounds()!);
+          const sb = this.pageRectToScreen(this.selection!.pageIndex, g.box);
           g.scale = Math.max(0.1, Math.min(10, Math.hypot(p.x - sb.x, p.y - sb.y) / Math.max(1, g.startDist)));
+          if (!free) ({ scale: g.scale, guides } = snapScale(g.box, g.anchor, g.scale, g.targets!, tol));
         }
+        this.setGuides(this.selection!.pageIndex, guides);
         this.invalidate();
         return;
       }
+      case 'tape':
+        g.b = this.pagePoint(g.slot, p.x, p.y);
+        this.needsWet = true;
+        this.schedule();
+        return;
       case 'pan': {
         const dx = p.x - g.lastX, dy = p.y - g.lastY;
         const dt = Math.max(1, now - g.lastT);
@@ -1240,6 +1446,7 @@ export class InkEngine {
       case 'lasso': this.finishLasso(g); break;
       case 'move': this.finishMove(g); break;
       case 'pan': this.finishPan(g); break;
+      case 'tape': this.finishTape(g); break;
       case 'laser': this.gesture = { kind: 'none' }; this.needsWet = true; this.schedule(); break;
       case 'tap': this.finishTap(g); break;
       default: this.gesture = { kind: 'none' };
@@ -1264,7 +1471,7 @@ export class InkEngine {
     if (g.kind === 'stroke') { clearTimeout(g.holdTimer); this.feel?.end(); this.inkTip?.end(true); this.callbacks.onWriting?.(false); }
     if (g.kind === 'erase') { this.doc.clearPreview(g.pageIndex); this.feel?.end(); }
     if (g.kind === 'lasso') this.lassoSvg.innerHTML = '';
-    if (g.kind === 'move') this.invalidate();
+    if (g.kind === 'move') { this.clearGuides(); this.invalidate(); }
     this.container.classList.remove('is-panning');
     this.gesture = { kind: 'none' };
     this.needsWet = true;
@@ -1336,7 +1543,7 @@ export class InkEngine {
       if (this.gesture !== g || g.shape) return;
       const shape = recognizeShape(g.points);
       if (!shape) return;
-      g.shape = shapeToStroke({ id: 'wet', pen: g.preset.pen, color: g.preset.color, size: g.preset.size, points: g.points, createdAt: g.wall }, shape);
+      g.shape = shapeToStroke({ id: 'wet', pen: g.preset.pen, color: g.preset.color, size: g.preset.size, points: g.points, createdAt: g.wall, ...this.strokeExtras(g.preset) }, shape);
       g.predicted = [];
       this.inkTip?.end(true);
       this.feel?.confirm();
@@ -1354,7 +1561,31 @@ export class InkEngine {
     // `input` records how the stroke was written (authorship certificates count handwriting by it).
     const stroke: InkStroke = g.shape
       ? { ...g.shape, id: newId(), input: g.input }
-      : { id: newId(), pen: g.preset.pen, color: g.preset.color, size: g.preset.size, points: g.points, createdAt: g.wall, input: g.input };
+      : { id: newId(), pen: g.preset.pen, color: g.preset.color, size: g.preset.size, points: g.points, createdAt: g.wall, input: g.input, ...this.strokeExtras(g.preset) };
+    const onPage = this.doc.page(g.pageIndex);
+    if (!g.shape && onPage.objects?.some(isOverlay)) {
+      const first = g.points[0]!, last = g.points[g.points.length - 1]!;
+      const tol = 4 / this.viewport.zoom;
+      // A tap on tape reveals or covers it (study mode) instead of leaving a dot.
+      if (g.points.every((q) => Math.hypot(q.x - first.x, q.y - first.y) < tol)) {
+        const o = overlayAt(onPage.objects, last.x, last.y, tol);
+        if (o?.type === 'tape') {
+          this.toggleTape(o.id);
+          this.needsWet = true;
+          this.schedule();
+          return;
+        }
+      }
+      // Writing that starts on a sticky note goes onto the note (and moves and folds with it).
+      const o = overlayAt(onPage.objects, first.x, first.y);
+      if (o?.type === 'sticky' && !o.collapsed) {
+        this.doc.editObjects(g.pageIndex, 'Write on sticky note', { upsert: [strokeIntoSticky(o, stroke)] });
+        this.renderNow();
+        requestAnimationFrame(() => { this.needsWet = true; this.schedule(); });
+        this.callbacks.onCommitted?.(g.pageIndex, { kind: 'changed' });
+        return;
+      }
+    }
     // Audio playback: a tap on ink seeks to when it was written.
     if (this.playback && !g.shape && g.points.length < 4) {
       const last = g.points[g.points.length - 1]!;
@@ -1398,21 +1629,33 @@ export class InkEngine {
     g.last = pp;
     this.feel?.sample(pp.x, pp.y, Math.round(performance.now()), -1);
     let next = g.working;
-    if (g.precise) {
-      const out = erasePrecisely(next.strokes, path.map((v) => ({ x: v.x, y: v.y, t: 0, p: -1, tilt: -1, orient: -1 })), radius, () => newId());
-      if (!out.removed.length) return;
-      const strokes: InkStroke[] = [];
-      for (const s of next.strokes) {
-        const rep = out.replacements.get(s.id);
-        if (rep) strokes.push(...rep);
-        else strokes.push(s);
+    const filter = this.tool.eraserFilter ?? 'all';
+    const objs = next.objects;
+    const covered = objs?.some(isOverlay) ? (v: Vec2) => {
+      const o = overlayAt(objs, v.x, v.y);
+      return !!o && ((o.type === 'sticky' && !o.collapsed) || (o.type === 'tape' && !this.isTapeRevealed(o.id)));
+    } : null;
+    // Ink under a sticky note or covering tape is out of the eraser's reach.
+    const pagePath = covered ? path.filter((v) => !covered(v)) : path;
+    // Selective eraser and layers: only strokes of the chosen kind, on layers neither hidden nor locked.
+    const eligible = next.strokes.filter((s) => eraserAccepts(filter, s) && editableStroke(next, s));
+    const changed = this.eraseList(next.strokes, eligible, pagePath, radius, g.precise);
+    if (changed) next = { ...next, strokes: changed };
+    let objectsChanged = false;
+    if (objs?.some(isOverlay)) {
+      const out: PageObject[] = [];
+      for (const o of objs) {
+        if (o.type === 'tape' && filter === 'all' && path.some((v) => hitTape(o, v.x, v.y, radius))) { objectsChanged = true; continue; }
+        if (o.type === 'sticky' && !o.collapsed && o.strokes?.length) {
+          const local = path.map((v) => ({ x: v.x - o.x, y: v.y - o.y }));
+          const left = this.eraseList(o.strokes, o.strokes.filter((s) => eraserAccepts(filter, s)), local, radius, g.precise);
+          if (left) { objectsChanged = true; out.push({ ...o, strokes: left }); continue; }
+        }
+        out.push(o);
       }
-      next = { ...next, strokes };
-    } else {
-      const hits = hitStrokes(next.strokes, path, radius);
-      if (!hits.size) return;
-      next = { ...next, strokes: next.strokes.filter((s) => !hits.has(s.id)) };
+      if (objectsChanged) next = { ...next, objects: out };
     }
+    if (!changed && !objectsChanged) return;
     // Region touched by this step: the erased strokes (fragments lie within their bounds).
     const gone = new Set(next.strokes);
     let dirty: Rect | null = null;
@@ -1424,7 +1667,30 @@ export class InkEngine {
     g.working = next;
     const prevKey = this.sceneKey();
     this.doc.preview(g.pageIndex, next);
-    if (dirty) this.refreshBufferRegion(g.pageIndex, dirty, prevKey);
+    // Changed overlays redraw in full (they lie over everything in their area).
+    if (dirty && !objectsChanged) this.refreshBufferRegion(g.pageIndex, dirty, prevKey);
+  }
+
+  /**
+   * Erases along a path from `all`, touching only `eligible` strokes. Returns the new list (z-order
+   * kept, precise mode splits strokes into fragments), or null when nothing was hit.
+   */
+  private eraseList(all: InkStroke[], eligible: InkStroke[], path: Vec2[], radius: number, precise: boolean): InkStroke[] | null {
+    if (!path.length || !eligible.length) return null;
+    if (precise) {
+      const out = erasePrecisely(eligible, path.map((v) => ({ x: v.x, y: v.y, t: 0, p: -1, tilt: -1, orient: -1 })), radius, () => newId());
+      if (!out.removed.length) return null;
+      const strokes: InkStroke[] = [];
+      for (const s of all) {
+        const rep = out.replacements.get(s.id);
+        if (rep) strokes.push(...rep);
+        else strokes.push(s);
+      }
+      return strokes;
+    }
+    const hits = hitStrokes(eligible, path, radius);
+    if (!hits.size) return null;
+    return all.filter((s) => !hits.has(s.id));
   }
 
   private finishErase(g: Extract<Gesture, { kind: 'erase' }>) {
@@ -1453,7 +1719,8 @@ export class InkEngine {
     if (g.points.length < 3) return;
     const poly = g.points;
     const page = this.doc.page(g.pageIndex);
-    const strokes = lassoSelect(page.strokes, poly);
+    // Ink on hidden or locked layers can't be selected.
+    const strokes = lassoSelect(page.layers ? page.strokes.filter((s) => editableStroke(page, s)) : page.strokes, poly);
     const inPoly = (r: Rect) => {
       const cx = (r.minX + r.maxX) / 2, cy = (r.minY + r.maxY) / 2;
       let inside = false;
@@ -1480,6 +1747,7 @@ export class InkEngine {
 
   private finishMove(g: Extract<Gesture, { kind: 'move' }>) {
     this.gesture = { kind: 'none' };
+    this.clearGuides();
     const s = this.selection;
     if (!s) return this.invalidate();
     if (Math.abs(g.dx) < 0.01 && Math.abs(g.dy) < 0.01 && Math.abs(g.scale - 1) < 0.001) return this.invalidate();
@@ -1495,9 +1763,39 @@ export class InkEngine {
     this.callbacks.onCommitted?.(s.pageIndex, { kind: 'changed' });
   }
 
+  /** A tap at a screen point: tape there is revealed or covered. Returns whether it hit tape. */
+  private tapTapeAt(sx: number, sy: number): boolean {
+    const d = this.viewport.toDoc(sx, sy);
+    const slot = slotAt(this.layout, d.x, d.y);
+    if (!slot) return false;
+    const pp = this.pagePoint(slot, sx, sy);
+    const o = overlayAt(this.doc.page(slot.index).objects, pp.x, pp.y, 6 / this.viewport.zoom);
+    if (o?.type !== 'tape') return false;
+    this.toggleTape(o.id);
+    return true;
+  }
+
+  private finishTape(g: Extract<Gesture, { kind: 'tape' }>) {
+    this.gesture = { kind: 'none' };
+    const t = this.tapeTool();
+    const tape = tapeFromDrag(newId(), g.a, g.b, t.width, t.color, Date.now(), 6 / this.viewport.zoom);
+    if (tape) {
+      this.doc.editObjects(g.pageIndex, 'Add tape', { upsert: [tape] });
+      this.callbacks.onCommitted?.(g.pageIndex, { kind: 'changed' });
+    } else {
+      // A tap with the tape tool reveals or covers the strip under it.
+      const o = overlayAt(this.doc.page(g.pageIndex).objects, g.b.x, g.b.y, 6 / this.viewport.zoom);
+      if (o?.type === 'tape') this.toggleTape(o.id);
+    }
+    this.needsWet = true;
+    this.schedule();
+  }
+
   private finishPan(g: Extract<Gesture, { kind: 'pan' }>) {
     this.gesture = { kind: 'none' };
     this.container.classList.remove('is-panning');
+    // A finger tap (no drag) on tape reveals or covers it.
+    if (g.sx != null && g.sy != null && g.st != null && Math.hypot(g.lastX - g.sx, g.lastY - g.sy) < 8 && performance.now() - g.st < 350 && this.tapTapeAt(g.lastX, g.lastY)) return;
     let vx = g.vx * 16, vy = g.vy * 16;
     if (Math.hypot(vx, vy) < 2) return this.saveViewport();
     const step = () => {
@@ -1673,8 +1971,10 @@ export async function renderPageStandalone(doc: Pick<NoteDocument, 'meta' | 'pag
     drawImageItem(ctx, im, bmp);
   }
   drawPageObjectsFor(ctx, note, page);
-  drawStrokes(dc, page.strokes, { paperColor: paperColorFor(note, page) });
+  drawStrokes(dc, visibleStrokes(page), { paperColor: paperColorFor(note, page) });
   for (const t of page.texts ?? []) drawTextBox(ctx, t);
+  // Sticky notes and tape lie on top; exports and thumbnails always show tape covering.
+  drawOverlays(ctx, page);
   return canvas;
 }
 
