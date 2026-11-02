@@ -10,7 +10,7 @@
 import { createElement } from 'react';
 import { create } from 'zustand';
 import { Puzzle } from 'lucide-react';
-import { exportMarkdown, type InstalledPlugin, type NoteMeta, type NotebookMeta } from '@inkstone/core';
+import { pageText, type InstalledPlugin, type NoteMeta, type NotebookMeta } from '@inkstone/core';
 import { RecordingNoteToolHost, RunRecorder, type AgentTool } from '@inkstone/ai';
 import { addedPermissions, compareVersions, validateManifest, type ExportOutput, type ImportedNote, type Permission, type PluginManifest } from '@inkstone/plugin-api';
 import { useApp } from '../state/app.ts';
@@ -387,7 +387,7 @@ export function appNotesBackend(): NotesBackend {
       const base = toBackend(n, await v.listNotebooks());
       if (n.lock) return { ...base, markdown: '' };
       const pages = open?.meta.id === id ? [...open.pages] : await v.vault.readPages(n);
-      return { ...base, markdown: exportMarkdown(n, pages).replace(/^---\n[\s\S]*?\n---\n+/, '') };
+      return { ...base, markdown: pages.map((p) => pageText(p)).filter((t) => t.trim()).join('\n\n') };
     },
     async search(query, limit) {
       return vault().search.search(query, { limit }).map((h) => ({ id: h.noteId, page: h.pageIndex + 1, snippet: h.snippet.replace(/[«»]/g, '') }));
@@ -519,8 +519,10 @@ export function startPluginHost(): () => void {
 
   // Note events from the vault (saves here, sync from other devices).
   const vault = useApp.getState().vault;
+  let vaultKnown: Map<string, boolean> | null = null;
   if (vault) {
     const known = new Map<string, boolean>();
+    vaultKnown = known;
     void vault.listNotes(true).then((ns) => { for (const n of ns) known.set(n.id, n.trashedAt != null); });
     disposers.push(vault.vault.onChange((c) => {
       // A sync can bring plugins installed, updated or switched off on another device.
@@ -538,7 +540,14 @@ export function startPluginHost(): () => void {
       });
     }));
   }
-  disposers.push(onNoteOpened((noteId, title) => emit('note.opened', { id: noteId, title })));
+  disposers.push(onNoteOpened((noteId, title) => {
+    // A note made in the library (no vault event yet) is new to plugins when it is first opened.
+    if (vaultKnown && !vaultKnown.has(noteId)) {
+      vaultKnown.set(noteId, false);
+      emit('note.created', { id: noteId, title });
+    }
+    emit('note.opened', { id: noteId, title });
+  }));
   disposers.push(onSelectionChanged((noteId, text) => emit('selection.changed', { noteId, text })));
 
   return () => {
