@@ -45,7 +45,11 @@ export class SecureChannel {
     this.sealer = new Sealer(keys.send);
     this.opener = new Opener(keys.recv);
     transport.onmessage = (data) => this.receive(data);
-    transport.onclose = (reason) => this.finish(reason ?? 'The other device disconnected.');
+    // In order with the messages: everything that arrived before the close is still delivered
+    // (opening a message is async, so a close right behind it must wait its turn).
+    transport.onclose = (reason) => {
+      this.recvQueue = this.recvQueue.then(() => this.finish(reason ?? 'The other device disconnected.'));
+    };
   }
 
   get closed(): boolean {
