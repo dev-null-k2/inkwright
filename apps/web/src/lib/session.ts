@@ -91,7 +91,7 @@ export class EditorSession {
       if (i < 0 || this.closed) return;
       try {
         const r = await recognizeLocally(this.doc.page(i).strokes);
-        if (r) this.doc.setRecognizedText(id, r.text, r.engine);
+        if (r) this.doc.setRecognizedText(id, r.text, r.engine, r.lines);
       } catch (e) {
         console.warn('recognition failed', e);
       }

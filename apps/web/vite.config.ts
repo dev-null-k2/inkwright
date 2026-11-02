@@ -12,7 +12,8 @@ function csp(native: boolean): Plugin {
   const policy = [
     "default-src 'self'",
     // Capacitor injects its native bridge as an inline script, so native builds must allow it.
-    `script-src 'self' blob: https://accounts.google.com${native ? " 'unsafe-inline'" : ''}`,
+    // 'wasm-unsafe-eval' lets the on-device AI runtime (ONNX Runtime Web) compile WebAssembly.
+    `script-src 'self' blob: 'wasm-unsafe-eval' https://accounts.google.com${native ? " 'unsafe-inline'" : ''}`,
     "style-src 'self' 'unsafe-inline' https://accounts.google.com",
     "img-src 'self' data: blob: https://*.googleusercontent.com",
     "font-src 'self' data:",
@@ -36,7 +37,8 @@ function serviceWorker(): Plugin {
     name: 'inkstone-sw',
     apply: 'build',
     generateBundle(_opts, bundle) {
-      const files = Object.keys(bundle).filter((f) => !f.endsWith('.map'));
+      // The on-device AI runtime (tens of MB of WebAssembly) is cached when first used, not on install.
+      const files = Object.keys(bundle).filter((f) => !f.endsWith('.map') && !/ort-wasm|\.wasm$/.test(f));
       const version = Date.now().toString(36);
       const source = `// Generated at build time. Precaches the app so it opens offline; notes live in IndexedDB.
 const CACHE = 'inkstone-${'$'}{version}';
