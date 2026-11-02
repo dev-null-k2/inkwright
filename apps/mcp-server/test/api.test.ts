@@ -159,7 +159,7 @@ describe('authentication and scopes', () => {
     const list = await call('GET', '/keys', { key: keys.admin });
     expect(list.body.data.some((k: any) => k.name === 'Shortcuts' && !('key' in k) && !('hash' in k))).toBe(true);
     const file = decodeApiKeys((await ctx.fs.readText(API_KEYS_FILE))!);
-    expect(JSON.stringify(file)).not.toContain(made.body.key.split('_')[2]);
+    expect(JSON.stringify(file)).not.toContain(made.body.key.slice(15));
     expect((await call('DELETE', '/keys/nope', { key: keys.admin })).status).toBe(404);
   });
 });

@@ -1,5 +1,4 @@
 {
-  "$schema": "../../../packages/plugin-api/manifest.schema.json",
   "id": "app.inkstone.examples.webhook",
   "name": "Send selection to a webhook",
   "version": "1.0.0",

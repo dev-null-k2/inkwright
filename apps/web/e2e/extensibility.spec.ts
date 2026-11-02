@@ -239,7 +239,7 @@ test('Settings › Developer: window.inkstone with its own permissions, and API 
   expect(key).toMatch(/^ink_[0-9a-z]{10}_[A-Za-z0-9_-]{43}$/);
   await page.getByRole('button', { name: 'Done' }).click();
   await expect(page.locator('.dev-key', { hasText: 'Shortcuts' })).toContainText('notes:read');
-  await expect(page.locator('.dev-key', { hasText: 'Shortcuts' })).not.toContainText(key!.split('_')[2]!);
+  await expect(page.locator('.dev-key', { hasText: 'Shortcuts' })).not.toContainText(key!.slice(15));
   await page.locator('.dev-key', { hasText: 'Shortcuts' }).getByRole('button', { name: 'Revoke' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Revoke' }).click();
   await expect(page.locator('.dev-key', { hasText: 'Shortcuts' })).toContainText('revoked');

@@ -1,5 +1,4 @@
 {
-  "$schema": "../../../packages/plugin-api/manifest.schema.json",
   "id": "app.inkstone.examples.word-count",
   "name": "Word count & reading time",
   "version": "1.0.0",
