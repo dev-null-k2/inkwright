@@ -15,7 +15,7 @@ import { LockedCover } from '../studio/LockedCover.tsx';
 import { syncNow, useSync } from '../lib/sync.ts';
 import { OPENABLE, useFileDrop } from '../lib/openFiles.ts';
 import { GraphNavItem, TodayNavItem } from '../ui/knowledge/LibraryParts.tsx';
-import { openPalette } from '../lib/palette.ts';
+import { openPalette, usePaletteActions } from '../lib/palette.ts';
 
 export function Library() {
   const { notes, trash, notebooks, filter, setFilter, query, setQuery, navigate, vault } = useApp();
@@ -30,6 +30,16 @@ export function Library() {
   const searchRef = useRef<HTMLInputElement>(null);
   const [hits, setHits] = useState<SearchHit[] | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const addSamples = useCallback(async () => {
+    const { seedSampleLibrary } = await import('../lib/sample.ts');
+    if (!vault) return;
+    const before = new Set((await vault.listNotes(true)).map((n) => n.id));
+    await seedSampleLibrary(vault.vault);
+    for (const n of await vault.listNotes()) if (!before.has(n.id)) vault.indexNote(n, await vault.vault.readPages(n));
+    await useApp.getState().refresh();
+    setFilter({ kind: 'all' });
+  }, [vault, setFilter]);
+  usePaletteActions('library', [{ id: 'library.samples', label: 'Add sample notebooks', keywords: 'demo example try tour handwriting', run: addSamples }]);
   const sync = useSync();
   // Drop PDFs, images or text files anywhere on the library to open them.
   const [libEl, setLibEl] = useState<HTMLDivElement | null>(null);
@@ -218,7 +228,7 @@ export function Library() {
                 </>
               )}
               {rest.length > 0 && <div className="note-grid">{rest.map((n) => <NoteCard key={n.id} note={n} notebooks={notebooks} trashed={filter.kind === 'trash'} />)}</div>}
-              {shown.length === 0 && <EmptyState filter={filter} onNew={() => void quickNew()} onImport={() => fileInput.current?.click()} />}
+              {shown.length === 0 && <EmptyState filter={filter} onNew={() => void quickNew()} onImport={() => fileInput.current?.click()} onSample={addSamples} />}
             </>
           )}
         </div>
@@ -384,7 +394,7 @@ function NoteCard({ note, notebooks, trashed }: { note: NoteMeta; notebooks: Not
   );
 }
 
-function EmptyState({ filter, onNew, onImport }: { filter: LibraryFilter; onNew: () => void; onImport: () => void }) {
+function EmptyState({ filter, onNew, onImport, onSample }: { filter: LibraryFilter; onNew: () => void; onImport: () => void; onSample: () => Promise<void> }) {
   if (filter.kind === 'trash') return <div className="empty"><p>Trash is empty.</p></div>;
   return (
     <div className="empty">
@@ -394,6 +404,7 @@ function EmptyState({ filter, onNew, onImport }: { filter: LibraryFilter; onNew:
       <div className="empty-actions">
         <button type="button" className="btn btn-primary" onClick={onNew}><NotebookPen size={17} /> New note</button>
         <button type="button" className="btn" onClick={onImport}><FileUp size={17} /> Open a file</button>
+        {filter.kind === 'all' && <button type="button" className="btn btn-ghost" data-testid="try-samples" onClick={() => void onSample()}>Try sample notebooks</button>}
       </div>
       <p className="muted small"><ImageIcon size={13} /> PDFs become pages you can annotate, fill in and sign. Images go on a new page; text files become typed notes.</p>
     </div>
