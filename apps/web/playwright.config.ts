@@ -1,3 +1,7 @@
+/** PW_PORT lets several checkouts run e2e side by side (each builds into its own folder). */
+const PORT = Number(process.env.PW_PORT ?? 4174);
+const OUT = PORT === 4174 ? 'dist-e2e' : `dist-e2e-${PORT}`;
+
 import { defineConfig, devices } from '@playwright/test';
 
 process.env.PLAYWRIGHT_BROWSERS_PATH ??= '/opt/pw-browsers';
@@ -13,13 +17,13 @@ export default defineConfig({
   workers: 4,
   reporter: [['list']],
   use: {
-    baseURL: 'http://localhost:4174',
+    baseURL: `http://localhost:${PORT}`,
     trace: 'retain-on-failure',
     acceptDownloads: true,
   },
   webServer: {
-    command: 'npx vite build --mode e2e && npx vite preview --port 4174 --strictPort --outDir dist-e2e',
-    url: 'http://localhost:4174',
+    command: `npx vite build --mode e2e --outDir ${OUT} && npx vite preview --port ${PORT} --strictPort --outDir ${OUT}`,
+    url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
   },
