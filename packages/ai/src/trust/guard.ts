@@ -133,7 +133,7 @@ export function createGuardedProvider(o: GuardOptions): GuardedProvider {
     let route = await o.resolve(decision.target);
     if (!route) {
       block(decision.target === 'device'
-        ? `${decision.why} No model is available on this device — install one in Settings › AI › On this device, or change the rule in Settings › AI › Routing & privacy.`
+        ? `${decision.why} No model is available on this device — install one in Settings › AI › On this device, or change the rule in Settings › Privacy & trust › Routing & privacy.`
         : `${decision.why} That AI isn’t available right now.`, 'unavailable', task);
     }
     // Budgets: the month's spend on this provider (every device) against its limit.
@@ -147,7 +147,7 @@ export function createGuardedProvider(o: GuardOptions): GuardedProvider {
           if (!local) block(`${over} The policy moves work to this device, but no model is installed here.`, 'budget', task, route);
           decision = { ...decision, target: 'device', why: `${over} Moved to this device.` };
           route = local;
-        } else block(`${over} Raise it in Settings › AI › Routing & privacy, or wait for next month.`, 'budget', task, route);
+        } else block(`${over} Raise it in Settings › Privacy & trust › Routing & privacy, or wait for next month.`, 'budget', task, route);
       }
     }
     return { route: route!, decision };

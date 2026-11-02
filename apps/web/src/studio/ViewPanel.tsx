@@ -6,7 +6,7 @@ import { useSettings } from '../state/settings.ts';
 import { Segmented, Switch, cx } from '../ui/primitives.tsx';
 
 /**
- * ••• › View: one page or two side by side, the page's layers (which one you write on, hide,
+ * ••• › Page › View: one page or two side by side, the page's layers (which one you write on, hide,
  * lock), study mode for tape, and snapping.
  */
 export function ViewPanel({ doc, engine, pageIndex, layer, onLayer }: { doc: NoteDocument; engine: InkEngine; pageIndex: number; layer: StrokeLayer; onLayer: (l: StrokeLayer) => void }) {

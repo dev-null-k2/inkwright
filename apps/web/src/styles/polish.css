@@ -19,3 +19,43 @@
 @media (prefers-reduced-motion: reduce) {
   .menu-tree, .menu-tree.is-sub { animation: none; }
 }
+
+/* ---------- Settings: groups, tabs and search (settings/SettingsLayout.tsx) ---------- */
+.set-side { width: 252px; flex: none; display: flex; flex-direction: column; gap: 10px; padding: 14px 10px calc(14px + var(--safe-bottom)) 20px; overflow-y: auto; overscroll-behavior: contain; }
+.set-side .set-nav { width: auto; padding: 0; overflow: visible; background: transparent; }
+.set-side.is-home { width: 100%; padding: 8px clamp(14px, 4vw, 32px) calc(32px + var(--safe-bottom)); }
+.set-side.is-home > * { width: 100%; max-width: 640px; margin-inline: auto; }
+.set-side.is-home .set-nav { gap: 2px; }
+.set-group-item { min-height: 44px; }
+.set-group-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.set-side.is-home .set-group-item { min-height: 60px; border-radius: var(--r-control); padding: 6px 12px 6px 14px; }
+.set-side.is-home .set-group-item .nav-label { color: var(--ink); }
+.set-group-hint { font-size: var(--t-sm); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set-group-chevron { color: var(--ink-3); flex: none; }
+
+.set-search { display: flex; flex-direction: column; gap: 6px; }
+.set-search-field { display: flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 6px 0 12px; border-radius: var(--r-control); background: var(--raised); border: 1px solid var(--line); color: var(--ink-3); }
+.set-search-field:focus-within { border-color: var(--line-strong); box-shadow: 0 0 0 3px var(--iron-soft); }
+.set-search-field input { flex: 1; min-width: 0; min-height: 40px; border: 0; background: transparent; color: var(--ink); outline: none; }
+.set-search-field input::-webkit-search-cancel-button { display: none; }
+.set-search-field input::placeholder { color: var(--ink-3); }
+.set-search-clear { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent; color: var(--ink-3); }
+.set-search-clear:hover { background: var(--chrome-2); color: var(--ink); }
+.set-search-results ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.set-result { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; min-height: 48px; padding: 6px 12px; border: 0; border-radius: 10px; background: transparent; text-align: left; }
+.set-result:hover, .set-result:focus-visible { background: color-mix(in srgb, var(--chrome-2) 70%, transparent); }
+.set-result-label { font-weight: 560; color: var(--ink); }
+.set-result-where { font-size: var(--t-xs); color: var(--ink-3); }
+.set-search-empty { margin: 6px 4px; font-size: var(--t-sm); color: var(--ink-2); }
+
+.set-page-title { margin: 0 0 14px 4px; font-family: var(--font-title); font-weight: 520; font-size: var(--t-xl); letter-spacing: -0.01em; }
+.set-tabs { display: flex; gap: 4px; margin: 0 0 20px; padding: 3px; overflow-x: auto; scrollbar-width: none; border-radius: var(--r-pill); background: color-mix(in srgb, var(--chrome-2) 55%, transparent); width: fit-content; max-width: 100%; }
+.set-tabs::-webkit-scrollbar { display: none; }
+.set-tab { flex: none; min-height: 36px; padding: 0 14px; border: 0; border-radius: var(--r-pill); background: transparent; color: var(--ink-2); font-weight: 560; white-space: nowrap; }
+.set-tab:hover { color: var(--ink); }
+.set-tab.is-on { background: var(--raised); color: var(--ink); box-shadow: 0 0 0 1px var(--line), 0 1px 2px var(--line-strong); }
+.settings:not(.is-wide) .set-main { padding-top: 8px; }
+
+/* A setting found by search: a brief jade ring ("you are here"), then calm again. */
+.is-found { border-radius: 12px; animation: set-found 1.8s var(--ease-out); }
+@keyframes set-found { 0%, 55% { box-shadow: 0 0 0 3px var(--iron-soft), 0 0 0 1px var(--iron); background: var(--iron-soft); } 100% { box-shadow: 0 0 0 0 transparent; } }

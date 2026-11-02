@@ -83,7 +83,7 @@ export function DeveloperSection() {
               <button type="button" className="btn btn-sm" onClick={() => setDrift(true)}><GitCompareArrows size={14} /> Code drift</button>
             </div>
           </Group>
-          <Group title="Agent sessions" note="Claude Code (~/.claude/projects/…/*.jsonl), Codex CLI (~/.codex/sessions/…/rollout-*.jsonl) and Gemini CLI (~/.gemini/tmp/…/chats/*.json) transcripts become readable notes in a Sessions notebook. In a session note, ••• › Developer › Find lessons asks your AI for lessons; you decide which go into the AGENTS.md note.">
+          <Group title="Agent sessions" note="Claude Code (~/.claude/projects/…/*.jsonl), Codex CLI (~/.codex/sessions/…/rollout-*.jsonl) and Gemini CLI (~/.gemini/tmp/…/chats/*.json) transcripts become readable notes in a Sessions notebook. In a session note, In a session note, ••• › Developer › Find lessons asks your AI for lessons; you decide which go into the AGENTS.md note.">
             <div className="dev-source-actions">
               <button type="button" className="btn btn-sm" onClick={() => void pickAndImportSessions()}><History size={14} /> Import sessions</button>
               <button type="button" className="btn btn-sm" onClick={() => void newIncidentNote()}>New incident note</button>

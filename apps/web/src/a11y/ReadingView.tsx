@@ -49,7 +49,7 @@ function ReadingView({ doc, onClose }: { doc: NoteDocument; onClose: () => void 
     <Dialog open wide title={`Reading: ${doc.meta.title || 'Untitled'}`} onClose={() => { if (speechSupported()) speechSynthesis.cancel(); onClose(); }} actions={<button type="button" className="btn" onClick={onClose}>Close</button>}>
       <div className={cx('ia-reader', `is-${reading.tint}`, reading.lineFocus && 'has-focus')} style={readingStyle(reading)}
         onKeyDown={(e) => { if (e.key === 'ArrowDown' || e.key === 'j') { e.preventDefault(); go(focus + 1); } else if (e.key === 'ArrowUp' || e.key === 'k') { e.preventDefault(); go(focus - 1); } }}>
-        {paras.length === 0 ? <p className="ia-muted">Nothing to read yet: type text, or recognize your handwriting (AI › Transcribe page, or the on-device recognizer in Settings › Handwriting).</p> : paras.map((p, i) => (
+        {paras.length === 0 ? <p className="ia-muted">Nothing to read yet: type text, or recognize your handwriting (AI › Transcribe page, or the on-device recognizer in Settings › Writing › Handwriting).</p> : paras.map((p, i) => (
           <p key={i} ref={(el) => { refs.current[i] = el; }} tabIndex={i === focus ? 0 : -1} className={cx('ia-reader-line', i === focus && 'is-focus')}
             onMouseEnter={() => setFocus(i)} onFocus={() => setFocus(i)}>
             {p.text}
@@ -57,7 +57,7 @@ function ReadingView({ doc, onClose }: { doc: NoteDocument; onClose: () => void 
           </p>
         ))}
       </div>
-      <p className="ia-note">↑ ↓ move between lines. Font, spacing and tint: Settings › Reading.</p>
+      <p className="ia-note">↑ ↓ move between lines. Font, spacing and tint: Settings › Appearance › Reading.</p>
     </Dialog>
   );
 }

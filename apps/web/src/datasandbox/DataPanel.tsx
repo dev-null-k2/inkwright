@@ -93,7 +93,7 @@ function DataPanel({ vault, doc, engine, onClose }: { vault: AppVault; doc: Note
       <div className="ia-data">
         <section aria-label="Tables" className="ia-data-tables">
           {datasets == null ? <p className="ia-muted">Loading…</p> : datasets.length === 0 ? (
-            <p className="ia-muted">No data on this note yet. Drop a CSV, JSON or spreadsheet file on the page, or use ••• › Add data.</p>
+            <p className="ia-muted">No data on this note yet. Drop a CSV, JSON or spreadsheet file on the page, or use ••• › Insert › Add data.</p>
           ) : (
             <ul className="ia-chips">
               {datasets.map((d) => (

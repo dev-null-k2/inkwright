@@ -96,7 +96,7 @@ export function PluginPermissionPrompt() {
       <h3 className="plg-h">{req.added ? 'The new version also asks to' : 'It asks to'}</h3>
       <PermissionList manifest={m} perms={perms} checked={checked} onChange={(p, on) => setChecked((s) => { const n = new Set(s); if (on) n.add(p); else n.delete(p); return n; })} />
       {adds.length > 0 && <><h3 className="plg-h">It adds</h3><ul className="plg-adds">{adds.map((a) => <li key={a}>{a}</li>)}</ul></>}
-      <p className="muted small">Plugins run in a sandbox: they can’t see your files, keys or other notes beyond what you allow here, and you can take any permission back later in Settings › Plugins.</p>
+      <p className="muted small">Plugins run in a sandbox: they can’t see your files, keys or other notes beyond what you allow here, and you can take any permission back later in Settings › Extend › Plugins.</p>
     </Dialog>
   );
 }

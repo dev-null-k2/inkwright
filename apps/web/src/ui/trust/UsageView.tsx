@@ -1,5 +1,5 @@
 /**
- * Settings › AI › AI usage: what AI cost this month, per provider and per day, across all devices
+ * Settings › Privacy & trust › AI usage: what AI cost this month, per provider and per day, across all devices
  * (`ai/usage/…`), with what the context budgeter saved and what the privacy firewall kept back.
  * Savings are estimates (the tokens the same requests would have sent unshortened); the page
  * says so and points to the benchmark, which also lists where shortening doesn't help.
