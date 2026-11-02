@@ -41,6 +41,26 @@ const SQLITE_TYPES: Record<ColumnType, string> = { integer: 'INTEGER', number: '
 
 interface DuckConn { query(sql: string): Promise<{ schema: { fields: { name: string }[] }; toArray(): Record<string, unknown>[] }>; close(): Promise<void> }
 
+/** Where datasets are registered in DuckDB's virtual file system: the only place SQL may read. */
+export const DUCKDB_DATA_DIR = '/inkwright-data/';
+
+/**
+ * Settings that make DuckDB a closed box before any SQL from a person or a model runs (security
+ * review SR-02). DuckDB reads URLs and paths anywhere a table can appear — `FROM 'https://…'`,
+ * `read_csv(…)`, quoted or not — and in the browser its worker fetches them, so a query could
+ * carry data out (the model writing it has seen sample rows) or pull a remote file in. With
+ * external access off, only the registered datasets under DUCKDB_DATA_DIR can be read, no
+ * extension can be installed or loaded, and `lock_configuration` keeps a query from undoing it.
+ * The read-only filter in core (`readOnlySql`) still runs first; this is the boundary.
+ */
+export const DUCKDB_HARDENING = [
+  'SET autoinstall_known_extensions = false',
+  'SET autoload_known_extensions = false',
+  `SET allowed_directories = ['${DUCKDB_DATA_DIR}']`,
+  'SET enable_external_access = false',
+  'SET lock_configuration = true',
+] as const;
+
 export async function openDuckDb(): Promise<SqlEngine> {
   if (!DUCKDB_BUNDLES) throw new Error('DuckDB is not part of this build');
   if (typeof Worker === 'undefined' || typeof WebAssembly === 'undefined') throw new Error('This browser has no Web Workers or WebAssembly');
@@ -55,11 +75,18 @@ export async function openDuckDb(): Promise<SqlEngine> {
     throw e;
   }
   const conn = (await db.connect()) as unknown as DuckConn;
+  try {
+    for (const s of DUCKDB_HARDENING) await conn.query(s);
+  } catch (e) {
+    // Never run queries in an engine that could not be closed off; SQLite is the fallback.
+    await db.terminate().catch(() => {});
+    throw new Error(`DuckDB could not be sandboxed: ${(e as Error).message}`);
+  }
   return {
     name: 'DuckDB',
     dialect: 'DuckDB',
     async load(d) {
-      const file = `${d.name}.csv`;
+      const file = `${DUCKDB_DATA_DIR}${d.name}.csv`;
       await db.registerFileText(file, datasetToCsv(d));
       const cols = d.columns.map((c) => `'${c.name.replace(/'/g, "''")}': '${DUCK_TYPES[c.type]}'`).join(', ');
       await conn.query(`CREATE OR REPLACE TABLE ${quoteIdent(d.name)} AS SELECT * FROM read_csv('${file}', header = true, columns = {${cols}}, nullstr = '')`);
