@@ -2,6 +2,7 @@ import type { Rect } from './geometry.ts';
 import type { ContentOrigin, InkStroke } from './model.ts';
 import { boundsOfStrokes, strokeBounds, translateStroke } from './gestures.ts';
 import { overlayRect, overlaysText, type StickyObject, type TapeObject } from './overlays.ts';
+import { diagramText, type DiagramObject } from './dev/diagram.ts';
 
 /**
  * Live page objects made from ink ("ink that does things"): a hand-drawn grid becomes a real
@@ -9,7 +10,7 @@ import { overlayRect, overlaysText, type StickyObject, type TapeObject } from '.
  * `PageInk.objects` (see docs/VAULT_FORMAT.md), are drawn under the ink, and never pretend to be
  * handwriting: solved results and graphs carry an `origin`.
  */
-export type PageObject = TableObject | MathObject | GraphObject | StickyObject | TapeObject;
+export type PageObject = TableObject | MathObject | GraphObject | StickyObject | TapeObject | DiagramObject;
 
 interface ObjectBase {
   id: string;
@@ -89,7 +90,7 @@ export interface GraphFunction {
 export function objectRect(o: PageObject): Rect {
   if (o.type === 'sticky' || o.type === 'tape') return overlayRect(o);
   if (o.type === 'table') return tableRect(o);
-  if (o.type === 'graph') return { minX: o.x, minY: o.y, maxX: o.x + o.width, maxY: o.y + o.height };
+  if (o.type === 'graph' || o.type === 'diagram') return { minX: o.x, minY: o.y, maxX: o.x + o.width, maxY: o.y + o.height };
   return { minX: o.x, minY: o.y, maxX: o.x + mathWidth(o), maxY: o.y + o.fontSize * 1.5 };
 }
 
@@ -294,6 +295,7 @@ export function objectsText(objects: readonly PageObject[] | undefined): string 
     if (o.type === 'table') out.push(tableToMarkdown(o));
     else if (o.type === 'math') out.push(`${o.input} → ${o.result}`);
     else if (o.type === 'graph') out.push(o.functions.map((f) => `${f.label ?? 'y'} = ${f.expr}`).join('\n'));
+    else if (o.type === 'diagram') out.push(diagramText(o.ir));
   }
   const sticky = overlaysText(objects);
   if (sticky) out.push(sticky);

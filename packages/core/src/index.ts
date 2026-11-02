@@ -36,3 +36,4 @@ export * from './snap.ts';
 export * from './lock.ts';
 export * from './history.ts';
 export * from './handwrite.ts';
+export * from './dev/index.ts';
