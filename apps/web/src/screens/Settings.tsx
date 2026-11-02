@@ -29,6 +29,7 @@ import { Code2 } from 'lucide-react';
 import { DeveloperSection } from '../dev/DevSettings.tsx';
 import { KnowledgeSettings } from '../ui/knowledge/KnowledgeSettings.tsx';
 import { LocalAISettings } from '../ui/LocalAISettings.tsx';
+import { MemoryEvalSection } from '../compiler/ui/MemoryEvalSection.tsx';
 
 const SECTIONS = [
   { id: 'writing', label: 'Writing feel', icon: <Vibrate size={17} /> },
@@ -229,6 +230,7 @@ function AISection() {
         <Switch label="Ask before the assistant deletes or moves notes" checked={s.ai.confirmDestructive} onChange={(v) => s.update((x) => ({ ai: { ...x.ai, confirmDestructive: v } }))} />
       </Group>
       <AgentSettings />
+      <MemoryEvalSection />
     </>
   );
 }

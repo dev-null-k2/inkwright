@@ -47,7 +47,7 @@ What clients get:
 - **MCP Apps** (extension `io.modelcontextprotocol/ui`): hosts that render apps show a note page
   as you wrote it, a search results picker, and an approval card with Allow / Don't allow
   buttons. Every tool also returns text, so other hosts still work.
-- **Resources and prompts:** each note as Markdown, each page as SVG; `summarize_note`,
+- **Resources and prompts:** each note as Markdown, each page as SVG, and context packs you saved in the app (`inkstone://packs/{id}`: compiled facts tagged EXTRACTED/INFERRED/AMBIGUOUS with sources, see docs/COMPILER.md); `summarize_note`,
   `daily_review`, `todos_from_notes`.
 
 ### Claude Desktop (local, stdio)

@@ -4,7 +4,7 @@
  * questions from connected apps.
  */
 import { useState, type ReactNode } from 'react';
-import { BookOpen, Brain, History, Plug, Repeat } from 'lucide-react';
+import { BookOpen, BookOpenCheck, Brain, History, Library, Plug, Repeat, Scale, Users } from 'lucide-react';
 import { useAgent, type Elicitation } from '../../lib/agent/hub.ts';
 import { Dialog, cx, relativeTime } from '../primitives.tsx';
 import { ActivityView } from './ActivityView.tsx';
@@ -12,8 +12,9 @@ import { AppsView } from './AppsView.tsx';
 import { MemoryView } from './MemoryView.tsx';
 import { RoutinesView } from './RoutinesView.tsx';
 import { SkillsView } from './SkillsView.tsx';
+import { CompilerAgentView, isCompilerView, type CompilerViewId } from '../../compiler/ui/views.tsx';
 
-export type AgentViewId = 'activity' | 'routines' | 'apps' | 'skills' | 'memory';
+export type AgentViewId = 'activity' | 'routines' | 'apps' | 'skills' | 'memory' | CompilerViewId;
 
 export const AGENT_VIEWS: ReadonlyArray<{ id: AgentViewId; label: string; hint: string; icon: ReactNode }> = [
   { id: 'activity', label: 'Activity', hint: 'What the assistant changed, with undo', icon: <History size={16} /> },
@@ -21,6 +22,11 @@ export const AGENT_VIEWS: ReadonlyArray<{ id: AgentViewId; label: string; hint: 
   { id: 'apps', label: 'Connected apps', hint: 'Notion, Linear and other MCP servers', icon: <Plug size={16} /> },
   { id: 'skills', label: 'Skills', hint: 'Instructions for specific tasks', icon: <BookOpen size={16} /> },
   { id: 'memory', label: 'Memory', hint: 'Standing instructions and what it knows about you', icon: <Brain size={16} /> },
+  // The context compiler (docs/COMPILER.md).
+  { id: 'wiki', label: 'Compiled wiki', hint: 'Pages compiled from your notes, every sentence with its sources', icon: <Library size={16} /> },
+  { id: 'conflicts', label: 'Conflicts', hint: 'Where your notes disagree with each other', icon: <Scale size={16} /> },
+  { id: 'study', label: 'Study', hint: 'Flashcards from your notes, and a tutor that quizzes you', icon: <BookOpenCheck size={16} /> },
+  { id: 'people', label: 'People', hint: 'Who your notes mention, with action items and follow-ups', icon: <Users size={16} /> },
 ];
 
 export function AgentView({ view }: { view: AgentViewId }) {
@@ -31,6 +37,7 @@ export function AgentView({ view }: { view: AgentViewId }) {
       {view === 'apps' && <AppsView />}
       {view === 'skills' && <SkillsView />}
       {view === 'memory' && <MemoryView />}
+      {isCompilerView(view) && <CompilerAgentView view={view} />}
     </div>
   );
 }

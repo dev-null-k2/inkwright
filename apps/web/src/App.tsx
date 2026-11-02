@@ -14,6 +14,8 @@ import { attachMemory } from './lib/memory.ts';
 import { isNative } from './platform/env.ts';
 import { initAgentHub } from './lib/agent/hub.ts';
 import { startAgents } from './lib/agent/routines.ts';
+import { startCompiler } from './compiler/service.ts';
+import { CompilerDialogs } from './compiler/ui/dialogs.tsx';
 import { AgentDialogs } from './ui/agent/shared.tsx';
 import { useKnowledgeShortcuts } from './ui/knowledge/shortcuts.ts';
 import { DevGlobal } from './dev/DevGlobal.tsx';
@@ -71,6 +73,8 @@ export function App() {
         // Assistant: activity log, memory, skills, routines (run while open) and connected apps.
         // A problem here must never keep the notes from opening.
         await initAgentHub(v).then(() => { void startAgents(v).catch((e) => console.warn('Routines could not start', e)); }, (e) => console.warn('Assistant features could not start', e));
+        // Context compiler (docs/COMPILER.md): extraction, contradiction checks, compiled wiki, study.
+        try { startCompiler(v); } catch (e) { console.warn('Compiler could not start', e); }
       } catch (e) {
         console.error(e);
         useApp.setState({ error: (e as Error).message });
@@ -119,6 +123,7 @@ export function App() {
       <Prompts />
       <AgentDialogs />
       <DevGlobal />
+      <CompilerDialogs />
       <Toasts />
     </>
   );

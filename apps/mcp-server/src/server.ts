@@ -2,7 +2,7 @@ import { McpServer, MissingRequiredClientCapabilityError, ProtocolError, Resourc
 import { z } from 'zod';
 import type { ServerContext } from './context.ts';
 import { dailyReviewArgs, dailyReviewPrompt, summarizeNoteArgs, summarizeNotePrompt, todosFromNotesArgs, todosFromNotesPrompt } from './prompts.ts';
-import { NOTE_TEMPLATE, PAGE_SVG_TEMPLATE, listNoteResources, readNoteResource, readPageSvgResource } from './resources.ts';
+import { NOTE_TEMPLATE, PACK_TEMPLATE, PAGE_SVG_TEMPLATE, listNoteResources, listPackResources, readNoteResource, readPackResource, readPageSvgResource } from './resources.ts';
 import { TOOLS, type ToolDef } from './tools.ts';
 import { DEV_TOOLS } from './dev/tools.ts';
 import { ActivitySessions } from './activity.ts';
@@ -152,6 +152,12 @@ export function createMcpServer(services: ServerServices, rc?: McpRequestContext
     new ResourceTemplate(PAGE_SVG_TEMPLATE, { list: undefined }),
     { title: 'Inkstone page (SVG)', description: 'One page of a note rendered as SVG (n is 1-based).', mimeType: 'image/svg+xml' },
     (_uri, vars) => readPageSvgResource(ctx, vars.id, vars.n),
+  );
+  server.registerResource(
+    'context-pack',
+    new ResourceTemplate(PACK_TEMPLATE, { list: () => listPackResources(ctx) }),
+    { title: 'Inkstone context pack', description: 'A compressed, cited bundle the user made from their notes for agents: compiled facts tagged EXTRACTED/INFERRED/AMBIGUOUS with sources, the notes and key handwriting.', mimeType: 'text/markdown' },
+    (_uri, vars) => readPackResource(ctx, vars.id),
   );
   for (const ui of UI_RESOURCES) {
     server.registerResource(ui.name, ui.uri, { title: ui.title, description: ui.description, mimeType: UI_MIME, _meta: UI_RESOURCE_META }, async () => ({
