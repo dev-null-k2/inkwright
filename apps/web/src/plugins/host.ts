@@ -515,6 +515,27 @@ export function startPluginHost(): () => void {
   disposers.push(registerPaletteActions('plugins', () => [
     ...pluginCommands().map((c) => ({ id: `plugin:${c.pluginId}:${c.id}`, label: c.title, keywords: `${c.keywords ?? ''} ${c.pluginName} plugin`, hint: c.pluginName, icon: createElement(Puzzle, { size: 16 }), run: () => { void runCommand(c.pluginId, c.id); } })),
     ...pluginPanels().map((x) => ({ id: `plugin-panel:${x.pluginId}:${x.id}`, label: x.title, keywords: `${x.pluginName} plugin panel`, hint: x.pluginName, icon: createElement(Puzzle, { size: 16 }), run: () => openPluginPanel(x.pluginId, x.id) })),
+    ...pluginImporters().map((x) => ({
+      id: `plugin-import:${x.pluginId}:${x.id}`,
+      label: `Import: ${x.title}`,
+      keywords: `${x.extensions.join(' ')} import file ${x.pluginName} plugin`,
+      hint: x.pluginName,
+      icon: createElement(Puzzle, { size: 16 }),
+      run: async () => {
+        const app = useApp.getState();
+        try {
+          const { pickFiles } = await import('../platform/files.ts');
+          const [file] = await pickFiles(x.extensions.map((e) => `.${e}`).join(','), false);
+          if (!file) return;
+          const ids = await runImporter(x.pluginId, x.id, { name: file.name, text: await file.text() });
+          app.toast({ text: `${x.pluginName}: imported ${ids.length} note${ids.length === 1 ? '' : 's'}`, tone: 'success' });
+          await app.refresh();
+          if (ids[0]) app.navigate({ name: 'editor', noteId: ids[0] });
+        } catch (e) {
+          app.toast({ text: `${x.pluginName}: ${(e as Error).message}`, tone: 'error' });
+        }
+      },
+    })),
   ]));
 
   // Note events from the vault (saves here, sync from other devices).

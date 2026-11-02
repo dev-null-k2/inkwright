@@ -146,8 +146,9 @@ test('plugins are sandboxed: no network, no app access; the webhook plugin posts
       try { await inkstone.notes.list(); out.push('notes allowed'); } catch (e) { out.push(e.code); }
       await inkstone.ui.toast(out.join(', '));
     });
+    inkstone.importers.register('rows', ({ text }) => text.trim().split('\\n').map((line) => ({ title: line, text: 'Imported row' })));
   } };`;
-  const manifest = { id: 'test.probe', name: 'Probe', version: '1.0.0', author: 'Tests', description: 'Checks the sandbox.', minAppVersion: '1.0.0', permissions: [], contributes: { commands: [{ id: 'probe', title: 'Probe the sandbox' }] } };
+  const manifest = { id: 'test.probe', name: 'Probe', version: '1.0.0', author: 'Tests', description: 'Checks the sandbox.', minAppVersion: '1.0.0', permissions: [], contributes: { commands: [{ id: 'probe', title: 'Probe the sandbox' }], importers: [{ id: 'rows', title: 'Rows as notes', extensions: ['csv'] }] } };
   await page.route('https://plugins.test/probe/**', (r) => {
     const name = new URL(r.request().url()).pathname.split('/').pop();
     if (name === 'manifest.json') return r.fulfill({ contentType: 'application/json', body: JSON.stringify(manifest), headers: { 'access-control-allow-origin': '*' } });
@@ -186,6 +187,17 @@ test('plugins are sandboxed: no network, no app access; the webhook plugin posts
   await page.getByText('Probe the sandbox').click();
   await expect(page.locator('.toasts')).toContainText('fetch blocked, parent blocked, storage blocked, permission_denied', SLOW);
 
+  // A plugin importer: each row of a CSV file becomes a note.
+  await page.keyboard.press('Control+k');
+  await page.locator('.pal-input').fill('rows as notes');
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByText('Import: Rows as notes').click();
+  await (await chooser).setFiles({ name: 'rows.csv', mimeType: 'text/csv', buffer: Buffer.from('Alpha\nBeta\n') });
+  await expect(page.locator('.toasts')).toContainText('imported 2 notes', SLOW);
+  await page.waitForFunction(() => (window as any).__inkstone?.doc?.meta.title === 'Alpha', null, SLOW);
+
+  await openApp(page);
+  await newNote(page);
   await typeText(page, 'Ship the beta on Friday');
   await page.evaluate(() => (window as any).__inkstone.engine.selectAll?.());
   await page.keyboard.press('Control+k');

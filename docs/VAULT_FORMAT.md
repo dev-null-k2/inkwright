@@ -33,6 +33,10 @@ reference implementation is `packages/core/src/codec.ts` + `vault.ts`.
   ai/ledger/<conflictId>.json           contradictions the user dismissed or resolved
   ai/study/<deckId>.json                flashcard decks with FSRS state
   ai/packs/<id>/pack.md, pack.json      saved context packs (served by the MCP server)
+  plugins/plugins.json                  installed plugins: enable switch, granted permissions, source (see "Plugins")
+  plugins/<pluginId>/manifest.json, …   a plugin's files exactly as published (code, docs, images)
+  plugins/<pluginId>/data.json          a plugin's private storage and its settings
+  api/keys.json                         REST API keys, as SHA-256 hashes only (see "API keys")
   ai/evals/memory.json                  the latest "Does my memory help?" report
 ```
 
@@ -540,3 +544,63 @@ MCP server lists them as `inkstone://packs/{id}`. **Memory eval** — `ai/evals/
 last report (questions, per-condition results, accuracy, citation accuracy, tokens, McNemar
 comparisons).
 
+
+## Plugins (`plugins/`)
+
+Third-party plugins (docs/PLUGINS.md). The files of a plugin are stored exactly as published
+under `plugins/<id>/` (`id` = the manifest's id); only code, JSON, CSS, Markdown, text and image
+files are kept, at most 5 MB. `plugins/<id>/data.json` is the plugin's own storage
+(`{"settings": {…}, "storage": {…}}`); it survives updates and is removed on uninstall.
+
+```jsonc
+// plugins/plugins.json
+{
+  "formatVersion": 1,
+  "plugins": [
+    {
+      "id": "app.inkstone.examples.word-count",
+      "version": "1.0.0",
+      "enabled": true,
+      "granted": ["notes:read", "editor:read", "events"],   // a subset of the manifest's permissions
+      "source": { "kind": "catalog", "catalogId": "app.inkstone.examples.word-count" },  // or url | zip | folder
+      "installedAt": 1730000000000,
+      "updatedAt": 1730000000000                            // bumped on every change to the record
+    }
+  ]
+}
+```
+
+Readers ignore unknown fields and records without `id`/`version`. A plugin whose files are
+missing (half-synced) or whose manifest no longer validates is listed but never run.
+
+## API keys (`api/keys.json`)
+
+Keys for the REST API of `inkstone-mcp --http` (docs/API.md). Only hashes are stored: a key is
+`ink_<id>_<secret>` with a 10-character public id and 32 random bytes (base64url); `hash` is the
+hex SHA-256 of the whole key.
+
+```jsonc
+{
+  "formatVersion": 1,
+  "keys": [
+    { "id": "k3v9x0aq1m", "name": "Shortcuts", "prefix": "ink_k3v9x0aq1m", "hash": "9f2c…(64 hex)",
+      "scopes": ["notes:read", "notes:write"], "createdAt": 1730000000000, "updatedAt": 1730000000000,
+      "createdBy": "app", "expiresAt": 1760000000000, "revokedAt": 1740000000000 }
+  ]
+}
+```
+
+Scopes: `notes:read`, `notes:write`, `routines:run`, `webhooks`, `admin`. Records with a hash that
+is not 64 hex characters are ignored, so a plaintext key can never be accepted.
+
+### Sync
+
+- `plugins/plugins.json` merges per plugin id: when both devices changed a record the newer
+  `updatedAt` wins; a plugin uninstalled on one device and untouched on the other stays
+  uninstalled, but one updated meanwhile survives.
+- `api/keys.json` unions keys by id and never drops one (a stale copy must not resurrect a
+  deleted key as valid); `revokedAt` set on either side wins.
+- `plugins/<id>/*` and `data.json` follow the default newest-wins rule.
+
+Webhook subscriptions and their signing secrets are not in the vault: the server keeps them in
+its state folder (`--state-dir`), so secrets never sync to a cloud drive.
