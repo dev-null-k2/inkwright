@@ -19,7 +19,7 @@ export interface NoteSummary {
 }
 
 export interface NoteContent extends NoteSummary {
-  /** The note as Markdown (front matter stripped): typed text and recognized handwriting, page by page. */
+  /** The note's text as Markdown: typed text and recognized handwriting, pages separated by a blank line. The title is in `title`. */
   markdown: string;
 }
 
