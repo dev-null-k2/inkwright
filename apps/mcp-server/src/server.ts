@@ -199,9 +199,11 @@ function registerTaskMethods(server: McpServer, services: ServerServices): void 
     if (!v) throw unknown(p.taskId);
     return v;
   });
-  low.setRequestHandler('tasks/update', { params: z.object({ taskId: z.string().min(1), inputResponses: z.record(z.string(), z.unknown()) }).passthrough() }, (p, ctx) => {
+  // The SDK lifts `inputResponses` out of the params into the request context (as for MRTR).
+  low.setRequestHandler('tasks/update', { params }, (p, ctx) => {
     guard(ctx);
-    if (!services.tasks.update(p.taskId, ownerOf(ctx.http?.authInfo), p.inputResponses as Record<string, unknown>)) throw unknown(p.taskId);
+    const responses = (p.inputResponses ?? (ctx.mcpReq as { inputResponses?: Record<string, unknown> }).inputResponses ?? {}) as Record<string, unknown>;
+    if (!services.tasks.update(p.taskId, ownerOf(ctx.http?.authInfo), responses)) throw unknown(p.taskId);
     return {};
   });
   low.setRequestHandler('tasks/cancel', { params }, (p, ctx) => {
