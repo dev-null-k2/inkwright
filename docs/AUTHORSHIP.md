@@ -81,7 +81,7 @@ side of claiming less as yours.
 `extractable: false` — the private key can sign but cannot be read out by any script, including
 Inkwright's. The `CryptoKey` objects are stored in IndexedDB (`inkwright-authorship`), which
 browsers keep opaquely; in the Android app this is the WebView's app-private storage, the same
-place the existing secret store keeps its wrapping key. Settings › Authorship shows the public
+place the existing secret store keeps its wrapping key. Settings › Privacy & trust › Authorship shows the public
 key's **fingerprint** — SHA-256 of the uncompressed public point (`04 ‖ x ‖ y`), first 10 bytes as
 five groups of hex (`3F2A 9C1B 0D44 7E10 52AA`) — and an optional, self-chosen name.
 
@@ -130,10 +130,10 @@ The evidence is the signed pages' full content (strokes in the compact vault enc
 verifier can redraw the signed ink) and their complete chains. Image *bytes* are not included,
 only their entries.
 
-**Where certificates live.** Editor › ••• › Authorship › *Sign certificate* signs the note as it
+**Where certificates live.** Editor › ••• › Share & export › Authorship › *Sign certificate* signs the note as it
 is and stores the certificate with it as `notes/<id>/assets/authorship-<signedAt>.json`, recorded
 in `note.json` as `"certificate": { "asset", "signedAt" }` (the latest one). *Download
-certificate* saves the JSON. PDF exports (unless turned off in Settings › Authorship) sign a fresh
+certificate* saves the JSON. PDF exports (unless turned off in Settings › Privacy & trust › Authorship) sign a fresh
 certificate for the exported pages and embed it as an attached file named
 `inkwright-authorship.json` (`/EmbeddedFiles`, MIME `application/json`), plus a one-line
 `/InkwrightAuthorship` entry in the document info.
@@ -141,7 +141,7 @@ certificate for the exported pages and embed it as an attached file named
 ## Verifying
 
 `verifyCertificate(cert, currentPages?)` runs offline, anywhere WebCrypto exists (the app,
-Node 20+). Settings › Authorship › *Verify a certificate* accepts an exported PDF (the attachment
+Node 20+). Settings › Privacy & trust › Authorship › *Verify a certificate* accepts an exported PDF (the attachment
 is read with pdf-lib) or a `.json`. It checks, in order:
 
 1. **Signature:** the claim's canonical JSON verifies against the public key in the claim.

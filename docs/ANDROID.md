@@ -230,6 +230,10 @@ has no AICore phone and no GPU emulator image:
 
 Logs: `adb logcat -s InkwrightAI GeminiNano LiteRtEngine`.
 
+For the pen, the screen and latency, Settings › About › **Check this device** measures them in the
+app itself and shares a report through Android's share sheet (docs/TESTING.md, "Testing on a
+device").
+
 ## The Moto Pen Ultra's buttons
 
 The pen reaches the app in two separate ways.

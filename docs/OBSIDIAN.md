@@ -1,7 +1,7 @@
 # Inkwright ⇄ Obsidian
 
 Inkwright notes can leave as an Obsidian vault and Obsidian vaults can come in as Inkwright notes.
-Settings › Notes, links & Obsidian has the buttons (also in the search palette: "Export for
+Settings › Knowledge has the buttons (also in the search palette: "Export for
 Obsidian", "Import an Obsidian vault"). A `.zip` of Markdown files dropped on the library or opened
 with "Open file" is imported the same way (an Inkwright backup zip is still restored as a backup).
 

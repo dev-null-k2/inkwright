@@ -4,6 +4,13 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 
 ## 1.0.0 — first public release
 
+### Getting around
+- A short first-run welcome (how you write, colours, where AI runs, sync, sample notebooks); skippable and shown once.
+- The editor's ••• menu keeps ten entries, with the rest in named sub-sheets (Insert, Page, Audio, Study, Share & export, Note, Tools); lasso actions live in the lasso bar.
+- Settings in eight groups with a search field that jumps to any setting; old `#settings/<id>` links still work.
+- Settings › About › Check this device: pen rate, pressure and tilt, input-to-paint latency, frame pacing, screen and system bars, hardware, graphics and audio, and a live layout check, as a report to copy or share.
+- Every menu, sheet and dialog fits a folded phone, a phone and a tablet between the system bars.
+
 ### Writing
 - Low-latency ink with prediction, and a native ink tip on Android.
 - Synthesised paper sound and haptic grain.

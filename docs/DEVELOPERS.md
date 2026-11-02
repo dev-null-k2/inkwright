@@ -7,7 +7,7 @@ the rest of the app uses — readable by the MCP server, the `inkwright` CLI and
 
 It follows what works in 2026's code-knowledge tools (GitNexus, graphify, Archify, Headroom):
 deterministic parsing first, models only where judgement is needed, and everything exposed over
-MCP. It is optional: **Settings › Developer › Developer tools** turns all of it off (default: on
+MCP. It is optional: **Settings › Extend › Modules › Developer tools** turns all of it off (default: on
 for computers and tablets, off on phones). Off, nothing of it loads — no parsers, no menu entry,
 no marks on the page, no palette actions, no agent tools.
 
@@ -21,7 +21,7 @@ no marks on the page, no palette actions, no agent tools.
 
 ## 1. Code sources and the code graph
 
-A **code source** is a repository Inkwright has read. Add one in Settings › Developer:
+A **code source** is a repository Inkwright has read. Add one in Settings › Extend › Code & runbooks:
 
 - **Add folder** (desktop Chrome, Edge, Brave — the File System Access API). The folder is
   remembered on that device, so **Re-scan** reads it again after the browser re-confirms access.
@@ -95,7 +95,7 @@ works when it is unique in the file. `[[code:path/to/file.ts]]` links a whole fi
 `[[code:` offers symbols from your code sources. Code links are ordinary wiki links to the rest of
 Inkwright (backlinks, Obsidian export, sync), except that they never create notes.
 
-**Lassoed ink** binds to a symbol like it binds to a note: select it, then ••• › Developer ›
+**Lassoed ink** binds to a symbol like it binds to a note: select it, then ••• › Developer (inside ••• › Tools when plugins add commands there too) ›
 Link selection to code… (or the palette). The ink stays ink; an ink link with target
 `code:path#Symbol` rides on it.
 
@@ -191,13 +191,13 @@ Every run, including declined requests, is recorded in **Settings › AI › Act
 "Runbook" entry (a listed action, like a connected app's; nothing to undo in the notes).
 The MCP tool `get_runbook` returns a note's blocks and parsed requests; it does not run them.
 
-**Incident (RCA) template**: palette › New incident note (or Settings › Developer) adds an
+**Incident (RCA) template**: palette › New incident note (or Settings › Extend › Code & runbooks) adds an
 "Incident (RCA)" template to the vault's templates — impact, timeline, checks (an http block),
 root cause, actions — and starts a note from it; it is then offered under New note like any template.
 
 ## 6. Agent sessions → lessons
 
-Import transcripts (Settings › Developer › Import sessions, or the palette) into a **Sessions**
+Import transcripts (Settings › Extend › Code & runbooks › Agent sessions, or the palette) into a **Sessions**
 notebook as readable notes (who asked what, each tool call on one line, failures marked):
 
 | Agent | File | Format |

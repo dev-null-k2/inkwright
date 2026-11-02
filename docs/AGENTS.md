@@ -297,7 +297,7 @@ command lines or service files.
 ## Trust: the AI policy, dry run and the audit trail
 
 The server, the A2A agent and the runner follow the vault's AI policy (`ai/policy.json`, edited in
-Settings › AI › Routing & privacy; docs/TRUST.md):
+Settings › Privacy & trust › Routing & privacy; docs/TRUST.md):
 
 - Notebooks and tags set to **hidden**, and notes that **stay on the device**, don't exist for
   MCP clients or the server's agent; **read-only** notes can't be changed, moved or trashed.
