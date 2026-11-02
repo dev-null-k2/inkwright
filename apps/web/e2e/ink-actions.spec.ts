@@ -388,6 +388,7 @@ test.describe('paper workbench', () => {
     await ta.press('Enter');
     await expect(ta).toHaveValue('As shown in [@lecun2015]');
     await ta.pressSequentially(' and [@kn');
+    await expect(list.getByRole('option').first()).toContainText('@knuth1984');
     await ta.press('Enter');
     await expect(ta).toHaveValue('As shown in [@lecun2015] and [@knuth1984]');
     await page.keyboard.press('Escape');
