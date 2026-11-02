@@ -5,6 +5,7 @@ import {
   encodeNote,
   encodeNotebook,
   encodePage,
+  mergeAuthorship,
   type NoteMeta,
   type NotebookMeta,
   type PageInk,
@@ -243,7 +244,7 @@ export interface MergeOptions {
   prefer?: Side;
 }
 
-const PAGE_SPECIAL = new Set(['id', 'strokes', 'texts', 'images', 'recognizedText', 'recognizedAt', 'recognizedBy', 'formatVersion']);
+const PAGE_SPECIAL = new Set(['id', 'strokes', 'texts', 'images', 'objects', 'authorship', 'recognizedText', 'recognizedAt', 'recognizedBy', 'formatVersion']);
 
 export function mergePage(base: PageInk | null, local: PageInk, remote: PageInk, opts: MergeOptions = {}): PageInk {
   const eq = new Eq();
@@ -255,12 +256,16 @@ export function mergePage(base: PageInk | null, local: PageInk, remote: PageInk,
     eq,
     compare: byTime((s) => s.createdAt),
   });
-  const coll = <T extends WithId & { createdAt: number }>(k: 'texts' | 'images', get: (p: PageInk) => T[] | undefined) => {
+  const coll = <T extends WithId & { createdAt: number }>(k: 'texts' | 'images' | 'objects', get: (p: PageInk) => T[] | undefined) => {
     const merged = mergeById(base ? (get(base) ?? []) : null, get(local) ?? [], get(remote) ?? [], { prefer, eq, compare: byTime((x) => x.createdAt) });
     if (merged.length || get(local) !== undefined || get(remote) !== undefined) out[k] = merged;
   };
   coll('texts', (p) => p.texts);
   coll('images', (p) => p.images);
+  coll('objects', (p) => p.objects);
+  // Authorship chains from both sides are unioned (docs/AUTHORSHIP.md).
+  const chain = mergeAuthorship(local.authorship, remote.authorship);
+  if (chain) out.authorship = chain;
 
   // Everything else (background, paper, size, unknown future fields): field-wise.
   mergeFields(eq, base as unknown as Record<string, unknown> | null, local as unknown as Record<string, unknown>, remote as unknown as Record<string, unknown>, PAGE_SPECIAL, prefer, out);
