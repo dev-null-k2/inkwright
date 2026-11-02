@@ -97,8 +97,8 @@ export async function importDataFiles(vault: AppVault, noteId: string, files: Fi
 // ---- Engine per note -----------------------------------------------------------------------------
 
 let shared: Promise<{ engine: SqlEngine; fallbackReason?: string }> | null = null;
-/** Tables loaded into the shared engine, by note: `asset size` fingerprints to skip reloads. */
-const loaded = new Map<string, string>();
+/** What the shared engine holds now: one note's tables (a fingerprint to skip reloads, and their names). */
+let loaded: { key: string; tables: string[] } | null = null;
 
 /** The engine with this note's datasets loaded (DuckDB, else SQLite). */
 export async function engineFor(vault: AppVault, noteId: string): Promise<{ engine: SqlEngine; datasets: Dataset[]; fallbackReason?: string }> {
@@ -106,16 +106,19 @@ export async function engineFor(vault: AppVault, noteId: string): Promise<{ engi
   const { engine, fallbackReason } = await shared;
   const datasets = await noteDatasets(vault, noteId);
   const key = `${noteId}:${datasets.map((d) => `${d.name}/${d.rows.length}/${d.columns.length}`).join(',')}`;
-  if (loaded.get('current') !== key) {
+  if (loaded?.key !== key) {
+    // Only this note's data is ever queryable: drop whatever the last note loaded.
+    for (const t of loaded?.tables ?? []) await engine.drop(t).catch(() => {});
+    loaded = null;
     for (const d of datasets) await engine.load(d);
-    loaded.set('current', key);
+    loaded = { key, tables: datasets.map((d) => d.name) };
   }
   return { engine, datasets, ...(fallbackReason ? { fallbackReason } : {}) };
 }
 
 /** Forgets loaded tables (after a file changes). */
 export function invalidateEngine(): void {
-  loaded.clear();
+  if (loaded) loaded = { ...loaded, key: '' };
 }
 
 // ---- Query log -----------------------------------------------------------------------------------

@@ -18,6 +18,8 @@ export interface SqlEngine {
   /** For prompts ("DuckDB", "SQLite"). */
   readonly dialect: string;
   load(d: Dataset): Promise<void>;
+  /** Removes a table (another note's data must never be queryable from this one). */
+  drop(table: string): Promise<void>;
   query(sql: string): Promise<SqlResult>;
   close(): Promise<void>;
 }
@@ -62,6 +64,9 @@ export async function openDuckDb(): Promise<SqlEngine> {
       const cols = d.columns.map((c) => `'${c.name.replace(/'/g, "''")}': '${DUCK_TYPES[c.type]}'`).join(', ');
       await conn.query(`CREATE OR REPLACE TABLE ${quoteIdent(d.name)} AS SELECT * FROM read_csv('${file}', header = true, columns = {${cols}}, nullstr = '')`);
     },
+    async drop(table) {
+      await conn.query(`DROP TABLE IF EXISTS ${quoteIdent(table)}`);
+    },
     async query(sql) {
       const t = await conn.query(sql);
       const columns = t.schema.fields.map((f) => f.name);
@@ -98,6 +103,9 @@ export function sqlJsEngine(SQL: SqlJsStatic): SqlEngine {
         db.run('ROLLBACK');
         throw e;
       }
+    },
+    async drop(table) {
+      db.run(`DROP TABLE IF EXISTS ${quoteIdent(table)}`);
     },
     async query(sql) {
       const res = db.exec(sql);

@@ -1,4 +1,4 @@
-import { boundsOfStrokes, rectIsEmpty, textBoxBounds, type InkStroke, type NoteDocument, type Passage, type ProvenanceGen, type Rect, type TextBox } from '@inkstone/core';
+import { attributeAnswer, attributedClaims, boundsOfStrokes, rectIsEmpty, textBoxBounds, type InkStroke, type NoteDocument, type Passage, type ProvenanceGen, type Rect, type TextBox } from '@inkstone/core';
 import type { ContentPart } from '@inkstone/ai';
 import { useApp } from '../state/app.ts';
 import { pageImageForAI } from '../lib/exporter.ts';
@@ -43,7 +43,7 @@ export async function putAnswer(doc: NoteDocument, pageIndex: number, text: stri
 export async function recordAnswerProvenance(doc: NoteDocument, placed: PlacedAnswer, text: string, passages: readonly Passage[], gen: ProvenanceGen): Promise<void> {
   if (!isModuleOn('compiler')) return;
   const key = placed.textId ? `text:${placed.textId}` : `ink:${placed.strokeIds[0]}`;
-  const [{ attributeAnswer, attributedClaims }, { allDocs, cachedDoc, recordProvenance }] = await Promise.all([import('@inkstone/core'), import('../compiler/service.ts')]);
+  const { allDocs, cachedDoc, recordProvenance } = await import('../compiler/service.ts');
   await allDocs();
   const claims = attributedClaims(attributeAnswer(text, passages), (id) => cachedDoc(id)?.units ?? null);
   await recordProvenance(doc.meta.id, key, gen, claims.length ? claims : [{ s: text, t: 'I', src: [] }]);
