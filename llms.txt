@@ -1,0 +1,16 @@
+# Inkwright
+
+> Open-source (Apache-2.0), local-first handwriting notebook. Ink feels like paper, an AI agent answers in ink, and notes stay as plain files. It has no server of its own: storage is the user's own Google Drive, WebDAV, a folder or peer-to-peer, and AI is the user's own key or an on-device model.
+
+## Docs
+- [Architecture](docs/ARCHITECTURE.md): packages, data flow, modules
+- [Vault format](docs/VAULT_FORMAT.md): every file and field on disk
+- [Agents (MCP, A2A, runner)](docs/AGENTS.md): connect Claude, Cursor and other agents to a notebook
+- [REST API](docs/API.md): /api/v1, OpenAPI 3.1, keys, webhooks, SDK
+- [Plugins](docs/PLUGINS.md): sandboxed plugin API and permissions
+- [Trust](docs/TRUST.md): guarded AI calls, policy file, privacy firewall, audit trail, evals
+- [Compiler](docs/COMPILER.md): compiled wiki, provenance, contradiction linter, study
+- [Developers](docs/DEVELOPERS.md): code graph, code links and drift, verified diagrams, runbooks, CLI
+- [Ink actions](docs/INK_ACTIONS.md): answers in ink, executable sketches, data sandbox, photo to ink, accessibility, papers
+- [Local AI](docs/LOCAL_AI.md): on-device models
+- [Testing](docs/TESTING.md): unit, evals, e2e on all engines, Android
