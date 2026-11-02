@@ -53,14 +53,24 @@ function sendJson(res: ServerResponse, status: number, body: unknown, headers: R
 
 const rpcError = (message: string) => ({ jsonrpc: '2.0', error: { code: -32000, message }, id: null });
 
-/** Node request → web Request (body read up to `max` bytes; aborts when the client goes away). */
-async function toWebRequest(req: IncomingMessage, res: ServerResponse, max: number): Promise<Request> {
-  const url = `http://${req.headers.host ?? 'localhost'}${req.url ?? '/'}`;
+function headersOf(req: IncomingMessage): Headers {
   const headers = new Headers();
   for (const [k, v] of Object.entries(req.headers)) {
     if (Array.isArray(v)) for (const x of v) headers.append(k, x);
     else if (v != null) headers.set(k, v);
   }
+  return headers;
+}
+
+/** The request without its body: enough to authenticate it before reading anything (SR-07). */
+function headRequest(req: IncomingMessage): Request {
+  return new Request(`http://${req.headers.host ?? 'localhost'}${req.url ?? '/'}`, { headers: headersOf(req) });
+}
+
+/** Node request → web Request (body read up to `max` bytes; aborts when the client goes away). */
+async function toWebRequest(req: IncomingMessage, res: ServerResponse, max: number): Promise<Request> {
+  const url = `http://${req.headers.host ?? 'localhost'}${req.url ?? '/'}`;
+  const headers = headersOf(req);
   const ac = new AbortController();
   res.on('close', () => { if (!res.writableFinished) ac.abort(); });
   let body: Buffer | undefined;
@@ -170,14 +180,16 @@ export async function startHttpServer(services: ServerServices, opts: HttpOption
       return sendWebResponse(res, await api.handle(request));
     }
     if (path !== '/mcp') return sendJson(res, 404, rpcError('Not found. The MCP endpoint is /mcp.'));
+    // Who is asking is decided by headers alone, so check it before buffering a body: anonymous
+    // requests cost the server nothing (security review SR-07).
+    const check = await gate.check(headRequest(req), '/mcp');
+    if (!check.ok) return sendWebResponse(res, check.response);
     let request: Request;
     try {
       request = await toWebRequest(req, res, max);
     } catch (e) {
       return sendJson(res, (e as { status?: number }).status ?? 400, rpcError((e as Error).message));
     }
-    const check = await gate.check(request, '/mcp');
-    if (!check.ok) return sendWebResponse(res, check.response);
     const response = await mcp.fetch(request, check.auth ? { authInfo: check.auth } : undefined);
     await sendWebResponse(res, response);
   };
