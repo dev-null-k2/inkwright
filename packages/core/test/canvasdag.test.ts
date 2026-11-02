@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeValue, extractGraph, findCycles, findHook, parseOp, runDag, runLocalOp, topoOrder, valueFromText, type DagGraph, type DagValue, type InkStroke, type TextBox } from '../src/index.ts';
+import { describeValue, extractGraph, findGraphCycles, findHook, parseOp, runDag, runLocalOp, topoOrder, valueFromText, type DagGraph, type DagValue, type InkStroke, type TextBox } from '../src/index.ts';
 import { generateSketch, makeStroke } from './fixtures/sketches.ts';
 import { scoreSketch } from './fixtures/score-sketch.ts';
 
@@ -66,7 +66,7 @@ describe('graph extraction', () => {
     expect(g.cycles).toEqual([['n1', 'n2']]);
     expect(g.order).toBeNull();
     expect(g.loose).toEqual(['x']);
-    expect(findCycles(['a'], [{ from: 'a', to: 'a' }])).toEqual([['a']]);
+    expect(findGraphCycles(['a'], [{ from: 'a', to: 'a' }])).toEqual([['a']]);
     expect(topoOrder([{ id: 'a' }, { id: 'b' }, { id: 'c' }], [{ from: 'c', to: 'a' }])).toEqual(['b', 'c', 'a']);
   });
 

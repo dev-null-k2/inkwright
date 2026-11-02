@@ -1,4 +1,4 @@
-import type { QueryResult } from './query.ts';
+import type { SqlResult } from './query.ts';
 
 /**
  * Charts of query results, as standalone SVG (the app rasterizes it into an image on the page, so
@@ -33,7 +33,7 @@ const isNum = (v: unknown) => typeof v === 'number' && Number.isFinite(v);
  * numeric columns as series; a line when x looks like time or an ordered number, else bars.
  * Null when there is nothing numeric to plot.
  */
-export function inferChart(r: QueryResult, title?: string): ChartSpec | null {
+export function inferChart(r: SqlResult, title?: string): ChartSpec | null {
   if (!r.rows.length || !r.columns.length) return null;
   const numeric = r.columns.filter((_, i) => r.rows.every((row) => row[i] == null || isNum(row[i])) && r.rows.some((row) => isNum(row[i])));
   let x = r.columns.find((c) => !numeric.includes(c));
@@ -74,7 +74,7 @@ export function formatChartTick(v: number): string {
 }
 
 /** Renders the chart as an SVG document string. */
-export function chartSvg(spec: ChartSpec, r: QueryResult, o: { width?: number; height?: number; font?: string } = {}): string {
+export function chartSvg(spec: ChartSpec, r: SqlResult, o: { width?: number; height?: number; font?: string } = {}): string {
   const W = o.width ?? 480, H = o.height ?? 300;
   const font = o.font ?? 'system-ui, sans-serif';
   const xi = r.columns.indexOf(spec.x);

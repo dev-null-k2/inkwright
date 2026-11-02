@@ -214,7 +214,7 @@ export function dataTableFrom(fileName: string, text: string): DataTable {
   return { name, columns, rows };
 }
 
-function uniqueIdents(names: readonly string[]): string[] {
+export function uniqueIdents(names: readonly string[]): string[] {
   const out: string[] = [];
   for (const n of names) {
     let id = sqlIdent(n) || 'col';

@@ -1,3 +1,5 @@
+import { sqlIdent, uniqueIdents } from '../dev/runbook.ts';
+
 /**
  * Data sandbox: tabular data dropped onto a page (CSV, TSV, JSON, NDJSON, spreadsheets) as a
  * typed, column-oriented dataset that any SQL engine can load. Parsing and typing are here, pure
@@ -24,27 +26,21 @@ export interface Dataset {
   rows: Cell[][];
 }
 
-/** A safe, readable SQL identifier: "Sales 2024 (Q1).csv" → "sales_2024_q1". */
+/**
+ * The table name of a data file — the same as the developer module's runbook ```sql blocks use
+ * (`sqlIdent`), so one attached file is one table everywhere: "Sales 2024 (Q1).csv" →
+ * "sales_2024_q1". Names already taken get `_2`, `_3`.
+ */
 export function tableName(fileName: string, taken: ReadonlySet<string> = new Set()): string {
-  let base = fileName.replace(/\.[^.]+$/, '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'data';
-  if (/^\d/.test(base)) base = `t_${base}`;
-  if (SQL_RESERVED.has(base)) base = `${base}_data`;
+  const base = sqlIdent(fileName) || 'data';
   let name = base;
   for (let i = 2; taken.has(name); i++) name = `${base}_${i}`;
   return name;
 }
 
-const SQL_RESERVED = new Set(['select', 'from', 'where', 'table', 'order', 'group', 'by', 'join', 'limit', 'union', 'insert', 'update', 'delete', 'create', 'drop', 'index', 'values', 'data_set']);
-
-/** Column names made unique and non-empty ("", "a", "a" → "column_1", "a", "a_2"). */
+/** Column names as SQL identifiers, unique — again exactly as runbook SQL blocks name them. */
 export function uniqueColumns(names: readonly string[]): string[] {
-  const seen = new Map<string, number>();
-  return names.map((raw, i) => {
-    const base = String(raw ?? '').trim() || `column_${i + 1}`;
-    const n = (seen.get(base.toLowerCase()) ?? 0) + 1;
-    seen.set(base.toLowerCase(), n);
-    return n === 1 ? base : `${base}_${n}`;
-  });
+  return uniqueIdents(names.map((n, i) => String(n ?? '').trim() || `column_${i + 1}`));
 }
 
 const INT = /^[-+]?\d{1,15}$/;
@@ -122,14 +118,14 @@ export function sniffDelimiter(text: string): string {
 }
 
 function splitCsvLine(line: string, d: string): string[] {
-  return parseCsv(line, d)[0] ?? [];
+  return parseDelimited(line, d)[0] ?? [];
 }
 
 /**
  * RFC 4180 CSV: quoted fields with doubled quotes, delimiters and newlines inside quotes, CRLF or
  * LF, a UTF-8 BOM, and a trailing newline. Returns rows of strings.
  */
-export function parseCsv(text: string, delimiter = ','): string[][] {
+export function parseDelimited(text: string, delimiter = ','): string[][] {
   const s = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
   const rows: string[][] = [];
   let row: string[] = [];
@@ -163,7 +159,7 @@ export function parseCsv(text: string, delimiter = ','): string[][] {
 /** CSV/TSV text → dataset (the first row is the header). */
 export function datasetFromCsv(source: string, text: string, taken?: ReadonlySet<string>): Dataset {
   const d = /\.tsv$/i.test(source) ? '\t' : sniffDelimiter(text);
-  const rows = parseCsv(text, d);
+  const rows = parseDelimited(text, d);
   if (!rows.length) throw new Error(`${source} is empty`);
   const [header, ...body] = rows;
   return datasetFromRows(source, header!, body, taken);
@@ -171,10 +167,10 @@ export function datasetFromCsv(source: string, text: string, taken?: ReadonlySet
 
 // ---- JSON ---------------------------------------------------------------------------------------
 
-/** Flattens nested objects to dotted keys ({a:{b:1}} → {"a.b":1}); arrays stay JSON text. */
+/** Flattens nested objects to joined keys ({a:{b:1}} → {"a_b":1}); arrays stay JSON text. */
 export function flattenRecord(o: Record<string, unknown>, prefix = '', out: Record<string, unknown> = {}): Record<string, unknown> {
   for (const [k, v] of Object.entries(o)) {
-    const key = prefix ? `${prefix}.${k}` : k;
+    const key = prefix ? `${prefix}_${k}` : k;
     if (v && typeof v === 'object' && !Array.isArray(v)) flattenRecord(v as Record<string, unknown>, key, out);
     else out[key] = Array.isArray(v) ? JSON.stringify(v) : v;
   }
@@ -229,4 +225,11 @@ export function describeDataset(d: Dataset): string {
 /** Quotes an identifier for SQL when it needs it. */
 export function quoteIdent(name: string): string {
   return /^[a-z_][a-z0-9_]*$/.test(name) && !SQL_RESERVED.has(name) ? name : `"${name.replace(/"/g, '""')}"`;
+}
+
+const SQL_RESERVED = new Set(['select', 'from', 'where', 'table', 'order', 'group', 'by', 'join', 'limit', 'union', 'insert', 'update', 'delete', 'create', 'drop', 'index', 'values', 'as', 'on', 'and', 'or', 'not', 'null', 'is', 'in', 'case', 'when', 'then', 'else', 'end', 'having', 'distinct', 'all']);
+
+/** Files that are data in the shared attachment format (runbook SQL reads CSV/TSV/JSON; the sandbox also NDJSON). */
+export function isDatasetFile(name: string): boolean {
+  return /\.(csv|tsv|json|ndjson)$/i.test(name);
 }

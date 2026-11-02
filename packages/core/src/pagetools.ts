@@ -47,10 +47,12 @@ export function rotatePageQuarter(page: PageInk, size: PageSize, clockwise = tru
   return { page: next, size: newSize };
 }
 
-/** Asset names a page refers to (background and placed images). */
+/** Asset names a page refers to (background, placed images, a data table's file, a photo underlay). */
 export function pageAssets(page: PageInk): string[] {
   const out = new Set<string>();
   if (page.background) out.add(page.background.asset);
+  if (page.underlay) out.add(page.underlay.asset);
+  for (const o of page.objects ?? []) if (o.type === 'table' && o.data) out.add(o.data.asset);
   for (const im of page.images ?? []) out.add(im.asset);
   return [...out];
 }

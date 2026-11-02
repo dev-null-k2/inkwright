@@ -55,7 +55,7 @@ export interface DagGraph {
   loose: string[];
 }
 
-export interface ExtractOptions {
+export interface GraphExtractOptions {
   /** Smallest box side, page units. */
   minBox?: number;
   /** Shortest connector, page units. */
@@ -189,7 +189,7 @@ function textRect(t: TextBox): Rect {
 }
 
 /** Builds the graph (see the module comment). */
-export function extractGraph(input: { strokes: readonly InkStroke[]; texts?: readonly TextBox[]; lines?: readonly RecognizedLine[] }, o: ExtractOptions = {}): DagGraph {
+export function extractGraph(input: { strokes: readonly InkStroke[]; texts?: readonly TextBox[]; lines?: readonly RecognizedLine[] }, o: GraphExtractOptions = {}): DagGraph {
   const minBox = o.minBox ?? 28;
   const minLine = o.minLine ?? 24;
   const items: Item[] = input.strokes.filter((s) => s.points.length > 0 && s.pen !== 'highlighter').map((s) => {
@@ -335,12 +335,12 @@ export function extractGraph(input: { strokes: readonly InkStroke[]; texts?: rea
     if (!connect({ it: h, a: pts[0]!, z: pts[pts.length - 1]!, hook: hook?.end ?? null, heads: [] })) loose.push(h.s.id);
   }
 
-  const cycles = findCycles(nodes.map((n) => n.id), edges);
+  const cycles = findGraphCycles(nodes.map((n) => n.id), edges);
   return { nodes, edges, cycles, order: cycles.length ? null : topoOrder(nodes, edges), loose };
 }
 
 /** Tarjan's SCC: groups of 2+ nodes, and single nodes with a self-loop. */
-export function findCycles(ids: readonly string[], edges: readonly Pick<DagEdge, 'from' | 'to'>[]): string[][] {
+export function findGraphCycles(ids: readonly string[], edges: readonly Pick<DagEdge, 'from' | 'to'>[]): string[][] {
   const adj = new Map(ids.map((id) => [id, [] as string[]]));
   for (const e of edges) adj.get(e.from)?.push(e.to);
   let index = 0;

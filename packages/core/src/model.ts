@@ -289,12 +289,28 @@ export interface PageInk {
   /** Hide/lock state of the page's writing and drawing layers (see `StrokeLayer`). */
   layers?: PageLayers;
   /**
+   * The photo a page's ink was traced from ("Photo to ink"): an asset aligned with the page,
+   * kept for reference and never drawn or exported. The editor can show it over the ink to compare.
+   */
+  underlay?: PageUnderlay;
+  /**
    * Present only in the files of a locked note: the page's real content, encrypted (lock.ts).
    * The visible fields of such a file are empty, so tools that don't know about locks see a
    * blank page instead of the content.
    */
   sealed?: SealedBox;
   formatVersion: number;
+}
+
+/** A hidden reference image covering the whole page (see `PageInk.underlay`). */
+export interface PageUnderlay {
+  /** Image asset (PNG) in the note's assets, already cropped and straightened to the page. */
+  asset: string;
+  /** Pixel size of the asset. */
+  width: number;
+  height: number;
+  /** What it is, e.g. "photo". */
+  kind: 'photo';
 }
 
 /** AES-GCM ciphertext (base64) with its 96-bit IV (base64). */
