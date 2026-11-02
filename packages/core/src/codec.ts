@@ -44,6 +44,8 @@ export function encodeStroke(s: InkStroke): Record<string, unknown> {
   if (s.shape) o.shape = s.shape;
   if (s.input) o.input = s.input;
   if (s.origin) o.origin = s.origin;
+  if (typeof s.nib === 'number') o.nib = r3(s.nib);
+  if (s.layer === 'drawing') o.layer = s.layer;
   o.points = s.points.map(encodePoint);
   return o;
 }
@@ -60,6 +62,8 @@ export function decodeStroke(o: any): InkStroke {
   if (o.shape) s.shape = o.shape;
   if (o.input === 'pen' || o.input === 'touch' || o.input === 'mouse') s.input = o.input;
   if (typeof o.origin === 'string') s.origin = o.origin;
+  if (typeof o.nib === 'number' && Number.isFinite(o.nib)) s.nib = o.nib;
+  if (o.layer === 'drawing') s.layer = 'drawing';
   return s;
 }
 

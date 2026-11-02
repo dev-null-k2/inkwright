@@ -12,6 +12,7 @@ import {
 import { exportMarkdown, exportPageSvg } from './export.ts';
 import type { VaultFS } from './fs.ts';
 import { isSafeId, newId, requireSafeId } from './ids.ts';
+import { NoteLockedError, assetAad, createLock, isSealedBytes, openBytes, openNoteMeta, openPage, sealBytes, sealNoteMeta, sealPage, sealedView } from './lock.ts';
 import {
   VAULT_FORMAT_VERSION,
   newNote,
@@ -48,8 +49,63 @@ export class Vault {
   private listeners = new Set<(c: VaultChange) => void>();
   private noteCache: Map<string, NoteMeta> | null = null;
   private notebookCache: Map<string, NotebookMeta> | null = null;
+  /**
+   * Keys of locked notes that are open right now (lock.ts). Held in memory only, never written:
+   * with a key, saves encrypt and assets decrypt; without one a locked note can't be changed.
+   */
+  private keys = new Map<string, CryptoKey>();
 
   constructor(readonly fs: VaultFS, private clock: () => number = Date.now) {}
+
+  // ---- Locked notes -----------------------------------------------------------------------
+
+  /** Remembers a locked note's key while it is open (after the passcode was checked). */
+  unlock(noteId: string, key: CryptoKey): void { this.keys.set(noteId, key); }
+  /** Forgets a locked note's key (the note closes): its files can no longer be read or written here. */
+  forget(noteId: string): void { this.keys.delete(noteId); }
+  isUnlocked(noteId: string): boolean { return this.keys.has(noteId); }
+  keyFor(noteId: string): CryptoKey | undefined { return this.keys.get(noteId); }
+
+  /**
+   * Locks a note: its pages, assets and metadata are rewritten encrypted with a key derived from
+   * the passcode, which stays unlocked here until `forget`. Returns the new metadata. Pass the
+   * note's current (unlocked) pages. Version history is resealed by `VersionHistory.reseal`.
+   */
+  async lockNote(note: NoteMeta, pages: PageInk[], passcode: string, opts: { iterations?: number } = {}): Promise<NoteMeta> {
+    if (note.lock) throw new Error('This note is already locked.');
+    const { lock, key } = await createLock(passcode, { now: this.clock(), iterations: opts.iterations });
+    this.keys.set(note.id, key);
+    const next: NoteMeta = { ...note, lock };
+    await this.saveNote(next, pages);
+    for (const e of await this.fs.list(VaultLayout.assetsDir(note.id))) {
+      if (e.kind !== 'file') continue;
+      const path = VaultLayout.asset(note.id, e.name);
+      const bytes = await this.fs.readBytes(path);
+      if (bytes && !isSealedBytes(bytes)) await this.fs.writeBytes(path, await sealBytes(key, bytes, assetAad(e.name)));
+    }
+    return next;
+  }
+
+  /**
+   * Removes a note's lock for good: everything is written back as plain files. The note must be
+   * unlocked (its key known); pass its unlocked metadata and pages.
+   */
+  async removeLock(note: NoteMeta, pages: PageInk[]): Promise<NoteMeta> {
+    const key = this.keys.get(note.id);
+    if (!note.lock) return note;
+    if (!key) throw new NoteLockedError(note.id);
+    for (const e of await this.fs.list(VaultLayout.assetsDir(note.id))) {
+      if (e.kind !== 'file') continue;
+      const path = VaultLayout.asset(note.id, e.name);
+      const bytes = await this.fs.readBytes(path);
+      if (bytes && isSealedBytes(bytes)) await this.fs.writeBytes(path, await openBytes(key, bytes, assetAad(e.name)));
+    }
+    const { lock: _l, ...rest } = note;
+    const plain = rest as NoteMeta;
+    this.keys.delete(note.id);
+    await this.saveNote(plain, pages);
+    return plain;
+  }
 
   onChange(l: (c: VaultChange) => void): () => void {
     this.listeners.add(l);
@@ -102,8 +158,20 @@ export class Vault {
       .sort((a, b) => b.updatedAt - a.updatedAt);
   }
 
-  async readNote(id: string): Promise<NoteMeta | null> {
+  /**
+   * A note's metadata. For a locked note, `unlocked: true` also decrypts its sealed fields (needs
+   * the key, see `unlock`); otherwise they are simply absent.
+   */
+  async readNote(id: string, opts: { unlocked?: boolean } = {}): Promise<NoteMeta | null> {
     requireSafeId(id);
+    const n = await this.readNoteRaw(id);
+    if (!n || !opts.unlocked || !n.lock) return n;
+    const key = this.keys.get(id);
+    if (!key) throw new NoteLockedError(id);
+    return openNoteMeta(key, n);
+  }
+
+  private async readNoteRaw(id: string): Promise<NoteMeta | null> {
     const cached = this.noteCache?.get(id);
     if (cached) return cached;
     const text = await this.fs.readText(VaultLayout.noteMeta(id));
@@ -128,9 +196,19 @@ export class Vault {
     }
   }
 
-  async readPages(note: NoteMeta): Promise<PageInk[]> {
+  /**
+   * A note's pages. Pages of a locked note come back blank (`sealedView`) — search, agents,
+   * thumbnails and sync never see their content — unless `unlocked: true` is passed by the editor
+   * that holds the key.
+   */
+  async readPages(note: NoteMeta, opts: { unlocked?: boolean } = {}): Promise<PageInk[]> {
     // Unsafe page ids (hand-edited or corrupt files) are skipped rather than failing the note.
-    return Promise.all(note.pageIds.filter(isSafeId).map((p) => this.readPage(note.id, p)));
+    const pages = await Promise.all(note.pageIds.filter(isSafeId).map((p) => this.readPage(note.id, p)));
+    if (!pages.some((p) => p.sealed)) return pages;
+    if (!opts.unlocked) return pages.map((p) => (p.sealed ? sealedView(p) : p));
+    const key = this.keys.get(note.id);
+    if (!key) throw new NoteLockedError(note.id);
+    return Promise.all(pages.map((p) => openPage(key, p)));
   }
 
   async createNote(args: {
@@ -151,20 +229,27 @@ export class Vault {
   async saveNote(note: NoteMeta, pages: PageInk[], opts: SaveOptions = {}): Promise<void> {
     requireSafeId(note.id);
     const changed = new Set(opts.changedPageIds ?? pages.map((p) => p.id));
+    // A locked note is only ever written encrypted, and only by whoever holds its key.
+    const key = note.lock ? this.keys.get(note.id) : undefined;
+    if (note.lock && !key) throw new NoteLockedError(note.id);
+    if (key) {
+      note = await sealNoteMeta(key, note);
+      pages = await Promise.all(pages.map((p) => (changed.has(p.id) ? sealPage(key, p) : Promise.resolve(sealedView(p)))));
+    }
     await this.fs.writeText(VaultLayout.noteMeta(note.id), encodeNote(note));
     const derived = opts.derived ?? true;
     for (const p of pages) {
       if (!changed.has(p.id)) continue;
       requireSafeId(p.id);
       await this.fs.writeText(VaultLayout.pageInk(note.id, p.id), encodePage(p));
-      if (derived) await this.fs.writeText(VaultLayout.pageSvg(note.id, p.id), exportPageSvg(note, p));
+      if (derived) await this.fs.writeText(VaultLayout.pageSvg(note.id, p.id), exportPageSvg(note, key ? sealedView(p) : p));
     }
     for (const id of opts.removedPageIds ?? []) {
       requireSafeId(id);
       await this.fs.delete(VaultLayout.pageInk(note.id, id));
       await this.fs.delete(VaultLayout.pageSvg(note.id, id));
     }
-    if (derived) await this.fs.writeText(VaultLayout.noteMarkdown(note.id), exportMarkdown(note, pages));
+    if (derived) await this.fs.writeText(VaultLayout.noteMarkdown(note.id), exportMarkdown(note, key ? pages.map(sealedView) : pages));
     this.noteCache?.set(note.id, note);
     this.emit({ type: 'note', noteId: note.id });
   }
@@ -215,9 +300,12 @@ export class Vault {
   }
 
   async duplicateNote(id: string): Promise<NoteMeta | null> {
-    const src = await this.readNote(id);
+    const raw = await this.readNote(id);
+    if (!raw) return null;
+    // A locked note can be duplicated only while unlocked; the copy is locked with the same passcode.
+    const src = raw.lock ? await this.readNote(id, { unlocked: true }) : raw;
     if (!src) return null;
-    const pages = await this.readPages(src);
+    const pages = await this.readPages(src, { unlocked: true });
     const now = this.clock();
     const noteId = newId(now);
     const newPages = pages.map((p) => {
@@ -242,6 +330,7 @@ export class Vault {
       pinned: false,
     };
     delete copy.trashedAt;
+    if (src.lock) this.keys.set(noteId, this.keys.get(id)!);
     // Assets are shared by name; copy them so the duplicate is self-contained.
     for (const e of await this.fs.list(VaultLayout.assetsDir(id))) {
       if (e.kind !== 'file') continue;
@@ -257,14 +346,21 @@ export class Vault {
   async writeAsset(noteId: string, name: string, bytes: Uint8Array): Promise<string> {
     requireSafeId(noteId);
     if (!/^[0-9A-Za-z_.-]{1,96}$/.test(name) || name.includes('..')) throw new Error(`Unsafe asset name: ${name}`);
-    await this.fs.writeBytes(VaultLayout.asset(noteId, name), bytes);
+    const key = this.keys.get(noteId);
+    if (!key && (await this.readNoteRaw(noteId))?.lock) throw new NoteLockedError(noteId);
+    await this.fs.writeBytes(VaultLayout.asset(noteId, name), key ? await sealBytes(key, bytes, assetAad(name)) : bytes);
     return name;
   }
 
   async readAsset(noteId: string, name: string): Promise<Uint8Array | null> {
     requireSafeId(noteId);
     if (name.includes('/') || name.includes('..')) return null;
-    return this.fs.readBytes(VaultLayout.asset(noteId, name));
+    const bytes = await this.fs.readBytes(VaultLayout.asset(noteId, name));
+    if (!bytes || !isSealedBytes(bytes)) return bytes;
+    // An encrypted asset of a locked note reads as missing unless the note is unlocked here.
+    const key = this.keys.get(noteId);
+    if (!key) return null;
+    try { return await openBytes(key, bytes, assetAad(name)); } catch { return null; }
   }
 
   // ---- Notebooks ------------------------------------------------------------------------

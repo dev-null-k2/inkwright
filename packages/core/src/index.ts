@@ -29,3 +29,8 @@ export * from './tables.ts';
 export * from './inkcues.ts';
 export * from './objectsvg.ts';
 export * from './memory.ts';
+export * from './overlays.ts';
+export * from './layers.ts';
+export * from './snap.ts';
+export * from './lock.ts';
+export * from './history.ts';
