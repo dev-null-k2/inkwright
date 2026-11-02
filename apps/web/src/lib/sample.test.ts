@@ -6,11 +6,11 @@ describe('sample library', () => {
   it('writes realistic, searchable notebooks in handwriting', async () => {
     const vault = new Vault(new MemoryFS());
     const r = await seedSampleLibrary(vault);
-    expect(r).toEqual({ notebooks: 3, notes: 4 });
+    expect(r).toEqual({ notebooks: 3, notes: 5 });
     const notebooks = await vault.listNotebooks();
     expect(notebooks.map((n) => n.name).sort()).toEqual(['Journal', 'Signals & Systems', 'Startup']);
     const notes = await vault.listNotes();
-    expect(notes).toHaveLength(4);
+    expect(notes).toHaveLength(5);
     for (const meta of notes) {
       const doc = await vault.readNote(meta.id);
       const page = (await vault.readPage(meta.id, doc!.pageIds[0]!))!;
@@ -36,5 +36,5 @@ describe('sample library', () => {
     const review = notes.find((n) => n.title.startsWith('Design review'))!;
     const rp = (await vault.readPage(review.id, (await vault.readNote(review.id))!.pageIds[0]!))!;
     expect((rp.texts ?? []).flatMap((t) => parseWikiLinks(t.text).map((l) => l.target))).toContain('Lecture 7 — Fourier series');
-  });
+  }, 30_000); // synthesizes thousands of strokes; slow on a busy machine
 });

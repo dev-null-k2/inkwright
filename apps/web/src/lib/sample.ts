@@ -11,6 +11,8 @@ import { handwrite, newId, type InkPoint, type InkStroke, type PageInk, type Pap
 const INK = '#FF1F2433';
 const BLUE = '#FF1F3A93';
 const RED = '#FFB3412F';
+/** The AI's ink: the `--ai-ink` colour answers are written in, so they're never mistaken for yours. */
+const AI_INK = '#FF2D5A8C';
 
 function stroke(points: [number, number][], pen: InkStroke['pen'], color: string, size: number, t0: number): InkStroke {
   const pts: InkPoint[] = points.map(([x, y], i) => ({ x, y, t: i * 9, p: 0.45 + 0.25 * Math.sin((Math.PI * i) / Math.max(1, points.length - 1)), tilt: -1, orient: -1 }));
@@ -27,7 +29,7 @@ function line(x0: number, y0: number, x1: number, y1: number, pen: InkStroke['pe
   return stroke(pts, pen, color, size, t0);
 }
 
-function text(x: number, y: number, width: number, body: string, size = 16, font: TextBox['font'] = 'sans'): TextBox {
+function text_(x: number, y: number, width: number, body: string, size = 16, font: TextBox['font'] = 'sans'): TextBox {
   return { id: newId(), x, y, width, text: body, fontSize: size, color: '#FF1B1F24', font, createdAt: Date.now() };
 }
 
@@ -106,8 +108,8 @@ async function review(vault: Vault, notebookId: string, lectureTitle: string) {
   const { note, pages } = await vault.createNote({ title: 'Design review — offline sync', notebookId, tags: ['meeting'], paper: DOTS });
   const t0 = Date.now() - 2 * 86400_000;
   const texts: TextBox[] = [
-    text(64, 64, 620, '# Design review — offline sync', 18, 'serif'),
-    text(64, 120, 470, ['**Decision:** three-way merge per page; no server.', '', '- Notes stay plain files on each device', '- Drive, WebDAV or a synced folder carries them', '- Conflicts merge stroke by stroke', '', `Background reading: [[${lectureTitle}]]`].join('\n'), 15),
+    text_(64, 64, 620, '# Design review — offline sync', 18, 'serif'),
+    text_(64, 120, 470, ['**Decision:** three-way merge per page; no server.', '', '- Notes stay plain files on each device', '- Drive, WebDAV or a synced folder carries them', '- Conflicts merge stroke by stroke', '', `Background reading: [[${lectureTitle}]]`].join('\n'), 15),
   ];
   const w = writer(560, 130, 170, t0 + 600_000);
   w.write('latency budget?', { style: 'print', color: RED, xHeight: 7.5 });
@@ -122,6 +124,23 @@ async function review(vault: Vault, notebookId: string, lectureTitle: string) {
   }
   strokes.push(line(170, 432, 280, 518, 'fountain', INK, 1.6, w.now(), 0.8, 5), line(500, 432, 395, 518, 'fountain', INK, 1.6, w.now(), 0.8, 6));
   await vault.saveNote({ ...note, createdAt: t0, updatedAt: t0 + 900_000 }, [{ ...pages[0]!, texts, strokes, recognizedText: [...w.out.recognized, 'phone', 'laptop', 'your Drive'].join('\n'), recognizedAt: Date.now(), recognizedBy: 'sample' }]);
+}
+
+/** A page where the student asked in ink and the AI answered in its own ink (as "Answer" does). */
+async function askPage(vault: Vault, notebookId: string, lectureTitle: string) {
+  const { note, pages } = await vault.createNote({ title: 'Asking the page', notebookId, tags: ['signals'], paper: RULED });
+  const t0 = Date.now() - 2 * 3600_000;
+  const w = writer(70, 64, 640, t0);
+  w.write('Questions after lecture 7', { xHeight: 11, gap: 22 });
+  const q = w.write('Why does the overshoot at the jump never go away, even with more terms?', { gap: 18 });
+  // The lasso the question was asked with, left on the page as a light bracket.
+  w.out.strokes.push(line(58, q.top - 2, 58, q.bottom + 2, 'ballpoint', '#FF8A8190', 1.2, w.now(), 0.3, 2));
+  const answer = handwrite(
+    'Because the partial sums converge pointwise, not uniformly. Near the jump each new term squeezes the ripple closer to the edge but its peak stays near 9% of the jump (the Gibbs phenomenon). Smoothing the coefficients, e.g. Fejer or Lanczos sigma factors, removes it.',
+    { x: 92, y: w.out.y + 6, width: 600, xHeight: 8, style: 'print', color: AI_INK, pen: 'ballpoint', seed: 77, startTime: w.now() + 4000, origin: 'ai', messiness: 0.2 },
+  );
+  const text = [text_(70, answer.bottom + 26, 600, `From [[${lectureTitle}]] and the course notes.`, 13)];
+  await vault.saveNote({ ...note, createdAt: t0, updatedAt: t0 + 600_000 }, [{ ...pages[0]!, strokes: [...w.out.strokes, ...answer.strokes], texts: text, recognizedText: w.out.recognized.join('\n'), recognizedAt: Date.now(), recognizedBy: 'sample' }]);
 }
 
 async function journal(vault: Vault, notebookId: string) {
@@ -144,6 +163,7 @@ export async function seedSampleLibrary(vault: Vault): Promise<{ notebooks: numb
   const lectureTitle = (await vault.readNote(lectureId))?.title ?? 'Lecture 7 — Fourier series';
   await weekly(vault, study.id);
   await review(vault, work.id, lectureTitle);
+  await askPage(vault, study.id, lectureTitle);
   await journal(vault, life.id);
-  return { notebooks: 3, notes: 4 };
+  return { notebooks: 3, notes: 5 };
 }

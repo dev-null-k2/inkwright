@@ -53,6 +53,12 @@ test('screenshots in dark palettes', async ({ page }) => {
     await page.waitForTimeout(250);
     await shot(page, `library-${palette}`);
   }
+  await page.evaluate(() => document.documentElement.setAttribute('data-palette', 'duan'));
+  await page.locator('.note-card', { hasText: 'Asking the page' }).first().click();
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
+  await page.waitForTimeout(400);
+  await shot(page, 'ask');
+  await page.getByRole('button', { name: 'Back to library' }).click();
   await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
   await page.locator('.note-card', { hasText: 'Design review' }).first().click();
   await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
