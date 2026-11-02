@@ -37,3 +37,6 @@ export * from './lock.ts';
 export * from './history.ts';
 export * from './compiler/index.ts';
 export * from './handwrite.ts';
+export * from './papers/index.ts';
+export * from './datasandbox/index.ts';
+export * from './canvasdag/index.ts';
