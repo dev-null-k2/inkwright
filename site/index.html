@@ -26,6 +26,7 @@
     --mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
     color-scheme: light;
   }
+  .hero-art .dark { display: none }
   @media (prefers-color-scheme: dark) {
     :root {
       --desk: #1a161c; --paper: #f4f0e6; --ink: #eee8f0; --ink-2: #b9b0bf; --ink-3: #958c9b; --line: rgba(238, 232, 240, 0.12);
@@ -49,7 +50,6 @@
 
   .hero { display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; align-items: center; padding: 40px 0 72px }
   .hero-art img { width: 100%; max-width: 520px; display: block }
-  .hero-art .dark { display: none }
   .hero h1 { font: 500 clamp(30px, 4.4vw, 46px)/1.12 var(--title); letter-spacing: -0.01em; margin: 24px 0 16px }
   .hero p.lead { color: var(--ink-2); font-size: 19px; margin: 0 0 28px; max-width: 34em }
   .ctas { display: flex; flex-wrap: wrap; gap: 12px }
@@ -104,6 +104,7 @@
     .sheet { transform: none }
     .numbers td:first-child { white-space: normal }
   }
+  @media (prefers-color-scheme: dark) { .btn.primary { background: var(--ink); color: #1a161c } }
   @media (prefers-reduced-motion: reduce) { .btn:hover { transform: none } }
 </style>
 </head>
