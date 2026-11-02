@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 import type { Plugin } from 'vite';
 import { fileURLToPath } from 'node:url';
+import { desktopOcrAssets } from './scripts/vite-desktop-assets.ts';
 
 /**
  * Content Security Policy for hosted/native builds. Any AI endpoint may be configured by the user
@@ -84,9 +85,12 @@ export default defineConfig(({ mode }) => {
   const single = mode === 'single';
   const e2e = mode === 'e2e';
   const native = mode === 'native';
+  // `vite build --mode desktop` → dist-desktop/ for the Tauri shell (apps/desktop): no service
+  // worker (the shell serves the files), CSP from tauri.conf.json, on-device OCR files included.
+  const desktop = mode === 'desktop';
   return {
     base: './',
-    plugins: [react(), ...(single ? [viteSingleFile({ removeViteModuleLoader: true })] : native ? [csp(true)] : [serviceWorker(), csp(false)])],
+    plugins: [react(), ...(single ? [viteSingleFile({ removeViteModuleLoader: true })] : native ? [csp(true)] : desktop ? [] : [serviceWorker(), csp(false)]), ...(desktop || e2e ? [desktopOcrAssets()] : [])],
     publicDir: single ? false : 'public',
     // The single-file preview leaves the on-device AI runtime out (see src/ai/spawn-unavailable.ts).
     // It also leaves out the developer module's grammars and SQLite (src/dev/wasm-assets-unavailable.ts).
@@ -98,14 +102,14 @@ export default defineConfig(({ mode }) => {
     ] } : undefined,
     define: {
       __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '1.0.0'),
-      __BUILD_TARGET__: JSON.stringify(single ? 'single' : 'web'),
+      __BUILD_TARGET__: JSON.stringify(single ? 'single' : desktop ? 'desktop' : 'web'),
       // INKWRIGHT_E2E_HOOK=1 adds the test hook to other builds too: the Android emulator suite
       // (e2e-android/) drives a native debug build and reads the document through it.
       __E2E__: JSON.stringify(e2e || process.env.INKWRIGHT_E2E_HOOK === '1'),
     },
     worker: { format: 'es' },
     build: {
-      outDir: single ? 'dist-single' : e2e ? 'dist-e2e' : native ? 'dist-native' : 'dist',
+      outDir: single ? 'dist-single' : e2e ? 'dist-e2e' : native ? 'dist-native' : desktop ? 'dist-desktop' : 'dist',
       target: 'es2022',
       sourcemap: !single,
       assetsInlineLimit: single ? 100_000_000 : 4096,

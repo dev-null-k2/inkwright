@@ -1,0 +1,73 @@
+/* ---- Memory timeline (src/recall) ---------------------------------------------------------------
+   A calm full-height panel over the desk: days, an hour strip, moments as quiet cards. Jade only
+   marks where you are (the selected day, the moment you came to); cinnabar only erases. */
+
+.rc-scrim { position: fixed; inset: 0; z-index: 60; background: rgba(26, 18, 30, 0.36); display: flex; justify-content: center; padding: calc(12px + var(--safe-top)) calc(12px + var(--safe-right)) calc(12px + var(--safe-bottom)) calc(12px + var(--safe-left)); }
+.rc-panel { width: min(860px, 100%); height: calc(var(--usable-h) - 24px); display: flex; flex-direction: column; background: var(--desk); border-radius: var(--r-panel); box-shadow: var(--float-shadow); overflow: hidden; animation: pop-in 0.16s var(--ease-out); }
+.rc-top { display: flex; align-items: center; gap: 8px; padding: 14px 12px 6px 20px; }
+.rc-top h2 { margin: 0; font-family: var(--font-title); font-weight: 500; font-size: var(--t-xl); letter-spacing: -0.01em; }
+.rc-status { flex: 1; min-width: 0; margin: 0 0 0 8px; font-size: var(--t-sm); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-status.is-live::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: var(--eye); vertical-align: 1px; }
+.rc-search { display: flex; align-items: center; gap: 8px; margin: 6px 20px 10px; padding: 0 12px; min-height: 42px; border-radius: var(--r-control); background: var(--raised); color: var(--ink-3); }
+.rc-search input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; color: var(--ink); outline: none; }
+.rc-search:focus-within { outline: 2px solid var(--iron); outline-offset: 1px; }
+.rc-days { display: flex; gap: 6px; padding: 0 20px 8px; overflow-x: auto; scrollbar-width: none; }
+.rc-day { flex: none; min-height: 32px; padding: 0 12px; border: 0; border-radius: var(--r-pill); background: transparent; color: var(--ink-2); font: inherit; font-size: var(--t-sm); cursor: pointer; }
+.rc-day:hover { background: var(--chrome-2); }
+.rc-day.is-on { background: var(--iron-soft); color: var(--iron); font-weight: 600; }
+.rc-hours { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; height: 34px; margin: 0 20px 8px; }
+.rc-hour { display: flex; align-items: flex-end; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.rc-hour:disabled { cursor: default; }
+.rc-hour span { width: 100%; border-radius: 3px; background: var(--line); }
+.rc-hour span.has { background: color-mix(in srgb, var(--ink) 34%, transparent); }
+.rc-hour:hover:not(:disabled) span { background: var(--ink-2); }
+.rc-list, .rc-results { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 20px 24px; }
+.rc-hour-group h3 { margin: 14px 2px 6px; font-size: var(--t-xs); font-weight: 600; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.rc-moment { background: var(--raised); border-radius: var(--r-control); padding: 10px 12px 10px 14px; margin-bottom: 8px; }
+.rc-moment.is-focused { box-shadow: inset 3px 0 0 var(--iron); }
+.rc-moment > header { display: flex; align-items: center; gap: 8px; min-height: 30px; font-size: var(--t-sm); }
+.rc-moment time { font-variant-numeric: tabular-nums; color: var(--ink-3); }
+.rc-app { font-weight: 600; }
+.rc-title { flex: 1; min-width: 0; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-app + .rc-erase { margin-left: auto; }
+.rc-erase { color: var(--ink-3); }
+.rc-erase:hover { color: var(--seal); }
+.rc-lines { margin: 4px 0 2px; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.5; color: var(--ink); overflow-wrap: anywhere; }
+.rc-lines p { margin: 0; }
+.rc-lines mark { background: var(--iron-soft); color: inherit; border-radius: 3px; padding: 0 1px; }
+.rc-more { border: 0; background: transparent; padding: 4px 0; font: inherit; font-size: var(--t-xs); color: var(--iron); cursor: pointer; }
+.rc-hidden { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; font-size: var(--t-xs); color: var(--ink-3); }
+.rc-notes { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-size: var(--t-xs); color: var(--ink-3); }
+.rc-note { display: inline-flex; align-items: center; gap: 5px; min-height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--r-pill); background: transparent; color: var(--ink); font: inherit; font-size: var(--t-xs); cursor: pointer; }
+.rc-note:hover { background: var(--chrome); }
+.rc-empty, .rc-summary { color: var(--ink-3); font-size: var(--t-sm); margin: 10px 2px; }
+.rc-hit-day { border: 0; background: transparent; padding: 6px 2px 2px; font: inherit; font-size: var(--t-xs); font-weight: 600; color: var(--ink-3); cursor: pointer; }
+.rc-hit-day:hover { color: var(--iron); }
+.rc-erase-day { margin-top: 12px; }
+
+@media (max-width: 600px) {
+  .rc-scrim { padding: 0; }
+  .rc-panel { width: 100%; height: 100%; border-radius: 0; padding: var(--safe-top) 0 var(--safe-bottom); }
+  .rc-top { padding-left: 16px; }
+  .rc-status { display: none; }
+  .rc-search, .rc-hours { margin-left: 16px; margin-right: 16px; }
+  .rc-days, .rc-list, .rc-results { padding-left: 16px; padding-right: 16px; }
+}
+
+/* Settings › Memory timeline, Journal, Desktop app */
+.rc-set-status { margin: 4px 0 8px; font-size: var(--t-sm); color: var(--ink-2); }
+.rc-set-list { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; }
+.rc-set-list + .rc-set-list { border-top: 1px solid var(--line); }
+.rc-set-list ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.rc-set-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; overflow-wrap: anywhere; }
+.rc-set-add { display: flex; gap: 8px; }
+.rc-set-add input { flex: 1; min-width: 0; min-height: 36px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--r-control); background: var(--raised); font: inherit; color: var(--ink); }
+.rc-set-add { flex-wrap: wrap; align-items: center; }
+.rc-set-add .jr-cal-name { flex: 0 1 140px; }
+.jr-cals { list-style: none; margin: 4px 0; padding: 0; }
+.jr-cals li { display: flex; align-items: center; gap: 10px; min-height: 48px; }
+.jr-cals li + li { border-top: 1px solid var(--line); }
+.dk-list { margin: 4px 0 8px; padding-left: 20px; color: var(--ink-2); }
+.dk-list li { margin: 4px 0; }
+.dk-icon { color: var(--ink-3); flex: none; }
+.rc-set-code {font-family: var(--font-mono); font-size: 12px; overflow-wrap: anywhere; background: var(--chrome); border-radius: 8px; padding: 8px 10px; margin: 4px 0; white-space: pre-wrap; }

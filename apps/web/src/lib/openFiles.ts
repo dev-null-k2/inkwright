@@ -206,7 +206,7 @@ export function useFileDrop(el: HTMLElement | null, onFiles: (files: File[], e: 
 // ---- Files handed to the app by the system ------------------------------------------------------
 
 /** Imports files the system opened Inkwright with and opens the first resulting note. */
-async function openIncoming(files: File[], text?: string) {
+export async function openIncoming(files: File[], text?: string) {
   const { importFiles, importText } = await import('./actions.ts');
   const app = useApp.getState();
   let id: string | null = null;

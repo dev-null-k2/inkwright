@@ -40,6 +40,10 @@ import { Accessibility } from 'lucide-react';
 import { InkActionsSettings, ReadingSettings } from '../inkactions/Settings.tsx';
 import { MonitorSmartphone } from 'lucide-react';
 import { DevicesSection } from '../peer/DevicesSection.tsx';
+import { History, Monitor, NotebookPen } from 'lucide-react';
+import { RecallSettings } from '../recall/RecallSettings.tsx';
+import { JournalSettings } from '../journal/JournalSettings.tsx';
+import { DesktopSettings } from '../desktop/DesktopSettings.tsx';
 
 const SECTIONS = [
   { id: 'writing', label: 'Writing feel', icon: <Vibrate size={17} /> },
@@ -54,6 +58,9 @@ const SECTIONS = [
   { id: 'knowledge', label: 'Notes, links & Obsidian', icon: <Waypoints size={17} /> },
   { id: 'ink-actions', label: 'Ink actions', icon: <PenLine size={17} /> },
   { id: 'reading', label: 'Reading', icon: <Accessibility size={17} /> },
+  { id: 'recall', label: 'Memory timeline', icon: <History size={17} /> },
+  { id: 'journal', label: 'Journal', icon: <NotebookPen size={17} /> },
+  { id: 'desktop', label: 'Desktop app', icon: <Monitor size={17} /> },
   { id: 'modules', label: 'Modules', icon: <Blocks size={17} /> },
   { id: 'plugins', label: 'Plugins', icon: <Puzzle size={17} /> },
   { id: 'code', label: 'Code & runbooks', icon: <FileCode2 size={17} /> },
@@ -106,6 +113,9 @@ export function Settings({ section }: { section?: string }) {
             {active === 'knowledge' && current && <KnowledgeSettings />}
             {active === 'ink-actions' && <InkActionsSettings />}
             {active === 'reading' && current && <ReadingSettings />}
+            {active === 'recall' && current && <RecallSettings />}
+            {active === 'journal' && current && <JournalSettings />}
+            {active === 'desktop' && current && <DesktopSettings />}
             {active === 'modules' && <ModulesSettings />}
             {active === 'plugins' && current && <PluginsSettings />}
             {active === 'code' && <DeveloperSection />}
