@@ -20,6 +20,7 @@ import {
   transcriptText,
   type AudioClip,
   type NoteDocument,
+  type NoteMeta,
   type SpeechWhere,
   type TranscriptFile,
   type TranscriptSegment,
@@ -30,7 +31,7 @@ import { appMemory } from '../memory.ts';
 import type { AppVault } from '../vault.ts';
 import { resolveSpeech, speechLanguage, startLiveTranscription, useSpeechPrefs, type LiveTranscription, type ResolvedSpeech } from './engines.ts';
 import { addPageNote, summarizeLecture, summarizePages } from './summaries.ts';
-import { loadNoteTranscripts, writeTranscript } from './transcripts.ts';
+import { loadNoteTranscripts, onListenFilesChanged, writeTranscript } from './transcripts.ts';
 
 export interface ListenState {
   /** The note and recording being transcribed live (null when not recording). */
@@ -57,6 +58,8 @@ export interface ListenState {
 const initial: ListenState = { noteId: null, clipId: null, startedAt: 0, segments: [], partial: '', working: false, status: 'idle', where: null, label: '', error: null, offer: null, summarizing: false, focus: null, version: 0 };
 
 export const useListen = create<ListenState>(() => initial);
+// Any transcript or summary written (here, by a re-transcription or a summary) refreshes panels.
+onListenFilesChanged(() => useListen.setState((s) => ({ version: s.version + 1 })));
 
 let engine: LiveTranscription | null = null;
 /** The last finished live transcript, so citations made during it stay linked afterwards. */
@@ -125,7 +128,7 @@ export function finishListening(a: { vault: AppVault; doc: NoteDocument; clip: A
     await writeTranscript(a.vault, a.doc.meta.id, file);
     lastLive = { noteId: a.doc.meta.id, clipId: a.clip.id, segments: file.segments };
     useListen.setState({ noteId: null, clipId: null, segments: [] });
-    await reindexTranscripts(a.vault, a.doc.meta.id);
+    await reindexTranscripts(a.vault, a.doc.meta.id, a.doc.meta);
     if (useSpeechPrefs.getState().autoSummary) await summarizeAfterRecording(a.vault, a.doc, a.clip.id).catch((e) => useListen.setState({ error: (e as Error).message }));
   })();
   const all = (settled.get(a.doc.meta.id) ?? Promise.resolve()).then(() => job).catch(() => {});
@@ -162,10 +165,11 @@ export function cancelListening(): void {
 }
 
 /** Tells the memory index about a note's transcripts (after a write). */
-export async function reindexTranscripts(vault: AppVault, noteId: string): Promise<void> {
+export async function reindexTranscripts(vault: AppVault, noteId: string, meta?: Pick<NoteMeta, 'id' | 'recordings'>): Promise<void> {
   useListen.setState((s) => ({ version: s.version + 1 }));
   const m = appMemory();
-  const note = await vault.vault.readNote(noteId);
+  // The open note's meta may be ahead of the saved file (a recording just added).
+  const note = meta ?? (await vault.vault.readNote(noteId));
   if (!m || !note) return;
   m.setTranscripts(noteId, await loadNoteTranscripts(vault, note));
 }

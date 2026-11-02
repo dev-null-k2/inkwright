@@ -56,7 +56,7 @@ const whereOfEngine = (t: TranscriptFile): { where: SpeechWhere; label: string }
  * (text appears as it is transcribed), saved ones afterwards. Tap a sentence to highlight the ink
  * written then and hear it; tap ink to find the sentence (the editor routes that here).
  */
-export function TranscriptPanel({ doc, vault, recording, playing, onClose }: { doc: NoteDocument; vault: AppVault; recording: boolean; playing: { clipId: string; position: number } | null; onClose: () => void }) {
+export function TranscriptPanel({ doc, vault, recording, playing, onClose }: { doc: NoteDocument; vault: AppVault; recording: boolean; playing: { clipId: string; position: number; playing: boolean } | null; onClose: () => void }) {
   const toast = useApp((s) => s.toast);
   const live = useListen();
   const isLive = live.noteId === doc.meta.id && (recording || live.status !== 'idle');
@@ -85,10 +85,11 @@ export function TranscriptPanel({ doc, vault, recording, playing, onClose }: { d
   const focusMs = live.focus && live.focus.noteId === doc.meta.id && live.focus.clipId === activeClip ? live.focus.ms : null;
   const playMs = playing && playing.clipId === activeClip ? playing.position : null;
   const current = useMemo(() => {
-    const t = playMs ?? focusMs;
+    // While audio plays, follow it; otherwise show the last sentence picked (by a tap on ink or text).
+    const t = playing?.playing ? playMs : (focusMs ?? playMs);
     if (t == null) return null;
     return segments.find((s) => t >= s.startMs && t < s.endMs + 400)?.id ?? [...segments].reverse().find((s) => s.startMs <= t)?.id ?? null;
-  }, [segments, playMs, focusMs]);
+  }, [segments, playMs, focusMs, playing?.playing]);
 
   // Live: keep the newest line in view unless the person scrolled up to read.
   useEffect(() => {
@@ -114,7 +115,7 @@ export function TranscriptPanel({ doc, vault, recording, playing, onClose }: { d
       const pcm = await decodeToPcm(bytes);
       const segs = await transcribePcm(pcm, r, (done, total) => setBusy(`Transcribing… ${done} of ${total}`));
       await writeTranscript(vault, doc.meta.id, { formatVersion: 1, clipId: clip.id, run: newId(), engine: r.engineId, where: r.where!, complete: true, updatedAt: Date.now(), segments: segs, ...(files[clip.id]?.lecture ? { lecture: files[clip.id]!.lecture } : {}) });
-      await reindexTranscripts(vault, doc.meta.id);
+      await reindexTranscripts(vault, doc.meta.id, doc.meta);
       toast({ text: segs.length ? `Transcribed ${formatStamp(clip.durationMs)} of audio` : 'No speech found in this recording', tone: segs.length ? 'success' : undefined });
     } catch (e) {
       toast({ text: (e as Error).message, tone: 'error' });
@@ -127,7 +128,7 @@ export function TranscriptPanel({ doc, vault, recording, playing, onClose }: { d
     setBusy('Summarizing…');
     try {
       await summarizeAfterRecording(vault, doc, clip.id);
-      await reindexTranscripts(vault, doc.meta.id);
+      await reindexTranscripts(vault, doc.meta.id, doc.meta);
       toast({ text: 'Summaries ready — see each page in Pages', tone: 'success' });
     } catch (e) {
       toast({ text: (e as Error).message, tone: 'error' });

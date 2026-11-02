@@ -43,7 +43,7 @@ export function SummarizePagesButton({ doc, vault }: { doc: NoteDocument; vault:
       setBusy('Summarizing…');
       try {
         const done = await summarizePages(vault, doc.meta, [...doc.pages], { pageIndexes: doc.pages.map((_, i) => i), onPage: (i) => setBusy(`Summarized page ${i + 1}…`) });
-        await reindexTranscripts(vault, doc.meta.id);
+        await reindexTranscripts(vault, doc.meta.id, doc.meta);
         toast({ text: done.size ? `Summarized ${done.size} ${done.size === 1 ? 'page' : 'pages'}` : 'Nothing to summarize yet: write, type or record first', tone: done.size ? 'success' : undefined });
       } catch (e) {
         toast({ text: (e as Error).message, tone: 'error' });

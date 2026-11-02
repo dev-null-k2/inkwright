@@ -83,6 +83,8 @@ export class AppMemory implements MemorySearchHost {
   private version = 0;
   /** Transcripts of each note's recordings ("what was said" passages), loaded once per note. */
   private transcripts = new Map<string, RecordingTranscript[]>();
+  /** Recordings whose transcript file was looked for, per note. */
+  private transcriptsChecked = new Map<string, Set<string>>();
   private transcriptsQueued = new Set<string>();
 
   constructor(readonly vault: AppVault) {
@@ -115,6 +117,7 @@ export class AppMemory implements MemorySearchHost {
   clear(): void {
     // A rebuild (e.g. after sync) may bring new transcripts: read them again.
     this.transcripts.clear();
+    this.transcriptsChecked.clear();
     this.transcriptsQueued.clear();
     this.corpus.clear();
     this.pending.clear();
@@ -124,25 +127,39 @@ export class AppMemory implements MemorySearchHost {
 
   // ---- Transcripts -------------------------------------------------------------------------------
 
-  /** Known transcripts of the note's recordings; the first time, loads them and re-chunks the note. */
+  /**
+   * Known transcripts of the note's recordings. A recording not looked at yet (new, or synced
+   * from another device) has its transcript read in the background, then the note is re-chunked.
+   */
   private transcriptsFor(note: NoteMeta, pages: readonly PageInk[]): RecordingTranscript[] {
     if (!note.recordings?.length) return [];
-    const have = this.transcripts.get(note.id);
-    if (have) return have.filter((t) => note.recordings!.some((c) => c.id === t.clip.id));
-    if (!this.transcriptsQueued.has(note.id)) {
-      this.transcriptsQueued.add(note.id);
-      void loadNoteTranscripts(this.vault, note).then((list) => {
-        this.transcripts.set(note.id, list);
-        if (list.length) this.update(note, pages);
-      }).catch((e) => console.warn('Transcripts unavailable', e));
+    const ids = note.recordings.map((c) => c.id);
+    const checked = this.transcriptsChecked.get(note.id);
+    if (!checked || ids.some((id) => !checked.has(id))) {
+      const key = `${note.id}|${ids.join(',')}`;
+      if (!this.transcriptsQueued.has(key)) {
+        this.transcriptsQueued.add(key);
+        void loadNoteTranscripts(this.vault, note).then((list) => {
+          this.transcriptsQueued.delete(key);
+          this.setTranscriptList(note.id, list, ids);
+          if (list.length) this.update(note, pages);
+        }).catch((e) => console.warn('Transcripts unavailable', e));
+      }
     }
-    return [];
+    return (this.transcripts.get(note.id) ?? []).filter((t) => ids.includes(t.clip.id));
+  }
+
+  private setTranscriptList(noteId: string, list: RecordingTranscript[], checkedIds: readonly string[]) {
+    this.transcripts.set(noteId, list);
+    const set = this.transcriptsChecked.get(noteId) ?? new Set<string>();
+    for (const id of checkedIds) set.add(id);
+    for (const t of list) set.add(t.clip.id);
+    this.transcriptsChecked.set(noteId, set);
   }
 
   /** A transcript was written: re-index the note with it. */
   setTranscripts(noteId: string, list: RecordingTranscript[]): void {
-    this.transcripts.set(noteId, list);
-    this.transcriptsQueued.add(noteId);
+    this.setTranscriptList(noteId, list, list.map((t) => t.clip.id));
     void this.vault.vault.readNote(noteId).then(async (note) => {
       if (note && note.trashedAt == null) this.update(note, await this.vault.vault.readPages(note));
     });
