@@ -14,6 +14,7 @@ built. Sources are listed at the end.
 |---|---|---|
 | Embeddings (search by meaning) | **EmbeddingGemma 2**, text-only, 256-d Matryoshka (190 MB on GPU, 207 MB on CPU); **Granite Embedding 97M** on devices without WebGPU (123 MB) | transformers.js 4 in a Web Worker |
 | Chat (assistant, Ask) | By device tier: **Qwen3 4B Instruct 2507** (2.9 GB), **Qwen3 1.7B** (1.4 GB), **Qwen3 0.6B** (583 MB), **Granite 4.0 350M** (583 MB, CPU) | same worker |
+| Speech to text (transcripts, dictation) | English: **Moonshine Base** (157 MB GPU / 67 MB CPU), **Moonshine Tiny** on CPU-only devices (32 MB); other languages: **Whisper Base** (209 / 80 MB); big GPUs: **Whisper Large v3 Turbo** (566 MB) | same worker |
 | Chrome's own model | **Chrome built-in AI** (Prompt API, Gemini Nano) when the browser has it | `LanguageModel` |
 | Native model (later) | `NativeLLM` hook for Gemini Nano (ML Kit GenAI / AICore) or LiteRT-LM on Android, Foundation Models on iOS | host app |
 | Desktop servers | Ollama, LM Studio, llama.cpp `llama-server`, Foundry Local, found automatically | existing OpenAI-compatible provider |
@@ -114,6 +115,14 @@ apps/web/src/lib/ask.ts            Ask: retrieve → numbered passages → strea
 apps/web/src/ui/Palette.tsx        Search everything (Ctrl/⌘-K) and Ask
 apps/web/src/ui/LocalAISettings.tsx, LocalAISetup.tsx
 apps/web/src/platform/native-llm.ts  NativeLLM hook for the Android/iOS shells
+packages/ai/src/speech/            VAD + windowing, WAV/resampling, timestamped segments, choosing the
+                                   transcriber, summary and live-ask prompts, [m:ss] citations
+packages/core/src/transcript.ts    transcript and page-summary files, time ↔ ink, page bucketing,
+                                   "what was said" passages
+apps/web/src/lib/listen/           capture, engines (device/browser/provider/native), live session,
+                                   summaries, dictation, vault IO
+apps/web/src/ui/TranscriptPanel.tsx, Dictation.tsx, SpeechSettings.tsx, PageSummaries.tsx
+apps/web/src/platform/native-speech.ts  NativeSpeech hook (interface only)
 ```
 
 **Downloads.** The worker lists the model repository from the Hugging Face API, which gives exact
@@ -163,15 +172,94 @@ into view and highlights it in jade for about two seconds. The assistant's `sear
 returns `#mem/<note>/<page>/<x,y,w,h>` links. A global click handler opens them from any
 assistant reply.
 
+## Speech to text: notes that listen
+
+Recordings get a live transcript lined up with the ink, questions can be asked while a lecture is
+happening, and each page gets a summary. By default all of it runs on the device.
+
+### What we evaluated (November 2026)
+
+transformers.js 4.3.2 runs these speech architectures: `whisper`, `moonshine`, `cohere_asr`,
+`granite_speech` and `voxtral_realtime`. Candidates, with licences from their model cards:
+
+| Model | Licence | Size in the browser | Verdict |
+|---|---|---|---|
+| **Moonshine Tiny / Base** (Useful Sensors) | MIT | 32 / 67 MB (int8, CPU); 79 / 157 MB (fp32 encoder + 4-bit decoder, GPU) | **Chosen for English.** Compute grows with the audio's length instead of padding every call to 30 s like Whisper, so short live windows are cheap even on a phone's CPU. English only. |
+| **Whisper Base** (OpenAI) | Apache-2.0 | 80 MB (int8, CPU); 209 MB (GPU) | **Chosen for other languages.** ~100 languages and its own timestamps. |
+| **Whisper Large v3 Turbo** | MIT | 566 MB (q4f16) / 762 MB (q4) | **Chosen for `gpu-large`.** Most accurate model that runs in a browser tab. |
+| Distil-Whisper small.en | MIT | ~170 MB | Not chosen: English only and slower than Moonshine Base at similar accuracy. |
+| Moonshine Streaming tiny/small/medium | MIT | — | The best fit for live captions, but transformers.js 4.3.2 has no `moonshine_streaming` model type. Next step when it does. |
+| Cohere Transcribe (03-2026) | Apache-2.0 | encoder alone 1.4 GB (q4f16) | Too large for live use in a tab. |
+| Granite 4.0 1B Speech, Voxtral Mini 4B Realtime | Apache-2.0 | 1–4 B parameters | Too large for live use beside a chat model. |
+| Nemotron ASR streaming 0.6B | NVIDIA open model licence | — | Licence is not MIT/Apache; NeMo format, not transformers.js. |
+| Moonshine in other languages (ja, ko, zh, ar, uk, vi…) | not stated in the ONNX repositories' metadata | — | Left out until the licence is clear. |
+
+Defaults (`recommendAsr`): English speech gets Moonshine Tiny on CPU-only devices and Moonshine Base
+with a GPU; other languages get Whisper Base; `gpu-large` devices get Whisper Large v3 Turbo. The
+person can pick any runnable model, and the speech language, in **Settings › AI › Speech to text**.
+
+### Who transcribes
+
+`chooseTranscriber` (packages/ai/src/speech/select.ts):
+
+1. **On this device** once the speech model is downloaded (or the phone's own on-device
+   recognizer, through the `NativeSpeech` hook in `platform/native-speech.ts` — an interface only;
+   the Android shell can implement it with `SpeechRecognizer.createOnDeviceSpeechRecognizer`).
+2. Otherwise the **browser's live captions** (Web Speech API; most browsers send the audio to their
+   maker).
+3. Otherwise the **AI provider's** transcription endpoint (OpenAI, Groq, Gemini, custom).
+4. Otherwise offer the on-device download, showing its size.
+
+Choosing "This device" never falls back to the browser or a provider. Every transcript, the
+dictation bar and Settings show where the audio is processed (on this device / browser speech
+service / sent to a provider), and the transcript file records it (`where`).
+
+### How it works
+
+- **Capture.** While the clip records (MediaRecorder, unchanged), an AudioWorklet taps the same
+  microphone stream for 16 kHz mono PCM (`lib/listen/capture.ts`; resampled when the context can't
+  run at 16 kHz).
+- **Windows.** `AudioWindower` (packages/ai/src/speech/audio.ts) runs an energy VAD with an
+  adaptive noise floor and hangover. It cuts at the first pause (≥ 600 ms) once a window is 10 s
+  long, or at the quietest moment once it reaches 28 s (under Whisper's 30 s context), trims each
+  window to its speech and drops windows with no speech, so silence is never transcribed (Whisper
+  invents text for silence). Times are exact sample positions from the start of the recording.
+- **Transcription.** Each window goes to the worker's `transcribe` method (the
+  automatic-speech-recognition pipeline, per-file dtypes such as an fp32 encoder with a 4-bit
+  decoder) or, as WAV, to the provider. Whisper's own timestamps are used; for plain text
+  (Moonshine, providers) sentences are laid over the window's speech regions in proportion to their
+  length (`windowSegments`).
+- **Alignment.** Segment times are relative to the clip's `startedAt`, and strokes carry their
+  wall-clock `createdAt`, so the ink written during a sentence (plus 1.5 s of writing lag) is plain
+  time arithmetic (`inkForSegment`, `segmentAtTime` in packages/core/src/transcript.ts). Tapping a
+  sentence highlights those strokes (the rest dims) and plays the audio from there; with the
+  transcript open, tapping ink finds the sentence.
+- **Storage and search.** The transcript is saved next to the clip
+  (`assets/<clipId>.transcript.json`, docs/VAULT_FORMAT.md) and merged by sync. The memory index
+  turns it into "what was said" passages, anchored to the page and the ink written then, with the
+  recording and time; a search result or Ask citation opens the note, seeks the audio and
+  highlights that ink. The assistant's `search_memory` links carry the moment (`#mem/…@<clip>:<ms>`).
+- **Asking during a recording.** The AI panel adds the live transcript so far (newest kept when
+  long), the elapsed time and the current page to the assistant's context and asks for `[m:ss]`
+  citations; only times that match a real segment become links (`linkStampCitations`).
+- **Summaries.** When a recording ends (and on demand from the transcript or Pages panel), each page
+  the recording covered gets a summary from the segments assigned to it (`bucketSegmentsByPage`)
+  plus its text, and the recording gets a summary with key terms and to-dos. They use the
+  assistant's AI (on the device unless a provider was chosen) and appear in Pages, optionally as a
+  text note on the page. "When a recording ends" routines start after the transcript and summaries
+  are saved and receive them in their context.
+- **Dictation.** ••• › Dictate puts speech on the page as a text box; the mic in the text editor's
+  toolbar inserts at the caret. Same engines, shorter windows; no audio is kept.
+
 ## Next steps (researched, not built)
 
 - **Offline handwriting transcription with a vision model.** Gemma 4 E2B (Apache-2.0, image,
   audio and text input; ONNX on Hugging Face) fits only the `gpu-large` tier: the q4f16 decoder
   alone is 1.5 GB, plus per-layer embeddings and the vision encoder. On Android, ML Kit Digital
   Ink already recognizes offline through the native plugin.
-- **Speech to text** for recordings. Moonshine base (MIT; its merged decoder is 42 MB as int8
-  and 73 MB as q4) or Whisper base (MIT; a 19–23 MB quantized encoder plus a 54–124 MB decoder)
-  would run in the same worker. whisper-large-v3-turbo is an option for desktops.
+- **Streaming speech models.** Moonshine Streaming (MIT) would give word-by-word on-device
+  captions instead of a line every pause, once transformers.js supports `moonshine_streaming`.
+- **Native speech.** Implement `NativeSpeech` in the Android shell (on-device `SpeechRecognizer`).
 - **Native models.** Implement `NativeLLM` in the Android shell: Gemini Nano through the ML Kit
   GenAI Prompt API on AICore devices, or LiteRT-LM for others. iOS could use Apple's Foundation
   Models.
@@ -216,6 +304,39 @@ assistant reply.
     transformers.js calls in Node: Qwen3 0.6B, `enable_thinking: false`, streaming. Run the chat
     test on a machine with more memory.
 
+### Speech tests
+
+- `packages/core/test/transcript.test.ts`: file format, time ↔ ink (writing lag, sentence at a
+  moment, clip at a moment), page bucketing rules, speech passages and their memory chunks.
+- `packages/ai/test/speech.test.ts`: VAD, windowing (pauses, maximum length, silence dropped, exact
+  times, live vs whole-file), resampling, WAV, sentence splitting and spreading over speech, Whisper
+  timestamps, transcriber choice, catalog and tier defaults, prompts, `[m:ss]` citations, links.
+  `speech-worker.test.ts`: the worker protocol with a fake speech model (transfer, cancel, a whole
+  recording becoming segments on the recording's clock).
+- `packages/sync/test/listen-merge.test.ts`: transcript and page-summary merges, also through the
+  sync engine with two devices.
+- `apps/web/src/lib/listen/listen.test.ts`: speech passages in search and Ask with their anchors,
+  page and lecture summaries with a scripted AI, routine context, live Ask context and citation
+  links, dictation insertion, engine resolution.
+- e2e `listen.spec.ts`: Chromium's fake microphone plays a generated speech-like WAV; the
+  transcription endpoint is mocked. Lines appear while recording, lined up with the strokes written
+  during them; Ask during the recording gets the live transcript and cites it; after stopping, the
+  lecture summary and page summaries appear; tapping a sentence highlights its strokes and plays
+  from there; tapping ink finds the sentence; search finds what was said and opens that moment;
+  dictation on the page and at the caret; "This device" offers the download and uploads nothing.
+- **Opt-in real models** (`INKSTONE_REAL_MODELS=1` or `=asr`):
+  `npx vitest run --project ai packages/ai/test/speech-models.live.test.ts` runs Moonshine Tiny and
+  Whisper Base in Node on a public-domain clip (JFK's inaugural address) cut by our windowing, and
+  `PW_PORT=4181 npx playwright test e2e/listen-real.spec.ts --project desktop` downloads Moonshine
+  Tiny into the app's worker and transcribes the clip live from the fake microphone.
+  Results on the development machine (Nov 2026): both pass. Node: Moonshine Tiny "And so my fellow
+  Americans ask not what your country can do for you, ask what you can do for your country."
+  (5 s); Whisper Base the same with its own timestamps (14 s). In Chromium, Moonshine Tiny on the
+  CPU produced the live lines "And so my fellow America asked not." (0:00) and "What your country
+  can do for you, ask what you can do for your country." (0:05) with no audio uploaded. Whisper
+  Large v3 Turbo was not run here (566 MB is above this sandbox's browser memory limit); its
+  catalog entry is checked against the live repository.
+
 ## Sources
 
 - Hugging Face, “Transformers.js v4” (Feb 2026): https://huggingface.co/blog/transformersjs-v4
@@ -234,6 +355,16 @@ assistant reply.
   https://huggingface.co/onnx-community/granite-4.0-1b-ONNX-web, https://huggingface.co/onnx-community/granite-embedding-97m-multilingual-r2-ONNX,
   https://huggingface.co/Xenova/all-MiniLM-L6-v2, https://huggingface.co/onnx-community/gemma-4-E2B-it-ONNX,
   https://huggingface.co/onnx-community/moonshine-base-ONNX, https://huggingface.co/onnx-community/whisper-base
+- Moonshine model cards (MIT): https://huggingface.co/UsefulSensors/moonshine-tiny, https://huggingface.co/UsefulSensors/moonshine-base;
+  ONNX builds: https://huggingface.co/onnx-community/moonshine-tiny-ONNX, https://huggingface.co/onnx-community/moonshine-base-ONNX
+- Whisper model cards: https://huggingface.co/openai/whisper-base (Apache-2.0), https://huggingface.co/openai/whisper-large-v3-turbo (MIT);
+  ONNX builds: https://huggingface.co/onnx-community/whisper-base, https://huggingface.co/onnx-community/whisper-large-v3-turbo
+- Moonshine Streaming (MIT): https://huggingface.co/moonshine-ai/moonshine-streaming-tiny
+- Cohere Transcribe 03-2026 (Apache-2.0, ONNX sizes): https://huggingface.co/onnx-community/cohere-transcribe-03-2026-ONNX
+- Distil-Whisper small.en (MIT): https://huggingface.co/distil-whisper/distil-small.en
+- Granite 4.0 1B Speech: https://huggingface.co/onnx-community/granite-4.0-1b-speech-ONNX; Voxtral Mini 4B Realtime: https://huggingface.co/onnx-community/Voxtral-Mini-4B-Realtime-2602-ONNX
+- Nemotron ASR streaming licence: https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b
+- Moonshine web demo (transformers.js, in-browser): https://huggingface.co/spaces/webml-community/moonshine-web
 - Browser-side small-model comparison (May 2026): https://callsphere.ai/blog/llm-comparison-browser-side-llm-webgpu-small-models-may-2026.md
 - Local LLM CORS settings (Ollama `OLLAMA_ORIGINS`, LM Studio, llama.cpp `--cors`): https://pooya.blog/use-local-llm/docs/guides/cors-setup
 - LM Studio server settings: https://lmstudio.ai/docs/developer/core/server/settings

@@ -124,8 +124,17 @@ Every agent run — a chat in the panel or a routine — is assembled by `prepar
   in a note. Runs are serialized; background runs ask before every connected-app write and queue
   approvals in Activity.
 - **Voice.** Push-to-talk uses the Web Speech API when present, otherwise the provider's
-  transcription endpoint through the `Transcriber` interface (add on-device engines there).
-  Spoken replies use `speechSynthesis`, off by default.
+  transcription endpoint through the `Transcriber` interface. Spoken replies use
+  `speechSynthesis`, off by default.
+
+### Notes that listen (`packages/ai/src/speech/`, `packages/core/src/transcript.ts`, `apps/web/src/lib/listen/`)
+
+Recordings get a live transcript lined up with the ink (time arithmetic between segment times and
+stroke `createdAt`), questions during a recording get the transcript so far, and pages get
+summaries. Speech is transcribed on the device by default (Moonshine/Whisper in the AI worker,
+windowed at pauses by a VAD), else by the browser's speech service, else by the provider; the UI
+always shows which. Transcripts are vault files next to their clips, merged by sync and indexed
+as "what was said" passages. Details in docs/LOCAL_AI.md § Speech to text.
 
 ## Platforms
 

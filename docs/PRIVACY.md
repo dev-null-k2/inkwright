@@ -23,7 +23,15 @@ Inkstone is a note-taking app. Your notes stay under your control.
 
 **Signatures and initials** you save for Fill & sign stay on your device, encrypted, and are never synced. A signature is only copied into a document when you place it there.
 
-**Microphone:** used only while you record an audio note, or while you hold the microphone button to talk to the assistant. Recordings are saved with the note. Speech for the assistant is turned into text by your browser's speech recognition (which may use the browser maker's servers) or, where that is not available, by your AI provider; it is not stored.
+**Microphone:** used only while you record an audio note, dictate, or hold the microphone button to talk to the assistant. Recordings are saved with the note.
+
+**Transcripts (speech to text):** while you record, Inkstone can write down what is said, line it up with your writing and summarize each page. Inkstone always shows where the audio is being turned into text:
+
+- **On this device** (the default once the speech model is downloaded, and always when you choose "This device" in Settings › AI › Speech to text): an open speech model (Moonshine or Whisper) runs inside the app. No audio and no transcript leaves your device. The model is downloaded once from Hugging Face; that download sends nothing about you.
+- **Browser speech service**: your browser's speech recognition hears the audio. Most browsers process it on their maker's servers (Google, Apple or Microsoft), under that company's privacy policy. Inkstone uses this only if you have not downloaded the on-device model, or if you choose it.
+- **Your AI provider**: the audio is sent in short pieces, straight from your device, to the provider whose key you added (for example OpenAI, Groq or Google), under that provider's privacy policy.
+
+Choosing "This device" never falls back to the browser or a provider: if the model is not downloaded, Inkstone offers the download instead. Dictated speech is not stored; only the text you keep. Transcripts, recording summaries and page summaries are saved with the note (next to the recording) and sync wherever your notes sync. Questions you ask during a recording, and summaries, are answered by the assistant's AI — on this device unless you chose a provider.
 
 **Deleting data:** delete notes in the app. Trash empties after 30 days, or right away with "Delete forever". Uninstall the app or clear site data to remove everything stored on the device. Synced copies stay in your Drive or server until you delete them there.
 
