@@ -404,7 +404,11 @@ export const ACTIVITY_DIR = 'ai/activity';
  */
 export class ActivityStore {
   private listeners = new Set<() => void>();
-  constructor(private fs: VaultFS, private opts: { maxRuns?: number } = {}) {}
+  /**
+   * `maxAgeDays` also drops runs older than that many days; `hold` (legal hold in the AI policy)
+   * suspends all pruning while it returns true.
+   */
+  constructor(private fs: VaultFS, private opts: { maxRuns?: number; maxAgeDays?: () => number; hold?: () => boolean; clock?: () => number } = {}) {}
 
   onChange(l: () => void): () => void {
     this.listeners.add(l);
@@ -446,11 +450,14 @@ export class ActivityStore {
     this.emit();
   }
 
-  /** Deletes the oldest runs beyond `maxRuns` (default 300). */
+  /** Deletes the oldest runs beyond `maxRuns` (default 300) and runs older than `maxAgeDays`. */
   async prune(): Promise<number> {
+    if (this.opts.hold?.()) return 0;
     const max = this.opts.maxRuns ?? 300;
     const runs = await this.list();
-    const old = runs.slice(max);
+    const days = this.opts.maxAgeDays?.() ?? 0;
+    const cutoff = days > 0 ? (this.opts.clock ?? Date.now)() - days * 86_400_000 : -Infinity;
+    const old = runs.filter((r, i) => i >= max || (r.endedAt ?? r.startedAt) < cutoff);
     for (const r of old) await this.fs.delete(`${ACTIVITY_DIR}/${r.id}.json`);
     if (old.length) this.emit();
     return old.length;
