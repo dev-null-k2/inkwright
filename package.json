@@ -15,6 +15,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "e2e": "npm run build -w @inkstone/web && npm run e2e -w @inkstone/web",
+    "e2e:all": "npm run e2e:all -w @inkstone/web",
+    "e2e:android": "npm run e2e:android -w @inkstone/web",
     "evals": "vitest run --project evals",
     "build:preview": "npm run build:single -w @inkstone/web && node apps/web/scripts/artifact.mjs"
   },
