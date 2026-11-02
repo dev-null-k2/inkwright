@@ -86,7 +86,7 @@ function ModelPicker({ role, title, current, recommendedId, onChange }: { role: 
     <div className="lai-row">
       <div className="lai-row-main">
         <span className="prov-name">{title}</span>
-        <select value={current.spec.id} aria-label={`${title} model`} onChange={(e) => onChange(e.target.value === recommendedId ? null : e.target.value)}>
+        <select value={current.spec.id} aria-label={title} onChange={(e) => onChange(e.target.value === recommendedId ? null : e.target.value)}>
           {options.map((o) => (
             <option key={o.spec.id} value={o.spec.id}>
               {o.spec.label} · {formatBytes(o.variant.bytes)}{o.spec.id === recommendedId ? ' · recommended' : ''}{isInstalled(o) ? ' · downloaded' : ''}
