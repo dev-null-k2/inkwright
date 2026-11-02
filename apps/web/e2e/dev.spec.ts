@@ -13,8 +13,8 @@ const FIXTURES = fileURLToPath(new URL('./fixtures/dev-repo/', import.meta.url))
 
 async function openDeveloperSettings(page: Page) {
   await page.locator('.nav-item', { hasText: 'Settings' }).click();
-  await page.getByRole('button', { name: 'Developer', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Developer tools' })).toBeVisible();
+  await page.getByRole('button', { name: 'Code & runbooks', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Code-aware notes' })).toBeVisible();
 }
 
 async function importZip(page: Page, file: string) {
@@ -215,7 +215,7 @@ test.describe('developer module', () => {
   test('turning the module off removes it from the editor', async ({ page }) => {
     await openApp(page);
     await openDeveloperSettings(page);
-    await page.locator('.row-switch', { hasText: 'Developer tools' }).click();
+    await page.locator('.row-switch', { hasText: 'Code-aware notes' }).click();
     await page.getByRole('button', { name: 'Back' }).click();
     await newNote(page);
     await page.getByRole('button', { name: 'More', exact: true }).click();

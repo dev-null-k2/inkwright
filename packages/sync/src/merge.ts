@@ -1,8 +1,12 @@
 import {
+  decodeApiKeys,
   decodeDeck,
   decodeNote,
   decodeNotebook,
+  decodePluginsConfig,
   decodeProvenance,
+  encodeApiKeys,
+  encodePluginsConfig,
   decodePage,
   decodePageSummaries,
   decodeTranscript,
@@ -22,6 +26,7 @@ import {
 } from '@inkstone/core';
 import { utf8Decode, utf8Encode } from './util.ts';
 import { mergePageSummaries, mergeTranscript } from './merge-listen.ts';
+import { mergeApiKeys, mergePluginsConfig } from './merge-platform.ts';
 
 /*
  * Three-way merges for the vault's JSON files. All functions are pure and work on decoded
@@ -391,7 +396,7 @@ export function mergeNotebook(base: NotebookMeta | null, local: NotebookMeta, re
 
 // ---- Files -------------------------------------------------------------------------------------
 
-export type MergeKind = 'page' | 'note' | 'notebook' | 'transcript' | 'page-summaries' | 'provenance' | 'study-deck';
+export type MergeKind = 'page' | 'note' | 'notebook' | 'transcript' | 'page-summaries' | 'provenance' | 'study-deck' | 'plugins' | 'api-keys';
 
 /** Which merge applies to a vault path, or null when the file can't be merged structurally. */
 export function mergeKindOf(path: string): MergeKind | null {
@@ -404,6 +409,9 @@ export function mergeKindOf(path: string): MergeKind | null {
   // Context compiler (docs/COMPILER.md): provenance of AI text per note, flashcard decks.
   if (/^notes\/[^/]+\/assets\/provenance\.json$/.test(path)) return 'provenance';
   if (/^ai\/study\/[^/]+\.json$/.test(path)) return 'study-deck';
+  // Developer platform (merge-platform.ts).
+  if (path === 'plugins/plugins.json') return 'plugins';
+  if (path === 'api/keys.json') return 'api-keys';
   return null;
 }
 
@@ -470,6 +478,18 @@ export function mergeFileBytes(path: string, base: Uint8Array | null, local: Uin
       const r = dec(decodeDeck, remote);
       if (!l || !r) return null;
       return utf8Encode(encodeDeck(mergeDecks(dec(decodeDeck, base), l, r)));
+    }
+    case 'plugins': {
+      const l = dec(decodePluginsConfig, local);
+      const r = dec(decodePluginsConfig, remote);
+      if (!l || !r) return null;
+      return utf8Encode(encodePluginsConfig(mergePluginsConfig(dec(decodePluginsConfig, base), l, r, { prefer: opts.prefer })));
+    }
+    case 'api-keys': {
+      const l = dec(decodeApiKeys, local);
+      const r = dec(decodeApiKeys, remote);
+      if (!l || !r) return null;
+      return utf8Encode(encodeApiKeys(mergeApiKeys(dec(decodeApiKeys, base), l, r, { prefer: opts.prefer })));
     }
   }
 }

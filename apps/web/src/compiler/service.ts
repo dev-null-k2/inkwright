@@ -102,12 +102,28 @@ export function compilerVault(): AppVault {
 }
 
 /** Starts the compiler once the vault is open (idempotent). */
+let unsubscribeVault: (() => void) | null = null;
+
+/**
+ * Stops background compiling (Settings › Modules switched the compiler off): no more scans on
+ * note changes, and a running compile is cancelled. Its files stay in the vault.
+ */
+export function stopCompiler(): void {
+  unsubscribeVault?.();
+  unsubscribeVault = null;
+  if (scanTimer) clearTimeout(scanTimer);
+  scanTimer = null;
+  abort?.abort();
+  vaultRef = null;
+  store = null;
+}
+
 export function startCompiler(vault: AppVault): void {
   if (vaultRef === vault) return;
   vaultRef = vault;
   store = new CompilerStore(vault.fs);
   store.onChange(() => void refreshStoreState());
-  vault.vault.onChange((c) => {
+  unsubscribeVault = vault.vault.onChange((c) => {
     if (c.type === 'reloaded') { docs.clear(); void refreshStoreState(); }
     if (c.type === 'note' || c.type === 'note-deleted' || c.type === 'reloaded') scheduleScan();
   });
@@ -174,6 +190,7 @@ export function unitById(id: string): SourceUnit | null {
 // ---- The ledger (background) ---------------------------------------------------------------------
 
 export function scheduleScan(ms = 3000): void {
+  if (!vaultRef) return; // stopped
   if (scanTimer) clearTimeout(scanTimer);
   scanTimer = setTimeout(() => {
     scanTimer = null;

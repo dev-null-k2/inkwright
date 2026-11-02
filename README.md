@@ -25,6 +25,8 @@ Handwriting notes that feel like paper, on every device, with your own AI.
   - Use your own key for OpenAI, Anthropic (Claude), Google Gemini, OpenRouter, Groq, Mistral, xAI, DeepSeek, Together, Fireworks, Perplexity, Cerebras or Azure, a local model in Ollama or LM Studio, or any OpenAI-compatible server.
   - The assistant can transcribe handwriting, summarize, pull out to-dos, make flashcards, translate, answer questions across all your notes, and create, edit and organize notes.
 - **Any agent.** The Inkstone MCP server (`apps/mcp-server`) lets Claude Desktop, Claude Code, Cursor, ChatGPT and other MCP clients search, read (including page images) and write your notes.
+- **Make it yours.** Every feature is a module you can switch off (Settings › Modules, with Student, Writer, Developer, Researcher, Enterprise and Minimal presets). Plugins run sandboxed with only the permissions you grant (`docs/PLUGINS.md`; examples in `examples/plugins`, a template in `examples/create-inkstone-plugin`).
+- **An API like a web service.** `inkstone-mcp --http` serves a versioned REST API (`/api/v1`) over your vault with an OpenAPI 3.1 document, scoped API keys, ETags, idempotency keys, rate limits and signed webhooks, plus a typed TypeScript SDK (`packages/sdk`). Links like `inkstone://new?title=…` work from Shortcuts, Tasker and other apps (`docs/API.md`).
 - **Every device.** Android (native haptics, pen-button keys, on-device ML Kit recognition), iPhone and iPad, and an installable offline app for Mac, Windows, Linux and ChromeOS.
 
 ## Quick start (development)
@@ -45,7 +47,10 @@ packages/core        algorithms, data model, vault, exporters (no platform code)
 packages/ai          AI providers, agent, note tools, skills, evals
 packages/sync        storage backends, Drive/WebDAV/folder sync, merge, backup
 apps/web             the app (React + canvas ink engine), PWA, Capacitor Android/iOS
-apps/mcp-server      MCP server for AI agents
+packages/plugin-api  plugin manifest, permissions and message protocol (types for plugin authors)
+packages/sdk         typed client for the REST API, generated from its OpenAPI document
+apps/mcp-server      MCP server for AI agents, REST API, webhooks, A2A, always-on runner
+examples/            example plugins and the plugin template
 docs/                architecture, vault format, setup, publishing, testing, privacy
 ```
 

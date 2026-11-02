@@ -17,6 +17,7 @@ import './styles/knowledge.css';
 import './studio/studio.css';
 import './dev/dev.css';
 import './compiler/compiler.css';
+import './styles/platform.css';
 import './styles/trust.css';
 import { App } from './App.tsx';
 import { BUILD_TARGET, isNative } from './platform/env.ts';

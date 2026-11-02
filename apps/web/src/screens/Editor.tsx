@@ -44,6 +44,9 @@ import { currentLayer, useStudio } from '../studio/EditorStudio.tsx';
 import { useCompilerEditor } from '../compiler/ui/EditorParts.tsx';
 import { LockGate } from '../studio/LockDialogs.tsx';
 import { useDevEditor } from '../dev/DevEditor.tsx';
+import { isModuleOn, useModules } from '../modules/registry.ts';
+import { useEditorBridge } from '../plugins/editorBridge.ts';
+import { useEditorPlugins } from '../plugins/EditorPlugins.tsx';
 
 declare const __E2E__: boolean;
 /** Test builds (`vite build --mode e2e`) expose the document to end-to-end tests; releases never do. */
@@ -361,7 +364,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
         await r.start();
         setRecording(Date.now());
         // Live transcript of the same microphone audio (on this device by default).
-        if (r.mediaStream) void startListening({ noteId: doc.meta.id, clipId: r.clipId, startedAt: r.startedAt, stream: r.mediaStream });
+        if (r.mediaStream && isModuleOn('listen')) void startListening({ noteId: doc.meta.id, clipId: r.clipId, startedAt: r.startedAt, stream: r.mediaStream });
         if (useSpeechPrefs.getState().autoOpen && useSpeechPrefs.getState().engine !== 'off') setPanel((p) => (p === 'ai' ? p : 'transcript'));
       } catch (e) {
         toast({ text: `Microphone unavailable: ${(e as Error).message}`, tone: 'error' });
@@ -478,6 +481,12 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   const studio = useStudio({ doc, engine, session, vault, host: host.current, tool, view, menuAnchor: btn.more.current });
   // Developer module (dev/): code links and drift, runbooks, verified diagrams — when switched on.
   const dev = useDevEditor({ doc, engine, vault, host: host.current, view, menuAnchor: btn.more.current, editingTextId: editingText?.box.id });
+  // Modules (Settings › Modules): switched-off features leave the editor; their data stays.
+  const mods = useModules((m) => m.enabled);
+  const on = (id: string) => isModuleOn(id, mods);
+  // Plugins: what they may know about the editor, their menu items, exporters and panels.
+  useEditorBridge(doc, engine, sel);
+  const plugins = useEditorPlugins({ noteId, anchor: btn.more.current, onPanelOpen: () => setPanel(null) });
   const compiler = useCompilerEditor({ doc, engine, host: host.current, view });
   // [[Wiki links]]: open the note with that title (at its page), or create it (like Obsidian).
   const openWikiLink = (title: string) => kb.follow(title);
@@ -502,7 +511,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   const sidePanel = panel && doc && engine && vault;
 
   return (
-    <div ref={(el) => { root.current = el; setRootEl(el); }} className={cx('editor', wide && 'is-wide', panel && 'has-panel')}>
+    <div ref={(el) => { root.current = el; setRootEl(el); }} className={cx('editor', wide && 'is-wide', (panel || plugins.panelOpen) && 'has-panel')}>
       <header className="ed-top">
         <IconButton label="Back to library" onClick={() => navigate({ name: 'library' })}><ArrowLeft size={20} /></IconButton>
         <button type="button" className="ed-title" onClick={async () => { if (!doc) return; const t = await askText('Rename note', 'Title', doc.meta.title, 'Rename'); if (t) kb.rename(t); }}>
@@ -519,7 +528,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
             {recording != null ? <Square size={16} fill="currentColor" /> : <Mic size={19} />}
           </IconButton>}
           {recording != null && <span className="rec-time">{formatDuration(Date.now() - recording)}</span>}
-          {!studio.locked && <button type="button" className={cx('ai-btn', panel === 'ai' && 'is-on')} onClick={() => setPanel(panel === 'ai' ? null : 'ai')} aria-pressed={panel === 'ai'}>
+          {!studio.locked && on('assistant') && <button type="button" className={cx('ai-btn', panel === 'ai' && 'is-on')} onClick={() => setPanel(panel === 'ai' ? null : 'ai')} aria-pressed={panel === 'ai'}>
             <Sparkles size={17} /><span>AI</span>
           </button>}
           <button ref={btn.more} type="button" className="icon-btn" aria-label="More" title="More" onClick={() => setMenu('more')}><MoreHorizontal size={19} /></button>
@@ -537,23 +546,23 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
               onAsk={askAboutSelection} onConvert={() => void convertSelection()} onEditText={editSelectedText}
               links={kb.selectionLinks()}
               onOpenLink={(title) => void openWikiLink(title)} onLink={kb.canLinkSelection() ? kb.linkSelection : undefined} onUnlink={kb.selectionHasInkLink() ? kb.unlinkSelection : undefined}
-              extra={<SmartSelectionActions engine={engine} api={smartApi} strokes={sel.strokes} />} />
+              extra={on('smart-ink') ? <SmartSelectionActions engine={engine} api={smartApi} strokes={sel.strokes} /> : undefined} />
           )}
           {editingText && editingScreen && engine && (
             <TextOverlay key={editingText.box.id} box={editingText.box} screen={editingScreen} zoom={engine.zoom} noteId={doc?.meta.id} onChange={(b) => { latestText.current = b; }} onDone={commitText} />
           )}
-          {doc && engine && vault && session && host.current && noteHasPdf(doc) && (
+          {doc && engine && vault && session && host.current && noteHasPdf(doc) && on('fill-sign') && (
             <FillLayer doc={doc} engine={engine} vault={vault} session={session} host={host.current} active={fill} onActive={setFill}
               sel={sel} onTool={setTool} onExport={() => setFillExport(true)} view={view} />
           )}
           {doc && engine && <DictationBar onDone={(t) => { placeDictatedText(doc, engine.currentPageIndex, t); toast({ text: 'Added to the page', action: { label: 'Undo', run: () => engine.undo() } }); }} />}
-          {doc && engine && host.current && <KnowledgeEditorParts kb={kb} doc={doc} engine={engine} host={host.current} view={view} editingTextId={editingText?.box.id} />}
-          {doc && engine && vault && host.current && (
+          {doc && engine && host.current && on('knowledge') && <KnowledgeEditorParts kb={kb} doc={doc} engine={engine} host={host.current} view={view} editingTextId={editingText?.box.id} />}
+          {doc && engine && vault && host.current && on('smart-ink') && (
             <SmartLayer doc={doc} engine={engine} vault={vault} host={host.current} tool={tool} view={view} apiRef={smartApi} />
           )}
           {studio.parts}
           {dev.parts}
-          {compiler.parts}
+          {on('compiler') && compiler.parts}
           {dropping && <div className="drop-hint" aria-live="polite"><FileUp size={22} /> Drop to add to this note</div>}
           {latched && <div className="latch-pill" role="status">{settings.input.buttonAction === 'lasso' ? 'Lasso' : settings.input.buttonAction === 'highlighter' ? 'Highlighter' : 'Eraser'} on — press the pen button to switch back</div>}
           {clips.length > 0 && (
@@ -584,7 +593,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
           )}
           <PenDock vertical={sideDock} compact={narrow} tool={tool} activePresetId={settings.activePresetId} latched={latched}
             canUndo={!!doc?.canUndo} canRedo={!!doc?.canRedo} onTool={setTool} onPreset={selectPreset}
-            onUndo={() => engine?.undo()} onRedo={() => engine?.redo()} onAddSticky={studio.addSticky}
+            onUndo={() => engine?.undo()} onRedo={() => engine?.redo()} onAddSticky={on('studio') ? studio.addSticky : undefined}
             onClearPage={async () => { if (doc && engine && (await askConfirm('Clear this page?', 'Everything on this page is removed. You can undo this.', 'Clear page', true))) doc.clearPage(engine.currentPageIndex); }} />
         </div>
         {sidePanel && panel === 'pages' && (
@@ -596,7 +605,8 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
           <TranscriptPanel doc={doc!} vault={vault!} recording={recording != null} playing={playback} onClose={() => setPanel(null)} />
         )}
         {sidePanel && panel === 'links' && kb.panel(() => setPanel(null))}
-        {sidePanel && panel === 'ai' && (
+        {doc && !panel && plugins.panel}
+        {sidePanel && panel === 'ai' && on('assistant') && (
           <AIPanel session={session!} engine={engine!} request={aiRequest} onClose={() => setPanel(null)} onOpenSettings={() => navigate({ name: 'settings', section: 'ai' })} />
         )}
       </div>
@@ -643,37 +653,40 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
           { label: 'PNG image', icon: <FileImage size={16} />, hint: 'This page', onClick: () => void doExport('png') },
           { label: 'SVG', icon: <FileImage size={16} />, hint: 'This page', onClick: () => void doExport('svg') },
           { label: 'Markdown', icon: <FileText size={16} />, hint: 'Text + recognized handwriting', onClick: () => void doExport('md') },
-          ...(noteHasPdf(doc) ? [{ label: 'Filled form', icon: <Signature size={16} />, hint: 'The original document, filled in', onClick: () => setFillExport(true) }] : []),
+          ...(noteHasPdf(doc) && on('fill-sign') ? [{ label: 'Filled form', icon: <Signature size={16} />, hint: 'The original document, filled in', onClick: () => setFillExport(true) }] : []),
+          ...plugins.exportItems,
         ]} />
       </Popover>
 
       {doc && vault && session && <FilledExportDialog open={fillExport} onClose={() => setFillExport(false)} doc={doc} vault={vault} session={session} />}
       {doc && vault && <AuthorshipDialog open={authOpen} onClose={() => setAuthOpen(false)} doc={doc} vault={vault} onVerifyFile={() => { setAuthOpen(false); void session?.flush().then(() => navigate({ name: 'settings', section: 'authorship' })); }} />}
 
+      {plugins.popover}
       <Popover anchor={btn.more.current} open={menu === 'more'} onClose={() => setMenu(null)} title="More" placement="below">
         <Menu onClose={() => setMenu(null)} items={[
-          ...(noteHasPdf(doc) ? [{ label: fill ? 'Stop filling in' : 'Fill & sign', icon: <Signature size={16} />, onClick: () => setFill(!fill) }] : []),
-          { label: 'Search everything', icon: <Search size={16} />, hint: `${modKey}K`, onClick: () => openPalette({ query: '' }) },
+          ...(noteHasPdf(doc) && on('fill-sign') ? [{ label: fill ? 'Stop filling in' : 'Fill & sign', icon: <Signature size={16} />, onClick: () => setFill(!fill) }] : []),
+          ...(on('search') ? [{ label: 'Search everything', icon: <Search size={16} />, hint: `${modKey}K`, onClick: () => openPalette({ query: '' }) }] : []),
           { label: 'Pages', icon: <Layers size={16} />, hint: doc && doc.pageCount > 1 ? `${doc.pageCount}` : undefined, onClick: () => setPanel('pages') },
-          ...(!isArtifact ? [
+          ...(!isArtifact && on('listen') ? [
             { label: 'Transcript', icon: <Captions size={16} />, hint: listening ? 'Live' : clips.length ? `${clips.length}` : undefined, onClick: () => setPanel('transcript') },
             { label: 'Dictate', icon: <MicVocal size={16} />, hint: recording != null ? 'Not while recording' : undefined, disabled: recording != null, onClick: () => void startDictation('page') },
           ] : []),
-          kb.menuItem(),
+          ...(on('knowledge') ? [kb.menuItem()] : []),
           { label: 'Paper', icon: <Files size={16} />, onClick: () => setTimeout(() => setPaperOpen(true), 0) },
           { label: 'Writing sound & feel', icon: <AudioLines size={16} />, hint: settings.feel.sound ? `${Math.round(settings.feel.soundVolume * 100)}%` : 'Off', onClick: () => setTimeout(() => setMenu('feel'), 0) },
           { label: 'Insert', icon: <ImageIcon size={16} />, onClick: () => setTimeout(() => setMenu('insert'), 0) },
-          ...studio.menuItems,
+          ...(on('studio') ? studio.menuItems : []),
           ...dev.menuItems,
-          ...compiler.menuItems,
+          ...(on('compiler') ? compiler.menuItems : []),
+          ...plugins.menuItems,
           ...(narrow && !isArtifact ? [{ label: recording != null ? 'Stop recording' : 'Record audio', icon: <Mic size={16} />, onClick: () => void toggleRecording() }] : []),
           { label: 'Export and share', icon: <Download size={16} />, onClick: () => setTimeout(() => setMenu('export'), 0) },
-          { label: 'Authorship', icon: <Fingerprint size={16} />, hint: doc?.meta.certificate ? 'Signed' : undefined, onClick: () => setAuthOpen(true) },
+          ...(on('authorship') ? [{ label: 'Authorship', icon: <Fingerprint size={16} />, hint: doc?.meta.certificate ? 'Signed' : undefined, onClick: () => setAuthOpen(true) }] : []),
           'sep' as const,
           { label: 'Tags', icon: <Tag size={16} />, hint: meta?.tags.join(', ') || 'None', onClick: async () => { if (!doc) return; const t = await askText('Tags', 'Comma-separated', doc.meta.tags.join(', ')); if (t != null) { doc.setTags(t.split(',')); await session?.flush(); await setTags(doc.meta.id, doc.meta.tags); } } },
           { label: 'Fit to width', icon: <Maximize2 size={16} />, hint: `${modKey}0`, onClick: () => engine?.fitWidth() },
           { label: 'Duplicate note', icon: <Copy size={16} />, onClick: async () => { await session?.flush(); await duplicateNote(noteId); toast({ text: 'Duplicated', tone: 'success' }); } },
-          kb.templateMenuItem(),
+          ...(on('knowledge') ? [kb.templateMenuItem()] : []),
           { label: 'Save now', icon: <CloudUpload size={16} />, hint: `${modKey}S`, onClick: () => void session?.flush().then(() => toast({ text: 'Saved', tone: 'success' })) },
           'sep',
           { label: 'Move to Trash', icon: <Trash2 size={16} />, danger: true, onClick: async () => { await session?.flush(); await trashNote(noteId); navigate({ name: 'library' }); } },

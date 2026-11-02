@@ -188,6 +188,13 @@ export async function prepareAgentRun(o: PrepareOptions): Promise<PreparedRun> {
       sections.push(`Connected apps: ${names.join(', ')}. Their tools are named "<app>__<tool>". Use them only for what the user asked; the user is asked to approve actions that change things in those apps.`);
     }
   }
+  // Tools contributed by modules that are on (plugins with the ai:tools permission).
+  const { collectModuleAiTools } = await import('../../modules/registry.ts');
+  const moduleTools = await collectModuleAiTools();
+  if (moduleTools.length) {
+    tools.push(...moduleTools);
+    sections.push('Tools named "<plugin>__<tool>" come from plugins the user installed; use them when they fit what the user asked.');
+  }
   if (propose) sections.push(PROPOSAL_NOTICE);
   if (o.context) sections.push(o.context);
   return { tools: guardAgentTools(tools, policy, run), system: notesAgentSystemPrompt({ appName: 'Inkstone', extra: sections.join('\n\n') }), recorder, proposals: proposing?.made ?? [] };

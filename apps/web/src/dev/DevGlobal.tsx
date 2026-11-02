@@ -70,7 +70,7 @@ export function DevGlobal() {
   }, [on]);
 
   usePaletteActions('dev', on ? [
-    { id: 'dev-sources', label: 'Code sources', keywords: 'developer repository mount scan code graph', icon: <Code2 size={16} />, run: () => navigate({ name: 'settings', section: 'developer' }) },
+    { id: 'dev-sources', label: 'Code sources', keywords: 'developer repository mount scan code graph', icon: <Code2 size={16} />, run: () => navigate({ name: 'settings', section: 'code' }) },
     { id: 'dev-drift', label: 'Code drift', keywords: 'developer stale docs changed', icon: <GitCompareArrows size={16} />, run: () => setDrift(true) },
     { id: 'dev-sessions', label: 'Import agent sessions', keywords: 'claude code codex gemini transcript jsonl', icon: <History size={16} />, run: () => void pickAndImportSessions() },
     { id: 'dev-incident', label: 'New incident note', keywords: 'rca postmortem runbook outage', icon: <FileWarning size={16} />, run: () => void newIncidentNote() },

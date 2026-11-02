@@ -24,6 +24,8 @@ export interface HttpOptions {
   a2a?: (publicUrl: string, gate: AuthGate) => Promise<express.Express> | express.Express;
   /** Largest request body read for MCP (default 4 MiB). */
   maxBodyBytes?: number;
+  /** The REST API at /api/v1 (api/index.ts). Built once the public URL and auth gate are known. */
+  api?: (publicUrl: string, gate: AuthGate) => Promise<{ handle(req: Request): Promise<Response>; close?(): Promise<void> }>;
 }
 
 export interface RunningHttpServer {
@@ -102,6 +104,7 @@ async function sendWebResponse(res: ServerResponse, r: Response): Promise<void> 
  *   SDK's stateless legacy fallback — one MCP server per request either way.
  * - `/a2a` and `/.well-known/agent-card.json` — the A2A agent (when enabled).
  * - `/.well-known/oauth-protected-resource[/mcp|/a2a]` — RFC 9728 metadata (OAuth mode).
+ * - `/api/v1/*` — the REST API (api/), with its own problem+json errors, keys and scopes.
  *
  * Auth is checked here, before any MCP or A2A code runs (see auth.ts for the three modes).
  */
@@ -116,6 +119,7 @@ export async function startHttpServer(services: ServerServices, opts: HttpOption
   let publicUrl = opts.publicUrl?.replace(/\/+$/, '') ?? '';
   let gate: AuthGate = createAuthGate(auth, { publicUrl: publicUrl || `http://${HTTP_HOST}:${port || 1}`, port: () => port });
   let a2a: express.Express | null = null;
+  let api: { handle(req: Request): Promise<Response>; close?(): Promise<void> } | null = null;
 
   const mcp: McpHttpHandler = createMcpHandler((rc) => createMcpServer(services, rc), { legacy: 'stateless', maxRequestBodySize: max, onerror: (e) => { if (process.env.INKSTONE_DEBUG) process.stderr.write(`[inkstone-mcp] ${e.message}\n`); } });
 
@@ -139,6 +143,16 @@ export async function startHttpServer(services: ServerServices, opts: HttpOption
       }
       if (path.startsWith('/.well-known/')) res.setHeader('access-control-allow-origin', '*');
       return void a2a(req as never, res as never);
+    }
+    if (path === '/api/v1' || path.startsWith('/api/v1/')) {
+      if (!api) return sendJson(res, 404, { type: 'about:blank', title: 'Not found', status: 404, detail: 'The REST API is off on this server.' }, { 'content-type': 'application/problem+json' });
+      let request: Request;
+      try {
+        request = await toWebRequest(req, res, max);
+      } catch (e) {
+        return sendJson(res, (e as { status?: number }).status ?? 400, { title: 'Bad request', status: 400, detail: (e as Error).message }, { 'content-type': 'application/problem+json' });
+      }
+      return sendWebResponse(res, await api.handle(request));
     }
     if (path !== '/mcp') return sendJson(res, 404, rpcError('Not found. The MCP endpoint is /mcp.'));
     let request: Request;
@@ -169,6 +183,7 @@ export async function startHttpServer(services: ServerServices, opts: HttpOption
   publicUrl ||= baseUrl;
   gate = createAuthGate(auth, { publicUrl, port: () => port });
   if (opts.a2a) a2a = await opts.a2a(publicUrl, gate);
+  if (opts.api) api = await opts.api(publicUrl, gate);
   return {
     server,
     port,
@@ -177,6 +192,7 @@ export async function startHttpServer(services: ServerServices, opts: HttpOption
     gate,
     close: async () => {
       await mcp.close().catch(() => {});
+      await api?.close?.().catch(() => {});
       await new Promise<void>((resolve) => {
         server.closeAllConnections?.();
         server.close(() => resolve());

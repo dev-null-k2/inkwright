@@ -23,6 +23,16 @@ export interface CliOptions {
   /** Serve the A2A agent on the HTTP port. */
   a2a: boolean;
   ai?: AgentAIConfig;
+  /** REST API at /api/v1 (on by default with --http). */
+  api: boolean;
+  /** Browser origins allowed to call the REST API (CORS); `*` for any. */
+  corsOrigins: string[];
+  /** REST requests per minute per caller. */
+  rateLimit?: number;
+  /** Folder for webhook subscriptions and their delivery log. */
+  stateDir?: string;
+  /** Embedding model for semantic search (any OpenAI-compatible /embeddings endpoint). */
+  embeddings?: { baseUrl: string; model: string; apiKeyEnv?: string };
   watch: boolean;
   config?: string;
   /** Managed AI policy file (enterprise): users can tighten it but not loosen it. */
@@ -41,6 +51,7 @@ export interface ConfigFile {
   auth?: { token?: string; oauth?: { issuer: string; audience?: string[]; jwksUrl?: string; readScope?: string; writeScope?: string } };
   ai?: AgentAIConfig;
   runner?: { tickSeconds?: number; serve?: boolean };
+  api?: { enabled?: boolean; corsOrigins?: string[]; rateLimit?: number; stateDir?: string; embeddings?: { baseUrl?: string; model: string; apiKeyEnv?: string } };
   /** Managed AI policy file and audit signing key (docs/ENTERPRISE.md). */
   trust?: { policyFile?: string; auditKey?: string };
 }
@@ -73,6 +84,20 @@ Sign-in (HTTP):
   --oauth-jwks-url <url>   Signing keys (default: discovered from the issuer).
   --oauth-read-scope <s>   Scope for reading (default ${DEFAULT_READ_SCOPE}).
   --oauth-write-scope <s>  Scope for writing (default ${DEFAULT_WRITE_SCOPE}).
+
+REST API (HTTP mode; see docs/API.md):
+  --no-api                 Don't serve the REST API at /api/v1.
+  --cors-origin <origin>   Let this browser origin call the API (repeatable; "*" for any).
+  --rate-limit <n>         Requests per minute per API key (default 600).
+  --state-dir <dir>        Where webhooks and their delivery log are kept (default ~/.config/inkstone/api/…).
+  --embeddings-model <m>   Embedding model for semantic search, e.g. text-embedding-3-small or nomic-embed-text.
+  --embeddings-url <url>   OpenAI-compatible base URL (default https://api.openai.com/v1).
+  --embeddings-key-env <N> Environment variable with its key (default OPENAI_API_KEY for OpenAI).
+
+API keys:
+  inkstone-mcp keys create --vault <dir> --name <name> --scope notes:read [--scope …] [--expires-days n]
+  inkstone-mcp keys list   --vault <dir>
+  inkstone-mcp keys revoke --vault <dir> <key id>
 
 AI for the server's own agent (A2A, run_routine, summarize/transcribe tasks):
   --ai-provider <id>       openai, anthropic, gemini, ollama, lmstudio, openrouter, groq, mistral, custom, …
@@ -138,6 +163,13 @@ export const SHARED_OPTIONS = {
   policy: { type: 'string' },
   'audit-key': { type: 'string' },
   config: { type: 'string' },
+  'no-api': { type: 'boolean', default: false },
+  'cors-origin': { type: 'string', multiple: true },
+  'rate-limit': { type: 'string' },
+  'state-dir': { type: 'string' },
+  'embeddings-model': { type: 'string' },
+  'embeddings-url': { type: 'string' },
+  'embeddings-key-env': { type: 'string' },
   'no-watch': { type: 'boolean', default: false },
   help: { type: 'boolean', short: 'h', default: false },
   version: { type: 'boolean', short: 'v', default: false },
@@ -188,6 +220,15 @@ export function resolveOptions(values: Record<string, unknown>, env: NodeJS.Proc
     : undefined;
   const publicUrl = (values['public-url'] as string | undefined) ?? env.INKSTONE_PUBLIC_URL ?? cfg.http?.publicUrl;
   if (publicUrl && !/^https?:\/\/[^/]+/.test(publicUrl)) throw new CliError(`--public-url must be a full URL like https://notes.example.com (got ${publicUrl}).`);
+  const rateRaw = values['rate-limit'] ?? cfg.api?.rateLimit;
+  const rateLimit = rateRaw === undefined ? undefined : Number(rateRaw);
+  if (rateLimit !== undefined && (!Number.isInteger(rateLimit) || rateLimit < 1)) throw new CliError(`Invalid --rate-limit: ${rateRaw}`);
+  const corsOrigins = ((values['cors-origin'] as string[] | undefined) ?? cfg.api?.corsOrigins ?? []).flatMap((a) => a.split(',')).map((a) => a.trim().replace(/\/+$/, '')).filter(Boolean);
+  for (const c of corsOrigins) if (c !== '*' && !/^https?:\/\/[^/]+$/.test(c)) throw new CliError(`--cors-origin must be an origin like https://app.example.com (got ${c}).`);
+  const embModel = (values['embeddings-model'] as string | undefined) ?? env.INKSTONE_EMBEDDINGS_MODEL ?? cfg.api?.embeddings?.model;
+  const embUrl = (values['embeddings-url'] as string | undefined) ?? env.INKSTONE_EMBEDDINGS_URL ?? cfg.api?.embeddings?.baseUrl ?? 'https://api.openai.com/v1';
+  const embeddings = embModel ? { baseUrl: embUrl, model: embModel, apiKeyEnv: (values['embeddings-key-env'] as string | undefined) ?? cfg.api?.embeddings?.apiKeyEnv ?? (/api\.openai\.com/.test(embUrl) ? 'OPENAI_API_KEY' : undefined) } : undefined;
+  const stateDir = (values['state-dir'] as string | undefined) ?? cfg.api?.stateDir;
   return {
     vault: rawVault ? path.resolve(expandHome(rawVault)) : undefined,
     readOnly: Boolean(values['read-only'] ?? cfg.readOnly ?? false),
@@ -206,6 +247,11 @@ export function resolveOptions(values: Record<string, unknown>, env: NodeJS.Proc
       : undefined,
     a2a: Boolean(values.a2a ?? truthy(env.INKSTONE_A2A) ?? cfg.http?.a2a ?? false),
     ai,
+    api: !values['no-api'] && cfg.api?.enabled !== false,
+    corsOrigins,
+    ...(rateLimit !== undefined ? { rateLimit } : {}),
+    ...(stateDir ? { stateDir: path.resolve(expandHome(stateDir)) } : {}),
+    ...(embeddings ? { embeddings } : {}),
     watch: !values['no-watch'],
     config: values.config as string | undefined,
     ...(() => {
