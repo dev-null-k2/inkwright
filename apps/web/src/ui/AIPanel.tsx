@@ -3,10 +3,8 @@ import { ArrowUp, CheckSquare, FileText, Languages, Layers3, ListTodo, Settings2
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import {
-  createNoteTools,
   extractTodos,
   makeFlashcards,
-  notesAgentSystemPrompt,
   runAgent,
   runSkill,
   suggestTags,
@@ -19,12 +17,18 @@ import {
 import { newId, pageText, type TextBox } from '@inkstone/core';
 import type { InkEngine } from '../canvas/engine.ts';
 import type { EditorSession } from '../lib/session.ts';
-import { AppNoteToolHost, getActiveAI, transcribePage, type ActiveAI } from '../lib/ai.ts';
+import { getActiveAI, transcribePage, type ActiveAI } from '../lib/ai.ts';
 import { pageImageForAI } from '../lib/exporter.ts';
 import { useApp } from '../state/app.ts';
 import { useSettings } from '../state/settings.ts';
 import { askConfirm, askText } from './prompts.tsx';
 import { IconButton, cx } from './primitives.tsx';
+import { prepareAgentRun, type PreparedRun } from '../lib/agent/assistant.ts';
+import { describeMcpToolName } from '../lib/agent/mcp.ts';
+import { undoActivityRun } from '../lib/agent/undo.ts';
+import { speak, useVoicePrefs } from '../lib/agent/voice.ts';
+import { AgentMenuButton, MicButton, PanelAgentView, PanelWaiting } from './agent/panel.tsx';
+import type { AgentViewId } from './agent/shared.tsx';
 
 export type AIRequest = { kind: 'selection'; pageIndex: number; strokeIds: string[]; textIds: string[]; at: number };
 
@@ -47,7 +51,14 @@ const TOOL_LABELS: Record<string, string> = {
   list_notebooks: 'Checked notebooks',
   create_notebook: 'Created a notebook',
   trash_note: 'Moved a note to Trash',
+  load_skill: 'Read a skill',
+  read_skill_resource: 'Read a skill file',
+  remember: 'Suggested something to remember',
+  check_background_task: 'Checked a background task',
 };
+
+/** Label for a tool row: note tools by name, connected-app tools as "Used X in App". */
+const toolLabel = (name: string) => TOOL_LABELS[name] ?? ((m) => (m ? `Used ${m.tool} in ${m.server}` : name))(describeMcpToolName(name));
 
 export function AIPanel({ session, engine, request, onClose, onOpenSettings }: { session: EditorSession; engine: InkEngine; request: AIRequest | null; onClose: () => void; onOpenSettings: () => void }) {
   const doc = session.doc;
@@ -63,6 +74,12 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
   const abort = useRef<AbortController | null>(null);
   const scroll = useRef<HTMLDivElement>(null);
   const [attach, setAttach] = useState<{ label: string; parts: ContentPart[] } | null>(null);
+  const [view, setView] = useState<AgentViewId | null>(null);
+  useEffect(() => {
+    const open = (e: Event) => setView((e as CustomEvent<AgentViewId>).detail);
+    window.addEventListener('inkstone:open-agent-view', open);
+    return () => window.removeEventListener('inkstone:open-agent-view', open);
+  }, []);
 
   useEffect(() => { void getActiveAI().then(setAi).catch(() => setAi(null)); }, [aiSettings]);
   useEffect(() => { scroll.current?.scrollTo({ top: scroll.current.scrollHeight, behavior: 'smooth' }); }, [items]);
@@ -179,8 +196,8 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
     }
   };
 
-  const send = async () => {
-    const q = input.trim();
+  const send = async (spoken?: string) => {
+    const q = (spoken ?? input).trim();
     if (!q || busy) return;
     const a = ensureAI();
     if (!a) return;
@@ -191,21 +208,27 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
     history.current = [...history.current, { role: 'user', content }];
     setBusy(true);
     abort.current = new AbortController();
-    const host = new AppNoteToolHost(vault, doc);
-    const tools = createNoteTools(host, a.vision ? {} : { exclude: ['get_page_image'] });
+    let prep: PreparedRun | null = null;
     let replyId: string | null = null;
     let reply = '';
     const toolItems = new Map<string, string>();
     try {
+      // Note tools (logged for undo), skills, memory and connected apps — shared with routines.
+      prep = await prepareAgentRun({ ai: a, vault, source: 'assistant', label: 'Assistant', prompt: q, openDoc: doc, notes: 'write', skills: true, remember: true, mcp: 'all', context: noteContext() });
       const res = await runAgent({
         provider: a.provider,
         model: a.model,
-        system: notesAgentSystemPrompt({ appName: 'Inkstone', extra: noteContext() }),
+        system: prep.system,
         messages: history.current,
-        tools,
-        maxSteps: 10,
+        tools: prep.tools,
+        maxSteps: 12,
         signal: abort.current.signal,
-        confirm: confirmDestructive ? async (call) => askConfirm('Allow this action?', `The assistant wants to ${TOOL_LABELS[call.name]?.toLowerCase() ?? call.name}. ${JSON.stringify(call.arguments).slice(0, 200)}`, 'Allow', true) : undefined,
+        confirm: async (call) => {
+          const app = describeMcpToolName(call.name);
+          if (app) return askConfirm(`Allow ${app.server} to run “${app.tool}”?`, `The assistant wants to use ${app.server}: ${JSON.stringify(call.arguments).slice(0, 300)}`, 'Allow');
+          if (!confirmDestructive) return true;
+          return askConfirm('Allow this action?', `The assistant wants to ${TOOL_LABELS[call.name]?.toLowerCase() ?? call.name}. ${JSON.stringify(call.arguments).slice(0, 200)}`, 'Allow', true);
+        },
         onEvent: (e) => {
           if (e.type === 'text') {
             reply += e.delta;
@@ -215,7 +238,7 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
             reply = '';
             replyId = null;
             const q = (e.call.arguments as any)?.query ?? (e.call.arguments as any)?.title ?? '';
-            toolItems.set(e.call.id, push({ role: 'tool', text: TOOL_LABELS[e.call.name] ?? e.call.name, tool: { name: e.call.name, detail: q ? String(q) : undefined } }));
+            toolItems.set(e.call.id, push({ role: 'tool', text: toolLabel(e.call.name), tool: { name: e.call.name, detail: q ? String(q) : undefined } }));
           } else if (e.type === 'tool_result') {
             const id = toolItems.get(e.call.id);
             if (id) patch(id, { tool: { name: e.call.name, ok: true, detail: (e.call.arguments as any)?.query ?? (e.call.arguments as any)?.title } });
@@ -227,7 +250,18 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
       });
       history.current = res.messages.filter((m) => m.role !== 'system');
       if (!res.text && !replyId) push({ role: 'assistant', text: 'Done.' });
+      const run = await prep.recorder.finish('done', { reply: res.text });
+      if (run.ops.length) {
+        const n = run.ops.length;
+        push({ role: 'tool', text: `${n} ${n === 1 ? 'change' : 'changes'} logged in Activity`, tool: { name: 'activity', ok: true }, actions: [
+          { label: 'Undo', run: () => void undoActivityRun(run.id).then((r) => toast({ text: r.notes[0] ?? `Undid ${r.undone} ${r.undone === 1 ? 'change' : 'changes'}` })) },
+          { label: 'Review', run: () => setView('activity') },
+        ] });
+      }
+      if (res.text && useVoicePrefs.getState().speakReplies) speak(res.text);
     } catch (e) {
+      const aborted = (e as Error).name === 'AbortError' || abort.current?.signal.aborted;
+      await prep?.recorder.finish(aborted ? 'cancelled' : 'error', { error: aborted ? undefined : (e as Error).message });
       if ((e as Error).name !== 'AbortError') push({ role: 'error', text: (e as Error).message });
     } finally {
       setBusy(false);
@@ -248,6 +282,7 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
       <header className="side-head">
         <h2><Sparkles size={16} /> Assistant</h2>
         <span className="ai-model" title={ai?.label}>{ai === undefined ? '' : ai ? ai.label : 'Not connected'}</span>
+        <AgentMenuButton onOpen={setView} />
         <IconButton label="AI settings" onClick={onOpenSettings}><Settings2 size={17} /></IconButton>
         <IconButton label="Close assistant" onClick={onClose}><X size={18} /></IconButton>
       </header>
@@ -277,6 +312,7 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
         {items.map((it) => <Message key={it.id} item={it} />)}
         {busy && <div className="ai-typing" aria-live="polite"><span /><span /><span /></div>}
       </div>
+      <PanelWaiting onOpen={setView} />
       {attach && (
         <div className="ai-attach">
           <span>{attach.label} attached</span>
@@ -287,12 +323,14 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
         <textarea value={input} rows={1} placeholder={ai ? 'Ask, or tell it what to do with your notes' : 'Connect an AI to chat'} disabled={!ai}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } e.stopPropagation(); }} />
+        {!busy && <MicButton disabled={!ai} onPartial={setInput} onText={(t) => { setInput(t); void send(t); }} />}
         {busy ? (
           <button type="button" className="send-btn" aria-label="Stop" onClick={() => abort.current?.abort()}><Square size={14} fill="currentColor" /></button>
         ) : (
           <button type="submit" className="send-btn" aria-label="Send" disabled={!input.trim() || !ai}><ArrowUp size={18} /></button>
         )}
       </form>
+      {view && <PanelAgentView view={view} onBack={() => setView(null)} />}
     </aside>
   );
 }
@@ -303,6 +341,7 @@ function Message({ item }: { item: Item }) {
       <div className={cx('ai-tool', item.tool?.ok === false && 'is-failed')}>
         <Wrench size={13} /> <span>{item.text}{item.tool?.detail ? `: ${item.tool.detail}` : ''}</span>
         {item.tool?.ok === undefined && <span className="dot-pulse" />}
+        {item.actions?.map((a) => <button key={a.label} type="button" className="ai-tool-act" onClick={a.run}>{a.label}</button>)}
       </div>
     );
   }
