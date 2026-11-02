@@ -67,11 +67,12 @@ export function InkLinkLayer({ doc, engine, host, version, editingTextId, onFoll
         return (
           <div key={l.key} className={`ink-link${l.ink ? ' is-ink' : ''}`}>
             <span className="ink-link-thread" style={{ left: s.x, top: under, width: Math.max(8, s.w) }} aria-hidden />
-            <button type="button" className="ink-link-go" style={{ left: s.x + s.w + 2, top: (l.ink ? s.y + s.h / 2 : s.y + s.h / 2) - 11 }}
+            {/* Ink: an arrow beside the writing. Typed text: a small raised arrow, like a footnote mark. */}
+            <button type="button" className="ink-link-go" style={l.ink ? { left: s.x + s.w + 2, top: s.y + s.h / 2 - 11 } : { left: s.x + s.w - 3, top: s.y - 9 }}
               aria-label={`Open “${l.label}”`} title={`Open “${l.label}”`}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={() => onFollow(l.target, l.noteId)}>
-              <ArrowUpRight size={13} strokeWidth={2.2} />
+              <ArrowUpRight size={l.ink ? 13 : 10} strokeWidth={2.4} />
             </button>
           </div>
         );

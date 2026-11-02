@@ -30,8 +30,9 @@
   box-shadow: 0 0 0 1px var(--iron-soft); opacity: 0.78; transition: opacity 0.15s, transform 0.15s;
 }
 .ink-link-go:hover, .ink-link-go:focus-visible { opacity: 1; transform: scale(1.08); }
+.ink-link:not(.is-ink) .ink-link-go { width: 15px; height: 15px; box-shadow: none; background: color-mix(in srgb, var(--raised) 70%, transparent); }
 .editor.is-writing .ink-link-go { opacity: 0.22; }
-@media (pointer: coarse) { .ink-link-go { width: 28px; height: 28px; } }
+@media (pointer: coarse) { .ink-link.is-ink .ink-link-go { width: 28px; height: 28px; } .ink-link:not(.is-ink) .ink-link-go { width: 20px; height: 20px; } }
 
 /* ---- Note finder ("Link to note…") ---------------------------------------------------------- */
 .note-picker { display: flex; flex-direction: column; gap: 10px; }

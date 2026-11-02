@@ -76,7 +76,7 @@ export default function GraphView() {
     if (!data) return null;
     const l = new ForceLayout(data, { dims: mode === '3d' ? 3 : 2, initial: positions.current });
     // Settle most of the way before the first frame; the rest eases in on screen.
-    l.run(reduced ? 600 : positions.current.size ? 30 : 140);
+    l.run(reduced ? 600 : positions.current.size ? 30 : Math.min(320, Math.round(60000 / Math.max(1, data.nodes.length))));
     return l;
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => { if (layout) positions.current = layout.positions(); }, [layout]);
@@ -84,6 +84,13 @@ export default function GraphView() {
 
   const [themeTick, setThemeTick] = useState(0);
   useEffect(() => { const id = requestAnimationFrame(() => setThemeTick((x) => x + 1)); return () => cancelAnimationFrame(id); }, [theme, palette]);
+  useEffect(() => {
+    // Following the system's light/dark switch too.
+    const mq = typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null;
+    const on = () => setThemeTick((x) => x + 1);
+    mq?.addEventListener('change', on);
+    return () => mq?.removeEventListener('change', on);
+  }, []);
   const graphTheme = useMemo(() => readTheme(), [themeTick]); // eslint-disable-line react-hooks/exhaustive-deps
   const display: DisplayGraph | null = useMemo(() => (data ? displayGraph(data, graphTheme) : null), [data, graphTheme]);
 
@@ -116,11 +123,19 @@ export default function GraphView() {
 
   useEffect(() => { renderer?.setTheme(graphTheme); }, [renderer, graphTheme]);
   const fitted = useRef<GraphRenderer | null>(null);
+  const touched = useRef(false);
   useEffect(() => {
     if (!renderer || !display || !layout) return;
     renderer.setGraph(display, layout);
-    if (fitted.current !== renderer) { fitted.current = renderer; renderer.fit(false); }
-  }, [renderer, display, layout]);
+    if (fitted.current !== renderer) { fitted.current = renderer; touched.current = false; renderer.fit(false); }
+    // Once the layout has settled, frame it again — unless the user has taken over the camera.
+    const id = setInterval(() => {
+      if (!layout.settled) return;
+      clearInterval(id);
+      if (!touched.current) renderer.fit(!reduced);
+    }, 300);
+    return () => clearInterval(id);
+  }, [renderer, display, layout, reduced]);
 
   // ---- Time -----------------------------------------------------------------------------------
   const span = useMemo(() => {
@@ -190,7 +205,7 @@ export default function GraphView() {
   const nodeById = useCallback((id: string) => display?.nodes[display.index.get(id) ?? -1], [display]);
   const select = useCallback((id: string | null) => {
     setSelected(id);
-    if (id) renderer?.focus(id, !reduced);
+    if (id) { touched.current = true; renderer?.focus(id, !reduced); }
   }, [renderer, reduced]);
 
   const open = useCallback((id: string) => {
@@ -205,7 +220,9 @@ export default function GraphView() {
     if (!el || !renderer) return;
     let down: { x: number; y: number } | null = null;
     let raf = 0;
-    const onDown = (e: PointerEvent) => { down = { x: e.clientX, y: e.clientY }; };
+    const onDown = (e: PointerEvent) => { down = { x: e.clientX, y: e.clientY }; touched.current = true; };
+    const onWheel = () => { touched.current = true; };
+    el.addEventListener('wheel', onWheel, { passive: true });
     const onUp = (e: PointerEvent) => {
       if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) { down = null; return; }
       down = null;
@@ -238,6 +255,7 @@ export default function GraphView() {
       el.removeEventListener('pointermove', onMove);
       el.removeEventListener('pointerleave', onLeave);
       el.removeEventListener('dblclick', onDbl);
+      el.removeEventListener('wheel', onWheel);
     };
   }, [renderer, open, select]);
   useEffect(() => {
