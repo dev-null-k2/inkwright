@@ -72,9 +72,9 @@ export function App() {
           const { openToday } = await import('./lib/knowledge.ts');
           await openToday();
         } else navigate(routeFromHash(location.hash), { replace: true });
-        // Files the system opened Inkstone with (desktop file handler, share target, Android "Open with").
+        // Files the system opened Inkwright with (desktop file handler, share target, Android "Open with").
         void import('./lib/openFiles.ts').then((m) => m.installOpenHandlers());
-        if (!v.persistent) useApp.getState().toast({ text: 'This browser blocks storage here, so notes last for this session only. Sign in to sync, or open Inkstone in its own tab.', tone: 'error' });
+        if (!v.persistent) useApp.getState().toast({ text: 'This browser blocks storage here, so notes last for this session only. Sign in to sync, or open Inkwright in its own tab.', tone: 'error' });
         await v.buildIndex();
         await v.vault.purgeTrash();
         startSyncLoop();
@@ -108,7 +108,7 @@ export function App() {
     return (
       <div className="boot">
         <BrandMark size={44} />
-        <p>Inkstone couldn't open your notes: {error}</p>
+        <p>Inkwright couldn't open your notes: {error}</p>
         <button type="button" className="btn btn-primary" onClick={() => location.reload()}>Try again</button>
       </div>
     );

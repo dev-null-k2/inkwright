@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { VersionHistory, unlockWith } from '@inkstone/core';
+import { VersionHistory, unlockWith } from '@inkwright/core';
 import { VaultNoteToolHost } from '../src/agent/host.ts';
 import { makeFixture, type Fixture } from './fixtures.ts';
 

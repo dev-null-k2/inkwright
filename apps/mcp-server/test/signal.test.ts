@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RelayClient, SealedMailbox, randomBytes } from '@inkstone/sync';
+import { RelayClient, SealedMailbox, randomBytes } from '@inkwright/sync';
 import { createSignalRelay } from '../src/signal.ts';
 import { parseCli } from '../src/cli.ts';
 

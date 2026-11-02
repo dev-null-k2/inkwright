@@ -173,7 +173,7 @@ describe('OpenAI-compatible presets', () => {
     await createProvider({ providerId: 'openrouter', apiKey: 'or-key', fetch }).chat({ model: 'google/gemini-2.5-flash', messages: [{ role: 'user', content: 'x' }] });
     const r = fetch.calls[0]!;
     expect(r.url).toBe('https://openrouter.ai/api/v1/chat/completions');
-    expect(r.headers).toMatchObject({ authorization: 'Bearer or-key', 'http-referer': 'https://inkstone.app', 'x-title': 'Inkstone' });
+    expect(r.headers).toMatchObject({ authorization: 'Bearer or-key', 'http-referer': 'https://inkwright.app', 'x-title': 'Inkwright' });
   });
 
   it('Azure OpenAI uses the deployment URL, api-key header and api-version', async () => {

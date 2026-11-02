@@ -10,12 +10,12 @@ test.describe('writing', () => {
     const s = await strokes(page);
     expect(s).toHaveLength(2);
     expect(s[0].n).toBeGreaterThan(40);
-    const hasPressure = await page.evaluate(() => (window as any).__inkstone.doc.page(0).strokes[0].points.some((p: any) => p.p > 0 && p.p < 1));
+    const hasPressure = await page.evaluate(() => (window as any).__inkwright.doc.page(0).strokes[0].points.some((p: any) => p.p > 0 && p.p < 1));
     expect(hasPressure).toBe(true);
     await page.waitForTimeout(1200); // autosave debounce
     const url = page.url();
     await page.reload();
-    await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+    await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
     expect(page.url()).toBe(url);
     expect(await strokes(page)).toHaveLength(2);
   });
@@ -31,9 +31,9 @@ test.describe('writing', () => {
   });
 
   test('scribble to erase can be turned off', async ({ page }) => {
-    await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('inkstone.settings.v1') || '{}'); s.input = { ...(s.input || {}), scratchToErase: false, fingerAction: 'scroll', buttonAction: 'eraser', holdToShape: true, tapGestures: true, pressureCurve: 1 }; localStorage.setItem('inkstone.settings.v1', JSON.stringify(s)); });
+    await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('inkwright.settings.v1') || '{}'); s.input = { ...(s.input || {}), scratchToErase: false, fingerAction: 'scroll', buttonAction: 'eraser', holdToShape: true, tapGestures: true, pressureCurve: 1 }; localStorage.setItem('inkwright.settings.v1', JSON.stringify(s)); });
     await page.reload();
-    await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+    await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
     await pen(page, word(200, 220, 160));
     await pen(page, scribble(195, 365, 205, 238, 10));
     expect(await strokes(page)).toHaveLength(2);
@@ -65,7 +65,7 @@ test.describe('writing', () => {
     expect(await strokes(page)).toHaveLength(0);
     await page.keyboard.press('p');
     await pen(page, line([200, 300], [700, 300]));
-    await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('inkstone.settings.v1') || '{}'); localStorage.setItem('inkstone.settings.v1', JSON.stringify({ ...s, eraserMode: 'precise' })); });
+    await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('inkwright.settings.v1') || '{}'); localStorage.setItem('inkwright.settings.v1', JSON.stringify({ ...s, eraserMode: 'precise' })); });
     // Switch mode through the UI: tap eraser twice to open its options.
     await page.getByRole('button', { name: 'Eraser' }).click();
     await page.getByRole('button', { name: 'Eraser' }).click();
@@ -112,7 +112,7 @@ test.describe('writing', () => {
     const before = (await strokes(page))[0];
     // Drag the selection 100px right.
     await pen(page, line([260, 225], [360, 225], 10));
-    const moved = await page.evaluate(() => (window as any).__inkstone.doc.page(0).strokes[0].points[0].x);
+    const moved = await page.evaluate(() => (window as any).__inkwright.doc.page(0).strokes[0].points[0].x);
     expect(moved).toBeGreaterThan(0);
     expect((await strokes(page))[0].id).not.toBe(before.id);
     await page.getByRole('button', { name: 'Change colour' }).click();
@@ -172,14 +172,14 @@ test.describe('writing', () => {
     const vol = page.getByRole('slider', { name: 'Writing sound volume' });
     await expect(vol).toBeVisible();
     await vol.fill('0.25');
-    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inkstone.settings.v1') ?? '{}')?.feel?.soundVolume)).toBe(0.25);
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inkwright.settings.v1') ?? '{}')?.feel?.soundVolume)).toBe(0.25);
     await page.getByRole('radio', { name: 'Toothy' }).click();
-    await expect.poll(() => page.evaluate(() => (window as any).__inkstone.doc.meta.paper.texture)).toBe('toothy');
+    await expect.poll(() => page.evaluate(() => (window as any).__inkwright.doc.meta.paper.texture)).toBe('toothy');
     await page.locator('.feel-panel .row-switch', { hasText: 'Writing sound' }).click();
     await expect(page.getByRole('slider', { name: 'Writing sound volume' })).toBeDisabled();
   });
   test('pen strokes arm the native instant-ink tip; fingers and see-through pens do not', async ({ page }) => {
-    await page.evaluate(() => { const calls: unknown[] = []; (window as any).__tipCalls = calls; (window as any).__inkstone.engine.inkTip = { begin: (o: unknown) => calls.push(['begin', o]), end: (c?: boolean) => calls.push(['end', !!c]) }; });
+    await page.evaluate(() => { const calls: unknown[] = []; (window as any).__tipCalls = calls; (window as any).__inkwright.engine.inkTip = { begin: (o: unknown) => calls.push(['begin', o]), end: (c?: boolean) => calls.push(['end', !!c]) }; });
     await pen(page, word(200, 220, 160));
     await pen(page, word(200, 300, 160), { type: 'touch' });
     const calls = await page.evaluate(() => (window as any).__tipCalls);

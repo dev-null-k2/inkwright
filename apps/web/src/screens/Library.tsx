@@ -3,7 +3,7 @@ import {
   BookOpen, ChevronDown, Clock, FileUp, FolderInput, Hash, Inbox, Menu as MenuIcon, MoreHorizontal, NotebookPen, Pin, PinOff,
   Plus, Search, Settings as SettingsIcon, Trash2, X, Copy, Pencil, RotateCcw, Cloud, CloudOff, Image as ImageIcon,
 } from 'lucide-react';
-import type { NoteMeta, NotebookMeta, SearchHit } from '@inkstone/core';
+import type { NoteMeta, NotebookMeta, SearchHit } from '@inkwright/core';
 import { useApp, type LibraryFilter } from '../state/app.ts';
 import { useSettings } from '../state/settings.ts';
 import { Dialog, IconButton, Menu, Popover, cx, relativeTime, useMediaQuery } from '../ui/primitives.tsx';
@@ -104,7 +104,7 @@ export function Library() {
     <nav className="lib-nav" aria-label="Library">
       <div className="lib-brand">
         <BrandMark size={32} />
-        <span className="lib-brand-name">Inkstone</span>
+        <span className="lib-brand-name">Inkwright</span>
         {!wide && <IconButton label="Close" onClick={() => setDrawer(false)}><X size={18} /></IconButton>}
       </div>
       <NavItem icon={<BookOpen size={17} />} label="All notes" count={notes.length} on={filter.kind === 'all'} onClick={() => { setFilter({ kind: 'all' }); setDrawer(false); }} />

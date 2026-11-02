@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { create } from 'zustand';
-import { citedKeys, formatBibliography, newId, toBibtex, type NoteDocument, type Reference, type TextBox } from '@inkstone/core';
+import { citedKeys, formatBibliography, newId, toBibtex, type NoteDocument, type Reference, type TextBox } from '@inkwright/core';
 import type { InkEngine } from '../canvas/engine.ts';
 import { useApp } from '../state/app.ts';
 import { saveFile } from '../platform/files.ts';

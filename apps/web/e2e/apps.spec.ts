@@ -89,7 +89,7 @@ test('connected apps: OAuth sign-in in a popup, per-tool approval, and the assis
   // The assistant uses the app; the write waits for approval.
   await page.getByRole('button', { name: 'Back' }).click();
   await page.locator('.note-open').first().click();
-  await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
   await page.locator('.ai-btn').click();
   await page.locator('.ai-input textarea').fill('Add revise chapter 3 to my tasks');
   await page.locator('.ai-input textarea').press('Enter');

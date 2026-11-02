@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MemoryFS } from '@inkstone/core';
+import { MemoryFS } from '@inkwright/core';
 import {
   FolderRemote,
   HttpClient,
@@ -23,9 +23,9 @@ function remoteContract(name: string, make: () => Remote) {
     it('writes, lists, reads and deletes with consistent revs', async () => {
       const r = make();
       const w = await r.write('notes/n/note.json', enc.encode('{"a":1}'));
-      await r.write('inkstone.json', enc.encode('{}'));
+      await r.write('inkwright.json', enc.encode('{}'));
       const list = await r.list();
-      expect(list.map((e) => e.path).sort()).toEqual(['inkstone.json', 'notes/n/note.json']);
+      expect(list.map((e) => e.path).sort()).toEqual(['inkwright.json', 'notes/n/note.json']);
       expect(list.find((e) => e.path === 'notes/n/note.json')!.rev).toBe(w.rev);
       const got = (await r.read('notes/n/note.json'))!;
       expect(dec.decode(got.bytes)).toBe('{"a":1}');
@@ -113,7 +113,7 @@ describe('FolderRemote', () => {
   it('hides junk files from the listing', async () => {
     const fs = new MemoryFS();
     await fs.writeText('notes/.DS_Store', 'x');
-    await fs.writeText('notes/n.json.1234.inkstone-tmp', 'x');
+    await fs.writeText('notes/n.json.1234.inkwright-tmp', 'x');
     await fs.writeText('notes/n.json', 'x');
     expect((await new FolderRemote(fs).list()).map((e) => e.path)).toEqual(['notes/n.json']);
   });

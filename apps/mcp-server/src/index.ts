@@ -8,11 +8,11 @@ import { createMcpServer, createServices } from './server.ts';
 import { VERSION } from './version.ts';
 
 // stdout carries the MCP protocol in stdio mode: everything human-readable goes to stderr.
-const log = (msg: string) => process.stderr.write(`[inkstone-mcp] ${msg}\n`);
+const log = (msg: string) => process.stderr.write(`[inkwright-mcp] ${msg}\n`);
 
 async function main(): Promise<void> {
   if (process.argv[2] === 'keys') {
-    // `inkstone-mcp keys create|list|revoke` — REST API keys (api/keys-cli.ts).
+    // `inkwright-mcp keys create|list|revoke` — REST API keys (api/keys-cli.ts).
     const { keysCli, KEYS_USAGE } = await import('./api/keys-cli.ts');
     try {
       await keysCli(process.argv.slice(3));
@@ -44,12 +44,12 @@ async function main(): Promise<void> {
     return;
   }
   if (!opts.vault) {
-    process.stderr.write(`No vault folder given. Pass --vault <dir> or set INKSTONE_VAULT.\n\n${USAGE}`);
+    process.stderr.write(`No vault folder given. Pass --vault <dir> or set INKWRIGHT_VAULT.\n\n${USAGE}`);
     process.exit(2);
   }
 
   const ctx = await createContext({ root: opts.vault, readOnly: opts.readOnly, watch: opts.watch, ...(opts.policyFile ? { managedPolicyFile: opts.policyFile } : {}), ...(opts.auditKey ? { auditKeyFile: opts.auditKey } : {}) });
-  if (ctx.createdVault) log(`No inkstone.json found; initialized a new vault at ${ctx.root}`);
+  if (ctx.createdVault) log(`No inkwright.json found; initialized a new vault at ${ctx.root}`);
   logPolicy(ctx, log);
   if (!ctx.readOnly) void applyServerRetention(ctx).catch((e) => log(`Retention: ${(e as Error).message}`));
   // The server's AI goes through the trust layer (routing, privacy firewall, meter, audit).
@@ -80,7 +80,7 @@ async function main(): Promise<void> {
 
   // stdio: one connection, either protocol era (2026-07-28 opening or a 2025 `initialize`).
   const services = createServices(ctx, { ai, transport: 'stdio' });
-  const handle = serveStdio(() => createMcpServer(services), { onerror: (e) => { if (process.env.INKSTONE_DEBUG) log(e.message); } });
+  const handle = serveStdio(() => createMcpServer(services), { onerror: (e) => { if (process.env.INKWRIGHT_DEBUG) log(e.message); } });
   closeAll = async () => {
     services.tasks.close();
     await services.activity.flush();
@@ -92,6 +92,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((e) => {
-  log(`error: ${process.env.INKSTONE_DEBUG ? ((e as Error).stack ?? e) : ((e as Error).message ?? e)}`);
+  log(`error: ${process.env.INKWRIGHT_DEBUG ? ((e as Error).stack ?? e) : ((e as Error).message ?? e)}`);
   process.exit(1);
 });

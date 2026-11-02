@@ -1,5 +1,5 @@
 /**
- * The hand-written half of `@inkstone/sdk`: HTTP, authentication, errors, retries, pagination
+ * The hand-written half of `@inkwright/sdk`: HTTP, authentication, errors, retries, pagination
  * and webhook verification. The generated half (`generated.ts`) adds one typed method per API
  * operation on top. Runs anywhere with `fetch` and Web Crypto: Node 20+, Deno, Bun, browsers,
  * Cloudflare Workers.
@@ -17,14 +17,14 @@ export interface ProblemDetails {
 }
 
 /** Thrown for every non-2xx answer; `code` is the API's stable problem code. */
-export class InkstoneApiError extends Error {
+export class InkwrightApiError extends Error {
   readonly status: number;
   readonly code: string;
   readonly problem: ProblemDetails | null;
   readonly headers: Headers;
   constructor(status: number, problem: ProblemDetails | null, headers: Headers) {
     super(problem?.detail ?? problem?.title ?? `HTTP ${status}`);
-    this.name = 'InkstoneApiError';
+    this.name = 'InkwrightApiError';
     this.status = status;
     this.code = problem?.code ?? 'http_error';
     this.problem = problem;
@@ -139,7 +139,7 @@ export class BaseClient {
         } catch {
           /* not a problem document */
         }
-        throw new InkstoneApiError(res.status, problem, res.headers);
+        throw new InkwrightApiError(res.status, problem, res.headers);
       }
       if (op.response === 'none' || res.status === 204) return undefined as T;
       if (op.response === 'text') return (await res.text()) as T;

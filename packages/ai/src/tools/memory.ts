@@ -1,4 +1,4 @@
-import { formatStamp } from '@inkstone/core';
+import { formatStamp } from '@inkwright/core';
 import type { AgentTool } from '../agent.ts';
 
 /** One passage found in the user's notes, with the exact place it is written. */

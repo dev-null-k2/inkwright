@@ -1,4 +1,4 @@
-import { formatStamp, parseStamp, type TranscriptSegment } from '@inkstone/core';
+import { formatStamp, parseStamp, type TranscriptSegment } from '@inkwright/core';
 import { extractJson } from '../json.ts';
 import type { ChatMessage } from '../types.ts';
 

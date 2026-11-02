@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Check, ListChecks, List, Minus, Plus } from 'lucide-react';
-import type { FontFamily, TextBox } from '@inkstone/core';
+import type { FontFamily, TextBox } from '@inkwright/core';
 import { FONT_FAMILIES } from '../canvas/render.ts';
 import { INK_PALETTE } from '../state/settings.ts';
 import { cx } from './primitives.tsx';

@@ -8,7 +8,7 @@ for (const screen of ['library', 'editor', 'settings'] as const) {
     await openApp(page);
     if (screen === 'editor') {
       await page.locator('.note-open').first().click();
-      await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+      await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
       await expect(page.locator('.dock')).toBeVisible();
     }
     if (screen === 'settings') {
@@ -26,7 +26,7 @@ for (const screen of ['library', 'editor', 'settings'] as const) {
 test('every pen in the tray is reachable on this screen', async ({ page }) => {
   await openApp(page);
   await page.locator('.note-open').first().click();
-  await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
   const pens = page.locator('.pen');
   const n = await pens.count();
   for (let i = 0; i < n; i++) {

@@ -2,7 +2,7 @@ import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { MemoryFS, Vault, decodeNote, decodePage, newId, newPage, point, walk, type InkStroke, type VaultFS } from '@inkstone/core';
+import { MemoryFS, Vault, decodeNote, decodePage, newId, newPage, point, walk, type InkStroke, type VaultFS } from '@inkwright/core';
 import {
   FileSystemAccessFS,
   FolderRemote,
@@ -85,9 +85,9 @@ describe('decide()', () => {
   });
 
   it('ignores app-internal and junk paths', () => {
-    expect(isIgnoredPath('.inkstone/index.sqlite')).toBe(true);
+    expect(isIgnoredPath('.inkwright/index.sqlite')).toBe(true);
     expect(isIgnoredPath('notes/n/.DS_Store')).toBe(true);
-    expect(isIgnoredPath('notes/n/note.json.abc.inkstone-tmp')).toBe(true);
+    expect(isIgnoredPath('notes/n/note.json.abc.inkwright-tmp')).toBe(true);
     expect(isIgnoredPath('notes/n/note.json')).toBe(false);
   });
 });
@@ -252,18 +252,18 @@ describe('SyncEngine', () => {
     expect(r.unchanged).toBe((await walk(a.fs)).length);
   });
 
-  it('never syncs .inkstone/ or junk files', async () => {
+  it('never syncs .inkwright/ or junk files', async () => {
     const remote = new MemoryRemote({ clock });
     const a = device(remote);
-    await a.fs.writeText('.inkstone/search.idx', 'local index');
+    await a.fs.writeText('.inkwright/search.idx', 'local index');
     await a.fs.writeText('notes/n/.DS_Store', 'junk');
     await a.fs.writeText('notes/n/note.json', '{"id":"n"}');
-    remote.put('.inkstone/other-device.idx', 'theirs');
+    remote.put('.inkwright/other-device.idx', 'theirs');
     const r = await a.engine.sync();
     expect(r.pushed).toEqual(['notes/n/note.json']);
-    expect(remote.paths()).toEqual(['.inkstone/other-device.idx', 'notes/n/note.json']);
-    expect(await a.fs.readText('.inkstone/search.idx')).toBe('local index');
-    expect(await a.fs.readText('.inkstone/other-device.idx')).toBeNull();
+    expect(remote.paths()).toEqual(['.inkwright/other-device.idx', 'notes/n/note.json']);
+    expect(await a.fs.readText('.inkwright/search.idx')).toBe('local index');
+    expect(await a.fs.readText('.inkwright/other-device.idx')).toBeNull();
   });
 
   describe('safety', () => {
@@ -454,7 +454,7 @@ describe('SyncEngine', () => {
   });
 
   it('removes note folders emptied by remote deletions on a real file system', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'inkstone-engine-'));
+    const dir = await mkdtemp(join(tmpdir(), 'inkwright-engine-'));
     try {
       const remote = new MemoryRemote({ clock });
       const a = device(remote);
@@ -517,7 +517,7 @@ describe('SyncEngine', () => {
     });
 
     it('syncs to a local folder through FolderRemote (File System Access)', async () => {
-      const folder = new FileSystemAccessFS(new FakeDirectoryHandle('Inkstone', clock));
+      const folder = new FileSystemAccessFS(new FakeDirectoryHandle('Inkwright', clock));
       const mk = () => {
         const fs = new MemoryFS(clock);
         return { fs, vault: new Vault(fs, clock), engine: new SyncEngine({ local: fs, remote: new FolderRemote(folder), state: new MemoryStateStore(), clock }) };

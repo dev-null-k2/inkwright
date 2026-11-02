@@ -168,7 +168,7 @@ export function exportMarkdown(note: NoteMeta, pages: PageInk[]): string {
   if (note.notebookId) out.push(`notebook: ${note.notebookId}`);
   if (note.tags.length) out.push(`tags: [${note.tags.map(yaml).join(', ')}]`);
   out.push(`pages: ${pages.length}`);
-  out.push('source: inkstone');
+  out.push('source: inkwright');
   out.push('---', '');
   out.push(`# ${note.title.trim() || 'Untitled'}`, '');
   if (note.summary?.trim()) out.push(`> ${note.summary.trim().replace(/\n/g, '\n> ')}`, '');

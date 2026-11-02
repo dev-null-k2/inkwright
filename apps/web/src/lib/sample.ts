@@ -1,9 +1,9 @@
-import { handwrite, newId, type InkPoint, type InkStroke, type PageInk, type PaperSpec, type TextBox, type Vault } from '@inkstone/core';
+import { handwrite, newId, type InkPoint, type InkStroke, type PageInk, type PaperSpec, type TextBox, type Vault } from '@inkwright/core';
 
 /**
  * "Try sample notebooks": a small, realistic library written with the handwriting synthesizer —
  * lecture notes with a sketched waveform, a weekly plan, a design review with margin notes and a
- * journal page — so a first-time user (or an app-store reviewer) sees what Inkstone does with real
+ * journal page — so a first-time user (or an app-store reviewer) sees what Inkwright does with real
  * pages instead of an empty desk. Everything is ordinary ink and text: erase it, lasso it, search it,
  * ask about it. Recognized text is filled in so search and Ask work before any AI is set up.
  */

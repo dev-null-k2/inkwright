@@ -4,7 +4,7 @@
  * request validation and the generated SDK can never disagree.
  */
 import { z } from 'zod';
-import { API_SCOPES } from '@inkstone/core';
+import { API_SCOPES } from '@inkwright/core';
 import { VERSION } from '../version.ts';
 import { API_PREFIX, PROBLEM_CODES, type RouteDef } from './core.ts';
 import { components } from './schemas.ts';
@@ -102,7 +102,7 @@ export function buildOpenApi(routes: RouteDef[], opts: OpenApiOptions): Json {
       ...(r.body ? { requestBody: { required: true, content: { 'application/json': { schema: ref(r.body) } } } } : {}),
       responses,
       security: r.scope ? [{ apiKey: [r.scope] }, ...(opts.oauth ? [{ oauth: [r.scope === 'notes:read' ? opts.oauth.readScope : opts.oauth.writeScope] }] : [])] : [{ apiKey: [] }],
-      'x-inkstone-scope': r.scope,
+      'x-inkwright-scope': r.scope,
     };
     (paths[r.path] ??= {})[r.method.toLowerCase()] = op;
   }
@@ -113,11 +113,11 @@ export function buildOpenApi(routes: RouteDef[], opts: OpenApiOptions): Json {
     openapi: '3.1.0',
     jsonSchemaDialect: 'https://json-schema.org/draft/2020-12/schema',
     info: {
-      title: 'Inkstone API',
+      title: 'Inkwright API',
       version: VERSION,
-      summary: 'Your Inkstone notes vault over HTTP.',
+      summary: 'Your Inkwright notes vault over HTTP.',
       description:
-        'A local REST API over an Inkstone vault, served by `inkstone-mcp --http` next to MCP and A2A. Authenticate with an API key (`Authorization: Bearer ink_…`, scoped; create keys in the app under Settings › Developer or with `inkstone-mcp keys create`), the server token, or OAuth. Errors are RFC 9457 problem details. Lists use cursor pagination. Writes accept `Idempotency-Key`; note writes accept `If-Match` with the ETag you read. Every write is logged in the app’s Activity under the key’s name and can be undone there.',
+        'A local REST API over an Inkwright vault, served by `inkwright-mcp --http` next to MCP and A2A. Authenticate with an API key (`Authorization: Bearer ink_…`, scoped; create keys in the app under Settings › Developer or with `inkwright-mcp keys create`), the server token, or OAuth. Errors are RFC 9457 problem details. Lists use cursor pagination. Writes accept `Idempotency-Key`; note writes accept `If-Match` with the ETag you read. Every write is logged in the app’s Activity under the key’s name and can be undone there.',
       license: { name: 'Apache-2.0', identifier: 'Apache-2.0' },
     },
     servers: [{ url: opts.serverUrl }],

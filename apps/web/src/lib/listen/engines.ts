@@ -28,8 +28,8 @@ import {
   type SpeechPreference,
   type Transcriber,
   type WindowerOptions,
-} from '@inkstone/ai';
-import type { SpeechWhere, TranscriptSegment } from '@inkstone/core';
+} from '@inkwright/ai';
+import type { SpeechWhere, TranscriptSegment } from '@inkwright/core';
 import { safeStorage } from '../../platform/env.ts';
 import { nativeSpeech, nativeSpeechReady } from '../../platform/native-speech.ts';
 import { asrChoice, initLocalAI, isInstalled, localAISupported, localEngine, refOf } from '../localai.ts';
@@ -54,7 +54,7 @@ export interface SpeechPrefs {
   pageNotes: boolean;
 }
 
-const KEY = 'inkstone.speech.v1';
+const KEY = 'inkwright.speech.v1';
 const DEFAULTS: SpeechPrefs = { engine: 'auto', language: '', autoOpen: true, autoSummary: true, pageNotes: false };
 
 function loadPrefs(): SpeechPrefs {
@@ -82,7 +82,7 @@ const lang2 = (l: string) => l.toLowerCase().split(/[-_]/)[0] || 'en';
 
 /** Window sizes; end-to-end tests shorten them (test builds only). */
 function windowOptions(kind: 'live' | 'dictation'): WindowerOptions {
-  const tuning = E2E_BUILD ? ((globalThis as any).__inkstoneSpeechTuning as WindowerOptions | undefined) : undefined;
+  const tuning = E2E_BUILD ? ((globalThis as any).__inkwrightSpeechTuning as WindowerOptions | undefined) : undefined;
   const base: WindowerOptions = kind === 'dictation' ? { minWindowMs: 4000, maxWindowMs: 20_000, pauseMs: 700 } : { minWindowMs: 10_000, maxWindowMs: 28_000, pauseMs: 600 };
   return { ...base, ...tuning };
 }

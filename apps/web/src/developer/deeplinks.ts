@@ -1,16 +1,16 @@
 /**
- * The URL API: links that make Inkstone do something, for Shortcuts, Tasker, launchers, bookmarks
+ * The URL API: links that make Inkwright do something, for Shortcuts, Tasker, launchers, bookmarks
  * and other apps (docs/API.md § Links).
  *
- *   inkstone://new?title=Groceries&text=-%20milk&tags=home      a new note (typed text)
- *   inkstone://open?note=<id>&page=2                              open a note (or ?title=…)
- *   inkstone://search?q=pricing                                   search everything
- *   inkstone://capture?url=https://…&title=…&text=…               save a link (and a quote)
- *   inkstone://today                                              today's daily note
+ *   inkwright://new?title=Groceries&text=-%20milk&tags=home      a new note (typed text)
+ *   inkwright://open?note=<id>&page=2                              open a note (or ?title=…)
+ *   inkwright://search?q=pricing                                   search everything
+ *   inkwright://capture?url=https://…&title=…&text=…               save a link (and a quote)
+ *   inkwright://today                                              today's daily note
  *
  * The same actions work as web links — `https://<app>/?action=new&title=…` — and through the
- * installed web app's protocol handler `web+inkstone://…` (browsers only allow `web+` schemes
- * for web apps; the Android app registers `inkstone://`). Links never delete, change or reveal
+ * installed web app's protocol handler `web+inkwright://…` (browsers only allow `web+` schemes
+ * for web apps; the Android app registers `inkwright://`). Links never delete, change or reveal
  * anything: they create notes, open them or search, all in front of the user.
  */
 import { useApp } from '../state/app.ts';
@@ -31,9 +31,9 @@ const clip = (v: string | null, max: number) => (v == null ? undefined : v.slice
 const tagList = (v: string | null) => (v ? v.split(',').map((t) => t.trim().replace(/^#/, '')).filter(Boolean).slice(0, 20) : []);
 
 /**
- * Parses a link into an action, or null when it is not one of ours. Accepts `inkstone://`,
- * `web+inkstone://`, an app URL with `?action=…`, or an app URL carrying a protocol-handler
- * `?link=web+inkstone://…`.
+ * Parses a link into an action, or null when it is not one of ours. Accepts `inkwright://`,
+ * `web+inkwright://`, an app URL with `?action=…`, or an app URL carrying a protocol-handler
+ * `?link=web+inkwright://…`.
  */
 export function parseDeepLink(raw: string): DeepLinkAction | null {
   let u: URL;
@@ -43,10 +43,10 @@ export function parseDeepLink(raw: string): DeepLinkAction | null {
     return null;
   }
   const inner = u.searchParams.get('link');
-  if (inner && /^(web\+)?inkstone:/i.test(inner)) return parseDeepLink(inner);
+  if (inner && /^(web\+)?inkwright:/i.test(inner)) return parseDeepLink(inner);
   let action: string | null;
-  if (/^(web\+)?inkstone:$/i.test(u.protocol)) {
-    // inkstone://new?… (host = action) and inkstone:new?… (path = action) both appear in the wild.
+  if (/^(web\+)?inkwright:$/i.test(u.protocol)) {
+    // inkwright://new?… (host = action) and inkwright:new?… (path = action) both appear in the wild.
     action = (u.host || u.pathname.replace(/^\/+/, '').split('/')[0] || '').toLowerCase();
   } else if (u.protocol === 'https:' || u.protocol === 'http:') {
     action = u.searchParams.get('action')?.toLowerCase() ?? null;

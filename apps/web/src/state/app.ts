@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { NoteMeta, NotebookMeta } from '@inkstone/core';
+import type { NoteMeta, NotebookMeta } from '@inkwright/core';
 import type { AppVault } from '../lib/vault.ts';
 
 export type Route =

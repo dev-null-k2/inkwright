@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { newNote, newPage, type PageInk } from '@inkstone/core';
+import { newNote, newPage, type PageInk } from '@inkwright/core';
 import { SPREAD_GUTTER, autoSpreads, layoutPages, nearestSlot, rowHeight, slotAt } from './layout.ts';
 
 const note = newNote({ id: 'n', title: 'T', pageId: 'a', now: 0 });

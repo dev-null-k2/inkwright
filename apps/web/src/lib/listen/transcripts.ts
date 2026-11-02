@@ -19,7 +19,7 @@ import {
   type PageSummary,
   type RecordingTranscript,
   type TranscriptFile,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import type { AppVault } from '../vault.ts';
 
 const enc = new TextEncoder();

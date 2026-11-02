@@ -7,14 +7,14 @@
  * The MCP TypeScript SDK (v2) negotiates the protocol but has no runtime for this extension yet:
  * its 2026 codec rejects `resultType: "task"`. `taskAwareFetch` closes that gap at the HTTP layer:
  * it rewrites a task handle in a `tools/call` response (JSON or SSE) into an ordinary complete tool
- * result carrying the task under `_meta["dev.inkstone/task"]`, which the SDK accepts and validates
+ * result carrying the task under `_meta["dev.inkwright/task"]`, which the SDK accepts and validates
  * as usual. Everything else passes through untouched.
  */
 import type { FetchLike } from '../types.ts';
 
 export const TASKS_EXTENSION = 'io.modelcontextprotocol/tasks';
 /** Where a rewritten tool result carries its task. */
-export const TASK_META_KEY = 'dev.inkstone/task';
+export const TASK_META_KEY = 'dev.inkwright/task';
 
 export type McpTaskStatus = 'working' | 'input_required' | 'completed' | 'failed' | 'cancelled';
 

@@ -7,10 +7,10 @@ import {
   asFunctionOfX, autoView, boundsOfStrokes, cellRect, colEdges, detectChecklist, detectEnclosure, detectTable, detectTrailingEquals,
   insertCol, insertRow, moveTable, panView, removeCol, removeRow, resizeTrack, rowEdges, tableToCsv, tableToMarkdown,
   zoomView, type ChecklistItemCue, type GraphObject, type MathObject, type NoteDocument, type Rect, type TableCandidate, type TableObject,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import type { InkEngine, Tool } from '../canvas/engine.ts';
 import type { AppVault } from '../lib/vault.ts';
-import { InkstoneNative, hasNativePlugin } from '../platform/native.ts';
+import { InkwrightNative, hasNativePlugin } from '../platform/native.ts';
 import { saveFile } from '../platform/files.ts';
 import { useApp } from '../state/app.ts';
 import { useSettings } from '../state/settings.ts';
@@ -529,7 +529,7 @@ function ActionsCard({ card, box, W, H, noteTitle, onClose, onChecklist }: { car
   const left = Math.max(8, Math.min(W - width - 8, box.x + box.w + 12 > W - width ? box.x : box.x + box.w + 12));
   const top = Math.max(8, Math.min(H - 220, box.x + box.w + 12 > W - width ? box.y + box.h + 10 : box.y));
   const e = card.event;
-  const event = e ? { title: e.title, start: e.start, end: e.end, allDay: e.allDay, description: `From the Inkstone note “${noteTitle}”` } : null;
+  const event = e ? { title: e.title, start: e.start, end: e.end, allDay: e.allDay, description: `From the Inkwright note “${noteTitle}”` } : null;
   const nothing = !e && !card.links.length && !card.tasks;
   return (
     <div className="smart-card" role="dialog" aria-label="What you circled" style={{ left, top, width }}>
@@ -540,10 +540,10 @@ function ActionsCard({ card, box, W, H, noteTitle, onClose, onChecklist }: { car
           <p className="smart-card-sub">{describeWhen(event)} · “{event.title}”</p>
           <div className="smart-card-actions">
             {hasNativePlugin && <button type="button" className="btn btn-primary btn-sm" onClick={async () => {
-              const r = await InkstoneNative.insertCalendarEvent({ title: event.title, beginTime: event.start.getTime(), endTime: event.end.getTime(), allDay: event.allDay, description: event.description }).catch(() => ({ opened: false }));
+              const r = await InkwrightNative.insertCalendarEvent({ title: event.title, beginTime: event.start.getTime(), endTime: event.end.getTime(), allDay: event.allDay, description: event.description }).catch(() => ({ opened: false }));
               if (!r.opened) toast({ text: 'No calendar app found — download the .ics instead', tone: 'error' });
             }}>Add to calendar</button>}
-            <button type="button" className={cx('btn btn-sm', hasNativePlugin ? 'btn-ghost' : 'btn-primary')} onClick={() => void saveFile(icsFileName(event), new TextEncoder().encode(buildIcs(event, { uid: `${event.start.getTime()}-${Math.random().toString(36).slice(2)}@inkstone` })), 'text/calendar')}>
+            <button type="button" className={cx('btn btn-sm', hasNativePlugin ? 'btn-ghost' : 'btn-primary')} onClick={() => void saveFile(icsFileName(event), new TextEncoder().encode(buildIcs(event, { uid: `${event.start.getTime()}-${Math.random().toString(36).slice(2)}@inkwright` })), 'text/calendar')}>
               <Download size={14} /> .ics
             </button>
             <a className="btn btn-ghost btn-sm" href={googleCalendarUrl(event)} target="_blank" rel="noreferrer noopener"><ExternalLink size={14} /> Google Calendar</a>

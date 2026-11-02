@@ -24,7 +24,7 @@ export interface LocalServerInfo {
 export const LOCAL_SERVERS: readonly LocalServerInfo[] = [
   {
     id: 'ollama', label: 'Ollama', providerId: 'ollama', ports: [11434], modelsPath: '/v1/models', downloadUrl: 'https://ollama.com/download',
-    corsHelp: 'Allow Inkstone to connect: set OLLAMA_ORIGINS to this page’s address (or *) and restart Ollama. macOS: launchctl setenv OLLAMA_ORIGINS "*" — Windows: add a user environment variable OLLAMA_ORIGINS — Linux: Environment="OLLAMA_ORIGINS=*" in the ollama service.',
+    corsHelp: 'Allow Inkwright to connect: set OLLAMA_ORIGINS to this page’s address (or *) and restart Ollama. macOS: launchctl setenv OLLAMA_ORIGINS "*" — Windows: add a user environment variable OLLAMA_ORIGINS — Linux: Environment="OLLAMA_ORIGINS=*" in the ollama service.',
   },
   {
     id: 'lmstudio', label: 'LM Studio', providerId: 'lmstudio', ports: [1234], modelsPath: '/v1/models', downloadUrl: 'https://lmstudio.ai',

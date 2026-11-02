@@ -1,16 +1,16 @@
 import type { ListResourcesResult, ReadResourceResult } from '@modelcontextprotocol/server';
-import { CompilerStore } from '@inkstone/ai';
+import { CompilerStore } from '@inkwright/ai';
 import { requireId, readNoteFresh, type ServerContext } from './context.ts';
 import { pageSvg } from './render.ts';
 import { noteMarkdown, noteUri, pageUri } from './tools.ts';
 
 /** URI templates served by the server (also listed by resources/templates/list). */
-export const NOTE_TEMPLATE = 'inkstone://notes/{id}';
-export const PAGE_SVG_TEMPLATE = 'inkstone://notes/{id}/pages/{n}.svg';
+export const NOTE_TEMPLATE = 'inkwright://notes/{id}';
+export const PAGE_SVG_TEMPLATE = 'inkwright://notes/{id}/pages/{n}.svg';
 
 const one = (v: string | string[] | undefined): string => (Array.isArray(v) ? (v[0] ?? '') : (v ?? ''));
 
-/** `inkstone://notes/{id}` → the note as Markdown. */
+/** `inkwright://notes/{id}` → the note as Markdown. */
 export async function readNoteResource(ctx: ServerContext, id: string | string[] | undefined): Promise<ReadResourceResult> {
   const noteId = requireId(decodeURIComponent(one(id)), 'note id');
   await ctx.refresh();
@@ -18,7 +18,7 @@ export async function readNoteResource(ctx: ServerContext, id: string | string[]
   return { contents: [{ uri: noteUri(noteId), mimeType: 'text/markdown', text: markdown }] };
 }
 
-/** `inkstone://notes/{id}/pages/{n}.svg` → page n (1-based) as SVG. */
+/** `inkwright://notes/{id}/pages/{n}.svg` → page n (1-based) as SVG. */
 export async function readPageSvgResource(ctx: ServerContext, id: string | string[] | undefined, n: string | string[] | undefined): Promise<ReadResourceResult> {
   const noteId = requireId(decodeURIComponent(one(id)), 'note id');
   const num = Number(one(n));
@@ -49,8 +49,8 @@ export async function listNoteResources(ctx: ServerContext, limit = 1000): Promi
 // ---- Context packs (docs/COMPILER.md) ------------------------------------------------------------
 
 /** Saved context packs: `ai/packs/<id>/pack.md` (Markdown) and `pack.json`. */
-export const PACK_TEMPLATE = 'inkstone://packs/{id}';
-export const packUri = (id: string) => `inkstone://packs/${encodeURIComponent(id)}`;
+export const PACK_TEMPLATE = 'inkwright://packs/{id}';
+export const packUri = (id: string) => `inkwright://packs/${encodeURIComponent(id)}`;
 
 /** Every context pack the user saved in the app, newest first. */
 export async function listPackResources(ctx: ServerContext): Promise<ListResourcesResult> {
@@ -58,7 +58,7 @@ export async function listPackResources(ctx: ServerContext): Promise<ListResourc
   return { resources: packs.map((p) => ({ uri: packUri(p.id), name: p.title, mimeType: 'text/markdown', description: `Context pack from the user's notes (compiled facts with sources, notes, handwriting)${p.createdAt ? `, made ${p.createdAt.slice(0, 10)}` : ''}.` })) };
 }
 
-/** `inkstone://packs/{id}` → the pack's Markdown (cited), plus its JSON. */
+/** `inkwright://packs/{id}` → the pack's Markdown (cited), plus its JSON. */
 export async function readPackResource(ctx: ServerContext, id: string | string[] | undefined): Promise<ReadResourceResult> {
   const packId = requireId(decodeURIComponent(one(id)), 'pack id');
   const md = await ctx.fs.readText(`ai/packs/${packId}/pack.md`);

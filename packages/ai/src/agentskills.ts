@@ -1,6 +1,6 @@
 /**
  * Agent Skills (https://agentskills.io): folders with a `SKILL.md` (YAML frontmatter + Markdown
- * instructions) and optional bundled files. Inkstone imports them from a folder, a `.zip`/`.skill`
+ * instructions) and optional bundled files. Inkwright imports them from a folder, a `.zip`/`.skill`
  * archive or a URL to a SKILL.md, validates the frontmatter against the spec, and stores them in
  * the vault under `ai/skills/<name>/` so they sync like notes.
  *
@@ -8,10 +8,10 @@
  *   1. only each enabled skill's name + description go into the system prompt,
  *   2. `load_skill` returns the instructions (SKILL.md body) and lists the bundled files,
  *   3. `read_skill_resource` reads one bundled text file when the instructions point to it.
- * Scripts in skills are never executed — Inkstone has no code runner, by design. They can be read
+ * Scripts in skills are never executed — Inkwright has no code runner, by design. They can be read
  * as text like any other file.
  */
-import { isSafeId, type VaultFS } from '@inkstone/core';
+import { isSafeId, type VaultFS } from '@inkwright/core';
 import type { AgentTool } from './agent.ts';
 
 // ---- SKILL.md parsing ---------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 /**
- * The Inkstone mark: a Duan inkstone seen from above — the well of wet ink at the top, the grinding
+ * The Inkwright mark: a Duan inkstone seen from above — the well of wet ink at the top, the grinding
  * face below, and one jade stone-eye, the flaw that makes a Duan stone prized.
  */
 export function BrandMark({ size = 30 }: { size?: number }) {

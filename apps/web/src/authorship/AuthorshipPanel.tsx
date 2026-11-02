@@ -3,7 +3,7 @@ import { BadgeCheck, Download, FileCheck2, ShieldAlert, ShieldX } from 'lucide-r
 import {
   ZERO_COUNTS, addCounts, classifyPage, exportPageSvg, newNote, pageFromEvidence, writingRhythm,
   type AuthorshipCertificate, type ContentCounts, type InkStroke, type NoteDocument, type VerifyReport, type WritingRhythm,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import type { AppVault } from '../lib/vault.ts';
 import { saveFile } from '../platform/files.ts';
 import { useApp } from '../state/app.ts';
@@ -40,7 +40,7 @@ export function CountsList({ c }: { c: ContentCounts }) {
   if (c.importedImages || c.importedPages || c.importedText) rows.push(['Imported', [c.importedPages && plural(c.importedPages, 'PDF/image page'), c.importedImages && plural(c.importedImages, 'image'), c.importedText && plural(c.importedText, 'text file')].filter(Boolean).join(', ')]);
   if (c.copied) rows.push(['Pasted or copied ink', plural(c.copied, 'stroke')]);
   if (c.collaborator) rows.push(['By a collaborator', `${plural(c.collaborator, 'stroke or text box', 'strokes and text boxes')} written or changed in a live session`]);
-  if (c.unattested) rows.push(['Without history', `${plural(c.unattested, 'stroke')} (written before this was recorded, or edited outside Inkstone)`]);
+  if (c.unattested) rows.push(['Without history', `${plural(c.unattested, 'stroke')} (written before this was recorded, or edited outside Inkwright)`]);
   return <>{rows.map(([k, v]) => <div key={k} style={{ display: 'contents' }}><dt>{k}</dt><dd>{v}</dd></div>)}</>;
 }
 

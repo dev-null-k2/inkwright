@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
 import { BookMarked, Camera, Database, Image as ImageIcon, PenLine, Table2, TextSearch, Volume2, Workflow } from 'lucide-react';
-import type { NoteDocument } from '@inkstone/core';
+import type { NoteDocument } from '@inkwright/core';
 import type { InkEngine, SelectionInfo } from '../canvas/engine.ts';
 import type { AppVault } from '../lib/vault.ts';
 import { useApp } from '../state/app.ts';

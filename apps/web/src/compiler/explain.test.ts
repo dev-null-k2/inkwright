@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { attributeAnswer, type Passage } from '@inkstone/core';
+import { attributeAnswer, type Passage } from '@inkwright/core';
 import { collectPassages } from './explain.ts';
 
 describe('what the model read becomes the passages an answer is explained with', () => {

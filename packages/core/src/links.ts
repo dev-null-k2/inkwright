@@ -22,7 +22,7 @@ export interface WikiLink {
   /** 1-based page number when the subpath is `Page N`. */
   page?: number;
   alias?: string;
-  /** `![[…]]`: an Obsidian embed. Inkstone treats it as a link. */
+  /** `![[…]]`: an Obsidian embed. Inkwright treats it as a link. */
   embed: boolean;
   start: number;
   end: number;

@@ -9,7 +9,7 @@
  * created comes over as it is; a note deleted from main since is brought back, because merging
  * is the person saying they want the branch's content.
  */
-import type { NoteMeta, PageInk } from '@inkstone/core';
+import type { NoteMeta, PageInk } from '@inkwright/core';
 import { mergeNote, mergeOrder, mergePage } from './merge.ts';
 
 export interface NoteVersion {

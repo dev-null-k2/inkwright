@@ -1,15 +1,15 @@
-# @inkstone/sync
+# @inkwright/sync
 
-Storage backends for the Inkstone vault and multi-device sync with merging. Pure TypeScript,
+Storage backends for the Inkwright vault and multi-device sync with merging. Pure TypeScript,
 browser-safe (global `fetch`, WebCrypto, Compression Streams); the Node backend lives in the
-separate `@inkstone/sync/node` entry.
+separate `@inkwright/sync/node` entry.
 
 ## What's inside
 
 | Area | Exports |
 |---|---|
-| VaultFS backends | `IndexedDBFS` (web), `FileSystemAccessFS` (desktop "open folder"), `CapacitorFS` (Android/iOS; pass the `Filesystem` plugin), `NodeFS` from `@inkstone/sync/node` (atomic temp + rename) |
-| Remotes | `GoogleDriveRemote` (Drive v3, `drive.file` scope, visible "Inkstone" folder), `WebDavRemote` (Nextcloud/ownCloud/any WebDAV), `FolderRemote` (any VaultFS), `MemoryRemote` (tests) |
+| VaultFS backends | `IndexedDBFS` (web), `FileSystemAccessFS` (desktop "open folder"), `CapacitorFS` (Android/iOS; pass the `Filesystem` plugin), `NodeFS` from `@inkwright/sync/node` (atomic temp + rename) |
+| Remotes | `GoogleDriveRemote` (Drive v3, `drive.file` scope, visible "Inkwright" folder), `WebDavRemote` (Nextcloud/ownCloud/any WebDAV), `FolderRemote` (any VaultFS), `MemoryRemote` (tests) |
 | Merge | `mergePage`, `mergeNote`, `mergeNotebook`, `mergeFileBytes` — pure three-way merges (two-way union without a base) |
 | Engine | `SyncEngine`, `SyncScheduler`, `MemoryStateStore`, `FsStateStore`, `SyncSafetyError` |
 | Backup | `exportVaultZip`, `importVaultZip({ mode: 'merge' \| 'replace' })`, `writeZip`, `readZip`, `crc32` |
@@ -17,15 +17,15 @@ separate `@inkstone/sync/node` entry.
 ## Usage (web app + Google Drive)
 
 ```ts
-import { Vault } from '@inkstone/core';
-import { DRIVE_SCOPE, FsStateStore, GoogleDriveRemote, IndexedDBFS, SyncEngine, SyncScheduler, hasLocalChanges } from '@inkstone/sync';
+import { Vault } from '@inkwright/core';
+import { DRIVE_SCOPE, FsStateStore, GoogleDriveRemote, IndexedDBFS, SyncEngine, SyncScheduler, hasLocalChanges } from '@inkwright/sync';
 
-const local = new IndexedDBFS({ dbName: 'inkstone-vault' });
+const local = new IndexedDBFS({ dbName: 'inkwright-vault' });
 const vault = new Vault(local);
 const engine = new SyncEngine({
   local,
   remote: new GoogleDriveRemote({ getAccessToken, refreshAccessToken }), // OAuth with DRIVE_SCOPE
-  state: new FsStateStore(new IndexedDBFS({ dbName: 'inkstone-sync' }), { prefix: 'gdrive' }), // never inside the vault
+  state: new FsStateStore(new IndexedDBFS({ dbName: 'inkwright-sync' }), { prefix: 'gdrive' }), // never inside the vault
 });
 const scheduler = new SyncScheduler({
   run: async (signal) => {
@@ -40,7 +40,7 @@ vault.onChange(() => scheduler.notifyLocalChange());
 scheduler.start();
 ```
 
-MCP server / CLI: `import { NodeFS } from '@inkstone/sync/node'`.
+MCP server / CLI: `import { NodeFS } from '@inkwright/sync/node'`.
 
 ## How sync decides
 
@@ -56,7 +56,7 @@ other side; both changed → merge. An edit always beats a deletion on the other
 - Derived files (`*.svg`, `note.md`) and other files: newest wins, never reported as conflicts.
 - Assets changed on both sides: the remote version stays, the local one is kept as
   `name.conflict-<time>.ext` (reported in `report.conflicts`).
-- Never synced: `.inkstone/` and any dot-folder/dotfile, OS junk, temp files.
+- Never synced: `.inkwright/` and any dot-folder/dotfile, OS junk, temp files.
 
 Every remote write carries `ifMatch`, so a concurrent writer causes a re-read and merge instead
 of an overwrite. State is persisted after each file (resumable), work runs 4 files at a time,

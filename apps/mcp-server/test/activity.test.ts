@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { ActivityStore, VaultUndoTarget, undoRun } from '@inkstone/ai';
+import { ActivityStore, VaultUndoTarget, undoRun } from '@inkwright/ai';
 import type { ServerContext } from '../src/context.ts';
 import { createServices, type ServerServices } from '../src/server.ts';
 import { legacyClient, modernClient } from './clients.ts';

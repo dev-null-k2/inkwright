@@ -1,4 +1,4 @@
-import { searchSymbols, type CodeSymbol } from '@inkstone/core';
+import { searchSymbols, type CodeSymbol } from '@inkwright/core';
 import { devToolsOn } from './settings.ts';
 import { useDev } from './store.ts';
 

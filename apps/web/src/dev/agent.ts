@@ -3,8 +3,8 @@
  * note — undoable there — or in a new note, which Activity can undo), code_search, code_symbol and
  * drift_report. Added to every run that may write notes while the module is on.
  */
-import { makeDiagramObject, newId, pageSizeOf, type DiagramIR, type NoteDocument } from '@inkstone/core';
-import { DEV_TOOLS_PROMPT, createCodeTools, createDiagramTool, type AgentTool, type DevToolHost, type NoteToolHost } from '@inkstone/ai';
+import { makeDiagramObject, newId, pageSizeOf, type DiagramIR, type NoteDocument } from '@inkwright/core';
+import { DEV_TOOLS_PROMPT, createCodeTools, createDiagramTool, type AgentTool, type DevToolHost, type NoteToolHost } from '@inkwright/ai';
 import type { AppVault } from '../lib/vault.ts';
 import { noteChanged } from '../lib/actions.ts';
 import { devToolsOn } from './settings.ts';

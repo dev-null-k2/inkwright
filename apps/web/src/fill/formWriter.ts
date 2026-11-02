@@ -1,8 +1,8 @@
 import { PDFBool, PDFCheckBox, PDFDropdown, PDFHexString, PDFName, PDFOptionList, PDFRadioGroup, PDFTextField, StandardFonts, type PDFDocument, type PDFField } from 'pdf-lib';
-import type { FormFieldValue } from '@inkstone/core';
+import type { FormFieldValue } from '@inkwright/core';
 
 /**
- * Writes Inkstone's stored form values into a PDF's AcroForm with pdf-lib, so the exported file is
+ * Writes Inkwright's stored form values into a PDF's AcroForm with pdf-lib, so the exported file is
  * a real filled-in form: values live in the fields (selectable, editable in any PDF viewer) with
  * appearances generated for viewers that don't make their own. Optionally flattens the form.
  */

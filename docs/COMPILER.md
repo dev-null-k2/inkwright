@@ -1,6 +1,6 @@
 # The context compiler
 
-Notes that maintain themselves and can be trusted. Inkstone compiles the notes you choose into a
+Notes that maintain themselves and can be trusted. Inkwright compiles the notes you choose into a
 **compiled wiki** (topic, concept, project and people pages, a glossary and an index), keeps it up
 to date as the notes change, and can say for every sentence it wrote where that sentence came from.
 Around that core sit a **contradiction linter**, **spaced repetition** and a **teach-back tutor**,
@@ -186,7 +186,7 @@ numbered references to note and page) and key ink (pages with unrecognized handw
 images), within a character budget (≈ 12k tokens by default; what doesn't fit is listed). Export
 as **Markdown**, **JSON** (images base64), an **Agent Skill folder** (`SKILL.md` +
 `references/context.md` + `assets/`, zipped), or **Save for agents**: `ai/packs/<id>/` is served
-by the MCP server as the resource `inkstone://packs/{id}`. **AGENTS.md** exports standing
+by the MCP server as the resource `inkwright://packs/{id}`. **AGENTS.md** exports standing
 instructions and facts from assistant memory and decisions found in notes, each with where it was
 made.
 
@@ -224,7 +224,7 @@ See docs/VAULT_FORMAT.md § Context compiler: `ai/compiler/{config,state}.json`,
 The draft eval's misses are deliberate and honest: a supported paraphrase with low word overlap is
 dropped, an inference that reuses the source's words passes as EXTRACTED, and a plausible but
 unsupported link between two cited sources ("the quiz covers Fourier transforms") passes. Set
-`INKSTONE_EVAL_PROVIDER/KEY/MODEL` to draft the same pages with a real model and print its
+`INKWRIGHT_EVAL_PROVIDER/KEY/MODEL` to draft the same pages with a real model and print its
 validation report.
 
 Unit tests: `packages/core/test/compiler.test.ts`, `packages/ai/test/compiler.test.ts`,
@@ -243,6 +243,6 @@ Unit tests: `packages/core/test/compiler.test.ts`, `packages/ai/test/compiler.te
 - Web pages added as sources are fetched by the browser; most sites block that (CORS) and the app
   says so — paste the text into a note instead.
 - The nightly routine runs while the app is open (or catches up on open). The always-on runner
-  (`inkstone-agent`) has no `compile_wiki` tool yet; the routine says so and stops there.
+  (`inkwright-agent`) has no `compile_wiki` tool yet; the routine says so and stops there.
 - On-device quality depends on the model; small models fall back to quotes more often (the
   proposal shows when that happened).

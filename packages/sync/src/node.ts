@@ -1,11 +1,11 @@
 /**
- * Node-only entry (`@inkstone/sync/node`): a VaultFS over a real directory, used by the MCP
+ * Node-only entry (`@inkwright/sync/node`): a VaultFS over a real directory, used by the MCP
  * server and CLI tools. Kept out of the main entry so browser bundles never see `node:fs`.
  */
 import { promises as fsp } from 'node:fs';
 import * as nodePath from 'node:path';
 import { randomBytes } from 'node:crypto';
-import type { FsEntry, VaultFS } from '@inkstone/core';
+import type { FsEntry, VaultFS } from '@inkwright/core';
 import { TEMP_SUFFIX, isJunkName, safePath, segments, utf8Decode, utf8Encode } from './util.ts';
 
 function code(e: unknown): string | undefined {
@@ -50,7 +50,7 @@ export class NodeFS implements VaultFS {
     return b ? utf8Decode(b) : null;
   }
 
-  /** Atomic: write `<name>.<random>.inkstone-tmp` next to the target, fsync, rename over it. */
+  /** Atomic: write `<name>.<random>.inkwright-tmp` next to the target, fsync, rename over it. */
   async writeBytes(path: string, bytes: Uint8Array): Promise<void> {
     const full = this.resolve(path);
     if (full === this.root) throw new Error('Cannot write to the vault root');

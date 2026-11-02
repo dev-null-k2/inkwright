@@ -9,8 +9,8 @@ import { fromBase64Url, toBase64Url } from './sha256.ts';
  * version history and the metadata fields that reveal content. Files at rest — on the device and
  * in every synced copy — hold only ciphertext; the passcode and key never touch the disk.
  *
- * Every ciphertext carries associated data naming what it is (`inkstone:page:<id>`,
- * `inkstone:asset:<name>`…), so blobs can't be swapped between pages or files unnoticed.
+ * Every ciphertext carries associated data naming what it is (`inkwright:page:<id>`,
+ * `inkwright:asset:<name>`…), so blobs can't be swapped between pages or files unnoticed.
  *
  * There is no recovery: a forgotten passcode means the note can't be opened by anyone.
  */
@@ -25,11 +25,11 @@ const enc = new TextEncoder();
 const dec = new TextDecoder();
 /** First bytes of an encrypted asset file: "INKSEAL1". */
 const MAGIC = enc.encode('INKSEAL1');
-const CHECK = 'inkstone-lock-check-v1';
+const CHECK = 'inkwright-lock-check-v1';
 
 export class NoteLockedError extends Error {
   constructor(readonly noteId: string) {
-    super('This note is locked. Open it in Inkstone with its passcode to change it.');
+    super('This note is locked. Open it in Inkwright with its passcode to change it.');
     this.name = 'NoteLockedError';
   }
 }
@@ -81,7 +81,7 @@ export async function createLock(passcode: string, opts: { now: number; iteratio
   if (passcode.length < MIN_PASSCODE) throw new Error(`Use at least ${MIN_PASSCODE} characters.`);
   const kdf: NoteLock['kdf'] = { name: 'PBKDF2', hash: 'SHA-256', iterations: opts.iterations ?? LOCK_ITERATIONS, salt: toBase64Url(randomBytes(16)) };
   const key = await deriveLockKey(passcode, kdf);
-  const check = await sealBox(key, enc.encode(CHECK), 'inkstone:check');
+  const check = await sealBox(key, enc.encode(CHECK), 'inkwright:check');
   return { lock: { v: 1, kdf, cipher: 'AES-GCM-256', check, lockedAt: opts.now }, key };
 }
 
@@ -89,7 +89,7 @@ export async function createLock(passcode: string, opts: { now: number; iteratio
 export async function unlockWith(lock: NoteLock, passcode: string): Promise<CryptoKey | null> {
   const key = await deriveLockKey(passcode, lock.kdf);
   try {
-    const v = await openBox(key, lock.check, 'inkstone:check');
+    const v = await openBox(key, lock.check, 'inkwright:check');
     return dec.decode(v) === CHECK ? key : null;
   } catch {
     return null;
@@ -107,13 +107,13 @@ export const isSealedPage = (p: PageInk) => !!p.sealed;
  */
 export async function sealPage(key: CryptoKey, page: PageInk): Promise<PageInk> {
   if (page.sealed) return page;
-  const box = await sealBox(key, enc.encode(encodePage(page)), `inkstone:page:${page.id}`);
+  const box = await sealBox(key, enc.encode(encodePage(page)), `inkwright:page:${page.id}`);
   return { id: page.id, strokes: [], sealed: box, formatVersion: page.formatVersion };
 }
 
 export async function openPage(key: CryptoKey, page: PageInk): Promise<PageInk> {
   if (!page.sealed) return page;
-  const plain = decodePage(dec.decode(await openBox(key, page.sealed, `inkstone:page:${page.id}`)));
+  const plain = decodePage(dec.decode(await openBox(key, page.sealed, `inkwright:page:${page.id}`)));
   return { ...plain, id: page.id };
 }
 
@@ -134,7 +134,7 @@ export async function sealNoteMeta(key: CryptoKey, meta: NoteMeta): Promise<Note
     delete out[f];
   }
   const lock = { ...meta.lock };
-  if (Object.keys(hidden).length) lock.meta = await sealJson(key, hidden, `inkstone:meta:${meta.id}`);
+  if (Object.keys(hidden).length) lock.meta = await sealJson(key, hidden, `inkwright:meta:${meta.id}`);
   else delete lock.meta;
   out.lock = lock;
   return out as unknown as NoteMeta;
@@ -143,7 +143,7 @@ export async function sealNoteMeta(key: CryptoKey, meta: NoteMeta): Promise<Note
 /** Puts the sealed metadata fields back (in memory only). */
 export async function openNoteMeta(key: CryptoKey, meta: NoteMeta): Promise<NoteMeta> {
   if (!meta.lock?.meta) return meta;
-  const hidden = await openJson<Record<string, unknown>>(key, meta.lock.meta, `inkstone:meta:${meta.id}`);
+  const hidden = await openJson<Record<string, unknown>>(key, meta.lock.meta, `inkwright:meta:${meta.id}`);
   const out: Record<string, unknown> = { ...meta };
   for (const f of SEALED_META_FIELDS) if (hidden[f] !== undefined) out[f] = hidden[f];
   return out as unknown as NoteMeta;
@@ -176,4 +176,4 @@ export async function openBytes(key: CryptoKey, bytes: Uint8Array, aad: string):
   return new Uint8Array(await subtle().decrypt({ name: 'AES-GCM', iv: buf(iv), additionalData: buf(enc.encode(aad)) }, key, buf(ct)));
 }
 
-export const assetAad = (name: string) => `inkstone:asset:${name}`;
+export const assetAad = (name: string) => `inkwright:asset:${name}`;

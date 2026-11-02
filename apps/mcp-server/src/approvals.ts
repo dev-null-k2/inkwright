@@ -10,11 +10,11 @@
  * - an MCP client over stdio with 2025-style elicitation: an `elicitation/create` request;
  * - nobody (the always-on runner, or a client that can't be asked mid-call): the action is
  *   *deferred* — saved as a pending approval in the vault (`ai/approvals/<id>.json`). The user
- *   approves or denies it later from the approval card (MCP Apps), `inkstone-agent approvals`,
+ *   approves or denies it later from the approval card (MCP Apps), `inkwright-agent approvals`,
  *   or any MCP client via `decide_approval`; approving runs exactly the recorded call then.
  */
-import { isSafeId, newId, type VaultFS } from '@inkstone/core';
-import type { AgentTool } from '@inkstone/ai';
+import { isSafeId, newId, type VaultFS } from '@inkwright/core';
+import type { AgentTool } from '@inkwright/ai';
 
 export interface ApprovalRequest {
   /** Tool the agent wants to run (a note tool, e.g. `trash_note`). */
@@ -40,7 +40,7 @@ export interface PendingApproval extends ApprovalRequest {
   createdAt: number;
   status: 'pending' | 'approved' | 'denied' | 'failed' | 'expired';
   decidedAt?: number;
-  /** Who decided: "Claude (via MCP)", "inkstone-agent approvals". */
+  /** Who decided: "Claude (via MCP)", "inkwright-agent approvals". */
   decidedBy?: string;
   /** What happened when it ran (or why it failed). */
   outcome?: string;
@@ -142,7 +142,7 @@ export function gateDestructive(tools: AgentTool[], approver: Approver, describe
         const decision = await approver({ tool: t.name, args, title: d.title, detail: d.detail, ...base });
         if (decision === 'approved') return t.execute(args, ctx);
         if (decision === 'denied') throw new Error('The user declined this action. Don’t retry it.');
-        return { waiting_for_approval: true, message: `${d.title} — this waits for the user’s OK. They can approve it later from Inkstone’s pending approvals. Don’t retry it; mention it in your summary.` };
+        return { waiting_for_approval: true, message: `${d.title} — this waits for the user’s OK. They can approve it later from Inkwright’s pending approvals. Don’t retry it; mention it in your summary.` };
       },
     };
     return gated;

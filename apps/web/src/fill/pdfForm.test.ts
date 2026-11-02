@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PDFDocument } from 'pdf-lib';
-import { newPage, type NoteMeta, type PageInk } from '@inkstone/core';
+import { newPage, type NoteMeta, type PageInk } from '@inkwright/core';
 import { appendRecognized, clampText, coerce, strokeInField, effectiveValue, fieldsFromAnnotations, humanize, missingRequired, pdfAssetsOf, pdfToPage, placeWidgets, readPdfForm, rectToPage, storageEntries, withFormValue, type PdfField } from './pdfForm.ts';
 import { fillableFixture } from './fixtures.ts';
 

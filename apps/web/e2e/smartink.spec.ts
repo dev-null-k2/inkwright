@@ -30,7 +30,7 @@ async function addVisionProvider(page: Page) {
   await page.getByRole('button', { name: 'Back' }).click();
 }
 
-const objects = (page: Page) => page.evaluate(() => (window as any).__inkstone.doc.page(0).objects ?? []);
+const objects = (page: Page) => page.evaluate(() => (window as any).__inkwright.doc.page(0).objects ?? []);
 
 test('draw a grid → it becomes a table → write and type in its cells', async ({ page }) => {
   await openApp(page);
@@ -54,7 +54,7 @@ test('draw a grid → it becomes a table → write and type in its cells', async
   // Ink written in the middle cell belongs to it (and stays inside it).
   await pen(page, word(318, 290, 60));
   const inCell = await page.evaluate(() => {
-    const p = (window as any).__inkstone.doc.page(0);
+    const p = (window as any).__inkwright.doc.page(0);
     const t = p.objects[0];
     const s = p.strokes[0];
     const xs = s.points.map((q: any) => q.x), ys = s.points.map((q: any) => q.y);
@@ -70,13 +70,13 @@ test('draw a grid → it becomes a table → write and type in its cells', async
   await page.keyboard.type('Item');
   await page.keyboard.press('Enter');
   await expect.poll(async () => (await objects(page))[0].cells[0][0].text).toBe('Item');
-  const yBefore = await page.evaluate(() => (window as any).__inkstone.doc.page(0).strokes[0].points[0].y);
+  const yBefore = await page.evaluate(() => (window as any).__inkwright.doc.page(0).strokes[0].points[0].y);
   await page.getByRole('button', { name: 'Cell row 1, column 2' }).click();
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: /^Row$/ }).click();
   const after = await objects(page);
   expect(after[0].rows).toHaveLength(4);
-  const yAfter = await page.evaluate(() => (window as any).__inkstone.doc.page(0).strokes[0].points[0].y);
+  const yAfter = await page.evaluate(() => (window as any).__inkwright.doc.page(0).strokes[0].points[0].y);
   expect(yAfter).toBeGreaterThan(yBefore + 10);
 
   // Copy as Markdown.

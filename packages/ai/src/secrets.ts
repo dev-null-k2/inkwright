@@ -89,7 +89,7 @@ export class IndexedDBSecretBackend implements SecretBackend {
     const f = opts.indexedDB ?? (globalThis as { indexedDB?: IDBFactory }).indexedDB;
     if (!f) throw new Error('IndexedDB is not available; pass a SecretBackend.');
     this.factory = f;
-    this.name = opts.dbName ?? 'inkstone-secrets';
+    this.name = opts.dbName ?? 'inkwright-secrets';
   }
 
   private open(): Promise<IDBDatabase> {
@@ -197,7 +197,7 @@ export class WebCryptoSecretStore implements SecretStore {
 
   /** Binds each ciphertext to its name so records can't be swapped between names. */
   private aad(name: string): Uint8Array<ArrayBuffer> {
-    return enc.encode(`inkstone-secret:v1:${name}`);
+    return enc.encode(`inkwright-secret:v1:${name}`);
   }
 
   async set(name: string, value: string): Promise<void> {

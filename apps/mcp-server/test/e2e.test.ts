@@ -7,7 +7,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { CallToolResult } from '@modelcontextprotocol/server';
-import { VaultLayout, decodeNote } from '@inkstone/core';
+import { VaultLayout, decodeNote } from '@inkwright/core';
 import { startHttpServer, type RunningHttpServer } from '../src/http.ts';
 import { createServices } from '../src/server.ts';
 import { json, makeFixture, text, type Fixture } from './fixtures.ts';
@@ -20,7 +20,7 @@ describe('stdio end-to-end', () => {
 
   beforeAll(async () => {
     fx = await makeFixture();
-    client = new Client({ name: 'inkstone-e2e', version: '0.0.0' });
+    client = new Client({ name: 'inkwright-e2e', version: '0.0.0' });
     const transport = new StdioClientTransport({
       command: 'npx',
       args: ['tsx', '--import', './apps/mcp-server/scripts/raw-hooks.mjs', 'apps/mcp-server/src/index.ts', '--vault', fx.dir],
@@ -43,7 +43,7 @@ describe('stdio end-to-end', () => {
     expect(search.inputSchema.required).toEqual(['query']);
     expect(search.annotations?.readOnlyHint).toBe(true);
     const { resourceTemplates } = await client.listResourceTemplates();
-    expect(resourceTemplates.map((t) => t.uriTemplate).sort()).toEqual(['inkstone://notes/{id}', 'inkstone://notes/{id}/pages/{n}.svg', 'inkstone://packs/{id}']);
+    expect(resourceTemplates.map((t) => t.uriTemplate).sort()).toEqual(['inkwright://notes/{id}', 'inkwright://notes/{id}/pages/{n}.svg', 'inkwright://packs/{id}']);
     const { prompts } = await client.listPrompts();
     expect(prompts.map((p) => p.name).sort()).toEqual(['daily_review', 'summarize_note', 'todos_from_notes']);
   });
@@ -60,9 +60,9 @@ describe('stdio end-to-end', () => {
     const found = json((await client.callTool({ name: 'search_notes', arguments: { query: 'hello mcp' } })) as CallToolResult);
     expect(found.hits[0].id).toBe(created.id);
 
-    const res = await client.readResource({ uri: `inkstone://notes/${created.id}` });
+    const res = await client.readResource({ uri: `inkwright://notes/${created.id}` });
     expect((res.contents[0] as { text: string }).text).toContain('Hello from **MCP**');
-    const svg = await client.readResource({ uri: `inkstone://notes/${created.id}/pages/1.svg` });
+    const svg = await client.readResource({ uri: `inkwright://notes/${created.id}/pages/1.svg` });
     expect((svg.contents[0] as { text: string }).text).toContain('<svg');
 
     const prompt = await client.getPrompt({ name: 'summarize_note', arguments: { id: 'LAUNCH' } });
@@ -110,7 +110,7 @@ describe('Streamable HTTP', () => {
   });
 
   it('serves MCP over HTTP; read-only hides and rejects write tools', async () => {
-    const client = new Client({ name: 'inkstone-http', version: '0.0.0' });
+    const client = new Client({ name: 'inkwright-http', version: '0.0.0' });
     await client.connect(new StreamableHTTPClientTransport(new URL(http.url), { requestInit: { headers: { authorization: 'Bearer sekret' } } }));
     try {
       const names = (await client.listTools()).tools.map((t) => t.name);

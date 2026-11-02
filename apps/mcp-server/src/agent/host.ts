@@ -1,12 +1,12 @@
 /**
- * The note tools of @inkstone/ai (the same ones the in-app assistant uses) backed by the vault
+ * The note tools of @inkwright/ai (the same ones the in-app assistant uses) backed by the vault
  * folder. Writes go through the MCP server's tool handlers, so the agent gets the same safe,
  * sync-friendly writes as MCP clients: atomic files, re-read before save, retries when another
  * device wrote in between. `RecordingVaultHost` logs every write as an undoable Activity op.
  */
-import { VaultLayout, VersionHistory, pageText, type NoteMeta } from '@inkstone/core';
-import type { NewActivityOp, NoteContent, NoteInfo, NoteListItem, NotePatch, NoteSearchHit, NoteToolHost, NotebookInfo } from '@inkstone/ai';
-import { RecordingNoteToolHost } from '@inkstone/ai';
+import { VaultLayout, VersionHistory, pageText, type NoteMeta } from '@inkwright/core';
+import type { NewActivityOp, NoteContent, NoteInfo, NoteListItem, NotePatch, NoteSearchHit, NoteToolHost, NotebookInfo } from '@inkwright/ai';
+import { RecordingNoteToolHost } from '@inkwright/ai';
 import { notebookPath, readNoteFresh, type ServerContext } from '../context.ts';
 import { pageSvg } from '../render.ts';
 import { appendTextToNote, createNote, createNotebook, trashNote, updateNote, type AppendOutcome } from '../tools.ts';

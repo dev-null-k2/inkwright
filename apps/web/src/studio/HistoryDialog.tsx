@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CopyPlus, History, RotateCcw } from 'lucide-react';
-import { SNAPSHOT_REASONS, newId, type InkLink, type NoteDocument, type PageInk, type Snapshot, type SnapshotInfo } from '@inkstone/core';
+import { SNAPSHOT_REASONS, newId, type InkLink, type NoteDocument, type PageInk, type Snapshot, type SnapshotInfo } from '@inkwright/core';
 import { renderPageStandalone } from '../canvas/engine.ts';
 import type { AppVault } from '../lib/vault.ts';
 import { useApp } from '../state/app.ts';

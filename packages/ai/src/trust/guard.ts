@@ -1,5 +1,5 @@
 /**
- * The choke point. Every model call Inkstone makes — the assistant panel, routines, Ask, smart
+ * The choke point. Every model call Inkwright makes — the assistant panel, routines, Ask, smart
  * ink, notes that listen, the MCP server's tasks, the A2A agent and the runner — goes through a
  * provider made by `createGuardedProvider`. Callers keep using the plain `Provider` interface;
  * on each `chat()` the guard, in order:

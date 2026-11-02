@@ -3,8 +3,8 @@ import { openApp } from './helpers.ts';
 
 /**
  * The Android app's on-device AI, driven in a desktop browser through a scripted stand-in for the
- * Kotlin plugin (e2e builds read `window.__inkstoneFakeNativeAI`; see lib/native-ai.ts). It speaks
- * the same protocol as app/inkstone/ai/AiBridge.kt: status, downloads with `aiDownload` progress
+ * Kotlin plugin (e2e builds read `window.__inkwrightFakeNativeAI`; see lib/native-ai.ts). It speaks
+ * the same protocol as app/inkwright/ai/AiBridge.kt: status, downloads with `aiDownload` progress
  * events, and streamed answers through `aiDelta` events. What the real engines do on a phone is
  * covered by the JVM tests and must be checked on a device (docs/ANDROID.md).
  */
@@ -27,7 +27,7 @@ async function installFakePlugin(page: Page, opts: { nano: 'available' | 'downlo
     };
     const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
     (window as any).__nativeCalls = calls;
-    (window as any).__inkstoneFakeNativeAI = {
+    (window as any).__inkwrightFakeNativeAI = {
       async addListener(ev: string, cb: (e: unknown) => void) {
         (listeners[ev] ??= new Set()).add(cb);
         return { remove: async () => void listeners[ev]!.delete(cb) };
@@ -59,7 +59,7 @@ async function installFakePlugin(page: Page, opts: { nano: 'available' | 'downlo
       async aiUnload() { calls.push({ method: 'aiUnload', args: null }); },
       async aiGenerate(args: { requestId: string; engine: string; modelId?: string }) {
         calls.push({ method: 'aiGenerate', args });
-        const words = ['You ', 'wrote ', 'about ', 'Inkstone ', '(answered ', 'on ', 'the ', 'phone).'];
+        const words = ['You ', 'wrote ', 'about ', 'Inkwright ', '(answered ', 'on ', 'the ', 'phone).'];
         for (const w of words) {
           await sleep(20);
           emit('aiDelta', { requestId: args.requestId, delta: w });
@@ -68,7 +68,7 @@ async function installFakePlugin(page: Page, opts: { nano: 'available' | 'downlo
       },
       async aiTask(args: { requestId: string; task: string }) {
         calls.push({ method: 'aiTask', args });
-        const text = '- Inkstone keeps notes as plain files\n- Gemini Nano summarized this on the phone';
+        const text = '- Inkwright keeps notes as plain files\n- Gemini Nano summarized this on the phone';
         emit('aiDelta', { requestId: args.requestId, delta: text });
         return { text };
       },
@@ -113,7 +113,7 @@ test('Android without Gemini Nano: download the open model after a size prompt, 
   // The assistant now answers through the phone's runtime, streaming.
   await page.getByRole('button', { name: 'Back' }).click();
   await page.locator('.note-open').first().click();
-  await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
   await page.locator('.ai-btn').click();
   await page.locator('.ai-input textarea').fill('What did I write about?');
   await page.locator('.ai-input textarea').press('Enter');
@@ -132,7 +132,7 @@ test('Android with Gemini Nano: it answers without a download and summaries use 
   await expect(native).toContainText('Ready');
   await page.getByRole('button', { name: 'Back' }).click();
   await page.locator('.note-open').first().click();
-  await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
   await page.locator('.ai-btn').click();
   await page.getByRole('button', { name: 'Summarize' }).click();
   await expect(page.locator('.ai-msg.is-assistant').last()).toContainText('Gemini Nano summarized this on the phone');

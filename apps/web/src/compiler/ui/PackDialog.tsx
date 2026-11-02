@@ -1,11 +1,11 @@
 /**
  * Context pack: pick notes, build a compressed, cited bundle, and take it to any agent — as
- * Markdown, JSON, an Agent Skill folder, or saved for the MCP server (`inkstone://packs/{id}`).
+ * Markdown, JSON, an Agent Skill folder, or saved for the MCP server (`inkwright://packs/{id}`).
  * AGENTS.md for coding agents is one button away.
  */
 import { useMemo, useState } from 'react';
 import { Download, FileCode2, Package, Save } from 'lucide-react';
-import type { ContextPack } from '@inkstone/core';
+import type { ContextPack } from '@inkwright/core';
 import { useApp } from '../../state/app.ts';
 import { Dialog, Switch } from '../../ui/primitives.tsx';
 import { buildPack, downloadAgentsMd, downloadPack, savePack } from '../packs.ts';

@@ -14,7 +14,7 @@ import { SEARCH_UI, UI_MIME, UI_RESOURCES, UI_RESOURCE_META, uiToolMeta } from '
 import { VERSION } from './version.ts';
 import { notesTouched, proposalFor, type ServerTrust } from './trust.ts';
 
-const INSTRUCTIONS = `Inkstone is the user's handwriting notebook app. This server reads and writes their notes vault (plain files synced across their devices).
+const INSTRUCTIONS = `Inkwright is the user's handwriting notebook app. This server reads and writes their notes vault (plain files synced across their devices).
 - Find notes with search_notes (searches recognized handwriting too) or list_notes; read one with read_note; show a page as the user wrote it with show_note_page.
 - Handwriting that has not been recognized yet can be seen with get_page_image (PNG) or converted with transcribe_pages.
 - "What did I write today?" -> get_recent_handwriting.
@@ -89,7 +89,7 @@ function withSearchStructure(r: CallToolResult): CallToolResult {
 export function createMcpServer(services: ServerServices, rc?: McpRequestContext): McpServer {
   const { ctx } = services;
   const server = new McpServer(
-    { name: 'inkstone', title: 'Inkstone notes', version: VERSION, websiteUrl: 'https://inkstone.app' },
+    { name: 'inkwright', title: 'Inkwright notes', version: VERSION, websiteUrl: 'https://inkwright.app' },
     {
       instructions: INSTRUCTIONS + (ctx.readOnly ? '\nThis vault is mounted read-only: write tools are disabled.' : ''),
       capabilities: { extensions: { [TASKS_EXTENSION]: {} } } as never,
@@ -142,7 +142,7 @@ export function createMcpServer(services: ServerServices, rc?: McpRequestContext
               if (p) {
                 const made = await services.trust.proposals.create({ ...p, source: 'external', label: clientLabel() });
                 services.trust.audit.record({ kind: 'proposal', actor, tool: tool.name, summary: `Proposed: ${p.summary}`, ...(p.noteId ? { notes: [{ id: p.noteId, ...(p.noteTitle ? { title: p.noteTitle } : {}) }] } : {}) });
-                return { content: [{ type: 'text', text: JSON.stringify({ proposed: true, proposalId: made.id, summary: p.summary, message: 'The user reviews changes from agents before they apply: this one is waiting for their approval in Inkstone (Settings › AI › Activity). Tell them it is proposed, not done.' }) }] };
+                return { content: [{ type: 'text', text: JSON.stringify({ proposed: true, proposalId: made.id, summary: p.summary, message: 'The user reviews changes from agents before they apply: this one is waiting for their approval in Inkwright (Settings › AI › Activity). Tell them it is proposed, not done.' }) }] };
               }
             }
             const r = await activity().record(tool.name, a, () => tool.handler(ctx, a));
@@ -166,19 +166,19 @@ export function createMcpServer(services: ServerServices, rc?: McpRequestContext
   server.registerResource(
     'note',
     new ResourceTemplate(NOTE_TEMPLATE, { list: () => listNoteResources(ctx) }),
-    { title: 'Inkstone note', description: 'A note as Markdown: front matter, typed text and recognized handwriting per page.', mimeType: 'text/markdown' },
+    { title: 'Inkwright note', description: 'A note as Markdown: front matter, typed text and recognized handwriting per page.', mimeType: 'text/markdown' },
     (_uri, vars) => readNoteResource(ctx, vars.id),
   );
   server.registerResource(
     'page-svg',
     new ResourceTemplate(PAGE_SVG_TEMPLATE, { list: undefined }),
-    { title: 'Inkstone page (SVG)', description: 'One page of a note rendered as SVG (n is 1-based).', mimeType: 'image/svg+xml' },
+    { title: 'Inkwright page (SVG)', description: 'One page of a note rendered as SVG (n is 1-based).', mimeType: 'image/svg+xml' },
     (_uri, vars) => readPageSvgResource(ctx, vars.id, vars.n),
   );
   server.registerResource(
     'context-pack',
     new ResourceTemplate(PACK_TEMPLATE, { list: () => listPackResources(ctx) }),
-    { title: 'Inkstone context pack', description: 'A compressed, cited bundle the user made from their notes for agents: compiled facts tagged EXTRACTED/INFERRED/AMBIGUOUS with sources, the notes and key handwriting.', mimeType: 'text/markdown' },
+    { title: 'Inkwright context pack', description: 'A compressed, cited bundle the user made from their notes for agents: compiled facts tagged EXTRACTED/INFERRED/AMBIGUOUS with sources, the notes and key handwriting.', mimeType: 'text/markdown' },
     (_uri, vars) => readPackResource(ctx, vars.id),
   );
   for (const ui of UI_RESOURCES) {

@@ -18,7 +18,7 @@ import {
   type Rect,
   type TextBox,
   type ImageItem,
-} from '@inkstone/core';
+} from '@inkwright/core';
 
 /** Path2D per stroke object; strokes are immutable, so identity is a perfect cache key. */
 const pathCache = new WeakMap<InkStroke, Path2D>();

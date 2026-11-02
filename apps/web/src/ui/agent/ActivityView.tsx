@@ -5,7 +5,7 @@
  */
 import { useState } from 'react';
 import { Bot, Plug, Repeat, Undo2 } from 'lucide-react';
-import { isReversible, type ActivityOp, type ActivityRun } from '@inkstone/ai';
+import { isReversible, type ActivityOp, type ActivityRun } from '@inkwright/ai';
 import { useAgent } from '../../lib/agent/hub.ts';
 import { undoActivityOp, undoActivityRun } from '../../lib/agent/undo.ts';
 import { useApp } from '../../state/app.ts';

@@ -1,5 +1,5 @@
 import { CheckCircle2, CircleAlert, CircleDashed, Loader2, Play, RotateCw, Square, X } from 'lucide-react';
-import { describeValue, isLocalOp, parseOp, type DagNode, type NodeRun, type NoteDocument } from '@inkstone/core';
+import { describeValue, isLocalOp, parseOp, type DagNode, type NodeRun, type NoteDocument } from '@inkwright/core';
 import type { InkEngine } from '../canvas/engine.ts';
 import type { AppVault } from '../lib/vault.ts';
 import { useApp } from '../state/app.ts';

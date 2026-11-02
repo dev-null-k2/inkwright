@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { formatApa, parseCitations, referenceLabel, type NoteDocument, type Rect, type TextBox } from '@inkstone/core';
+import { formatApa, parseCitations, referenceLabel, type NoteDocument, type Rect, type TextBox } from '@inkwright/core';
 import type { InkEngine } from '../canvas/engine.ts';
 import { FONT_FAMILIES, layoutText } from '../canvas/render.ts';
 import { useApp } from '../state/app.ts';

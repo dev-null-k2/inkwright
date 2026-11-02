@@ -1,7 +1,7 @@
 /**
  * Runs routines in the app: wires the scheduler to the vault (note saves and finished recordings
  * become triggers; dates are found through the search index) and turns each run into an agent run
- * that is logged in AI activity. Routines run only while Inkstone is open; on open, missed runs
+ * that is logged in AI activity. Routines run only while Inkwright is open; on open, missed runs
  * catch up once (the scheduler's rule), which the Routines screen says plainly.
  */
 import {
@@ -14,8 +14,8 @@ import {
   type DatedNote,
   type Routine,
   type TriggerEvent,
-} from '@inkstone/ai';
-import { pageText } from '@inkstone/core';
+} from '@inkwright/ai';
+import { pageText } from '@inkwright/core';
 import { useApp } from '../../state/app.ts';
 import { useSettings } from '../../state/settings.ts';
 import { activeFromConfig, getActiveAI, type ActiveAI } from '../ai.ts';
@@ -156,7 +156,7 @@ async function start(vault: AppVault): Promise<void> {
     run: runRoutine,
     findDatedNotes: (kw) => findDatedNotes(vault, kw),
     onError: (e) => console.warn('routine check failed', e),
-    // An always-on runner (`inkstone-agent run`) holding the routines lease runs the automatic
+    // An always-on runner (`inkwright-agent run`) holding the routines lease runs the automatic
     // triggers; the app then only runs routines when you press Run.
     deferAutomatic: async () => {
       const lease = await routineLeaseHeldByOther(vault.fs, Date.now());

@@ -5,10 +5,10 @@ test.describe('touch & palm rejection', () => {
   test.beforeEach(async ({ page }) => { await openApp(page); await newNote(page); });
 
   test('a finger scrolls instead of inking', async ({ page }) => {
-    const before = await page.evaluate(() => (window as any).__inkstone.engine.viewport.panY);
+    const before = await page.evaluate(() => (window as any).__inkwright.engine.viewport.panY);
     await pen(page, line([200, 500], [200, 300], 12), { type: 'touch', id: 11, pressure: 0.5 });
     expect(await strokes(page)).toHaveLength(0);
-    const after = await page.evaluate(() => (window as any).__inkstone.engine.viewport.panY);
+    const after = await page.evaluate(() => (window as any).__inkwright.engine.viewport.panY);
     expect(after).not.toBe(before);
   });
 
@@ -39,7 +39,7 @@ test.describe('touch & palm rejection', () => {
   });
 
   test('pinch zooms around the fingers', async ({ page }) => {
-    const z0 = await page.evaluate(() => (window as any).__inkstone.engine.zoom);
+    const z0 = await page.evaluate(() => (window as any).__inkwright.engine.zoom);
     await page.evaluate(() => {
       const el = document.querySelector('.ed-canvas') as HTMLElement;
       const r = el.getBoundingClientRect();
@@ -48,7 +48,7 @@ test.describe('touch & palm rejection', () => {
       for (let i = 1; i <= 10; i++) { ev('pointermove', 41, 150 - i * 8); ev('pointermove', 42, 250 + i * 8); }
       ev('pointerup', 41, 70); ev('pointerup', 42, 330);
     });
-    const z1 = await page.evaluate(() => (window as any).__inkstone.engine.zoom);
+    const z1 = await page.evaluate(() => (window as any).__inkwright.engine.zoom);
     expect(z1).toBeGreaterThan(z0 * 1.5);
     expect(await strokes(page)).toHaveLength(0);
   });

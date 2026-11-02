@@ -5,7 +5,7 @@
  */
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Copy, Download, FileArchive, FolderOpen, Link2, Trash2 } from 'lucide-react';
-import { SkillFormatError, isScriptPath, type SkillBundle, type SkillInfo } from '@inkstone/ai';
+import { SkillFormatError, isScriptPath, type SkillBundle, type SkillInfo } from '@inkwright/ai';
 import { requireHub, useAgent } from '../../lib/agent/hub.ts';
 import { exportSkill, installSkill, pickFolder, skillFromPicked, skillFromUrl } from '../../lib/agent/skills.ts';
 import { pickFiles } from '../../platform/files.ts';
@@ -45,7 +45,7 @@ export function SkillsView() {
   const mine = skills.filter((s) => !s.builtin);
   return (
     <div className="ag-screen">
-      <p className="ag-lead">Skills are instructions the assistant follows for specific tasks. It sees only their names and descriptions until a task needs one, then reads the rest. Scripts in skills are never run — Inkstone only reads text.</p>
+      <p className="ag-lead">Skills are instructions the assistant follows for specific tasks. It sees only their names and descriptions until a task needs one, then reads the rest. Scripts in skills are never run — Inkwright only reads text.</p>
       <div className="ag-import">
         <button type="button" className="btn btn-sm" disabled={busy} onClick={() => void install(async () => { const f = await pickFolder(); return f.length ? skillFromPicked(f) : null; })}><FolderOpen size={14} /> Import folder</button>
         <button type="button" className="btn btn-sm" disabled={busy} onClick={() => void install(async () => { const f = await pickFiles('.zip,.skill,application/zip', false); return f.length ? skillFromPicked(f) : null; })}><FileArchive size={14} /> Import .zip or .skill</button>
@@ -90,7 +90,7 @@ function SkillRow({ s }: { s: SkillInfo }) {
       </div>
       {open && (
         <div className="ag-skill-body">
-          {scripts.length > 0 && <p className="ag-note">Includes {scripts.length} {scripts.length === 1 ? 'script' : 'scripts'} ({scripts.map((f) => f.path).join(', ')}). Inkstone never runs them; the assistant can only read them.</p>}
+          {scripts.length > 0 && <p className="ag-note">Includes {scripts.length} {scripts.length === 1 ? 'script' : 'scripts'} ({scripts.map((f) => f.path).join(', ')}). Inkwright never runs them; the assistant can only read them.</p>}
           {s.files.length > 0 && <p className="muted small">Files: {s.files.map((f) => f.path).join(', ')}</p>}
           {(s.license || s.compatibility) && <p className="muted small">{[s.license && `License: ${s.license}`, s.compatibility].filter(Boolean).join(' · ')}</p>}
           <pre className="ag-skill-md">{s.skillMd}</pre>

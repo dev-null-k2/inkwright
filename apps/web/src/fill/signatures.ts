@@ -1,5 +1,5 @@
-import { newId, type InkPoint, type InkStroke, type PenType } from '@inkstone/core';
-import type { SecretStore } from '@inkstone/ai';
+import { newId, type InkPoint, type InkStroke, type PenType } from '@inkwright/core';
+import type { SecretStore } from '@inkwright/ai';
 
 /**
  * The signature & initials library: signatures drawn with the pen (kept as real ink), typed in a
@@ -30,7 +30,7 @@ export interface SavedSignature {
 }
 
 export const NORMAL_HEIGHT = 100;
-const STORE_KEY = 'inkstone.signatures.v1';
+const STORE_KEY = 'inkwright.signatures.v1';
 
 /** Normalizes drawn strokes to the library's box (height 100, small margin). */
 export function normalizeInk(strokes: InkStroke[]): { ink: SignatureInk[]; aspect: number } | null {

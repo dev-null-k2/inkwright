@@ -33,7 +33,7 @@ CDP="$("$SCRIPT_DIR/app.sh" cdp)"
 log "WebView CDP endpoint: $CDP"
 
 STATUS=0
-(cd "$WEB_DIR" && DEBUG=pw:protocol DEBUG_FILE="$ARTIFACTS/cdp-protocol.log" INKSTONE_CDP="$CDP" ANDROID_SERIAL="$ANDROID_SERIAL" INKSTONE_ANDROID_ARTIFACTS="$ARTIFACTS" \
+(cd "$WEB_DIR" && DEBUG=pw:protocol DEBUG_FILE="$ARTIFACTS/cdp-protocol.log" INKWRIGHT_CDP="$CDP" ANDROID_SERIAL="$ANDROID_SERIAL" INKWRIGHT_ANDROID_ARTIFACTS="$ARTIFACTS" \
   npx playwright test -c playwright.android.config.ts) || STATUS=$?
 
 # Native evidence: what the activity and plugin did, straight from the device.
@@ -42,16 +42,16 @@ STATUS=0
   echo "# Native evidence ($(date -u +%FT%TZ), $ANDROID_SERIAL, API $("$ADB" shell getprop ro.build.version.sdk | tr -d '\r'))"
   echo "## WebView"
   "$ADB" shell dumpsys webviewupdate 2>/dev/null | grep -E "Current WebView package|versionName" | head -3 || true
-  echo "## Writing sound / paper feel (InkstoneFeel)"
-  grep -E "InkstoneFeel" "$ARTIFACTS/smoke.log" | head -20 || true
-  echo "## Ink tip (InkstoneInkTip)"
-  grep -E "InkstoneInkTip" "$ARTIFACTS/smoke.log" | head -20 || echo "(no warnings or errors logged)"
+  echo "## Writing sound / paper feel (InkwrightFeel)"
+  grep -E "InkwrightFeel" "$ARTIFACTS/smoke.log" | head -20 || true
+  echo "## Ink tip (InkwrightInkTip)"
+  grep -E "InkwrightInkTip" "$ARTIFACTS/smoke.log" | head -20 || echo "(no warnings or errors logged)"
   echo "## Ink tip overlay in the view hierarchy"
   "$ADB" shell dumpsys activity top 2>/dev/null | grep -E "InkTip|SurfaceView" | head -5 || true
   echo "## Haptics (vibrator present?)"
   "$ADB" shell dumpsys vibrator_manager 2>/dev/null | head -5 || "$ADB" shell dumpsys vibrator 2>/dev/null | head -5 || true
-  echo "## Other Inkstone log lines"
-  grep -E " (Inkstone|InkstoneNative|InkstoneRecognizer) " "$ARTIFACTS/smoke.log" | head -20 || true
+  echo "## Other Inkwright log lines"
+  grep -E " (Inkwright|InkwrightNative|InkwrightRecognizer) " "$ARTIFACTS/smoke.log" | head -20 || true
 } >"$ARTIFACTS/native-evidence.txt"
 log "native evidence: $ARTIFACTS/native-evidence.txt"
 

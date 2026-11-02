@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { DEFAULT_PAPER, PAGE_SIZES, type PageSize, type PaperSpec } from '@inkstone/core';
+import { DEFAULT_PAPER, PAGE_SIZES, type PageSize, type PaperSpec } from '@inkwright/core';
 import { safeStorage } from '../platform/env.ts';
 
 /**
@@ -22,7 +22,7 @@ export interface KnowledgePrefs {
   };
 }
 
-const KEY = 'inkstone.knowledge.v1';
+const KEY = 'inkwright.knowledge.v1';
 
 export const DEFAULT_KNOWLEDGE: KnowledgePrefs = {
   journalPaper: { ...DEFAULT_PAPER, style: 'dot_grid' },

@@ -4,12 +4,12 @@ import { describe, expect, it } from 'vitest';
 import { decodeWav, getLocalModel, resample, windowSegments, windowsOf } from '../src/index.ts';
 
 /**
- * Opt-in (INKSTONE_REAL_MODELS=1 or =asr): runs the real on-device speech models with the same
+ * Opt-in (INKWRIGHT_REAL_MODELS=1 or =asr): runs the real on-device speech models with the same
  * transformers.js calls the app's worker makes (pipeline, per-file dtypes, Whisper timestamps),
  * in Node, on a public-domain clip (President Kennedy's 1961 inaugural address, from the
  * transformers.js docs dataset), cut into windows by our VAD exactly as a live recording is.
  */
-const ENABLED = !!process.env.INKSTONE_REAL_MODELS;
+const ENABLED = !!process.env.INKWRIGHT_REAL_MODELS;
 const CLIP = 'https://huggingface.co/datasets/Xenova/transformers.js-docs/resolve/main/jfk.wav';
 
 async function clip16k(): Promise<Float32Array> {
@@ -21,7 +21,7 @@ async function clip16k(): Promise<Float32Array> {
 
 async function transcribeWith(id: string) {
   const T = await import('@huggingface/transformers');
-  (T.env as any).cacheDir = join(tmpdir(), 'inkstone-asr-models');
+  (T.env as any).cacheDir = join(tmpdir(), 'inkwright-asr-models');
   const spec = getLocalModel(id)!;
   const variant = spec.variants.find((v) => v.device === 'wasm')!;
   const pipe: any = await T.pipeline('automatic-speech-recognition', spec.repo, { dtype: (variant.moduleDtypes ?? variant.dtype) as any });

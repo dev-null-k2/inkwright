@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Volume2 } from 'lucide-react';
 import { create } from 'zustand';
-import { readingSegments, type NoteDocument } from '@inkstone/core';
+import { readingSegments, type NoteDocument } from '@inkwright/core';
 import { Dialog, cx } from '../ui/primitives.tsx';
 import { useInkPrefs, type ReadingPrefs } from '../inkactions/prefs.ts';
 import { speechSupported } from './readaloud.ts';

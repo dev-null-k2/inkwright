@@ -20,7 +20,7 @@ import {
   wordSet,
   type Claim,
   type SourceUnit,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import { extractJson } from '../json.ts';
 import type { Usage } from '../types.ts';
 import { COMPILER_PROMPT_IDS, type CompilerAI } from './draft.ts';

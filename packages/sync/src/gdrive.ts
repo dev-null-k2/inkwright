@@ -29,7 +29,7 @@ export interface GoogleDriveRemoteOptions {
   getAccessToken: () => Promise<string>;
   /** Called (at most once per request) after a 401 to get a fresh token. Default: `getAccessToken()` again. */
   refreshAccessToken?: () => Promise<string>;
-  /** Name of the visible vault folder. Default "Inkstone". */
+  /** Name of the visible vault folder. Default "Inkwright". */
   folderName?: string;
   /** Use this folder id as the vault root instead of finding/creating `folderName`. */
   folderId?: string;
@@ -84,7 +84,7 @@ function nameOf(path: string): string {
 }
 
 /**
- * Google Drive v3 remote. The vault lives in a visible "Inkstone" folder that mirrors the vault
+ * Google Drive v3 remote. The vault lives in a visible "Inkwright" folder that mirrors the vault
  * tree, so users can see (and back up) their notes in Drive. Uses only REST + fetch.
  */
 export class GoogleDriveRemote implements Remote {
@@ -185,7 +185,7 @@ export class GoogleDriveRemote implements Remote {
     if (this.opts.folderId) return Promise.resolve(this.opts.folderId);
     if (!this.rootPromise) {
       this.rootPromise = (async () => {
-        const name = this.opts.folderName ?? 'Inkstone';
+        const name = this.opts.folderName ?? 'Inkwright';
         const parent = this.opts.parentFolderId ?? 'root';
         let found = await this.findChildren(parent, name, true, signal);
         if (found.length === 0) {
@@ -383,7 +383,7 @@ export class GoogleDriveRemote implements Remote {
     }
     if (!f) {
       const parentId = await this.ensureFolder(dirOf(p), signal);
-      const boundary = `inkstone-${randomToken(12)}`;
+      const boundary = `inkwright-${randomToken(12)}`;
       const meta = JSON.stringify({ name: nameOf(p), parents: [parentId], mimeType: mime });
       const body = concatBytes([
         utf8Encode(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${boundary}\r\nContent-Type: ${mime}\r\n\r\n`),

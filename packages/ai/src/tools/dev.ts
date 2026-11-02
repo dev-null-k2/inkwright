@@ -1,7 +1,7 @@
 /**
  * Agent tools of the developer module (docs/DEVELOPERS.md): verified diagrams, the code graph,
  * drift, and lesson proposals from agent sessions. Hosts (the app, the MCP server's agent) supply
- * the data; the rules live in @inkstone/core/dev.
+ * the data; the rules live in @inkwright/core/dev.
  *
  * `create_diagram` is a repair loop driven by the agent loop itself: the model sends the typed IR,
  * the deterministic validator answers with a receipt, and an invalid diagram comes back as a tool
@@ -13,7 +13,7 @@ import {
   CodeIndex, DIAGRAM_EDGE_KINDS, DIAGRAM_NODE_KINDS, describeDrift, formatReceipt, parseCodeTarget, parseDiagramInput,
   resolveCodeTarget, searchSymbols, validateDiagram,
   type CodeGraph, type CodeSymbolKind, type DiagramIR, type DriftItem, type RepairReceipt,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import type { AgentTool } from '../agent.ts';
 
 export interface DiagramPlacement {

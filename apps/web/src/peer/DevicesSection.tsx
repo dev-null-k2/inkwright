@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import { Laptop, RefreshCw, Trash2 } from 'lucide-react';
-import { isOffer, type PeerOffer } from '@inkstone/sync';
+import { isOffer, type PeerOffer } from '@inkwright/sync';
 import { useApp } from '../state/app.ts';
 import { relativeTime } from '../ui/primitives.tsx';
 import { askConfirm } from '../ui/prompts.tsx';
@@ -219,7 +219,7 @@ function PairedList() {
   };
   if (!paired.length) return null;
   return (
-    <Group title="Paired devices" note={relayConfigured() ? 'Sync now reaches the other device through your signalling server; Inkstone must be open there.' : 'Without a signalling server, each sync is started with a code: show it on the other device (Settings › Devices & sharing) and enter its answer here.'}>
+    <Group title="Paired devices" note={relayConfigured() ? 'Sync now reaches the other device through your signalling server; Inkwright must be open there.' : 'Without a signalling server, each sync is started with a code: show it on the other device (Settings › Devices & sharing) and enter its answer here.'}>
       <ul className="peer-devices">
         {paired.map((d) => (
           <li key={d.key} className="peer-device">

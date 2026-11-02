@@ -5,8 +5,8 @@
  */
 import { useEffect, useState } from 'react';
 import { GitBranch } from 'lucide-react';
-import { lineDiff, type Proposal } from '@inkstone/ai';
-import type { BranchInfo } from '@inkstone/core';
+import { lineDiff, type Proposal } from '@inkwright/ai';
+import type { BranchInfo } from '@inkwright/core';
 import { useApp } from '../state/app.ts';
 import { Dialog, relativeTime } from '../ui/primitives.tsx';
 import { askConfirm, askText } from '../ui/prompts.tsx';

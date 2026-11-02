@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { exportAuditJsonl, readChain, serializePolicy, parsePolicy, createScriptedProvider, verifyAudit } from '@inkstone/ai';
+import { exportAuditJsonl, readChain, serializePolicy, parsePolicy, createScriptedProvider, verifyAudit } from '@inkwright/ai';
 import type { CallToolResult as McpResult } from '@modelcontextprotocol/server';
 import { audit, parseAgentCli } from '../src/agent-cli.ts';
 import { parseCli } from '../src/cli.ts';
@@ -171,7 +171,7 @@ describe('AI policy on the server', () => {
 
 describe('retention on the server', () => {
   it('drops activity older than the policy allows, and nothing under legal hold', async () => {
-    const { ActivityStore } = await import('@inkstone/ai');
+    const { ActivityStore } = await import('@inkwright/ai');
     const { applyServerRetention } = await import('../src/trust.ts');
     const store = new ActivityStore(ctx.fs);
     const old = Date.now() - 90 * 86_400_000;
@@ -213,7 +213,7 @@ describe('security review: MCP and HTTP surface', () => {
   });
 
   it('the vault folder cannot be escaped through symlinks', async () => {
-    const outside = await mkdtemp(path.join(tmpdir(), 'inkstone-outside-'));
+    const outside = await mkdtemp(path.join(tmpdir(), 'inkwright-outside-'));
     try {
       await writeFile(path.join(outside, 'note.json'), '{"secret":true}');
       await symlink(outside, path.join(fx.dir, 'notes', 'EVIL'));
@@ -255,7 +255,7 @@ describe('security review: MCP and HTTP surface', () => {
       http.close();
     }
     // Trust options come from the command line or environment, never from clients.
-    const o = parseCli(['--vault', fx.dir, '--http', '0', '--token', 't', '--policy', './p.json', '--audit-key', './k.jwk', '--ai-provider', 'ollama', '--ai-on-premises'], { INKSTONE_OAUTH_AUDIENCE: 'x' });
+    const o = parseCli(['--vault', fx.dir, '--http', '0', '--token', 't', '--policy', './p.json', '--audit-key', './k.jwk', '--ai-provider', 'ollama', '--ai-on-premises'], { INKWRIGHT_OAUTH_AUDIENCE: 'x' });
     expect(o.policyFile).toBe(path.resolve('./p.json'));
     expect(o.auditKey).toBe(path.resolve('./k.jwk'));
     expect(o.ai?.onPremises).toBe(true);

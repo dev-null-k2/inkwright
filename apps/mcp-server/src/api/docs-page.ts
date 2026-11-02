@@ -36,7 +36,7 @@ export function docsPage(specUrl: string): string {
     .join('');
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Inkstone API</title>
+<title>Inkwright API</title>
 <style>
 :root{--desk:#efeae4;--paper:#fbf8f3;--ink:#1d1a20;--muted:#6b6470;--line:#ddd5cc;--eye:#2f7f6f;--seal:#b23a2c;color-scheme:light dark}
 @media (prefers-color-scheme:dark){:root{--desk:#17141a;--paper:#211d24;--ink:#ece6ef;--muted:#a59dab;--line:#3a333f;--eye:#6cc0ac;--seal:#e07a6c}}
@@ -54,8 +54,8 @@ table{border-collapse:collapse;width:100%;font-size:13.5px}td,th{border-bottom:1
 dt{margin-top:10px}dd{margin:2px 0 0 0;color:var(--muted)}.st{color:var(--muted);font-size:13px}a{color:var(--eye)}
 </style></head>
 <body><main>
-<h1>Inkstone API</h1>
-<p class="lede">REST over your notes vault. Machine-readable: <a href="${specUrl}">openapi.json</a> (OpenAPI 3.1). Send <code>Authorization: Bearer ink_…</code> with an API key from Settings › Developer or <code>inkstone-mcp keys create</code>.</p>
+<h1>Inkwright API</h1>
+<p class="lede">REST over your notes vault. Machine-readable: <a href="${specUrl}">openapi.json</a> (OpenAPI 3.1). Send <code>Authorization: Bearer ink_…</code> with an API key from Settings › Developer or <code>inkwright-mcp keys create</code>.</p>
 <div id="ops">Loading…</div>
 <h2 id="problems">Errors</h2>
 <p>Errors are <code>application/problem+json</code> (RFC 9457) with a stable <code>code</code>:</p>
@@ -91,8 +91,8 @@ dt{margin-top:10px}dd{margin:2px 0 0 0;color:var(--muted)}.st{color:var(--muted)
       const body = op.requestBody ? '<p>Body: <code>' + esc(schemaText(op.requestBody.content['application/json'].schema)) + '</code></p><pre>' + esc(JSON.stringify(spec.components.schemas[schemaText(op.requestBody.content['application/json'].schema)], null, 2)) + '</pre>' : '';
       const resps = Object.entries(op.responses).filter(([, r]) => !r.$ref).map(([code, r]) => '<tr><td>' + code + '</td><td>' + esc(r.description) + '</td><td><code>' + esc(r.content ? Object.entries(r.content).map(([t, c]) => t + (c.schema && c.schema.$ref ? ' ' + schemaText(c.schema) : '')).join(', ') : '') + '</code></td></tr>').join('');
       const sample = path.replace(/\\{(\\w+)\\}/g, (_m, n) => n === 'n' ? '1' : '<' + n + '>');
-      const curl = 'curl -s ' + (method === 'GET' ? '' : '-X ' + method + ' ') + '"' + base + sample + '" \\\\\\n  -H "Authorization: Bearer $INKSTONE_API_KEY"' + (op.requestBody ? ' \\\\\\n  -H "Content-Type: application/json" -d \\'{…}\\'' : '');
-      const scope = op['x-inkstone-scope'];
+      const curl = 'curl -s ' + (method === 'GET' ? '' : '-X ' + method + ' ') + '"' + base + sample + '" \\\\\\n  -H "Authorization: Bearer $INKWRIGHT_API_KEY"' + (op.requestBody ? ' \\\\\\n  -H "Content-Type: application/json" -d \\'{…}\\'' : '');
+      const scope = op['x-inkwright-scope'];
       html += '<details class="op" id="' + op.operationId + '"><summary><span class="m ' + method + '">' + method + '</span><span class="p">' + esc(path) + '</span><span class="s">' + esc(op.summary) + '</span></summary><div class="body">' +
         '<p>' + esc(op.description || op.summary) + ' ' + (scope ? '<span class="scope">' + esc(scope) + '</span>' : '') + ' <span class="scope">' + op.operationId + '</span></p>' +
         (params ? '<table><tr><th>Parameter</th><th>In</th><th>Type</th><th></th></tr>' + params + '</table>' : '') + body +

@@ -10,7 +10,7 @@
  * NoteDocument (so the change appears live and is itself undoable) and the vault for everything
  * else; `VaultUndoTarget` is the vault-only reference implementation.
  */
-import { isSafeId, newId, type NoteMeta, type PageInk, type Vault, type VaultFS } from '@inkstone/core';
+import { isSafeId, newId, type NoteMeta, type PageInk, type Vault, type VaultFS } from '@inkwright/core';
 import type { NoteContent, NoteInfo, NoteListItem, NotePatch, NoteSearchHit, NoteToolHost, NotebookInfo } from './tools/notes.ts';
 
 /** Metadata fields an agent can change (the subset `update_note` exposes). */
@@ -273,14 +273,14 @@ export async function undoOp(op: ActivityOp, target: UndoTarget): Promise<UndoRe
       return (await target.deleteNotebook(op.notebookId)) ? { ok: true } : { ok: false, message: 'Could not delete the notebook.' };
     }
     case 'handwriting_recognized': {
-      if (!target.clearRecognizedText) return { ok: false, message: 'Update Inkstone to undo this.' };
+      if (!target.clearRecognizedText) return { ok: false, message: 'Update Inkwright to undo this.' };
       const r = await target.clearRecognizedText(op.noteId, op.pageId, op.text);
       if (r === 'cleared') return { ok: true };
       if (r === 'changed') return { ok: false, message: 'The recognized text was edited since; kept your version.' };
       return { ok: true, message: 'That page no longer exists.' };
     }
     case 'text_replaced': {
-      if (!target.replaceText) return { ok: false, message: 'Update Inkstone to undo this.' };
+      if (!target.replaceText) return { ok: false, message: 'Update Inkwright to undo this.' };
       const r = await target.replaceText(op.noteId, op.pageId, op.textId, op.after, op.before);
       if (r === 'replaced') return { ok: true };
       if (r === 'changed') return { ok: false, message: 'The text was edited since; kept your version.' };

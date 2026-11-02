@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Camera, ImageUp } from 'lucide-react';
 import { create } from 'zustand';
-import { pageSizeOf, type NoteDocument, type Quad, type Rgba } from '@inkstone/core';
+import { pageSizeOf, type NoteDocument, type Quad, type Rgba } from '@inkwright/core';
 import type { InkEngine } from '../canvas/engine.ts';
 import type { AppVault } from '../lib/vault.ts';
 import { pickFiles } from '../platform/files.ts';

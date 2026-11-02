@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Code2, FileWarning, GitCompareArrows, History } from 'lucide-react';
-import { codeRefStates, isCodeTarget, parseCodeTarget, parseWikiTarget, type CodeRefState } from '@inkstone/core';
+import { codeRefStates, isCodeTarget, parseCodeTarget, parseWikiTarget, type CodeRefState } from '@inkwright/core';
 import { createFromTemplate, registerLinkHandler } from '../lib/knowledge.ts';
 import { usePaletteActions } from '../lib/palette.ts';
 import { activeSession } from '../lib/session.ts';

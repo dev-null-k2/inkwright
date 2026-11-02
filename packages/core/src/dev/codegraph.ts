@@ -1,5 +1,5 @@
 /**
- * The code graph: what Inkstone knows about a repository the user mounted as a "code source".
+ * The code graph: what Inkwright knows about a repository the user mounted as a "code source".
  * Symbols (functions, classes, methods, exported constants, HTTP routes…) with a hash of their
  * signature, plus the call / import / containment edges between them, stored as plain JSON in the
  * vault (`code/sources/<sourceId>/graph.json`, docs/VAULT_FORMAT.md › Code sources) so it syncs,
@@ -78,7 +78,7 @@ export interface CodeGraph {
   /** Display name of the repository. */
   name: string;
   scannedAt: number;
-  /** What produced it: `inkstone-tree-sitter/1`, `graphify`, `generic-json`. */
+  /** What produced it: `inkwright-tree-sitter/1`, `graphify`, `generic-json`. */
   generator: string;
   files: CodeFile[];
   symbols: CodeSymbol[];

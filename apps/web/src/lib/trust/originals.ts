@@ -5,9 +5,9 @@
  * the store opens; a conversation that needs one after that gets "no original stored", which the
  * model is told to handle. Falls back to memory when IndexedDB is unavailable (private windows).
  */
-import { MemoryContentStore, contentRef, type ContentStore } from '@inkstone/ai';
+import { MemoryContentStore, contentRef, type ContentStore } from '@inkwright/ai';
 
-const DB = 'inkstone-originals';
+const DB = 'inkwright-originals';
 const STORE = 'originals';
 const MAX_AGE_MS = 14 * 86_400_000;
 

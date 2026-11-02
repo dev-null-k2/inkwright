@@ -4,7 +4,7 @@ import { newNote, openApp } from './helpers.ts';
 /**
  * The platform: modules (Settings › Modules), sandboxed plugins (install, permissions, panels,
  * commands, exporters, network through the host, isolation, revocation, uninstall), links from
- * other apps, the window.inkstone automation API and API keys.
+ * other apps, the window.inkwright automation API and API keys.
  */
 
 const SLOW = { timeout: 15_000 };
@@ -18,7 +18,7 @@ async function settings(page: Page, section: string) {
 /** Puts typed text on the open note's first page (one undo step, like typing). */
 async function typeText(page: Page, text: string) {
   await page.evaluate((text) => {
-    const { doc } = (window as any).__inkstone;
+    const { doc } = (window as any).__inkwright;
     doc.upsertText(0, { id: `t${Date.now()}`, x: 80, y: 120, width: 500, text, fontSize: 16, color: '#FF1B1F24', font: 'sans', createdAt: Date.now() }, 'Text');
   }, text);
 }
@@ -83,10 +83,10 @@ test('a plugin from the curated list: permission prompt, panel, command, exporte
   await expect(page.locator('.plg-card', { hasText: 'Word count & reading time' })).toBeVisible();
   // It lives in the vault, so it syncs.
   const cfg = await page.evaluate(async () => {
-    const fs = (window as any).__inkstoneHub?.vault?.fs;
+    const fs = (window as any).__inkwrightHub?.vault?.fs;
     return fs ? JSON.parse(await fs.readText('plugins/plugins.json')) : null;
   });
-  if (cfg) expect(cfg.plugins[0]).toMatchObject({ id: 'app.inkstone.examples.word-count', enabled: true });
+  if (cfg) expect(cfg.plugins[0]).toMatchObject({ id: 'app.inkwright.examples.word-count', enabled: true });
 
   await openApp(page);
   await newNote(page);
@@ -121,7 +121,7 @@ test('a plugin from the curated list: permission prompt, panel, command, exporte
   await card.locator('.plg-perm', { hasText: 'Read your notes' }).getByRole('switch').click({ force: true });
   await openApp(page);
   await page.locator('.note-card').first().click();
-  await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
   await page.keyboard.press('Control+k');
   await page.locator('.pal-input').fill('count words');
   await page.getByText('Count words in this note').click();
@@ -137,16 +137,16 @@ test('a plugin from the curated list: permission prompt, panel, command, exporte
 
 test('plugins are sandboxed: no network, no app access; the webhook plugin posts through the host', async ({ page }) => {
   // A plugin served from a URL that probes its sandbox.
-  const probe = `export default { activate(inkstone) {
-    inkstone.commands.register('probe', async () => {
+  const probe = `export default { activate(inkwright) {
+    inkwright.commands.register('probe', async () => {
       const out = [];
       try { await fetch('https://example.com/'); out.push('fetch allowed'); } catch { out.push('fetch blocked'); }
       try { void window.parent.document.title; out.push('parent allowed'); } catch { out.push('parent blocked'); }
       try { localStorage.setItem('x', '1'); out.push('storage allowed'); } catch { out.push('storage blocked'); }
-      try { await inkstone.notes.list(); out.push('notes allowed'); } catch (e) { out.push(e.code); }
-      await inkstone.ui.toast(out.join(', '));
+      try { await inkwright.notes.list(); out.push('notes allowed'); } catch (e) { out.push(e.code); }
+      await inkwright.ui.toast(out.join(', '));
     });
-    inkstone.importers.register('rows', ({ text }) => text.trim().split('\\n').map((line) => ({ title: line, text: 'Imported row' })));
+    inkwright.importers.register('rows', ({ text }) => text.trim().split('\\n').map((line) => ({ title: line, text: 'Imported row' })));
   } };`;
   const manifest = { id: 'test.probe', name: 'Probe', version: '1.0.0', author: 'Tests', description: 'Checks the sandbox.', minAppVersion: '1.0.0', permissions: [], contributes: { commands: [{ id: 'probe', title: 'Probe the sandbox' }], importers: [{ id: 'rows', title: 'Rows as notes', extensions: ['csv'] }] } };
   await page.route('https://plugins.test/probe/**', (r) => {
@@ -194,12 +194,12 @@ test('plugins are sandboxed: no network, no app access; the webhook plugin posts
   await page.getByText('Import: Rows as notes').click();
   await (await chooser).setFiles({ name: 'rows.csv', mimeType: 'text/csv', buffer: Buffer.from('Alpha\nBeta\n') });
   await expect(page.locator('.toasts')).toContainText('imported 2 notes', SLOW);
-  await page.waitForFunction(() => (window as any).__inkstone?.doc?.meta.title === 'Alpha', null, SLOW);
+  await page.waitForFunction(() => (window as any).__inkwright?.doc?.meta.title === 'Alpha', null, SLOW);
 
   await openApp(page);
   await newNote(page);
   await typeText(page, 'Ship the beta on Friday');
-  await page.evaluate(() => (window as any).__inkstone.engine.selectAll?.());
+  await page.evaluate(() => (window as any).__inkwright.engine.selectAll?.());
   await page.keyboard.press('Control+k');
   await page.locator('.pal-input').fill('webhook');
   await page.getByText('Send selection to webhook').click();
@@ -211,37 +211,37 @@ test('plugins are sandboxed: no network, no app access; the webhook plugin posts
 test('links from other apps create, open and search notes', async ({ page }) => {
   await openApp(page);
   await page.goto('/?e2e&action=new&title=From%20a%20link&text=Hello%20from%20Shortcuts&tags=inbox');
-  await page.waitForFunction(() => (window as any).__inkstone?.doc?.meta.title === 'From a link', null, SLOW);
-  const note = await page.evaluate(() => { const d = (window as any).__inkstone.doc; return { id: d.meta.id, tags: d.meta.tags, text: d.page(0).texts?.[0]?.text, origin: d.page(0).texts?.[0]?.origin }; });
+  await page.waitForFunction(() => (window as any).__inkwright?.doc?.meta.title === 'From a link', null, SLOW);
+  const note = await page.evaluate(() => { const d = (window as any).__inkwright.doc; return { id: d.meta.id, tags: d.meta.tags, text: d.page(0).texts?.[0]?.text, origin: d.page(0).texts?.[0]?.origin }; });
   expect(note).toMatchObject({ tags: ['inbox'], text: 'Hello from Shortcuts', origin: 'import' });
   expect(new URL(page.url()).searchParams.get('action')).toBeNull();
 
-  await page.goto(`/?e2e&link=${encodeURIComponent('web+inkstone://search?q=shortcuts')}`);
+  await page.goto(`/?e2e&link=${encodeURIComponent('web+inkwright://search?q=shortcuts')}`);
   await expect(page.locator('.pal-input')).toHaveValue('shortcuts', SLOW);
 
   await page.goto(`/?e2e&action=open&note=${note.id}`);
-  await page.waitForFunction((id) => (window as any).__inkstone?.doc?.meta.id === id, note.id, SLOW);
+  await page.waitForFunction((id) => (window as any).__inkwright?.doc?.meta.id === id, note.id, SLOW);
 
   await page.goto('/?e2e&action=capture&url=https%3A%2F%2Fexample.com%2Fpost&title=A%20post&text=worth%20reading');
-  await page.waitForFunction(() => (window as any).__inkstone?.doc?.meta.title === 'A post', null, SLOW);
-  expect(await page.evaluate(() => (window as any).__inkstone.doc.page(0).texts[0].text)).toBe('[A post](https://example.com/post)\n\n> worth reading');
+  await page.waitForFunction(() => (window as any).__inkwright?.doc?.meta.title === 'A post', null, SLOW);
+  expect(await page.evaluate(() => (window as any).__inkwright.doc.page(0).texts[0].text)).toBe('[A post](https://example.com/post)\n\n> worth reading');
 });
 
-test('Settings › Developer: window.inkstone with its own permissions, and API keys', async ({ page }) => {
+test('Settings › Developer: window.inkwright with its own permissions, and API keys', async ({ page }) => {
   await openApp(page);
-  expect(await page.evaluate(() => 'inkstone' in window)).toBe(false);
+  expect(await page.evaluate(() => 'inkwright' in window)).toBe(false);
   await settings(page, 'modules');
   await (await moduleSwitch(page, 'Developer tools')).click({ force: true });
   await page.locator('.set-nav .nav-item', { hasText: 'Developer' }).click();
 
-  await page.getByText('Turn on window.inkstone').click();
-  await page.waitForFunction(() => !!(window as any).inkstone);
-  const titles = await page.evaluate(async () => (await (window as any).inkstone.notes.list()).map((n: any) => n.title));
+  await page.getByText('Turn on window.inkwright').click();
+  await page.waitForFunction(() => !!(window as any).inkwright);
+  const titles = await page.evaluate(async () => (await (window as any).inkwright.notes.list()).map((n: any) => n.title));
   expect(titles.length).toBeGreaterThan(0);
-  const denied = await page.evaluate(async () => { try { await (window as any).inkstone.notes.create({ title: 'x' }); return 'created'; } catch (e) { return (e as any).code; } });
+  const denied = await page.evaluate(async () => { try { await (window as any).inkwright.notes.create({ title: 'x' }); return 'created'; } catch (e) { return (e as any).code; } });
   expect(denied).toBe('permission_denied');
   await page.locator('.row-switch', { hasText: 'Create and change notes' }).click();
-  const created = await page.evaluate(async () => (await (window as any).inkstone.notes.create({ title: 'From the console', text: 'hi' })).title);
+  const created = await page.evaluate(async () => (await (window as any).inkwright.notes.create({ title: 'From the console', text: 'hi' })).title);
   expect(created).toBe('From the console');
 
   // API keys: shown once, stored hashed, revocable.
@@ -256,6 +256,6 @@ test('Settings › Developer: window.inkstone with its own permissions, and API 
   await page.getByRole('dialog').getByRole('button', { name: 'Revoke' }).click();
   await expect(page.locator('.dev-key', { hasText: 'Shortcuts' })).toContainText('revoked');
 
-  await page.getByText('Turn on window.inkstone').click();
-  await page.waitForFunction(() => !(window as any).inkstone);
+  await page.getByText('Turn on window.inkwright').click();
+  await page.waitForFunction(() => !(window as any).inkwright);
 });

@@ -1,5 +1,5 @@
 import { CalendarDays, Waypoints } from 'lucide-react';
-import { dayKey, findDailyNote } from '@inkstone/core';
+import { dayKey, findDailyNote } from '@inkwright/core';
 import { openToday } from '../../lib/knowledge.ts';
 import { useApp } from '../../state/app.ts';
 import { GRAPH_KEYS, TODAY_KEYS } from './shortcuts.ts';

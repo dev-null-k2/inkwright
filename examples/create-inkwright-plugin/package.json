@@ -1,0 +1,9 @@
+{
+  "name": "create-inkwright-plugin",
+  "version": "1.0.0",
+  "description": "Start an Inkwright plugin: npm create inkwright-plugin my-plugin",
+  "type": "module",
+  "bin": { "create-inkwright-plugin": "index.mjs" },
+  "files": ["index.mjs", "template"],
+  "license": "Apache-2.0"
+}

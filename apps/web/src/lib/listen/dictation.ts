@@ -5,7 +5,7 @@
  * Nothing is recorded or kept: the audio is dropped once transcribed.
  */
 import { create } from 'zustand';
-import { newId, type NoteDocument, type SpeechWhere, type TextBox } from '@inkstone/core';
+import { newId, type NoteDocument, type SpeechWhere, type TextBox } from '@inkwright/core';
 import { resolveSpeech, startLiveTranscription, type LiveTranscription, type ResolvedSpeech } from './engines.ts';
 
 export interface DictationState {

@@ -33,7 +33,7 @@ import {
   type ChatMessage,
   type Routine,
   type TriggerEvent,
-} from '@inkstone/ai';
+} from '@inkwright/ai';
 import { readNoteFresh, type ServerContext } from '../context.ts';
 import { gateDestructive, type Approver, type PendingApproval } from '../approvals.ts';
 import type { AgentAI } from './ai.ts';
@@ -109,7 +109,7 @@ export async function prepareServerAgent(ctx: ServerContext, ai: AgentAI, o: Ser
   if (o.context) sections.push(o.context);
   // Policy tool rules, and the injection guard: after suspicious content, writes go to the approver.
   const safe = gateSuspicious(guardAgentTools(tools, policy, run), (req) => o.approver({ ...req, source: o.label, ...(o.routineId ? { routineId: o.routineId } : {}) }));
-  return { tools: safe, system: notesAgentSystemPrompt({ appName: 'Inkstone', now: new Date(ctx.clock()), extra: sections.join('\n\n') }), recorder, host };
+  return { tools: safe, system: notesAgentSystemPrompt({ appName: 'Inkwright', now: new Date(ctx.clock()), extra: sections.join('\n\n') }), recorder, host };
 }
 
 export interface ServerAgentRun {
@@ -144,10 +144,10 @@ export async function runServerAgent(ctx: ServerContext, base: AgentAI, o: Serve
 export async function runRoutineOnServer(ctx: ServerContext, ai: AgentAI | null, r: Routine, ev: TriggerEvent, approver: Approver, opts: { signal?: AbortSignal; onEvent?: (e: AgentEvent) => void } = {}): Promise<ServerAgentRun> {
   if (!ai) {
     const rec = new RunRecorder(new ActivityStore(ctx.fs), { source: 'routine', label: r.name, routineId: r.id, prompt: ev.reason }, ctx.clock);
-    const error = 'No AI is set up for the Inkstone agent. Start it with --ai-provider (see docs/AGENTS.md).';
+    const error = 'No AI is set up for the Inkwright agent. Start it with --ai-provider (see docs/AGENTS.md).';
     return { status: 'error', reply: '', error, run: await rec.finish('error', { error, alwaysLog: true }) };
   }
-  const extra = r.tools.mcpServers.length ? '\nConnected apps are not available when the routine runs outside the Inkstone app; skip steps that need them and say so.' : '';
+  const extra = r.tools.mcpServers.length ? '\nConnected apps are not available when the routine runs outside the Inkwright app; skip steps that need them and say so.' : '';
   return runServerAgent(ctx, ai, {
     source: 'routine',
     label: r.name,

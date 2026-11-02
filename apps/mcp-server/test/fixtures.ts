@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
-import { Vault, newNote, newPage, type InkStroke, type NoteMeta, type NotebookMeta, type PageInk } from '@inkstone/core';
+import { Vault, newNote, newPage, type InkStroke, type NoteMeta, type NotebookMeta, type PageInk } from '@inkwright/core';
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import { createContext, type ContextOptions, type ServerContext } from '../src/context.ts';
 import { NodeFS } from '../src/nodefs.ts';
@@ -43,7 +43,7 @@ async function saveNote(v: Vault, args: { id: string; title: string; updatedAt: 
 
 /** Temp vault with notebooks, handwriting (recognized and not), text boxes and a trashed note. */
 export async function makeFixture(): Promise<Fixture> {
-  const dir = await mkdtemp(path.join(tmpdir(), 'inkstone-mcp-'));
+  const dir = await mkdtemp(path.join(tmpdir(), 'inkwright-mcp-'));
   const now = Date.now();
   const vault = new Vault(new NodeFS(dir), () => now);
   await vault.init();

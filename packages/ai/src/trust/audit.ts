@@ -17,7 +17,7 @@
  * chain. Exporting the JSONL (or just the head hash) somewhere else anchors it; `verifyAudit`
  * then reports whether a known head is still present.
  */
-import { canonicalJson, sha256, type VaultFS } from '@inkstone/core';
+import { canonicalJson, sha256, type VaultFS } from '@inkwright/core';
 
 export type AuditKind = 'key' | 'ai_call' | 'read' | 'write' | 'proposal' | 'policy' | 'blocked' | 'retention';
 

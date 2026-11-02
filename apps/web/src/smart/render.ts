@@ -1,4 +1,4 @@
-import { PAPER_TINTS, argbToCss, cellRect, pagePaper, type NoteMeta, colEdges, formatMathNumber, graphGeometry, mathWidth, rowEdges, type GraphObject, type MathObject, type PageInk, type TableObject } from '@inkstone/core';
+import { PAPER_TINTS, argbToCss, cellRect, pagePaper, type NoteMeta, colEdges, formatMathNumber, graphGeometry, mathWidth, rowEdges, type GraphObject, type MathObject, type PageInk, type TableObject } from '@inkwright/core';
 import { FONT_FAMILIES } from '../canvas/render.ts';
 import { drawDiagram } from '../dev/diagramRender.ts';
 

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { findPageCorners, newId, photoToInk, type NoteDocument, type PhotoToInkResult, type Quad, type Rgba } from '@inkstone/core';
+import { findPageCorners, newId, photoToInk, type NoteDocument, type PhotoToInkResult, type Quad, type Rgba } from '@inkwright/core';
 import type { AppVault } from '../lib/vault.ts';
 
 /**

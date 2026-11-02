@@ -1,4 +1,4 @@
-import type { VaultFS } from '@inkstone/core';
+import type { VaultFS } from '@inkwright/core';
 import { isJunkName, safePath, sha256Hex, throwIfAborted, walkFiles } from './util.ts';
 
 /** One file on a remote, as listed. `rev` changes whenever the content changes (ETag, Drive id+md5, hash). */

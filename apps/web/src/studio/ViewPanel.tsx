@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Eye, EyeOff, Lock, LockOpen } from 'lucide-react';
-import { layerState, type NoteDocument, type StrokeLayer } from '@inkstone/core';
+import { layerState, type NoteDocument, type StrokeLayer } from '@inkwright/core';
 import type { InkEngine } from '../canvas/engine.ts';
 import { useSettings } from '../state/settings.ts';
 import { Segmented, Switch, cx } from '../ui/primitives.tsx';

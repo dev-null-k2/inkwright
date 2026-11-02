@@ -6,14 +6,14 @@
  * `chooseTranscriber` (packages/ai/src/speech/select.ts), right after a downloaded web model.
  *
  * Only the interface lives here: the Android shell does not implement it yet. To add it, give
- * `InkstoneNativePlugin` (native.ts) `speechAvailability`, `speechStart` and `speechStop` methods
+ * `InkwrightNativePlugin` (native.ts) `speechAvailability`, `speechStart` and `speechStop` methods
  * plus a `speechResult` listener, and register an adapter at startup:
  *
  * ```ts
  * registerNativeSpeech({
  *   id: 'android-ondevice', label: 'Android speech (on this phone)',
- *   availability: () => InkstoneNative.speechAvailability().then((r) => r.state),
- *   start: (opts, onResult) => … InkstoneNative.speechStart(opts) + 'speechResult' listener …,
+ *   availability: () => InkwrightNative.speechAvailability().then((r) => r.state),
+ *   start: (opts, onResult) => … InkwrightNative.speechStart(opts) + 'speechResult' listener …,
  * });
  * ```
  *

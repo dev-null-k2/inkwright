@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft, Bot, Check, Cloud, Copy, Download, ExternalLink, FolderOpen, Hand, Info, KeyRound, Palette, PenLine, Plug, Plus, RefreshCw, Trash2, Upload, Vibrate, ScanText,
 } from 'lucide-react';
-import { PROVIDERS, getProviderInfo, type ProviderInfo } from '@inkstone/ai';
-import { PAGE_SIZE_PRESETS, newId } from '@inkstone/core';
+import { PROVIDERS, getProviderInfo, type ProviderInfo } from '@inkwright/ai';
+import { PAGE_SIZE_PRESETS, newId } from '@inkwright/core';
 import { useApp } from '../state/app.ts';
 import { DEFAULT_SETTINGS, useSettings, type AIProviderConfig } from '../state/settings.ts';
 import { IconButton, Segmented, Slider, Switch, cx, relativeTime, useMediaQuery } from '../ui/primitives.tsx';
@@ -133,7 +133,7 @@ function WritingSection() {
     <>
       <Group title="Paper feel" note={hasNativePlugin
         ? 'Grain is felt through the phone’s haptic motor as fine ticks spaced by distance, so slow strokes feel like individual paper fibres and fast strokes like a soft buzz. Pick “Toothy” paper for the strongest bite.'
-        : 'The haptic grain needs the Inkstone Android app (it drives the phone’s motor directly). The writing sound works everywhere. For physical bite, a matte screen protector adds real friction.'}>
+        : 'The haptic grain needs the Inkwright Android app (it drives the phone’s motor directly). The writing sound works everywhere. For physical bite, a matte screen protector adds real friction.'}>
         <FeelPanel />
       </Group>
       <Group title="Pressure">
@@ -374,7 +374,7 @@ function SyncSection() {
           <p>Notes in this preview stay in this browser. Google sign-in, Drive, WebDAV and folder sync work in the installed app and the web version, which can reach those services.</p>
         </Group>
       )}
-      <Group title="Google account" note={<>Inkstone keeps your notes in a visible <b>{sy.drive.folderName || 'Inkstone'}</b> folder in your Google Drive and can only see files it created there. On a Mac with Google Drive for desktop, that folder appears in Finder, ready for Obsidian, Claude and other agents.</>}>
+      <Group title="Google account" note={<>Inkwright keeps your notes in a visible <b>{sy.drive.folderName || 'Inkwright'}</b> folder in your Google Drive and can only see files it created there. On a Mac with Google Drive for desktop, that folder appears in Finder, ready for Obsidian, Claude and other agents.</>}>
         {sy.account ? (
           <div className="account-row">
             {sy.account.picture ? <img src={sy.account.picture} alt="" referrerPolicy="no-referrer" /> : <span className="avatar">{sy.account.name.slice(0, 1)}</span>}
@@ -414,7 +414,7 @@ function SyncSection() {
 
       <Group title="WebDAV (Nextcloud, ownCloud, Synology…)">
         <Switch label="Sync with a WebDAV server" checked={sy.webdav.enabled} onChange={(v) => set({ webdav: { ...sy.webdav, enabled: v } })} />
-        <label className="field"><span className="field-label">Folder URL</span><input value={sy.webdav.url} placeholder="https://cloud.example.com/remote.php/dav/files/me/Inkstone/" onChange={(e) => set({ webdav: { ...sy.webdav, url: e.target.value } })} /></label>
+        <label className="field"><span className="field-label">Folder URL</span><input value={sy.webdav.url} placeholder="https://cloud.example.com/remote.php/dav/files/me/Inkwright/" onChange={(e) => set({ webdav: { ...sy.webdav, url: e.target.value } })} /></label>
         <div className="field-pair">
           <label className="field"><span className="field-label">Username</span><input value={sy.webdav.username} onChange={(e) => set({ webdav: { ...sy.webdav, username: e.target.value } })} /></label>
           <label className="field"><span className="field-label">App password</span><input type="password" value={davPass} onChange={(e) => setDavPass(e.target.value)} onBlur={() => { if (davPass && !davPass.startsWith('•')) setSecret('webdav.password', davPass).then(resetSyncEngines, (e) => toast({ text: `Couldn't save the password: ${(e as Error).message}`, tone: 'error' })); }} /></label>
@@ -422,7 +422,7 @@ function SyncSection() {
       </Group>
 
       {folderSyncSupported && (
-        <Group title="A folder on this computer" note="Pick your Google Drive, iCloud Drive, Dropbox or Obsidian folder and Inkstone keeps a copy of every note there.">
+        <Group title="A folder on this computer" note="Pick your Google Drive, iCloud Drive, Dropbox or Obsidian folder and Inkwright keeps a copy of every note there.">
           <div className="sync-status">
             <FolderOpen size={17} />
             <span>{sy.folder.name ? `Syncing with “${sy.folder.name}”` : 'No folder chosen'}</span>
@@ -436,9 +436,9 @@ function SyncSection() {
         <div className="row-buttons">
           <button type="button" className="btn" onClick={async () => {
             if (!vault) return;
-            const { exportVaultZip } = await import('@inkstone/sync') as any;
+            const { exportVaultZip } = await import('@inkwright/sync') as any;
             const bytes = await exportVaultZip(vault.fs);
-            await saveFile(`Inkstone backup ${new Date().toISOString().slice(0, 10)}.zip`, bytes, 'application/zip');
+            await saveFile(`Inkwright backup ${new Date().toISOString().slice(0, 10)}.zip`, bytes, 'application/zip');
           }}><Download size={16} /> Download backup</button>
           <button type="button" className="btn" onClick={async () => { const f = await pickFiles('.zip,application/zip', false); if (f.length) await importFiles(f); }}><Upload size={16} /> Restore from backup</button>
         </div>
@@ -460,15 +460,15 @@ function GoogleG() {
 
 function AgentsSection() {
   const toast = useApp((a) => a.toast);
-  const folder = useSettings((s) => s.sync.drive.folderName) || 'Inkstone';
+  const folder = useSettings((s) => s.sync.drive.folderName) || 'Inkwright';
   const email = useSettings((s) => s.sync.account?.email) ?? 'you@gmail.com';
   const vaultPath = `~/Library/CloudStorage/GoogleDrive-${email}/My Drive/${folder}`;
-  const config = JSON.stringify({ mcpServers: { inkstone: { command: 'npx', args: ['-y', '@inkstone/mcp-server', '--vault', vaultPath] } } }, null, 2);
-  const claudeCode = `claude mcp add inkstone -- npx -y @inkstone/mcp-server --vault "${vaultPath}"`;
+  const config = JSON.stringify({ mcpServers: { inkwright: { command: 'npx', args: ['-y', '@inkwright/mcp-server', '--vault', vaultPath] } } }, null, 2);
+  const claudeCode = `claude mcp add inkwright -- npx -y @inkwright/mcp-server --vault "${vaultPath}"`;
   const copy = (t: string) => { void navigator.clipboard?.writeText(t).then(() => toast({ text: 'Copied' })); };
   return (
     <>
-      <Group title="Let any AI agent use your notes" note="The Inkstone MCP server reads the synced vault folder on your computer. Agents can search, read (including page images), create notes, append text, tag and organize — the same tools the in-app assistant uses. Add --read-only to only allow reading.">
+      <Group title="Let any AI agent use your notes" note="The Inkwright MCP server reads the synced vault folder on your computer. Agents can search, read (including page images), create notes, append text, tag and organize — the same tools the in-app assistant uses. Add --read-only to only allow reading.">
         <ol className="steps">
           <li>Turn on Google Drive sync (or folder sync) so your notes are on your Mac.</li>
           <li>Add the server to your agent:</li>
@@ -534,7 +534,7 @@ function AboutSection() {
       <div className="about-head">
         <BrandMark size={52} />
         <div>
-          <h2 className="about-name">Inkstone</h2>
+          <h2 className="about-name">Inkwright</h2>
           <p className="muted">Version {APP_VERSION} · {isNative ? `${nativePlatform} app` : isArtifact ? 'live preview' : 'web app'}</p>
         </div>
       </div>

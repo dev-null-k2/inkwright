@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MemoryFS, Vault, newNote, newPage } from '@inkstone/core';
+import { MemoryFS, Vault, newNote, newPage } from '@inkwright/core';
 import {
   ROUTINE_LEASE_PATH,
   RoutineLeaseHolder,
@@ -20,8 +20,8 @@ describe('routines lease', () => {
     const fs = new MemoryFS();
     let now = at(2026, 11, 1, 9);
     const clock = () => now;
-    const a = new RoutineLeaseHolder(fs, { holder: 'runner:a', label: 'Inkstone agent on A', clock, ttlMs: 600_000 });
-    const b = new RoutineLeaseHolder(fs, { holder: 'runner:b', label: 'Inkstone agent on B', clock, ttlMs: 600_000 });
+    const a = new RoutineLeaseHolder(fs, { holder: 'runner:a', label: 'Inkwright agent on A', clock, ttlMs: 600_000 });
+    const b = new RoutineLeaseHolder(fs, { holder: 'runner:b', label: 'Inkwright agent on B', clock, ttlMs: 600_000 });
     expect(await a.acquire()).toBe(true);
     expect(await b.acquire()).toBe(false);
     expect(b.held).toBe(false);
@@ -30,7 +30,7 @@ describe('routines lease', () => {
     const lease = await readRoutineLease(fs);
     expect(lease).toMatchObject({ holder: 'runner:a', kind: 'runner', acquiredAt: at(2026, 11, 1, 9), renewedAt: now, expiresAt: now + 600_000 });
     // The app sees a live lease held by someone else.
-    expect((await routineLeaseHeldByOther(fs, now))?.label).toBe('Inkstone agent on A');
+    expect((await routineLeaseHeldByOther(fs, now))?.label).toBe('Inkwright agent on A');
     expect(await routineLeaseHeldByOther(fs, now, 'runner:a')).toBeNull();
     // A stops renewing (computer asleep): after expiry B takes over.
     now += 600_001;
@@ -118,6 +118,6 @@ describe('undo of recognized handwriting', () => {
     const { op, target } = await setup();
     const { clearRecognizedText: _c, ...older } = Object.assign(Object.create(Object.getPrototypeOf(target)), target);
     const r = await undoOp(op, { ...older, clearRecognizedText: undefined } as never);
-    expect(r).toEqual({ ok: false, message: 'Update Inkstone to undo this.' });
+    expect(r).toEqual({ ok: false, message: 'Update Inkwright to undo this.' });
   });
 });

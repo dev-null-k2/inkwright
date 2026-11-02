@@ -1,5 +1,5 @@
-// Generated from the Inkstone OpenAPI document by packages/sdk/scripts/generate.ts.
-// Do not edit: run `npm run generate -w @inkstone/sdk` after changing the API.
+// Generated from the Inkwright OpenAPI document by packages/sdk/scripts/generate.ts.
+// Do not edit: run `npm run generate -w @inkwright/sdk` after changing the API.
 /* eslint-disable */
 import { BaseClient, type Operation, type RequestOptions } from './runtime.ts';
 
@@ -418,8 +418,8 @@ const deleteWebhookOp: Operation = {"method":"DELETE","path":"/webhooks/{id}","p
 const listWebhookDeliveriesOp: Operation = {"method":"GET","path":"/webhooks/{id}/deliveries","pathParams":["id"],"queryParams":["limit","cursor"],"hasBody":false,"idempotent":false,"response":"json"};
 const testWebhookOp: Operation = {"method":"POST","path":"/webhooks/{id}/test","pathParams":["id"],"queryParams":[],"hasBody":false,"idempotent":false,"response":"json"};
 
-/** Typed client for the Inkstone REST API. Each method is one API operation. */
-export class InkstoneClient extends BaseClient {
+/** Typed client for the Inkwright REST API. Each method is one API operation. */
+export class InkwrightClient extends BaseClient {
   /**
    * Recent AI and API activity
    *

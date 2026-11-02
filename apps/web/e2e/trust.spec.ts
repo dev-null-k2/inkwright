@@ -89,9 +89,9 @@ test('privacy firewall: the provider never sees the email, the user does; usage 
 
 test('routing & privacy: a notebook kept on this device never reaches the cloud, and a hidden one is invisible to the assistant', async ({ page }) => {
   await openApp(page);
-  await page.waitForFunction(() => !!(window as any).__inkstoneHub);
+  await page.waitForFunction(() => !!(window as any).__inkwrightHub);
   const ids = await page.evaluate(async () => {
-    const v = (window as any).__inkstoneHub.vault.vault;
+    const v = (window as any).__inkwrightHub.vault.vault;
     const clients = await v.createNotebook('Clients');
     const diary = await v.createNotebook('Diary');
     const make = async (title: string, notebookId: string, text: string) => {
@@ -118,7 +118,7 @@ test('routing & privacy: a notebook kept on this device never reaches the cloud,
   await expect(diaryRule.getByRole('checkbox', { name: 'Stays on this device' })).not.toBeChecked();
   await diaryRule.getByRole('radio', { name: 'Hidden' }).click();
   await expect(diaryRule.getByRole('radio', { name: 'Hidden' })).toHaveAttribute('aria-checked', 'true');
-  const policy = await page.evaluate(async () => JSON.parse(await (window as any).__inkstoneHub.vault.fs.readText('ai/policy.json')));
+  const policy = await page.evaluate(async () => JSON.parse(await (window as any).__inkwrightHub.vault.fs.readText('ai/policy.json')));
   expect(policy.notebooks[ids.clients]).toEqual({ localOnly: true });
   expect(policy.notebooks[ids.diary]).toEqual({ access: 'none', localOnly: false });
 

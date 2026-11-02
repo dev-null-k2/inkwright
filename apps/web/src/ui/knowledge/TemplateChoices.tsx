@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { LayoutTemplate } from 'lucide-react';
-import type { NoteTemplate } from '@inkstone/core';
+import type { NoteTemplate } from '@inkwright/core';
 import { createFromTemplate, listTemplates } from '../../lib/knowledge.ts';
 import { useApp } from '../../state/app.ts';
 

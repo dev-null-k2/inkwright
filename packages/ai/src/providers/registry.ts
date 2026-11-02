@@ -156,7 +156,7 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     id: 'foundry-local', label: 'Foundry Local (Windows/macOS)', kind: 'openai-compatible', defaultBaseUrl: 'http://localhost:5272/v1', needsBaseUrl: false, needsKey: false,
     keyUrl: 'https://github.com/microsoft/Foundry-Local',
     models: [], defaultModel: '', capabilities: caps({ vision: false }), local: true,
-    hint: 'Fix its port with "foundry service set --port 5272" so Inkstone can find it.',
+    hint: 'Fix its port with "foundry service set --port 5272" so Inkwright can find it.',
   },
   {
     id: 'custom', label: 'Custom (OpenAI-compatible)', kind: 'openai-compatible', defaultBaseUrl: '', needsBaseUrl: true, needsKey: false,
@@ -178,7 +178,7 @@ export interface ProviderConfig extends HttpOptions {
   azureApiVersion?: string;
   /** Use the text tool-calling protocol even when the API has native tools (weak local models). */
   promptTools?: boolean;
-  /** OpenRouter attribution (defaults: https://inkstone.app / Inkstone). */
+  /** OpenRouter attribution (defaults: https://inkwright.app / Inkwright). */
   appUrl?: string;
   appName?: string;
 }
@@ -208,7 +208,7 @@ export function createProvider(config: ProviderConfig): Provider {
         oc.omitTemperature = (m) => REASONING_MODEL.test(m);
         break;
       case 'openrouter':
-        oc.headers = { 'HTTP-Referer': config.appUrl ?? 'https://inkstone.app', 'X-Title': config.appName ?? 'Inkstone', ...config.extraHeaders };
+        oc.headers = { 'HTTP-Referer': config.appUrl ?? 'https://inkwright.app', 'X-Title': config.appName ?? 'Inkwright', ...config.extraHeaders };
         break;
       case 'mistral':
       case 'perplexity':

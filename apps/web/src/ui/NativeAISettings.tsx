@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Check, Download, Mic, Sparkles, Trash2, X } from 'lucide-react';
-import { formatBytes } from '@inkstone/ai';
+import { formatBytes } from '@inkwright/ai';
 import type { NativeModelInfo } from '../ai/native/plugin.ts';
 import {
   cancelNativeDownload, chosenModel, deleteNativeModel, downloadNative, initNativeAI, nanoState, nativeAIPlugin, refreshNativeAI, taskState, unloadNativeModel, useNativeAI,

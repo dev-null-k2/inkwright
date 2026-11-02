@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { applyPlan, planToggle } from '../modules/registry.ts';
 import { Check, FileArchive, FolderOpen, GitCompareArrows, History, RefreshCw, Trash2, Waypoints, X } from 'lucide-react';
-import type { CodeSource } from '@inkstone/core';
+import type { CodeSource } from '@inkwright/core';
 import { pickFiles } from '../platform/files.ts';
 import { useApp } from '../state/app.ts';
 import { Switch, relativeTime } from '../ui/primitives.tsx';
@@ -22,7 +22,7 @@ function Group({ title, children, note }: { title: string; children: ReactNode; 
   );
 }
 
-const KIND: Record<CodeSource['kind'], string> = { folder: 'Folder', zip: 'Zip archive', tarball: 'Tarball', cli: 'Scanned by the inkstone CLI', graphify: 'graphify graph', generic: 'Imported graph' };
+const KIND: Record<CodeSource['kind'], string> = { folder: 'Folder', zip: 'Zip archive', tarball: 'Tarball', cli: 'Scanned by the inkwright CLI', graphify: 'graphify graph', generic: 'Imported graph' };
 
 /**
  * Settings › Developer: the module's switch, code sources (mount, re-scan, remove), the drift
@@ -49,7 +49,7 @@ export function DeveloperSection() {
   const importGraph = () => guard(async () => { const [f] = await pickFiles('.json,application/json', false); return f ? importGraphFile(f) : null; }, scanned);
   const doRescan = (s: CodeSource) => guard(async () => {
     if (s.kind === 'folder') return rescan(s);
-    if (s.kind === 'cli') throw new Error('Re-scan it on the computer with inkstone scan; it syncs here.');
+    if (s.kind === 'cli') throw new Error('Re-scan it on the computer with inkwright scan; it syncs here.');
     const [f] = await pickFiles(s.kind === 'graphify' || s.kind === 'generic' ? '.json,application/json' : '.zip,.tar.gz,.tgz,.tar', false);
     return f ? rescan(s, f) : null;
   }, scanned);
@@ -61,7 +61,7 @@ export function DeveloperSection() {
       </Group>
       {on && (
         <>
-          <Group title="Code sources" note={<>Scanned in this app with tree-sitter (TypeScript, JavaScript, Python, Go, Rust, Java) — no AI, nothing uploaded. Graphs are saved in your vault under code/sources/, so other devices, the MCP server and the <code>inkstone</code> CLI see them. A GitHub repository: use “Download ZIP” or the tarball link, then import it here.</>}>
+          <Group title="Code sources" note={<>Scanned in this app with tree-sitter (TypeScript, JavaScript, Python, Go, Rust, Java) — no AI, nothing uploaded. Graphs are saved in your vault under code/sources/, so other devices, the MCP server and the <code>inkwright</code> CLI see them. A GitHub repository: use “Download ZIP” or the tarball link, then import it here.</>}>
             {scanning && <p className="dev-scanning" role="status">Scanning {scanning.label}… {scanning.total ? `${scanning.done} / ${scanning.total} files` : ''}</p>}
             {!sources.length && !scanning && <p className="muted">No code sources yet.</p>}
             <ul className="dev-sources" aria-label="Code sources">

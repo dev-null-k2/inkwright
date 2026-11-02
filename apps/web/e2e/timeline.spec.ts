@@ -6,7 +6,7 @@ import { newNote, openApp, pen, word } from './helpers.ts';
  * proposals (try on a branch, compare side by side, merge), against a mocked AI provider.
  */
 
-const strokeCount = (page: Page) => page.evaluate(() => (window as any).__inkstone.doc.page(0).strokes.length as number);
+const strokeCount = (page: Page) => page.evaluate(() => (window as any).__inkwright.doc.page(0).strokes.length as number);
 
 async function backToLibrary(page: Page) {
   await page.getByRole('button', { name: 'Back to library' }).click();
@@ -15,7 +15,7 @@ async function backToLibrary(page: Page) {
 
 async function openNote(page: Page, title: string) {
   await page.getByRole('button', { name: `Open ${title}` }).click();
-  await page.waitForFunction((t) => (window as any).__inkstone?.doc?.meta.title === t, title);
+  await page.waitForFunction((t) => (window as any).__inkwright?.doc?.meta.title === t, title);
 }
 
 test('show my notes as of a date: the library and a note read the past, read-only, until back to today', async ({ page }) => {
@@ -124,5 +124,5 @@ test('dry run onto a branch: compare it with the notes side by side, then merge 
   await expect(page.locator('.note-card', { hasText: 'Weekly plan' })).toHaveCount(1);
   // What the agent wrote is marked as AI content in the merged note.
   await openNote(page, 'Weekly plan');
-  expect(await page.evaluate(() => (window as any).__inkstone.doc.page(0).texts.map((t: any) => t.origin))).toEqual(['ai']);
+  expect(await page.evaluate(() => (window as any).__inkwright.doc.page(0).texts.map((t: any) => t.origin))).toEqual(['ai']);
 });

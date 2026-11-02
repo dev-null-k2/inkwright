@@ -1,14 +1,14 @@
 /**
  * Logs the changes outside agents make through this server into the vault's AI activity log
- * (`ai/activity/<runId>.json`, docs/VAULT_FORMAT.md), so the Inkstone app shows them next to its
+ * (`ai/activity/<runId>.json`, docs/VAULT_FORMAT.md), so the Inkwright app shows them next to its
  * own assistant's runs — with Undo. One run per MCP connection; each write tool call adds
  * reversible operations derived from the vault before and after the call.
  *
- * The format is the contract shared with @inkstone/ai's `ActivityRun` (not imported here: the
+ * The format is the contract shared with @inkwright/ai's `ActivityRun` (not imported here: the
  * server is bundled on its own).
  */
 import type { CallToolResult } from '@modelcontextprotocol/server';
-import { VaultLayout, newId, type NoteMeta } from '@inkstone/core';
+import { VaultLayout, newId, type NoteMeta } from '@inkwright/core';
 import { readNoteFresh, type ServerContext } from './context.ts';
 
 interface MetaFields {

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { ActivityStore, ROUTINE_LEASE_PATH, RoutineStore, createScriptedProvider, newRoutine, readRoutineLease, routineLeaseHeldByOther, type ScriptStep } from '@inkstone/ai';
+import { ActivityStore, ROUTINE_LEASE_PATH, RoutineStore, createScriptedProvider, newRoutine, readRoutineLease, routineLeaseHeldByOther, type ScriptStep } from '@inkwright/ai';
 import type { AgentAI } from '../src/agent/ai.ts';
 import { ApprovalStore } from '../src/approvals.ts';
 import type { ServerContext } from '../src/context.ts';
@@ -84,7 +84,7 @@ describe('always-on runner', () => {
     let runs = await new ActivityStore(ctx.fs).list();
     expect(runs).toHaveLength(1);
     expect(runs[0]).toMatchObject({ source: 'routine', label: 'Evening tidy', routineId: routine.id, status: 'done', reply: 'Added a line.' });
-    expect(runs[0]!.prompt).toMatch(/missed while Inkstone was closed/);
+    expect(runs[0]!.prompt).toMatch(/missed while Inkwright was closed/);
     expect(runs[0]!.ops[0]).toMatchObject({ kind: 'text_appended', noteId: 'LAUNCH' });
     // Nothing more until 18:00, then exactly one run.
     await time.advance(9 * 3600_000, idle(r));

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { FileUp, Infinity as InfinityIcon, NotebookPen } from 'lucide-react';
-import { PAGE_SIZE_PRESETS, PAPER_STYLES, PAPER_TINTS, PAPER_TEXTURES, type NoteKind, type PageSize, type PaperSpec, type PaperStyle, type PaperTint, type PaperTexture } from '@inkstone/core';
+import { PAGE_SIZE_PRESETS, PAPER_STYLES, PAPER_TINTS, PAPER_TEXTURES, type NoteKind, type PageSize, type PaperSpec, type PaperStyle, type PaperTint, type PaperTexture } from '@inkwright/core';
 import { Popover, Segmented, cx } from './primitives.tsx';
 import { PaperPreview } from './PaperPreview.tsx';
 import { useSettings } from '../state/settings.ts';

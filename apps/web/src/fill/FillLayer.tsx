@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, Check, FileDown, PenLine, Signature, Type, X } from 'lucide-react';
-import { newId, pageSizeOf, type FormFieldValue, type ImageItem, type InkStroke, type NoteDocument, type TextBox } from '@inkstone/core';
+import { newId, pageSizeOf, type FormFieldValue, type ImageItem, type InkStroke, type NoteDocument, type TextBox } from '@inkwright/core';
 import type { InkEngine, SelectionInfo, Tool } from '../canvas/engine.ts';
 import type { AppVault } from '../lib/vault.ts';
 import type { EditorSession } from '../lib/session.ts';
@@ -81,7 +81,7 @@ export function FillLayer({ doc, engine, vault, host, active, onActive, sel, onT
   const [picker, setPicker] = useState<{ kind: SignatureKind; anchor: HTMLElement | null; target?: { pageIndex: number; rect: Rect } } | null>(null);
   const [armedSig, setArmedSig] = useState<{ sig: SavedSignature; color: string } | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [chipGone, setChipGone] = useState(() => safeStorage.get(`inkstone.fillchip.${doc.meta.id}`) === '1');
+  const [chipGone, setChipGone] = useState(() => safeStorage.get(`inkwright.fillchip.${doc.meta.id}`) === '1');
   const grays = useRef(new Map<string, Promise<GrayImage | null>>());
   const btns = { sig: useRef<HTMLButtonElement>(null), ini: useRef<HTMLButtonElement>(null) };
 
@@ -292,7 +292,7 @@ export function FillLayer({ doc, engine, vault, host, active, onActive, sel, onT
   const zoom = engine.zoom;
 
   // The chip is an invitation: once the user has filled in (or dismissed it) it doesn't come back.
-  const dismissChip = () => { setChipGone(true); safeStorage.set(`inkstone.fillchip.${doc.meta.id}`, '1'); };
+  const dismissChip = () => { setChipGone(true); safeStorage.set(`inkwright.fillchip.${doc.meta.id}`, '1'); };
   useEffect(() => { if (active && !chipGone) dismissChip(); }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const chip = !active && count > 0 && !chipGone && (

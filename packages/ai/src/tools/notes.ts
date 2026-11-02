@@ -1,7 +1,7 @@
 import { richResult, type AgentTool } from '../agent.ts';
 import type { JsonSchema } from '../types.ts';
 
-/** Note metadata the tools expose. `NoteMeta` from @inkstone/core satisfies it. */
+/** Note metadata the tools expose. `NoteMeta` from @inkwright/core satisfies it. */
 export interface NoteInfo {
   id: string;
   title: string;
@@ -62,7 +62,7 @@ export interface NotePatch {
 }
 
 /**
- * What the app implements (backed by @inkstone/core Vault + SearchIndex) so agents can work
+ * What the app implements (backed by @inkwright/core Vault + SearchIndex) so agents can work
  * with notes. `MemoryNoteToolHost` is the reference implementation.
  */
 export interface NoteToolHost {
@@ -328,7 +328,7 @@ export const READ_ONLY_NOTE_TOOLS: readonly NoteToolName[] = ['list_notes', 'sea
 /** System prompt for the in-app notes agent. */
 export function notesAgentSystemPrompt(opts: { now?: Date; appName?: string; extra?: string } = {}): string {
   const now = opts.now ?? new Date();
-  const app = opts.appName ?? 'Inkstone';
+  const app = opts.appName ?? 'Inkwright';
   return [
     `You are the assistant inside ${app}, a handwriting note-taking app. You can search, read, create and organize the user's notes with tools.`,
     `Today is ${now.toISOString().slice(0, 10)}.`,

@@ -1,5 +1,5 @@
 ext {
-    // Capacitor 8 defaults to 24; Inkstone needs 26 (adaptive vector icons, VibrationEffect).
+    // Capacitor 8 defaults to 24; Inkwright needs 26 (adaptive vector icons, VibrationEffect).
     // Rich haptic primitives are used on API 30+ and degrade gracefully below.
     minSdkVersion = 26
     compileSdkVersion = 36
@@ -17,7 +17,7 @@ ext {
     androidxEspressoCoreVersion = '3.7.0'
     cordovaAndroidVersion = '14.0.1'
 
-    // Kotlin for the InkstoneNative plugin. 2.4 because LiteRT-LM 0.19 and ML Kit GenAI Prompt
+    // Kotlin for the InkwrightNative plugin. 2.4 because LiteRT-LM 0.19 and ML Kit GenAI Prompt
     // beta5 ship Kotlin 2.4 metadata, which older compilers refuse to read (docs/ANDROID.md).
     kotlin_version = '2.4.21'
     kotlinxCoroutinesVersion = '1.11.0'

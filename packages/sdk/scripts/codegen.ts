@@ -1,6 +1,6 @@
 /**
  * OpenAPI 3.1 → TypeScript: one interface per component schema and one typed method per
- * operation on `InkstoneClient`. Deliberately small (the API's schemas use a known subset of
+ * operation on `InkwrightClient`. Deliberately small (the API's schemas use a known subset of
  * JSON Schema 2020-12: objects, arrays, enums, unions with null, refs), dependency-free, and
  * deterministic, so the committed `src/generated.ts` can be checked for freshness in tests.
  */
@@ -61,8 +61,8 @@ const camel = (s: string) => s.replace(/[-_](\w)/g, (_m, c: string) => c.toUpper
 
 export function generateSdk(spec: Schema): string {
   const out: string[] = [
-    '// Generated from the Inkstone OpenAPI document by packages/sdk/scripts/generate.ts.',
-    '// Do not edit: run `npm run generate -w @inkstone/sdk` after changing the API.',
+    '// Generated from the Inkwright OpenAPI document by packages/sdk/scripts/generate.ts.',
+    '// Do not edit: run `npm run generate -w @inkwright/sdk` after changing the API.',
     '/* eslint-disable */',
     "import { BaseClient, type Operation, type RequestOptions } from './runtime.ts';",
     '',
@@ -121,15 +121,15 @@ export function generateSdk(spec: Schema): string {
       const argType = fields.length ? `{\n${fields.join('\n')}\n    }` : 'Record<string, never>';
       const summary = [op.summary, op.description].filter(Boolean).join('\n\n');
       methods.push(
-        `${doc(`${summary}\n\n\`${method.toUpperCase()} ${path}\`${op['x-inkstone-scope'] ? ` — scope \`${op['x-inkstone-scope']}\`` : ''}`, '  ')}` +
+        `${doc(`${summary}\n\n\`${method.toUpperCase()} ${path}\`${op['x-inkwright-scope'] ? ` — scope \`${op['x-inkwright-scope']}\`` : ''}`, '  ')}` +
           `  ${camel(id)}(args${required ? '' : '?'}: ${argType}${required ? '' : ''}, options?: RequestOptions): Promise<${resultType}> {\n` +
           `    return this.request<${resultType}>(${opConst}, args${required ? '' : ' ?? {}'}, options);\n  }\n`,
       );
     }
   }
   out.push(...ops, '');
-  out.push('/** Typed client for the Inkstone REST API. Each method is one API operation. */');
-  out.push('export class InkstoneClient extends BaseClient {');
+  out.push('/** Typed client for the Inkwright REST API. Each method is one API operation. */');
+  out.push('export class InkwrightClient extends BaseClient {');
   out.push(methods.join('\n'));
   out.push('}', '');
   return out.join('\n').replace(/\n{3,}/g, '\n\n');

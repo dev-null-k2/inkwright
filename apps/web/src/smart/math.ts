@@ -1,12 +1,12 @@
 import {
   asFunctionOfX, compileNode, findRoots, formatMath, formatMathNumber, normalizeMath, parseMath, variablesOf, type MathNode,
-} from '@inkstone/core';
+} from '@inkwright/core';
 
 /**
  * "Write an equation and it solves itself": the computer-algebra side. Works fully offline:
  *  - nerdamer-prime (MIT) for symbolic algebra: equations, systems, derivatives, integrals, limits;
  *  - mathjs (Apache-2.0) for units and conversions ("5 km/h to m/s");
- *  - Inkstone's own expression parser (core/mathexpr.ts) to read handwriting-style maths and to
+ *  - Inkwright's own expression parser (core/mathexpr.ts) to read handwriting-style maths and to
  *    check every symbolic answer numerically, with a numeric root finder as the fallback.
  * Both libraries are large, so they load on first use only.
  */

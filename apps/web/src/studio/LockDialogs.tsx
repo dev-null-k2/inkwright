@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, LockKeyhole } from 'lucide-react';
-import { MIN_PASSCODE, unlockWith } from '@inkstone/core';
+import { MIN_PASSCODE, unlockWith } from '@inkwright/core';
 import type { AppVault } from '../lib/vault.ts';
 import { Dialog } from '../ui/primitives.tsx';
 

@@ -3,7 +3,7 @@ import { GripVertical, Minimize2, Trash2, Type } from 'lucide-react';
 import {
   STICKY_COLORS, STICKY_DEFAULT, STICKY_FONT, STICKY_PAD, newId, resizeSticky, stickyRect,
   type NoteDocument, type Rect, type StickyObject,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import type { InkEngine, Tool } from '../canvas/engine.ts';
 import { FONT_FAMILIES } from '../canvas/render.ts';
 import { cx } from '../ui/primitives.tsx';

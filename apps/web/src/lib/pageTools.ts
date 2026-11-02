@@ -1,4 +1,4 @@
-import { VAULT_FORMAT_VERSION, copyPagesForNewNote, newId, pageSizeOf, rotatePageQuarter, type NoteDocument, type NoteMeta } from '@inkstone/core';
+import { VAULT_FORMAT_VERSION, copyPagesForNewNote, newId, pageSizeOf, rotatePageQuarter, type NoteDocument, type NoteMeta } from '@inkwright/core';
 import type { AppVault } from './vault.ts';
 
 /**

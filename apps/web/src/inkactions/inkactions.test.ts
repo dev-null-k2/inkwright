@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import initSqlJs from 'sql.js';
-import { NoteDocument, classifyPage, datasetFromCsv, newNote, newPage, runSqlWithRepair, sqlIdent, type Reference } from '@inkstone/core';
+import { NoteDocument, classifyPage, datasetFromCsv, newNote, newPage, runSqlWithRepair, sqlIdent, type Reference } from '@inkwright/core';
 import { sqlJsEngine, normalizeCell, type SqlJsStatic } from '../datasandbox/engine.ts';
 import { dataTableObject, parseDataText } from '../datasandbox/data.ts';
 import { placeTypedAnswer, writeInInk } from '../inkanswer/write.ts';

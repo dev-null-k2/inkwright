@@ -1,4 +1,4 @@
-import type { FsEntry, VaultFS } from '@inkstone/core';
+import type { FsEntry, VaultFS } from '@inkwright/core';
 import { safePath, utf8Decode, utf8Encode } from './util.ts';
 
 /** Minimal slice of `IDBKeyRange` used here (injectable for tests / non-window runtimes). */
@@ -7,7 +7,7 @@ export interface KeyRangeFactory {
 }
 
 export interface IndexedDBFSOptions {
-  /** Database name; one database per vault. Default "inkstone-vault". */
+  /** Database name; one database per vault. Default "inkwright-vault". */
   dbName?: string;
   /** Object store name. Default "files". */
   storeName?: string;
@@ -55,7 +55,7 @@ export class IndexedDBFS implements VaultFS {
   private readonly clock: () => number;
 
   constructor(opts: IndexedDBFSOptions = {}) {
-    this.dbName = opts.dbName ?? 'inkstone-vault';
+    this.dbName = opts.dbName ?? 'inkwright-vault';
     this.storeName = opts.storeName ?? 'files';
     const g = globalThis as { indexedDB?: IDBFactory; IDBKeyRange?: KeyRangeFactory };
     const factory = opts.indexedDB ?? g.indexedDB;

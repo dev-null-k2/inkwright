@@ -9,15 +9,15 @@ import {
   CodeIndex, CodeStore, codeRefStates, describeDrift, diagramSvg, formatReceipt, noteRunbookBlocks, parseCodeTarget, parseDiagramInput,
   parseHttpBlock, resolveCodeTarget, searchSymbols, validateDiagram,
   type CodeGraph, type CodeSymbolKind, type DiagramIR,
-} from '@inkstone/core';
-import { codeRefResolver } from '@inkstone/ai';
+} from '@inkwright/core';
+import { codeRefResolver } from '@inkwright/ai';
 import type { ServerContext } from '../context.ts';
 import { IdSchema, jsonResult, type ToolDef } from '../tools.ts';
 import { vaultDrift } from './repo.ts';
 
 const KINDS = ['function', 'method', 'class', 'interface', 'type', 'enum', 'const', 'struct', 'trait', 'route', 'module'] as const;
 const READ = { readOnlyHint: true, openWorldHint: false } as const;
-const NO_SOURCES = 'No code source in this vault yet. Scan one with `inkstone scan <repo> --vault <vault>`, or add one in the app (Settings › Developer).';
+const NO_SOURCES = 'No code source in this vault yet. Scan one with `inkwright scan <repo> --vault <vault>`, or add one in the app (Settings › Developer).';
 
 async function graphs(ctx: ServerContext): Promise<CodeGraph[]> {
   return new CodeStore(ctx.fs).readAllGraphs();
@@ -99,7 +99,7 @@ async function getRunbook(ctx: ServerContext, a: { id: string }): Promise<CallTo
   });
   return jsonResult({
     note: meta.title, noteId: meta.id, blocks,
-    note_on_running: 'These blocks run in the Inkstone app, with the user approving each request. This server does not execute them.',
+    note_on_running: 'These blocks run in the Inkwright app, with the user approving each request. This server does not execute them.',
   });
 }
 

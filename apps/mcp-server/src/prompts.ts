@@ -54,7 +54,7 @@ export async function dailyReviewPrompt(ctx: ServerContext, args: { date?: strin
     description: `Daily review for ${label}`,
     messages: [
       user(
-        `Here is everything I wrote in Inkstone on ${label} (${count} note${count === 1 ? '' : 's'}). Write my daily review:\n` +
+        `Here is everything I wrote in Inkwright on ${label} (${count} note${count === 1 ? '' : 's'}). Write my daily review:\n` +
           `1. Key points and decisions\n2. Action items (as a Markdown checklist, with the note each came from)\n3. Open questions and follow-ups\n4. Anything worth scheduling\n` +
           `Recognized handwriting may contain OCR errors. If a page is not yet recognized, look at it with get_page_image.\n` +
           `Offer to save the review as a new note with create_note (title "Daily review ${label}", tag "review").\n\n<notes>\n${body}\n</notes>`,

@@ -3,7 +3,7 @@
  * whatever is ready now (possibly a lower-resolution PDF render) and a callback when better
  * pixels arrive, so the canvas never blocks on decoding.
  */
-import type { FormFieldValue, NoteMeta, PageBackground } from '@inkstone/core';
+import type { FormFieldValue, NoteMeta, PageBackground } from '@inkwright/core';
 import { coerce, fieldsFromAnnotations, storageEntries } from '../fill/pdfForm.ts';
 
 export type AssetLoader = (noteId: string, name: string) => Promise<Uint8Array | null>;
@@ -74,7 +74,7 @@ export class AssetCache {
 
   /**
    * A page's imported background (PDF page or image) with the user's extra rotation and, for
-   * PDFs, the form values filled in Inkstone drawn into the fields.
+   * PDFs, the form values filled in Inkwright drawn into the fields.
    */
   background(note: Pick<NoteMeta, 'id' | 'forms'>, bg: PageBackground, scale: number, fresh = false): Bitmap | null {
     if (bg.kind === 'pdf') return this.pdfPage(note.id, bg.asset, bg.pageNumber ?? 1, scale, { rotation: bg.rotation, form: note.forms?.[bg.asset], fresh });
@@ -131,7 +131,7 @@ export class AssetCache {
     canvas.width = Math.ceil(viewport.width);
     canvas.height = Math.ceil(viewport.height);
     const ctx = canvas.getContext('2d')!;
-    // Form fields are drawn into the page (like printing) with the values filled in Inkstone;
+    // Form fields are drawn into the page (like printing) with the values filled in Inkwright;
     // without this pdf.js leaves fields to an HTML layer and filled-in PDFs would look empty.
     const fields = fieldsFromAnnotations([{ pageNumber, annotations: await page.getAnnotations({ intent: 'display' }) }]);
     const storage = doc.annotationStorage;

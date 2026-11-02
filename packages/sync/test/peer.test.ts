@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MemoryFS, Vault, VaultLayout, decodePage, newId, point, type InkStroke } from '@inkstone/core';
+import { MemoryFS, Vault, VaultLayout, decodePage, newId, point, type InkStroke } from '@inkwright/core';
 import {
   FRAME_HEADER_BYTES,
   FolderRemote,
@@ -36,7 +36,7 @@ import {
   type PeerTransport,
   type SessionKeys,
 } from '../src/index.ts';
-import { fromBase64Url, toBase64Url } from '@inkstone/core';
+import { fromBase64Url, toBase64Url } from '@inkwright/core';
 
 const te = new TextEncoder();
 
@@ -386,7 +386,7 @@ describe('device-to-device sync over the peer link', () => {
     const B = await vaultDevice();
     const { la } = await connect(A, B);
     const remote = new PeerRemote(la.rpc);
-    await expect(remote.write('.inkstone/state.json', te.encode('x'))).rejects.toThrow(/Not a vault file/);
+    await expect(remote.write('.inkwright/state.json', te.encode('x'))).rejects.toThrow(/Not a vault file/);
     await expect(remote.read('../etc/passwd')).rejects.toThrow();
     expect(fromBase64Url(toBase64Url(new Uint8Array([1, 2])))).toEqual(new Uint8Array([1, 2]));
   });

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Role, TaskState, type Message, type Task } from '@a2a-js/sdk';
 import { ClientFactory, type Client } from '@a2a-js/sdk/client';
-import { ActivityStore, createScriptedProvider, type ScriptStep } from '@inkstone/ai';
+import { ActivityStore, createScriptedProvider, type ScriptStep } from '@inkwright/ai';
 import { approvalFromMessage, citationsFrom } from '../src/a2a.ts';
 import type { AgentAI } from '../src/agent/ai.ts';
 import { parseCli } from '../src/cli.ts';
@@ -43,7 +43,7 @@ describe('A2A agent', () => {
   it('serves an Agent Card (v1.0 JSON, and v0.3 for older clients)', async () => {
     await start(null);
     const v1 = await (await fetch(`${base}/.well-known/agent-card.json`, { headers: { 'A2A-Version': '1.0' } })).json() as Record<string, any>;
-    expect(v1).toMatchObject({ name: 'Inkstone notes', capabilities: { streaming: true }, defaultInputModes: ['text/plain', 'application/json'] });
+    expect(v1).toMatchObject({ name: 'Inkwright notes', capabilities: { streaming: true }, defaultInputModes: ['text/plain', 'application/json'] });
     expect(v1.supportedInterfaces).toEqual([
       { url: `${base}/a2a`, protocolBinding: 'JSONRPC', protocolVersion: '1.0' },
       { url: `${base}/a2a`, protocolBinding: 'JSONRPC', protocolVersion: '0.3' },
@@ -65,7 +65,7 @@ describe('A2A agent', () => {
     expect(res.status?.state).toBe(TaskState.TASK_STATE_COMPLETED);
     const contents = partsOf(res);
     expect(contents[0]).toEqual({ $case: 'text', value: 'Call Maria about pricing before the Friday beta launch [Launch plan].' });
-    expect(contents[1]).toEqual({ $case: 'data', value: { citations: [{ noteId: 'LAUNCH', title: 'Launch plan', uri: 'inkstone://notes/LAUNCH' }] } });
+    expect(contents[1]).toEqual({ $case: 'data', value: { citations: [{ noteId: 'LAUNCH', title: 'Launch plan', uri: 'inkwright://notes/LAUNCH' }] } });
     const again = await client.getTask({ id: res.id } as never);
     expect(again.status?.state).toBe(TaskState.TASK_STATE_COMPLETED);
   });
@@ -146,6 +146,6 @@ describe('A2A agent', () => {
     const runs = [
       { call: { id: '1', name: 'search_notes', arguments: {} }, step: 1, ok: true, result: { results: [{ note_id: 'A', title: 'Alpha', page_index: 0 }, { note_id: 'B', title: 'Beta', page_index: 2 }] } },
     ];
-    expect(citationsFrom(runs, 'See [Beta].')).toEqual([{ noteId: 'B', title: 'Beta', uri: 'inkstone://notes/B', page: 3 }]);
+    expect(citationsFrom(runs, 'See [Beta].')).toEqual([{ noteId: 'B', title: 'Beta', uri: 'inkwright://notes/B', page: 3 }]);
   });
 });

@@ -1,9 +1,9 @@
 /**
  * Obsidian interop: the vault as an Obsidian-compatible Markdown vault, and an Obsidian (or any
- * Markdown) vault as Inkstone notes. The mapping is documented in docs/OBSIDIAN.md.
+ * Markdown) vault as Inkwright notes. The mapping is documented in docs/OBSIDIAN.md.
  *
  * Export: one `.md` per note in a folder per notebook, YAML properties (tags, created, updated,
- * aliases, inkstone-id, anything imported), `[[links]]` kept (rewritten to file names where a
+ * aliases, inkwright-id, anything imported), `[[links]]` kept (rewritten to file names where a
  * title can't be a file name), typed text and recognized handwriting as text, each page with ink
  * as a picture in `attachments/`, imported PDFs and recordings copied and embedded.
  *
@@ -59,8 +59,8 @@ class NameSet {
 
 const iso = (ms: number) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
 
-/** Keys Inkstone writes itself; imported `properties` never override them. */
-const MANAGED = new Set(['tags', 'created', 'updated', 'aliases', 'inkstone-id', 'summary']);
+/** Keys Inkwright writes itself; imported `properties` never override them. */
+const MANAGED = new Set(['tags', 'created', 'updated', 'aliases', 'inkwright-id', 'summary']);
 
 const extOf = (name: string) => (/\.([a-z0-9]+)$/i.exec(name)?.[1] ?? '').toLowerCase();
 const IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif']);
@@ -161,7 +161,7 @@ export async function exportObsidianVault(vault: Vault, opts: ObsidianExportOpti
     if (normalizeTitle(fname) !== normalizeTitle(note.title)) aliases.add(note.title);
     if (aliases.size) props.aliases = [...aliases];
     if (note.summary?.trim()) props.summary = note.summary.trim();
-    props['inkstone-id'] = note.id;
+    props['inkwright-id'] = note.id;
     for (const [k, v] of Object.entries(imported)) if (!MANAGED.has(k) && !(k in props)) props[k] = v as YamlValue;
 
     const body: string[] = [];
@@ -277,7 +277,7 @@ export type MdBlock =
   | { kind: 'pdf'; file: VaultFile };
 
 /**
- * Converts Obsidian Markdown to Inkstone note text and pulls embeds out as blocks: images and PDFs
+ * Converts Obsidian Markdown to Inkwright note text and pulls embeds out as blocks: images and PDFs
  * become blocks; note embeds and links to other `.md` files become `[[links]]`.
  */
 export function markdownBlocks(body: string, findFile: (ref: string) => VaultFile | null, noteExists: (ref: string) => string | null): MdBlock[] {
@@ -537,7 +537,7 @@ export async function importObsidianVault(vault: Vault, input: readonly VaultFil
     const createdAt = dateOf(data.created ?? data['date created'] ?? data.date) ?? f.mtime ?? now;
     const updatedAt = Math.max(createdAt, dateOf(data.updated ?? data.modified ?? data['date modified']) ?? f.mtime ?? now);
     const properties: Record<string, YamlValue> = {};
-    for (const [k, v] of Object.entries(data)) if (!['tags', 'tag', 'created', 'updated', 'modified', 'inkstone-id'].includes(k)) properties[k] = v;
+    for (const [k, v] of Object.entries(data)) if (!['tags', 'tag', 'created', 'updated', 'modified', 'inkwright-id'].includes(k)) properties[k] = v;
     const note: NoteMeta = {
       id: noteId,
       title,

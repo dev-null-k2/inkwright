@@ -1,12 +1,12 @@
 {
-  "name": "@inkstone/mcp-server",
+  "name": "@inkwright/mcp-server",
   "version": "1.0.0",
-  "description": "MCP server, A2A agent and always-on routine runner for an Inkstone notes vault.",
+  "description": "MCP server, A2A agent and always-on routine runner for an Inkwright notes vault.",
   "type": "module",
   "bin": {
-    "inkstone-mcp": "dist/index.js",
-    "inkstone-agent": "dist/agent.js",
-    "inkstone": "dist/inkstone.js"
+    "inkwright-mcp": "dist/index.js",
+    "inkwright-agent": "dist/agent.js",
+    "inkwright": "dist/inkwright.js"
   },
   "files": [
     "dist",
@@ -21,13 +21,13 @@
     "node": ">=20"
   },
   "devDependencies": {
-    "@inkstone/ai": "*",
-    "@inkstone/core": "*",
+    "@inkwright/ai": "*",
+    "@inkwright/core": "*",
     "@modelcontextprotocol/client": "^2.4.0",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@types/express": "^5.0.6",
     "ajv": "^8.20.0",
-    "@inkstone/plugin-api": "*"
+    "@inkwright/plugin-api": "*"
   },
   "optionalDependencies": {
     "@resvg/resvg-js": "^2.6.2"

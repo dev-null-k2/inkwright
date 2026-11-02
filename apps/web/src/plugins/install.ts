@@ -4,8 +4,8 @@
  * `packageFromFiles`, which finds and validates the manifest, checks the app version, keeps only
  * file types a plugin may ship and enforces size limits — before anything is written or run.
  */
-import { compareVersions, validateManifest, type PluginManifest } from '@inkstone/plugin-api';
-import type { PluginSource } from '@inkstone/core';
+import { compareVersions, validateManifest, type PluginManifest } from '@inkwright/plugin-api';
+import type { PluginSource } from '@inkwright/core';
 import type { PluginPackage } from './store.ts';
 
 export const MAX_PLUGIN_BYTES = 5 * 1024 * 1024;
@@ -25,7 +25,7 @@ const dec = new TextDecoder();
 export function packageFromFiles(input: Map<string, Uint8Array>, source: PluginSource, appVersion: string): PluginPackage {
   const paths = [...input.keys()].map((p) => p.replace(/\\/g, '/').replace(/^\.?\//, ''));
   const manifestPath = paths.filter((p) => /(^|\/)manifest\.json$/.test(p)).sort((a, b) => a.split('/').length - b.split('/').length)[0];
-  if (!manifestPath) throw new PluginInstallError('There is no manifest.json in it, so it is not an Inkstone plugin.');
+  if (!manifestPath) throw new PluginInstallError('There is no manifest.json in it, so it is not an Inkwright plugin.');
   const prefix = manifestPath.slice(0, -'manifest.json'.length);
   const files = new Map<string, Uint8Array>();
   let total = 0;
@@ -49,7 +49,7 @@ export function packageFromFiles(input: Map<string, Uint8Array>, source: PluginS
   const r = validateManifest(json);
   if (!r.ok) throw new PluginInstallError(`Its manifest has problems: ${r.errors.join(' ')}`);
   if (!files.has(r.manifest.entry)) throw new PluginInstallError(`Its code (${r.manifest.entry}) is missing.`);
-  if (compareVersions(appVersion, r.manifest.minAppVersion) < 0) throw new PluginInstallError(`${r.manifest.name} needs Inkstone ${r.manifest.minAppVersion} or later; this is ${appVersion}.`);
+  if (compareVersions(appVersion, r.manifest.minAppVersion) < 0) throw new PluginInstallError(`${r.manifest.name} needs Inkwright ${r.manifest.minAppVersion} or later; this is ${appVersion}.`);
   // Keep the normalized manifest so what we store is what we validated.
   files.set('manifest.json', enc.encode(`${JSON.stringify(json, null, 2)}\n`));
   return { manifest: r.manifest, files, source };
@@ -57,7 +57,7 @@ export function packageFromFiles(input: Map<string, Uint8Array>, source: PluginS
 
 /** Reads a .zip into files (deflate via the platform's DecompressionStream). */
 export async function packageFromZip(bytes: Uint8Array, name: string, appVersion: string): Promise<PluginPackage> {
-  const { readZip } = await import('@inkstone/sync');
+  const { readZip } = await import('@inkwright/sync');
   let entries;
   try {
     entries = await readZip(bytes);

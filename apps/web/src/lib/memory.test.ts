@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { SearchIndex, newNote, newPage, type NoteMeta, type PageInk } from '@inkstone/core';
+import { SearchIndex, newNote, newPage, type NoteMeta, type PageInk } from '@inkwright/core';
 import type { Embedder } from './localai.ts';
 
 // A deterministic embedder: a bag of letters, so related words land near each other.

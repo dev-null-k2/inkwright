@@ -7,14 +7,14 @@ import { DEFAULT_SETTINGS, useSettings, activePreset, inputPrefs } from '../stat
 const stroke = (id: string) => ({ id, pen: 'fountain' as const, color: '#FF000000', size: 2, createdAt: 1, points: [0, 1, 2, 3].map((i) => ({ x: 10 + i * 5, y: 10, t: i * 8, p: 0.5, tilt: -1, orient: -1 })) });
 
 describe('app vault + editor session', () => {
-  beforeEach(() => indexedDB.deleteDatabase('inkstone-vault'));
+  beforeEach(() => indexedDB.deleteDatabase('inkwright-vault'));
 
   it('first run seeds the welcome note and indexes it for search', async () => {
     const v = await AppVault.open();
     const notes = await v.listNotes();
-    expect(notes.map((n) => n.title)).toContain('Welcome to Inkstone');
+    expect(notes.map((n) => n.title)).toContain('Welcome to Inkwright');
     await v.buildIndex();
-    expect(v.search.search('scribble')[0]?.title).toBe('Welcome to Inkstone');
+    expect(v.search.search('scribble')[0]?.title).toBe('Welcome to Inkwright');
   });
 
   it('autosaves only changed pages and survives reopening', async () => {
@@ -50,13 +50,13 @@ describe('settings', () => {
     expect(activePreset(s).id).toBe(DEFAULT_SETTINGS.activePresetId);
     expect(inputPrefs(s).highlighter.pen).toBe('highlighter');
     s.update(() => ({ eraserSize: 40 }));
-    expect(JSON.parse(localStorage.getItem('inkstone.settings.v1')!).eraserSize).toBe(40);
+    expect(JSON.parse(localStorage.getItem('inkwright.settings.v1')!).eraserSize).toBe(40);
   });
 });
 
 describe('sync while a note is open', () => {
   it('brings in strokes from another device and keeps strokes written meanwhile', async () => {
-    indexedDB.deleteDatabase('inkstone-vault');
+    indexedDB.deleteDatabase('inkwright-vault');
     const v = await AppVault.open();
     useApp.setState({ vault: v });
     const { note } = await v.vault.createNote({ title: 'Shared' });
@@ -80,7 +80,7 @@ describe('sync while a note is open', () => {
   });
 
   it('a clean open note simply shows the synced version', async () => {
-    indexedDB.deleteDatabase('inkstone-vault');
+    indexedDB.deleteDatabase('inkwright-vault');
     const v = await AppVault.open();
     useApp.setState({ vault: v });
     const { note } = await v.vault.createNote({ title: 'Shared' });

@@ -212,7 +212,7 @@ export interface McpServerInfo {
 export type McpCallOutcome = { kind: 'result'; result: CallToolResult } | { kind: 'task'; task: McpTask };
 
 /** Accepts any value: task results are validated by `taskFromResult`. */
-const passthrough = { '~standard': { version: 1 as const, vendor: 'inkstone', validate: (value: unknown) => ({ value }) } };
+const passthrough = { '~standard': { version: 1 as const, vendor: 'inkwright', validate: (value: unknown) => ({ value }) } };
 
 export class McpConnection {
   status: McpStatus = 'idle';
@@ -243,7 +243,7 @@ export class McpConnection {
     this.status = 'connecting';
     this.error = null;
     const client = new Client(
-      { name: this.opts.clientInfo?.name ?? 'inkstone', version: this.opts.clientInfo?.version ?? '1.0.0', ...(this.opts.clientInfo?.title ? { title: this.opts.clientInfo.title } : {}) },
+      { name: this.opts.clientInfo?.name ?? 'inkwright', version: this.opts.clientInfo?.version ?? '1.0.0', ...(this.opts.clientInfo?.title ? { title: this.opts.clientInfo.title } : {}) },
       {
         versionNegotiation: { mode: 'auto' },
         capabilities: { elicitation: { form: {} }, extensions: { [TASKS_EXTENSION]: {} } } as never,

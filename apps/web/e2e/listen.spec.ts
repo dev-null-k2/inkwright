@@ -93,12 +93,12 @@ async function addProvider(page: Page) {
   await expect(speech.locator('.lis-where')).toContainText('Sent to Custom (OpenAI-compatible)');
 }
 
-const strokesNow = (page: Page) => page.evaluate(() => (window as any).__inkstone.doc.page(0).strokes.map((s: any) => ({ id: s.id, createdAt: s.createdAt, x: s.points[0].x, y: s.points[0].y })));
+const strokesNow = (page: Page) => page.evaluate(() => (window as any).__inkwright.doc.page(0).strokes.map((s: any) => ({ id: s.id, createdAt: s.createdAt, x: s.points[0].x, y: s.points[0].y })));
 
 test('live transcript lines up with ink; ask while recording; summaries after', async ({ page }) => {
   test.setTimeout(120_000);
   // Short windows so a test doesn't wait 10 s per line (test builds only).
-  await page.addInitScript(() => { (window as any).__inkstoneSpeechTuning = { minWindowMs: 1500, maxWindowMs: 8000, pauseMs: 500 }; });
+  await page.addInitScript(() => { (window as any).__inkwrightSpeechTuning = { minWindowMs: 1500, maxWindowMs: 8000, pauseMs: 500 }; });
   const mock = await mockProvider(page);
   await openApp(page);
   await addProvider(page);
@@ -134,7 +134,7 @@ test('live transcript lines up with ink; ask while recording; summaries after', 
   const cite = ai.locator('.ai-msg.is-assistant a[href^="#said/"]');
   await expect(cite).toHaveCount(1);
   await cite.click(); // during recording: picks out the ink written then
-  await page.waitForFunction(() => (window as any).__inkstone.engine.focusedStrokes.length > 0);
+  await page.waitForFunction(() => (window as any).__inkwright.engine.focusedStrokes.length > 0);
 
   // Stop: the transcript is saved next to the clip and pages get summaries.
   await page.getByRole('button', { name: 'Stop recording' }).click();
@@ -150,8 +150,8 @@ test('live transcript lines up with ink; ask while recording; summaries after', 
   // Tap a sentence: the strokes written while it was said light up and the audio plays from there.
   const strokes = await strokesNow(page);
   await panel.locator('.lis-seg').nth(1).click();
-  await page.waitForFunction(() => (window as any).__inkstone.engine.focusedStrokes.length > 0);
-  const focused: string[] = await page.evaluate(() => (window as any).__inkstone.engine.focusedStrokes);
+  await page.waitForFunction(() => (window as any).__inkwright.engine.focusedStrokes.length > 0);
+  const focused: string[] = await page.evaluate(() => (window as any).__inkwright.engine.focusedStrokes);
   expect(focused).toContain(strokes[1]!.id);
   expect(focused).not.toContain(strokes[0]!.id);
   await expect(page.locator('.audio-hint')).toHaveText('Tap ink to hear that moment');
@@ -163,7 +163,7 @@ test('live transcript lines up with ink; ask while recording; summaries after', 
   await panel.locator('.lis-seg').first().click();
   await expect(panel.locator('.lis-seg.is-on')).toContainText('Today we cover');
   await page.getByRole('button', { name: 'Pause' }).click();
-  const box = await page.evaluate((id) => { const e = (window as any).__inkstone.engine; const s = e.doc.page(0).strokes.find((x: any) => x.id === id); const p = s.points[Math.floor(s.points.length / 2)]; return e.pageRectToScreen(0, { minX: p.x, minY: p.y, maxX: p.x, maxY: p.y }); }, strokes[1]!.id);
+  const box = await page.evaluate((id) => { const e = (window as any).__inkwright.engine; const s = e.doc.page(0).strokes.find((x: any) => x.id === id); const p = s.points[Math.floor(s.points.length / 2)]; return e.pageRectToScreen(0, { minX: p.x, minY: p.y, maxX: p.x, maxY: p.y }); }, strokes[1]!.id);
   await pointer(page, 'pointerdown', [box.x, box.y]);
   await pointer(page, 'pointerup', [box.x, box.y]);
   await expect(panel.locator('.lis-seg.is-on')).toContainText('Convolution flips');
@@ -174,14 +174,14 @@ test('live transcript lines up with ink; ask while recording; summaries after', 
   await page.getByRole('menuitem', { name: /^Pages/ }).click();
   const pages = page.getByRole('complementary', { name: 'Pages' });
   await expect(pages.locator('.page-sum')).toContainText('Convolution flips one signal and slides it.');
-  const texts = await page.evaluate(() => ((window as any).__inkstone.doc.page(0).texts ?? []).length);
+  const texts = await page.evaluate(() => ((window as any).__inkwright.doc.page(0).texts ?? []).length);
   await pages.locator('.page-sum').getByRole('button', { name: 'Add to page' }).click();
-  expect(await page.evaluate(() => ((window as any).__inkstone.doc.page(0).texts ?? []).map((t: any) => t.text))).toHaveLength(texts + 1);
+  expect(await page.evaluate(() => ((window as any).__inkwright.doc.page(0).texts ?? []).map((t: any) => t.text))).toHaveLength(texts + 1);
 });
 
 test('search finds what was said and opens that moment', async ({ page }) => {
   test.setTimeout(90_000);
-  await page.addInitScript(() => { (window as any).__inkstoneSpeechTuning = { minWindowMs: 1500, maxWindowMs: 8000, pauseMs: 500 }; localStorage.setItem('inkstone.speech.v1', JSON.stringify({ engine: 'provider', autoSummary: false, autoOpen: false })); });
+  await page.addInitScript(() => { (window as any).__inkwrightSpeechTuning = { minWindowMs: 1500, maxWindowMs: 8000, pauseMs: 500 }; localStorage.setItem('inkwright.speech.v1', JSON.stringify({ engine: 'provider', autoSummary: false, autoOpen: false })); });
   await mockProvider(page);
   await openApp(page);
   await addProvider(page);
@@ -201,13 +201,13 @@ test('search finds what was said and opens that moment', async ({ page }) => {
   const row = page.locator('.pal-row', { hasText: 'what was said at' }).first();
   await expect(row).toBeVisible();
   await row.click();
-  await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
   // Opening the moment plays the recording from there.
   await expect(page.locator('.audio-hint')).toHaveText('Tap ink to hear that moment');
 });
 
 test('dictate puts speech on the page, processed where the indicator says', async ({ page }) => {
-  await page.addInitScript(() => { (window as any).__inkstoneSpeechTuning = { minWindowMs: 1500, maxWindowMs: 8000, pauseMs: 500 }; });
+  await page.addInitScript(() => { (window as any).__inkwrightSpeechTuning = { minWindowMs: 1500, maxWindowMs: 8000, pauseMs: 500 }; });
   await mockProvider(page);
   await openApp(page);
   await addProvider(page);
@@ -219,7 +219,7 @@ test('dictate puts speech on the page, processed where the indicator says', asyn
   await expect(bar.locator('.lis-where')).toContainText('Sent to Custom');
   await expect(bar.locator('.dict-text')).toContainText('Today we cover convolution.', { timeout: 15_000 });
   await bar.getByRole('button', { name: 'Done' }).click();
-  await expect.poll(() => page.evaluate(() => ((window as any).__inkstone.doc.page(0).texts ?? []).map((t: any) => t.text).join(' '))).toContain('Today we cover convolution.');
+  await expect.poll(() => page.evaluate(() => ((window as any).__inkwright.doc.page(0).texts ?? []).map((t: any) => t.text).join(' '))).toContain('Today we cover convolution.');
 
   // In a text box, dictation goes in at the caret.
   await page.keyboard.press('t');
@@ -237,7 +237,7 @@ test('dictate puts speech on the page, processed where the indicator says', asyn
 });
 
 test('on this device: offers the speech model download and never uploads audio', async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('inkstone.speech.v1', JSON.stringify({ engine: 'device' })));
+  await page.addInitScript(() => localStorage.setItem('inkwright.speech.v1', JSON.stringify({ engine: 'device' })));
   const uploads: string[] = [];
   page.on('request', (r) => { if (r.url().includes('/audio/transcriptions')) uploads.push(r.url()); });
   await mockProvider(page);

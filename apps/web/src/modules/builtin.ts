@@ -1,5 +1,5 @@
 /**
- * Inkstone's own features as modules, and the presets that switch sensible sets of them.
+ * Inkwright's own features as modules, and the presets that switch sensible sets of them.
  *
  * Writing, pages, notebooks, search, sync, export and undo are the core and always on; everything
  * here can be switched off in Settings › Modules. Module code stays lazily loaded: declarations are
@@ -171,10 +171,10 @@ export const BUILTIN_MODULES: ModuleDefinition[] = [
   {
     id: 'developer',
     name: 'Developer tools',
-    description: 'API keys for the local REST API, the window.inkstone automation API for scripts and extensions, and the deep-link reference.',
+    description: 'API keys for the local REST API, the window.inkwright automation API for scripts and extensions, and the deep-link reference.',
     defaultEnabled: false,
     dependencies: ['plugins'],
-    contributes: { settingsSections: ['developer'], background: ['window.inkstone (when switched on)'] },
+    contributes: { settingsSections: ['developer'], background: ['window.inkwright (when switched on)'] },
     async activate() {
       const { startAutomationApi } = await import('../developer/automation.ts');
       return startAutomationApi();
@@ -234,7 +234,7 @@ export const BUILTIN_MODULES: ModuleDefinition[] = [
   {
     id: 'deep-links',
     name: 'Links from other apps',
-    description: 'inkstone:// links and web links that create notes, open pages, search and capture — for Shortcuts, Tasker and launchers.',
+    description: 'inkwright:// links and web links that create notes, open pages, search and capture — for Shortcuts, Tasker and launchers.',
     defaultEnabled: true,
     contributes: { background: ['Opening links'] },
     async activate() {

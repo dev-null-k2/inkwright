@@ -1,5 +1,5 @@
-import { attributeAnswer, attributedClaims, boundsOfStrokes, rectIsEmpty, textBoxBounds, type InkStroke, type NoteDocument, type Passage, type ProvenanceGen, type Rect, type TextBox } from '@inkstone/core';
-import type { ContentPart } from '@inkstone/ai';
+import { attributeAnswer, attributedClaims, boundsOfStrokes, rectIsEmpty, textBoxBounds, type InkStroke, type NoteDocument, type Passage, type ProvenanceGen, type Rect, type TextBox } from '@inkwright/core';
+import type { ContentPart } from '@inkwright/ai';
 import { useApp } from '../state/app.ts';
 import { pageImageForAI } from '../lib/exporter.ts';
 import type { AppVault } from '../lib/vault.ts';

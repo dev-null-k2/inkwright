@@ -1,5 +1,5 @@
 import type { InkTipSink } from '../canvas/engine.ts';
-import { InkstoneNative, hasNativePlugin } from './native.ts';
+import { InkwrightNative, hasNativePlugin } from './native.ts';
 
 /**
  * How much of the stroke the native tip draws. It must outlast the web layer's presentation lag
@@ -18,7 +18,7 @@ export class NativeInkTip implements InkTipSink {
 
   constructor() {
     if (!hasNativePlugin) return;
-    void InkstoneNative.capabilities().then((c) => { this.supported = !!c.inkTip; if (this.supported && this.active) void this.prepare(true); }).catch(() => {});
+    void InkwrightNative.capabilities().then((c) => { this.supported = !!c.inkTip; if (this.supported && this.active) void this.prepare(true); }).catch(() => {});
   }
 
   /** Attach the overlay while a note is open. */
@@ -26,18 +26,18 @@ export class NativeInkTip implements InkTipSink {
     this.active = active;
     if (!this.supported) return;
     try {
-      const r = await InkstoneNative.inkTipPrepare({ active });
+      const r = await InkwrightNative.inkTipPrepare({ active });
       if (active && !r.supported) this.supported = false;
     } catch { this.supported = false; }
   }
 
   begin(opts: { color: string; widthPx: number }) {
     if (!this.supported || !this.active) return;
-    void InkstoneNative.inkTipBegin({ color: opts.color, widthPx: opts.widthPx, tailMs: TAIL_MS }).catch(() => {});
+    void InkwrightNative.inkTipBegin({ color: opts.color, widthPx: opts.widthPx, tailMs: TAIL_MS }).catch(() => {});
   }
 
   end(cancelled = false) {
     if (!this.supported || !this.active) return;
-    void InkstoneNative.inkTipEnd({ cancelled }).catch(() => {});
+    void InkwrightNative.inkTipEnd({ cancelled }).catch(() => {});
   }
 }

@@ -1,6 +1,6 @@
 /**
- * The API a plugin receives (`activate(inkstone)`), also exposed to power users as
- * `window.inkstone` when Settings › Developer › Automation API is on. Every method is async and
+ * The API a plugin receives (`activate(inkwright)`), also exposed to power users as
+ * `window.inkwright` when Settings › Developer › Automation API is on. Every method is async and
  * goes through the host, which checks the caller's permissions; a refused call rejects with a
  * `PluginApiError` whose `code` is `permission_denied`.
  */
@@ -90,7 +90,7 @@ export interface ExportOutput {
 }
 
 export interface AppInfo {
-  /** Inkstone version, e.g. 1.0.0. */
+  /** Inkwright version, e.g. 1.0.0. */
   version: string;
   /** Plugin API version (1). */
   apiVersion: number;
@@ -104,7 +104,7 @@ export type ToolHandler = (args: Record<string, unknown>) => unknown | Promise<u
 export type ImportHandler = (file: ImportInput) => ImportedNote | ImportedNote[] | Promise<ImportedNote | ImportedNote[]>;
 export type ExportHandler = (input: ExportInput) => ExportOutput | Promise<ExportOutput>;
 
-export interface InkstoneAPI {
+export interface InkwrightAPI {
   readonly app: {
     info(): Promise<AppInfo>;
   };
@@ -178,11 +178,11 @@ export interface InkstoneAPI {
 /** What a plugin's entry module exports (as `default`). */
 export interface PluginModule {
   /** Runs once when the plugin starts (sandboxed). Register command, tool, importer and exporter handlers here. */
-  activate?(inkstone: InkstoneAPI): void | Promise<void>;
+  activate?(inkwright: InkwrightAPI): void | Promise<void>;
   /** Runs when the plugin stops (disabled, uninstalled, updated). */
   deactivate?(): void | Promise<void>;
   /** Panel renderers by panel id; each runs in the panel's own sandboxed frame. */
-  panels?: Record<string, (root: HTMLElement, inkstone: InkstoneAPI) => void | Promise<void>>;
+  panels?: Record<string, (root: HTMLElement, inkwright: InkwrightAPI) => void | Promise<void>>;
 }
 
 /** Identity helper that gives plugin code full types (`export default definePlugin({...})`). */

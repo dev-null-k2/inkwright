@@ -2,12 +2,12 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 /**
  * Capacitor shell for Android (and iOS). The web build in dist/ is copied into the native
- * projects by `npx cap sync`. The Android-only `InkstoneNative` plugin lives in
- * android/app/src/main/java/app/inkstone/ (see docs/ANDROID.md).
+ * projects by `npx cap sync`. The Android-only `InkwrightNative` plugin lives in
+ * android/app/src/main/java/app/inkwright/ (see docs/ANDROID.md).
  */
 const config: CapacitorConfig = {
-  appId: 'app.inkstone',
-  appName: 'Inkstone',
+  appId: 'app.inkwright',
+  appName: 'Inkwright',
   // Native builds come from `vite build --mode native` (CSP adjusted for Capacitor's bridge).
   webDir: 'dist-native',
   server: {

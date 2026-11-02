@@ -5,7 +5,7 @@
  * Choosing "on this device" explicitly never falls back to anything that uploads audio — it offers
  * the download instead.
  */
-import type { SpeechWhere } from '@inkstone/core';
+import type { SpeechWhere } from '@inkwright/core';
 
 export type SpeechPreference = 'auto' | 'device' | 'browser' | 'provider' | 'off';
 

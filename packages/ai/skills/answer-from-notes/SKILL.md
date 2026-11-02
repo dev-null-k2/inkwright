@@ -2,7 +2,7 @@
 name: answer-from-notes
 description: Answers questions using only the user's own notes, citing each note by its exact title in square brackets, and says plainly when the notes don't contain the answer. Use when the user asks what they wrote, decided, planned or learned about something.
 metadata:
-  author: inkstone
+  author: inkwright
   version: "1.0"
 ---
 

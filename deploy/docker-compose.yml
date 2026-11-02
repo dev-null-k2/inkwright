@@ -1,4 +1,4 @@
-# Inkstone appliance (docs/ENTERPRISE.md): the web app, the MCP/A2A server with the routine
+# Inkwright appliance (docs/ENTERPRISE.md): the web app, the MCP/A2A server with the routine
 # runner, a WebDAV endpoint for the vault, and optionally Ollama — with no outbound internet.
 #
 #   cp deploy/.env.example deploy/.env    # then edit it
@@ -10,7 +10,7 @@
 # (or your LAN) even if it tried. To use a cloud AI provider, see "Allowing one provider" in
 # docs/ENTERPRISE.md — it is an explicit, reviewed change, never the default.
 
-name: inkstone
+name: inkwright
 
 x-hardening: &hardening
   read_only: true
@@ -23,12 +23,12 @@ services:
   web:
     <<: *hardening
     build: { context: .., dockerfile: deploy/Dockerfile, target: web }
-    image: ${INKSTONE_IMAGE_PREFIX:-inkstone}/web:${INKSTONE_VERSION:-local}
-    ports: ["${INKSTONE_BIND:-127.0.0.1}:${INKSTONE_PORT:-8080}:8080"]
+    image: ${INKWRIGHT_IMAGE_PREFIX:-inkwright}/web:${INKWRIGHT_VERSION:-local}
+    ports: ["${INKWRIGHT_BIND:-127.0.0.1}:${INKWRIGHT_PORT:-8080}:8080"]
     networks: [edge, internal]
     tmpfs: [/tmp, /var/cache/nginx, /var/run]
     volumes:
-      - ${INKSTONE_MANAGED_POLICY:-./managed-policy.default.json}:/usr/share/nginx/html/managed-policy.json:ro
+      - ${INKWRIGHT_MANAGED_POLICY:-./managed-policy.default.json}:/usr/share/nginx/html/managed-policy.json:ro
     depends_on:
       server: { condition: service_healthy }
       webdav: { condition: service_started }
@@ -36,28 +36,28 @@ services:
   server:
     <<: *hardening
     build: { context: .., dockerfile: deploy/Dockerfile, target: server }
-    image: ${INKSTONE_IMAGE_PREFIX:-inkstone}/server:${INKSTONE_VERSION:-local}
+    image: ${INKWRIGHT_IMAGE_PREFIX:-inkwright}/server:${INKWRIGHT_VERSION:-local}
     networks: [internal]
     tmpfs: [/tmp]
     volumes:
       - vault:/vault
-      - ${INKSTONE_MANAGED_POLICY:-./managed-policy.default.json}:/etc/inkstone/policy.json:ro
+      - ${INKWRIGHT_MANAGED_POLICY:-./managed-policy.default.json}:/etc/inkwright/policy.json:ro
     environment:
-      INKSTONE_PUBLIC_URL: ${INKSTONE_PUBLIC_URL:?set INKSTONE_PUBLIC_URL, e.g. https://notes.example.com}
-      INKSTONE_POLICY_FILE: /etc/inkstone/policy.json
+      INKWRIGHT_PUBLIC_URL: ${INKWRIGHT_PUBLIC_URL:?set INKWRIGHT_PUBLIC_URL, e.g. https://notes.example.com}
+      INKWRIGHT_POLICY_FILE: /etc/inkwright/policy.json
       # A P-256 private JWK that signs the audit trail (add it as a secret: docs/ENTERPRISE.md).
-      INKSTONE_AUDIT_KEY: ${INKSTONE_AUDIT_KEY_PATH:-}
-      INKSTONE_A2A: ${INKSTONE_A2A:-1}
+      INKWRIGHT_AUDIT_KEY: ${INKWRIGHT_AUDIT_KEY_PATH:-}
+      INKWRIGHT_A2A: ${INKWRIGHT_A2A:-1}
       # Sign-in: OAuth 2.1 with your OpenID Connect provider (recommended) or a bearer token.
-      INKSTONE_OAUTH_ISSUER: ${INKSTONE_OAUTH_ISSUER:-}
-      INKSTONE_OAUTH_AUDIENCE: ${INKSTONE_OAUTH_AUDIENCE:-}
-      INKSTONE_OAUTH_JWKS_URL: ${INKSTONE_OAUTH_JWKS_URL:-}
-      INKSTONE_MCP_TOKEN: ${INKSTONE_MCP_TOKEN:-}
+      INKWRIGHT_OAUTH_ISSUER: ${INKWRIGHT_OAUTH_ISSUER:-}
+      INKWRIGHT_OAUTH_AUDIENCE: ${INKWRIGHT_OAUTH_AUDIENCE:-}
+      INKWRIGHT_OAUTH_JWKS_URL: ${INKWRIGHT_OAUTH_JWKS_URL:-}
+      INKWRIGHT_MCP_TOKEN: ${INKWRIGHT_MCP_TOKEN:-}
       # The server's own AI (summaries, routines, A2A). Default: Ollama inside the appliance.
-      INKSTONE_AI_PROVIDER: ${INKSTONE_AI_PROVIDER:-ollama}
-      INKSTONE_AI_MODEL: ${INKSTONE_AI_MODEL:-qwen2.5:7b-instruct}
-      INKSTONE_AI_BASE_URL: ${INKSTONE_AI_BASE_URL:-http://ollama:11434/v1}
-      INKSTONE_AI_ON_PREMISES: ${INKSTONE_AI_ON_PREMISES:-1}
+      INKWRIGHT_AI_PROVIDER: ${INKWRIGHT_AI_PROVIDER:-ollama}
+      INKWRIGHT_AI_MODEL: ${INKWRIGHT_AI_MODEL:-qwen2.5:7b-instruct}
+      INKWRIGHT_AI_BASE_URL: ${INKWRIGHT_AI_BASE_URL:-http://ollama:11434/v1}
+      INKWRIGHT_AI_ON_PREMISES: ${INKWRIGHT_AI_ON_PREMISES:-1}
 
   webdav:
     <<: *hardening
@@ -66,7 +66,7 @@ services:
     networks: [internal]
     tmpfs: [/tmp, /config]
     volumes: [vault:/vault]
-    command: ["serve", "webdav", "/vault", "--addr", ":8080", "--htpasswd", "/run/secrets/webdav.htpasswd", "--realm", "Inkstone"]
+    command: ["serve", "webdav", "/vault", "--addr", ":8080", "--htpasswd", "/run/secrets/webdav.htpasswd", "--realm", "Inkwright"]
     secrets: [webdav.htpasswd]
 
   ollama:
@@ -90,4 +90,4 @@ volumes:
 
 secrets:
   webdav.htpasswd:
-    file: ${INKSTONE_WEBDAV_HTPASSWD:-./webdav.htpasswd}
+    file: ${INKWRIGHT_WEBDAV_HTPASSWD:-./webdav.htpasswd}

@@ -15,7 +15,7 @@ import {
   type NoteMeta,
   type PageInk,
   type TextBox,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import type { NoteContent, NoteInfo, NoteListItem, NotePatch, NoteSearchHit, NoteToolHost, NotebookInfo } from './notes.ts';
 
 export interface MemoryNoteToolHostOptions {
@@ -61,7 +61,7 @@ function fakeStroke(i: number, now: number): InkStroke {
 }
 
 /**
- * NoteToolHost over an @inkstone/core Vault + SearchIndex. In-memory by default (tests, evals,
+ * NoteToolHost over an @inkwright/core Vault + SearchIndex. In-memory by default (tests, evals,
  * previews); with the app's Vault it is a working reference host. Writes text as TextBoxes
  * stacked below existing content.
  */

@@ -1,5 +1,5 @@
 /**
- * On-device models Inkstone can download and run in the browser / WebView with transformers.js
+ * On-device models Inkwright can download and run in the browser / WebView with transformers.js
  * (ONNX Runtime Web, WebGPU with a WASM fallback). Chosen for docs/LOCAL_AI.md: every model here
  * has a licence that allows shipping in a commercial app (Apache-2.0 or MIT), an ONNX build
  * published on Hugging Face, and a size that suits its device tier. Sizes are the exact bytes of

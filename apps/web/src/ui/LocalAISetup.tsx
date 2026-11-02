@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Cpu, X } from 'lucide-react';
-import { formatBytes } from '@inkstone/ai';
+import { formatBytes } from '@inkwright/ai';
 import { NativeAIOffer, useNativeOffer } from './NativeAISettings.tsx';
 import { cancelDownload, chatChoice, downloadModel, embedChoice, initLocalAI, isInstalled, localAISupported, modelKey, refOf, useLocalAI } from '../lib/localai.ts';
 

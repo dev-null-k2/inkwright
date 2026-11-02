@@ -13,7 +13,7 @@ import { payload } from '../../../examples/plugins/webhook/main.js';
 const read = (p: string) => JSON.parse(readFileSync(new URL(`../../../examples/${p}`, import.meta.url), 'utf8'));
 
 describe('example plugins', () => {
-  for (const p of ['plugins/word-count/manifest.json', 'plugins/webhook/manifest.json', 'create-inkstone-plugin/template/manifest.json']) {
+  for (const p of ['plugins/word-count/manifest.json', 'plugins/webhook/manifest.json', 'create-inkwright-plugin/template/manifest.json']) {
     it(`${p} is a valid manifest`, () => {
       const r = validateManifest(read(p));
       expect(r.ok ? r.warnings : r.errors).toEqual([]);

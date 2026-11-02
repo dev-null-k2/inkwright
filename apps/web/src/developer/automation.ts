@@ -1,20 +1,20 @@
 /**
- * `window.inkstone` — the plugin API for scripts on this page: browser extensions, userscripts,
- * the devtools console, or a page that embeds Inkstone. Off by default; Settings › Developer ›
+ * `window.inkwright` — the plugin API for scripts on this page: browser extensions, userscripts,
+ * the devtools console, or a page that embeds Inkwright. Off by default; Settings › Developer ›
  * Automation API switches it on and chooses its permissions.
  *
  * It is the plugin API with the same permission model: calls go through the same dispatcher
  * (plugins/dispatcher.ts) as sandboxed plugins, under a caller named "Automation API" that holds
  * only the permissions ticked in Settings. Writes appear in Activity under that name.
  *
- *   await inkstone.notes.list({ tag: 'work' })
- *   inkstone.events.on('note.updated', (e) => console.log(e.title))
- *   inkstone.commands.register('stamp', () => inkstone.editor.insertText(new Date().toString()), { title: 'Insert date' })
+ *   await inkwright.notes.list({ tag: 'work' })
+ *   inkwright.events.on('note.updated', (e) => console.log(e.title))
+ *   inkwright.commands.register('stamp', () => inkwright.editor.insertText(new Date().toString()), { title: 'Insert date' })
  */
 import { createElement } from 'react';
 import { create } from 'zustand';
 import { Terminal } from 'lucide-react';
-import { createPluginClient, envelope, isProtocolMessage, toWireError, type InkstoneAPI, type Permission, type PluginToHost } from '@inkstone/plugin-api';
+import { createPluginClient, envelope, isProtocolMessage, toWireError, type InkwrightAPI, type Permission, type PluginToHost } from '@inkwright/plugin-api';
 import { safeStorage } from '../platform/env.ts';
 import { registerPaletteActions } from '../lib/palette.ts';
 import { dispatch, type Caller } from '../plugins/dispatcher.ts';
@@ -27,7 +27,7 @@ export interface AutomationSettings {
   hosts: string[];
 }
 
-const KEY = 'inkstone.developer.v1';
+const KEY = 'inkwright.developer.v1';
 
 function load(): AutomationSettings {
   try {
@@ -43,7 +43,7 @@ function load(): AutomationSettings {
 export const useAutomation = create<AutomationSettings>(() => load());
 useAutomation.subscribe((s) => safeStorage.set(KEY, JSON.stringify({ automation: s })));
 
-export type AutomationAPI = Omit<InkstoneAPI, 'commands'> & {
+export type AutomationAPI = Omit<InkwrightAPI, 'commands'> & {
   readonly version: 1;
   readonly commands: {
     /** Adds a command; with `title` it also appears in the search palette. */
@@ -53,7 +53,7 @@ export type AutomationAPI = Omit<InkstoneAPI, 'commands'> & {
 
 declare global {
   interface Window {
-    inkstone?: AutomationAPI;
+    inkwright?: AutomationAPI;
   }
 }
 
@@ -69,15 +69,15 @@ function createAutomationApi(): { api: AutomationAPI; close(): void } {
     permissions: () => new Set(useAutomation.getState().enabled ? useAutomation.getState().permissions : []),
     networkHosts: useAutomation.getState().hosts,
     storage: {
-      get: async (k) => JSON.parse(safeStorage.get(`inkstone.automation.storage.${k}`) ?? 'null') ?? undefined,
-      set: async (k, v) => safeStorage.set(`inkstone.automation.storage.${k}`, JSON.stringify(v)),
-      delete: async (k) => safeStorage.remove(`inkstone.automation.storage.${k}`),
+      get: async (k) => JSON.parse(safeStorage.get(`inkwright.automation.storage.${k}`) ?? 'null') ?? undefined,
+      set: async (k, v) => safeStorage.set(`inkwright.automation.storage.${k}`, JSON.stringify(v)),
+      delete: async (k) => safeStorage.remove(`inkwright.automation.storage.${k}`),
       keys: async () => {
         const out: string[] = [];
         try {
           for (let i = 0; i < localStorage.length; i++) {
             const k = localStorage.key(i);
-            if (k?.startsWith('inkstone.automation.storage.')) out.push(k.slice('inkstone.automation.storage.'.length));
+            if (k?.startsWith('inkwright.automation.storage.')) out.push(k.slice('inkwright.automation.storage.'.length));
           }
         } catch {
           /* storage blocked */
@@ -153,18 +153,18 @@ function createAutomationApi(): { api: AutomationAPI; close(): void } {
   };
 }
 
-/** Developer module: keeps `window.inkstone` in step with the Settings switch. */
+/** Developer module: keeps `window.inkwright` in step with the Settings switch. */
 export function startAutomationApi(): () => void {
   let current: { api: AutomationAPI; close(): void } | null = null;
   const apply = (on: boolean) => {
     if (on && !current) {
       current = createAutomationApi();
-      Object.defineProperty(window, 'inkstone', { value: current.api, configurable: true, enumerable: false, writable: false });
-      window.dispatchEvent(new CustomEvent('inkstone:ready'));
+      Object.defineProperty(window, 'inkwright', { value: current.api, configurable: true, enumerable: false, writable: false });
+      window.dispatchEvent(new CustomEvent('inkwright:ready'));
     } else if (!on && current) {
       current.close();
       current = null;
-      delete window.inkstone;
+      delete window.inkwright;
     }
   };
   apply(useAutomation.getState().enabled);

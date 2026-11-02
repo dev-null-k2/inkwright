@@ -4,7 +4,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { History } from 'lucide-react';
-import type { NoteDocument } from '@inkstone/core';
+import type { NoteDocument } from '@inkwright/core';
 import { useApp } from '../state/app.ts';
 import { Dialog } from '../ui/primitives.tsx';
 import { backToToday, travelTo, useTimeTravel, vaultMoments } from './timetravel.ts';

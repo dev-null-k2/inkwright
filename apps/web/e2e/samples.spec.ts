@@ -31,8 +31,8 @@ test('sample notebooks appear, open with ink, and are searchable', async ({ page
   await shot(page, 'notebook');
 
   await page.locator('.note-card', { hasText: 'Lecture 7' }).first().click();
-  await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
-  const strokes = await page.evaluate(() => (window as any).__inkstone.doc.pages[0].strokes.length);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
+  const strokes = await page.evaluate(() => (window as any).__inkwright.doc.pages[0].strokes.length);
   expect(strokes).toBeGreaterThan(200);
   await page.waitForTimeout(400);
   await shot(page, 'lecture');
@@ -55,7 +55,7 @@ test('screenshots in dark palettes', async ({ page }) => {
   }
   await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
   await page.locator('.note-card', { hasText: 'Design review' }).first().click();
-  await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
   await page.waitForTimeout(400);
   await shot(page, 'review-dark');
 });

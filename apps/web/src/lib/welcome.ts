@@ -1,4 +1,4 @@
-import { newId, type InkPoint, type InkStroke, type TextBox, type Vault } from '@inkstone/core';
+import { newId, type InkPoint, type InkStroke, type TextBox, type Vault } from '@inkwright/core';
 
 function wave(x0: number, y: number, w: number, amp: number, id = newId()): InkStroke {
   const points: InkPoint[] = [];
@@ -21,10 +21,10 @@ const text = (x: number, y: number, width: number, body: string, size = 17, font
 
 /** First-run note that teaches the gestures by letting people try them on it. */
 export async function seedWelcome(vault: Vault) {
-  const { note, pages } = await vault.createNote({ title: 'Welcome to Inkstone', tags: ['start here'], paper: { style: 'dot_grid', tint: 'ivory', texture: 'standard', spacing: 0 } });
+  const { note, pages } = await vault.createNote({ title: 'Welcome to Inkwright', tags: ['start here'], paper: { style: 'dot_grid', tint: 'ivory', texture: 'standard', spacing: 0 } });
   const page = pages[0]!;
   const texts: TextBox[] = [
-    text(64, 70, 640, '# Welcome to Inkstone', 18, 'serif'),
+    text(64, 70, 640, '# Welcome to Inkwright', 18, 'serif'),
     text(64, 140, 640, 'Write anywhere on this page. Try each of these right here:', 17),
     text(64, 196, 650, [
       '- [ ] Scribble back and forth over a word to erase it',
@@ -35,7 +35,7 @@ export async function seedWelcome(vault: Vault) {
       '- [ ] Use the lasso to circle ink, then drag, resize, recolour or ask AI about it',
     ].join('\n'), 16),
     text(64, 520, 640, '## Your notes are yours', 16, 'serif'),
-    text(64, 560, 640, 'Everything is saved as plain files (ink JSON, SVG and Markdown). Sync them with Google Drive, a folder or WebDAV, and let any AI agent read them through the Inkstone MCP server.', 16),
+    text(64, 560, 640, 'Everything is saved as plain files (ink JSON, SVG and Markdown). Sync them with Google Drive, a folder or WebDAV, and let any AI agent read them through the Inkwright MCP server.', 16),
     text(64, 700, 640, '## Bring your own AI', 16, 'serif'),
     text(64, 740, 640, 'Add a key for OpenAI, Claude, Gemini, OpenRouter, a local model or any compatible endpoint in Settings. Then ask questions about your notes, turn handwriting into text, pull out to-dos or make flashcards.', 16),
   ];

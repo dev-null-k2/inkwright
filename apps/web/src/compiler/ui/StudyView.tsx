@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import { BookOpenCheck, GraduationCap, Trash2 } from 'lucide-react';
-import { retrievability } from '@inkstone/core';
+import { retrievability } from '@inkwright/core';
 import { useApp } from '../../state/app.ts';
 import { IconButton } from '../../ui/primitives.tsx';
 import { Section } from '../../ui/agent/shared.tsx';

@@ -2,11 +2,11 @@
  * Settings › AI › Audit trail: what AI saw and did, newest first — model calls (where they went,
  * why, which notes they carried, what was kept private), notes agents read and changed, policy
  * changes and blocks. Export writes every device's chain as JSONL; Verify checks the hashes and
- * signatures here, and the same check runs offline with `inkstone-agent audit verify`.
+ * signatures here, and the same check runs offline with `inkwright-agent audit verify`.
  */
 import { useEffect, useState, type ReactNode } from 'react';
 import { Ban, Bot, Eye, FileKey, Pencil, Scale, Scissors, ShieldCheck } from 'lucide-react';
-import { exportAuditJsonl, readChain, auditDevices, verifyAudit, type AuditEvent, type AuditVerifyReport } from '@inkstone/ai';
+import { exportAuditJsonl, readChain, auditDevices, verifyAudit, type AuditEvent, type AuditVerifyReport } from '@inkwright/ai';
 import { saveFile } from '../../platform/files.ts';
 import { useApp } from '../../state/app.ts';
 import { trustServices, useTrust } from '../../lib/trust/state.ts';
@@ -53,7 +53,7 @@ export function AuditView() {
     if (!fs) return;
     await trustServices()?.audit.flush();
     const text = await exportAuditJsonl(fs);
-    await saveFile(`inkstone-audit-${new Date().toISOString().slice(0, 10)}.jsonl`, new TextEncoder().encode(text), 'application/jsonl');
+    await saveFile(`inkwright-audit-${new Date().toISOString().slice(0, 10)}.jsonl`, new TextEncoder().encode(text), 'application/jsonl');
   };
   const verify = async () => {
     const fs = agentHub()?.vault.fs;

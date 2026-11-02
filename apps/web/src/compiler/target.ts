@@ -4,8 +4,8 @@
  * autosaved, ⌘Z-able); other notes through the vault, then reindexed and the library refreshed.
  * Provenance files (`assets/provenance.json`) are read and written here too.
  */
-import { decodeProvenance, emptyProvenance, encodeProvenance, newId, PROVENANCE_ASSET, type ProvenanceFile, type TextBox } from '@inkstone/core';
-import type { WikiTarget } from '@inkstone/ai';
+import { decodeProvenance, emptyProvenance, encodeProvenance, newId, PROVENANCE_ASSET, type ProvenanceFile, type TextBox } from '@inkwright/core';
+import type { WikiTarget } from '@inkwright/ai';
 import { activeSession } from '../lib/session.ts';
 import type { AppVault } from '../lib/vault.ts';
 import { useApp } from '../state/app.ts';

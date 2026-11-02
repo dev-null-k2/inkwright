@@ -104,7 +104,7 @@ export function NotebookCover({ id, color, size = 120, title }: { id: string; co
 /** A single ink drop spreading on water: the library's empty-desk illustration. */
 export function InkRipple({ size = 168 }: { size?: number }) {
   const uid = useId().replace(/:/g, '');
-  const spec = suminagashi('inkstone-empty-desk');
+  const spec = suminagashi('inkwright-empty-desk');
   return (
     <svg className="ink-ripple" width={size} height={size} viewBox="0 0 160 160" aria-hidden>
       <defs>

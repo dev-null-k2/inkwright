@@ -1,4 +1,4 @@
-import type { FsEntry, VaultFS } from '@inkstone/core';
+import type { FsEntry, VaultFS } from '@inkwright/core';
 import { TEMP_SUFFIX, base64Decode, base64Encode, isJunkName, randomToken, safePath, utf8Decode, utf8Encode } from './util.ts';
 
 /*
@@ -30,7 +30,7 @@ export interface CapacitorFilesystemLike {
 export interface CapacitorFSOptions {
   /** Capacitor `Directory` value. Default 'DATA' (app-private, backed up by the OS). */
   directory?: string;
-  /** Folder inside `directory` holding the vault. Default 'Inkstone'. '' = the directory itself. */
+  /** Folder inside `directory` holding the vault. Default 'Inkwright'. '' = the directory itself. */
   root?: string;
   /** Write to a temp file and rename over the target (default true when `rename` exists). */
   atomic?: boolean;
@@ -47,7 +47,7 @@ export class CapacitorFS implements VaultFS {
 
   constructor(private readonly fs: CapacitorFilesystemLike, opts: CapacitorFSOptions = {}) {
     this.directory = opts.directory ?? 'DATA';
-    this.root = safePath(opts.root ?? 'Inkstone');
+    this.root = safePath(opts.root ?? 'Inkwright');
     this.atomic = (opts.atomic ?? true) && typeof fs.rename === 'function';
   }
 

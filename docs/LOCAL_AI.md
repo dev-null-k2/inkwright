@@ -1,6 +1,6 @@
 # On-device AI and search everything
 
-Most people will never paste an API key. Inkstone therefore runs its assistant, **Ask** and
+Most people will never paste an API key. Inkwright therefore runs its assistant, **Ask** and
 search by meaning on the device by default. The model runs inside the app, nothing leaves the
 device, and after one download it works offline. People who have a key, or who already run
 Ollama or LM Studio, can choose those instead.
@@ -37,7 +37,7 @@ Gemma 4 and EmbeddingGemma 2 are Apache-2.0.
 | `gpu-small` | WebGPU on phones with < 8 GB, and all of iOS (WebKit kills tabs far below the device's RAM) | Qwen3 0.6B | EmbeddingGemma 2 |
 | `cpu` | no WebGPU for web content: WASM on the CPU | Granite 4.0 350M, q4 (none below ~3 GB) | Granite Embedding 97M int8 |
 
-On a GPU without `shader-f16`, Inkstone uses the 4-bit build with float32 maths instead of the
+On a GPU without `shader-f16`, Inkwright uses the 4-bit build with float32 maths instead of the
 half-precision one (`pickVariant`). People can choose any model their device can run, for each
 role, in **Settings › AI**. Each choice shows the exact download size and licence.
 
@@ -92,7 +92,7 @@ headers). Hosting the web app with `Cross-Origin-Opener-Policy: same-origin` and
 | Foundry Local | dynamic port; we probe 5272/5273 | fix the port with `foundry service set --port 5272`. Its REST docs say nothing about CORS, so check this case by case |
 
 A CORS refusal looks like a network error to a page. When the normal request fails but an
-opaque `no-cors` request reaches the server, Inkstone knows the server is running and shows the
+opaque `no-cors` request reaches the server, Inkwright knows the server is running and shows the
 one setting to change. When a server is ready, **Use** adds it as an OpenAI-compatible provider
 with its first model. Two new registry entries cover llama.cpp and Foundry Local.
 
@@ -130,7 +130,7 @@ apps/web/src/ai/native/            Android bridge: NativeLLM over aiGenerate + a
 apps/web/src/lib/native-ai.ts      Android status, downloads, engine/model choice, registration,
                                    summaries/proofreading through the task APIs
 apps/web/src/ui/NativeAISettings.tsx  Settings rows and the assistant's offer on Android
-apps/web/android/app/src/main/java/app/inkstone/ai/  the Kotlin engines (docs/ANDROID.md)
+apps/web/android/app/src/main/java/app/inkwright/ai/  the Kotlin engines (docs/ANDROID.md)
 ```
 
 **Downloads.** The worker lists the model repository from the Hugging Face API, which gives exact
@@ -332,7 +332,7 @@ service / sent to a provider), and the transcript file records it (`where`).
   covers the library field opening the palette on phones and foldables. `local-ai.spec.ts`
   checks that the download size shows before downloading, then interrupts a download, resumes
   it with a Range request, checks OPFS, and deletes.
-- Android native engines: JVM tests in `apps/web/android/app/src/test/java/app/inkstone/ai/`
+- Android native engines: JVM tests in `apps/web/android/app/src/test/java/app/inkwright/ai/`
   (status and AICore error mapping pinned to ML Kit's constants, prompt building and trimming,
   stream assembly, resumable-download bookkeeping, the pinned catalog and memory-based
   recommendation, task options, speech transcript assembly); `apps/web/src/ai/native/bridge.test.ts`
@@ -347,12 +347,12 @@ service / sent to a provider), and the transcript file records it (`where`).
 
   ```
   cd apps/web
-  INKSTONE_REAL_MODELS=1 PW_PORT=4181 npx playwright test e2e/local-ai.spec.ts --project desktop
+  INKWRIGHT_REAL_MODELS=1 PW_PORT=4181 npx playwright test e2e/local-ai.spec.ts --project desktop
   ```
 
-  `INKSTONE_REAL_MODELS=chat` also downloads Granite 4.0 350M and answers an Ask question on the
+  `INKWRIGHT_REAL_MODELS=chat` also downloads Granite 4.0 350M and answers an Ask question on the
   CPU. Large files are relayed in 16 MB slices, which also exercises download resume.
-  `INKSTONE_REAL_MODELS=1 npx vitest run --project ai packages/ai/test/local-models.live.test.ts`
+  `INKWRIGHT_REAL_MODELS=1 npx vitest run --project ai packages/ai/test/local-models.live.test.ts`
   checks every catalog size against the live repositories.
 
   Results on the development machine (Nov 2026):
@@ -383,7 +383,7 @@ service / sent to a provider), and the transcript file records it (`where`).
   lecture summary and page summaries appear; tapping a sentence highlights its strokes and plays
   from there; tapping ink finds the sentence; search finds what was said and opens that moment;
   dictation on the page and at the caret; "This device" offers the download and uploads nothing.
-- **Opt-in real models** (`INKSTONE_REAL_MODELS=1` or `=asr`):
+- **Opt-in real models** (`INKWRIGHT_REAL_MODELS=1` or `=asr`):
   `npx vitest run --project ai packages/ai/test/speech-models.live.test.ts` runs Moonshine Tiny and
   Whisper Base in Node on a public-domain clip (JFK's inaugural address) cut by our windowing, and
   `PW_PORT=4181 npx playwright test e2e/listen-real.spec.ts --project desktop` downloads Moonshine

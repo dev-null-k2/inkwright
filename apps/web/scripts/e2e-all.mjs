@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * `npm run e2e:all`: the e2e suite on every engine Inkstone ships to.
+ * `npm run e2e:all`: the e2e suite on every engine Inkwright ships to.
  *   Chromium  — Chrome/Edge on Windows, macOS, Linux, ChromeOS; Android's WebView (projects desktop,
  *               foldable, phone)
  *   WebKit    — Safari on macOS, and every browser on iPhone/iPad, including the Capacitor iOS app
@@ -9,7 +9,7 @@
  *
  * WebKit and Firefox are installed on first use for the pinned @playwright/test version. When the
  * machine keeps a read-only/shared Chromium in /opt/pw-browsers (CI images, this repo's dev
- * container), the extra engines go to a separate folder (INKSTONE_PW_EXTRA, default /opt/pw-extra or
+ * container), the extra engines go to a separate folder (INKWRIGHT_PW_EXTRA, default /opt/pw-extra or
  * ~/.cache/pw-extra) that links to that Chromium, so the shared install is never modified.
  *
  * Extra arguments go to `playwright test` (e.g. `npm run e2e:all -- --project webkit-ipad`).
@@ -21,13 +21,13 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const web = join(dirname(fileURLToPath(import.meta.url)), '..');
-const env = { ...process.env, INKSTONE_ENGINES: 'all' };
+const env = { ...process.env, INKWRIGHT_ENGINES: 'all' };
 
 const SHARED = '/opt/pw-browsers';
 if (!env.PLAYWRIGHT_BROWSERS_PATH && existsSync(SHARED)) {
   const writable = (p) => { try { mkdirSync(p, { recursive: true }); accessSync(p, constants.W_OK); return true; } catch { return false; } };
-  const extra = env.INKSTONE_PW_EXTRA ?? ['/opt/pw-extra', join(homedir(), '.cache', 'pw-extra')].find(writable);
-  if (!extra) throw new Error('No writable folder for the extra browsers; set INKSTONE_PW_EXTRA');
+  const extra = env.INKWRIGHT_PW_EXTRA ?? ['/opt/pw-extra', join(homedir(), '.cache', 'pw-extra')].find(writable);
+  if (!extra) throw new Error('No writable folder for the extra browsers; set INKWRIGHT_PW_EXTRA');
   mkdirSync(extra, { recursive: true });
   // Reuse the shared Chromium builds instead of downloading them again.
   for (const name of readdirSync(SHARED)) {

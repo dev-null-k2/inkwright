@@ -1,15 +1,15 @@
-# Inkstone for outside agents: MCP, A2A and the always-on runner
+# Inkwright for outside agents: MCP, A2A and the always-on runner
 
-Inkstone's notes live in a vault folder of plain files (docs/VAULT_FORMAT.md). The
-`@inkstone/mcp-server` package (in `apps/mcp-server`) works directly on that folder and gives
+Inkwright's notes live in a vault folder of plain files (docs/VAULT_FORMAT.md). The
+`@inkwright/mcp-server` package (in `apps/mcp-server`) works directly on that folder and gives
 other software three ways in. Nothing runs on a server of ours: it all runs on your computer,
 against your folder, with the AI you choose.
 
 | | What it is | Who uses it |
 | --- | --- | --- |
-| **MCP server** (`inkstone-mcp`) | Tools, resources, prompts, background tasks and interactive views over your notes | Claude Desktop, Claude Code, ChatGPT, Cursor, VS Code, any MCP client |
-| **A2A agent** (`inkstone-mcp --a2a`) | Inkstone's own agent behind an Agent Card, so other agents can hand it note work | Any A2A v1.0 or v0.3 client or agent framework |
-| **Always-on runner** (`inkstone-agent run`) | Runs your routines on schedule even when the app is closed | You, as a background service |
+| **MCP server** (`inkwright-mcp`) | Tools, resources, prompts, background tasks and interactive views over your notes | Claude Desktop, Claude Code, ChatGPT, Cursor, VS Code, any MCP client |
+| **A2A agent** (`inkwright-mcp --a2a`) | Inkwright's own agent behind an Agent Card, so other agents can hand it note work | Any A2A v1.0 or v0.3 client or agent framework |
+| **Always-on runner** (`inkwright-agent run`) | Runs your routines on schedule even when the app is closed | You, as a background service |
 
 The same HTTP port also serves a REST API for programs (`/api/v1`, see [API.md](API.md)).
 
@@ -19,14 +19,14 @@ can be undone. Moving a note to Trash always waits for a person's OK.
 ## Build once
 
 ```sh
-git clone … inkstone && cd inkstone
+git clone … inkwright && cd inkwright
 npm install
-npm run build -w @inkstone/mcp-server
-# → apps/mcp-server/dist/index.js (inkstone-mcp) and dist/agent.js (inkstone-agent)
+npm run build -w @inkwright/mcp-server
+# → apps/mcp-server/dist/index.js (inkwright-mcp) and dist/agent.js (inkwright-agent)
 ```
 
-Node 20 or later. In the examples, `/Users/me/inkstone` is the repository and the vault is
-`~/Library/CloudStorage/GoogleDrive-me@example.com/My Drive/Inkstone` (Google Drive for desktop on
+Node 20 or later. In the examples, `/Users/me/inkwright` is the repository and the vault is
+`~/Library/CloudStorage/GoogleDrive-me@example.com/My Drive/Inkwright` (Google Drive for desktop on
 a Mac; see apps/mcp-server/README.md for other places). Replace both with yours.
 
 ## 1. MCP
@@ -49,7 +49,7 @@ What clients get:
 - **MCP Apps** (extension `io.modelcontextprotocol/ui`): hosts that render apps show a note page
   as you wrote it, a search results picker, and an approval card with Allow / Don't allow
   buttons. Every tool also returns text, so other hosts still work.
-- **Resources and prompts:** each note as Markdown, each page as SVG, and context packs you saved in the app (`inkstone://packs/{id}`: compiled facts tagged EXTRACTED/INFERRED/AMBIGUOUS with sources, see docs/COMPILER.md); `summarize_note`,
+- **Resources and prompts:** each note as Markdown, each page as SVG, and context packs you saved in the app (`inkwright://packs/{id}`: compiled facts tagged EXTRACTED/INFERRED/AMBIGUOUS with sources, see docs/COMPILER.md); `summarize_note`,
   `daily_review`, `todos_from_notes`.
 
 ### Claude Desktop (local, stdio)
@@ -60,11 +60,11 @@ What clients get:
 ```json
 {
   "mcpServers": {
-    "inkstone": {
+    "inkwright": {
       "command": "node",
       "args": [
-        "/Users/me/inkstone/apps/mcp-server/dist/index.js",
-        "--vault", "~/Library/CloudStorage/GoogleDrive-me@example.com/My Drive/Inkstone",
+        "/Users/me/inkwright/apps/mcp-server/dist/index.js",
+        "--vault", "~/Library/CloudStorage/GoogleDrive-me@example.com/My Drive/Inkwright",
         "--ai-provider", "anthropic", "--ai-model", "claude-sonnet-4-5"
       ],
       "env": { "ANTHROPIC_API_KEY": "sk-ant-…" }
@@ -79,21 +79,21 @@ The `--ai-*` options are optional: they power `summarize_notebook`, `transcribe_
 ### Claude Code
 
 ```sh
-claude mcp add --scope user inkstone -- node /Users/me/inkstone/apps/mcp-server/dist/index.js \
-  --vault "$HOME/Library/CloudStorage/GoogleDrive-me@example.com/My Drive/Inkstone"
+claude mcp add --scope user inkwright -- node /Users/me/inkwright/apps/mcp-server/dist/index.js \
+  --vault "$HOME/Library/CloudStorage/GoogleDrive-me@example.com/My Drive/Inkwright"
 ```
 
 Or over HTTP, with the server running (next section):
 
 ```sh
-claude mcp add --transport http inkstone http://127.0.0.1:8765/mcp --header "Authorization: Bearer $INKSTONE_MCP_TOKEN"
+claude mcp add --transport http inkwright http://127.0.0.1:8765/mcp --header "Authorization: Bearer $INKWRIGHT_MCP_TOKEN"
 ```
 
 ### Over HTTP
 
 ```sh
-export INKSTONE_MCP_TOKEN="$(openssl rand -hex 24)"
-node apps/mcp-server/dist/index.js --vault "$HOME/…/Inkstone" --http 8765
+export INKWRIGHT_MCP_TOKEN="$(openssl rand -hex 24)"
+node apps/mcp-server/dist/index.js --vault "$HOME/…/Inkwright" --http 8765
 ```
 
 The endpoint is `http://127.0.0.1:8765/mcp`; it only listens on this computer. Sign-in has three
@@ -102,7 +102,7 @@ modes:
 | Mode | How | When |
 | --- | --- | --- |
 | Loopback | no `--token`, no `--oauth-issuer` | only clients on this computer; Host and Origin must be loopback |
-| Bearer token | `--token <secret>` or `INKSTONE_MCP_TOKEN` | a tunnel, a single client, quick setups |
+| Bearer token | `--token <secret>` or `INKWRIGHT_MCP_TOKEN` | a tunnel, a single client, quick setups |
 | OAuth 2.1 | `--oauth-issuer <url>` | remote use with your own identity provider (below) |
 
 To reach it from outside (ChatGPT, claude.ai), put **your own** HTTPS tunnel or reverse proxy in
@@ -153,7 +153,7 @@ Authentik, Zitadel, Auth0, Okta, Microsoft Entra ID, …).
 3. **Start the server** with the issuer exactly as it appears in tokens' `iss`:
 
    ```sh
-   node apps/mcp-server/dist/index.js --vault "$HOME/…/Inkstone" --http 8765 \
+   node apps/mcp-server/dist/index.js --vault "$HOME/…/Inkwright" --http 8765 \
      --public-url https://notes.example.com \
      --oauth-issuer https://auth.example.com/realms/home
    ```
@@ -174,8 +174,8 @@ What the server verifies: signature (the issuer's JWKS, cached and refreshed on 
 ## 2. A2A
 
 ```sh
-ANTHROPIC_API_KEY=… node apps/mcp-server/dist/index.js --vault "$HOME/…/Inkstone" \
-  --http 8765 --token "$INKSTONE_MCP_TOKEN" --a2a --ai-provider anthropic
+ANTHROPIC_API_KEY=… node apps/mcp-server/dist/index.js --vault "$HOME/…/Inkwright" \
+  --http 8765 --token "$INKWRIGHT_MCP_TOKEN" --a2a --ai-provider anthropic
 ```
 
 - Agent Card: `http://127.0.0.1:8765/.well-known/agent-card.json` (A2A v1.0 JSON when the client
@@ -204,7 +204,7 @@ const task = await client.sendMessage({ message: { messageId: crypto.randomUUID(
 With curl (v0.3 wire format):
 
 ```sh
-curl -s http://127.0.0.1:8765/a2a -H 'content-type: application/json' -H "authorization: Bearer $INKSTONE_MCP_TOKEN" \
+curl -s http://127.0.0.1:8765/a2a -H 'content-type: application/json' -H "authorization: Bearer $INKWRIGHT_MCP_TOKEN" \
   -d '{"jsonrpc":"2.0","id":1,"method":"message/send","params":{"message":{"kind":"message","messageId":"1","role":"user","parts":[{"kind":"text","text":"Summarize what I wrote this week"}]}}}'
 ```
 
@@ -212,18 +212,18 @@ Python, Go, Java and .NET A2A SDKs work the same way from the Agent Card URL.
 
 ## 3. The always-on runner
 
-Routines (Settings › AI › Routines in the app) normally run while Inkstone is open. On a computer
-that is usually on, `inkstone-agent` runs them on schedule over the vault folder, using the same
+Routines (Settings › AI › Routines in the app) normally run while Inkwright is open. On a computer
+that is usually on, `inkwright-agent` runs them on schedule over the vault folder, using the same
 routine definitions, triggers and catch-up rules as the app:
 
 ```sh
 ANTHROPIC_API_KEY=… node apps/mcp-server/dist/agent.js run \
-  --vault "$HOME/Library/CloudStorage/GoogleDrive-me@example.com/My Drive/Inkstone" \
+  --vault "$HOME/Library/CloudStorage/GoogleDrive-me@example.com/My Drive/Inkwright" \
   --ai-provider anthropic --ai-model claude-sonnet-4-5
 ```
 
 - **No double runs.** The runner holds a lease in the vault (`ai/leases/routines.json`). While it
-  is alive, the app leaves automatic triggers to it and the Routines screen says "The Inkstone
+  is alive, the app leaves automatic triggers to it and the Routines screen says "The Inkwright
   agent on <computer> is running your routines". If the runner stops, it hands the lease back; if
   the computer sleeps, the lease expires after 10 minutes and the app (or another runner) takes
   over. A time slot is marked before it runs, so it never runs twice even across a handover.
@@ -248,47 +248,47 @@ ANTHROPIC_API_KEY=… node apps/mcp-server/dist/agent.js run \
 Put the AI key (and the token, if you serve HTTP) in a config file readable only by you:
 
 ```sh
-mkdir -p ~/.config/inkstone
-cat > ~/.config/inkstone/agent.json <<'JSON'
+mkdir -p ~/.config/inkwright
+cat > ~/.config/inkwright/agent.json <<'JSON'
 {
-  "vault": "~/Library/CloudStorage/GoogleDrive-me@example.com/My Drive/Inkstone",
+  "vault": "~/Library/CloudStorage/GoogleDrive-me@example.com/My Drive/Inkwright",
   "ai": { "provider": "anthropic", "model": "claude-sonnet-4-5", "apiKey": "sk-ant-…" }
 }
 JSON
-chmod 600 ~/.config/inkstone/agent.json
+chmod 600 ~/.config/inkwright/agent.json
 ```
 
 Then let `install` write the service for your OS. `--dry-run` shows the file and the commands
 without writing anything.
 
 ```sh
-node apps/mcp-server/dist/agent.js install --config ~/.config/inkstone/agent.json --dry-run
-node apps/mcp-server/dist/agent.js install --config ~/.config/inkstone/agent.json
+node apps/mcp-server/dist/agent.js install --config ~/.config/inkwright/agent.json --dry-run
+node apps/mcp-server/dist/agent.js install --config ~/.config/inkwright/agent.json
 ```
 
 | OS | File written | Start it | Logs |
 | --- | --- | --- | --- |
-| macOS | `~/Library/LaunchAgents/app.inkstone.agent.plist` (runs at login, restarts on failure) | `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/app.inkstone.agent.plist` | `~/Library/Logs/Inkstone/agent.log` |
-| Linux | `~/.config/systemd/user/inkstone-agent.service` | `systemctl --user daemon-reload && systemctl --user enable --now inkstone-agent.service` (and `loginctl enable-linger "$USER"` to keep it running while logged out) | `journalctl --user -u inkstone-agent.service -f` |
-| Windows | `%LOCALAPPDATA%\Inkstone\inkstone-agent-task.xml` (a Task Scheduler task: at logon, restart on failure, no time limit) | `schtasks /Create /TN "Inkstone agent" /XML "%LOCALAPPDATA%\Inkstone\inkstone-agent-task.xml" /F` then `schtasks /Run /TN "Inkstone agent"` | `%LOCALAPPDATA%\Inkstone\agent.log` |
+| macOS | `~/Library/LaunchAgents/app.inkwright.agent.plist` (runs at login, restarts on failure) | `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/app.inkwright.agent.plist` | `~/Library/Logs/Inkwright/agent.log` |
+| Linux | `~/.config/systemd/user/inkwright-agent.service` | `systemctl --user daemon-reload && systemctl --user enable --now inkwright-agent.service` (and `loginctl enable-linger "$USER"` to keep it running while logged out) | `journalctl --user -u inkwright-agent.service -f` |
+| Windows | `%LOCALAPPDATA%\Inkwright\inkwright-agent-task.xml` (a Task Scheduler task: at logon, restart on failure, no time limit) | `schtasks /Create /TN "Inkwright agent" /XML "%LOCALAPPDATA%\Inkwright\inkwright-agent-task.xml" /F` then `schtasks /Run /TN "Inkwright agent"` | `%LOCALAPPDATA%\Inkwright\agent.log` |
 
-`install` prints the exact commands; `inkstone-agent uninstall` prints how to stop it and removes
+`install` prints the exact commands; `inkwright-agent uninstall` prints how to stop it and removes
 the file. On macOS, the first start asks whether node may access the cloud-storage folder; if you
 missed it, allow node in System Settings › Privacy & Security › Files and Folders. On Linux, keys
-can also go in `~/.config/inkstone/agent.env` (`ANTHROPIC_API_KEY=…`), which the unit reads.
+can also go in `~/.config/inkwright/agent.env` (`ANTHROPIC_API_KEY=…`), which the unit reads.
 
 ## The server's AI
 
 `summarize_notebook`, `transcribe_pages`, `run_routine`, the A2A agent and the runner use an AI
 configured for the server — separate from the app's, whose keys stay encrypted in your browser.
-Any provider Inkstone supports works:
+Any provider Inkwright supports works:
 
 | `--ai-provider` | Key from | Notes |
 | --- | --- | --- |
 | `anthropic`, `openai`, `gemini` | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` / `GOOGLE_API_KEY` | |
 | `openrouter`, `groq`, `mistral`, `xai`, `deepseek`, `together`, `fireworks`, `perplexity`, `cerebras` | `<PROVIDER>_API_KEY` | |
 | `ollama`, `lmstudio` | none | local; `--ai-base-url` if not on the default port |
-| `custom` | `INKSTONE_AI_API_KEY` (if any) | any OpenAI-compatible endpoint: `--ai-base-url https://…/v1` |
+| `custom` | `INKWRIGHT_AI_API_KEY` (if any) | any OpenAI-compatible endpoint: `--ai-base-url https://…/v1` |
 
 `--ai-model` picks the model (default: the provider's default). Handwriting transcription needs a
 vision model. `--ai-key-env NAME` reads the key from another variable. Keys never belong in
@@ -310,14 +310,14 @@ Settings › AI › Routing & privacy; docs/TRUST.md):
   `--ai-on-premises` when it runs inside your network so local-only routes may use it.
 - `--policy <file>` adds a managed policy users can only tighten; `--audit-key <file>` signs the
   audit trail with a key you control. Every option also has an environment variable
-  (`inkstone-mcp --help`); `GET /healthz` answers without credentials for health checks.
+  (`inkwright-mcp --help`); `GET /healthz` answers without credentials for health checks.
 
 For a self-hosted, no-egress deployment with Docker, see docs/ENTERPRISE.md.
 
 ## Peer-link signalling relay
 
-`--signal-token <secret>` (or `INKSTONE_SIGNAL_TOKEN`, HTTP mode only, ≥ 16 characters) adds a
-tiny mailbox at `/signal/v1` that lets paired Inkstone devices find each other without exchanging
+`--signal-token <secret>` (or `INKWRIGHT_SIGNAL_TOKEN`, HTTP mode only, ≥ 16 characters) adds a
+tiny mailbox at `/signal/v1` that lets paired Inkwright devices find each other without exchanging
 codes by hand. It has its own token — handing it to a device opens the mailbox, never the vault —
 and it stores only sealed, unlinkable messages in memory for ten minutes. See
 [COLLABORATION.md](COLLABORATION.md#signalling-without-a-server--and-with-one-you-run).
@@ -330,4 +330,4 @@ and it stores only sealed, unlinkable messages in memory for ten minutes. See
 - **Routines run twice:** make sure only one runner holds the lease (`status`), and that the app
   and the runner see the same vault (the lease syncs like any other file).
 - **"needs an AI configured":** start the server or runner with `--ai-provider`.
-- `INKSTONE_DEBUG=1` prints stack traces and protocol errors to stderr.
+- `INKWRIGHT_DEBUG=1` prints stack traces and protocol errors to stderr.

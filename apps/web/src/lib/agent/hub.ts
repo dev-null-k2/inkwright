@@ -15,8 +15,8 @@ import {
   type MemoryItem,
   type Routine,
   type SkillInfo,
-} from '@inkstone/ai';
-import { newId } from '@inkstone/core';
+} from '@inkwright/ai';
+import { newId } from '@inkwright/core';
 import type { AppVault } from '../vault.ts';
 import { currentPolicy, initTrust } from '../trust/state.ts';
 
@@ -111,7 +111,7 @@ export async function initAgentHub(vault: AppVault): Promise<AgentHub> {
   const retention = () => currentPolicy().retention;
   hub = { vault, activity: new ActivityStore(fs, { maxAgeDays: () => retention().activityDays, hold: () => retention().legalHold }), memory: new MemoryStore(fs), skills: new SkillStore(fs, builtinSkills()), routines: new RoutineStore(fs) };
   // e2e tests write vault files the way a sync client or the always-on runner would.
-  if (typeof __E2E__ !== 'undefined' && __E2E__) (window as unknown as { __inkstoneHub?: AgentHub }).__inkstoneHub = hub;
+  if (typeof __E2E__ !== 'undefined' && __E2E__) (window as unknown as { __inkwrightHub?: AgentHub }).__inkwrightHub = hub;
   hub.activity.onChange(() => void refreshRuns());
   hub.memory.onChange(() => void refreshMemory());
   hub.skills.onChange(() => void refreshSkills());
@@ -139,7 +139,7 @@ export function requestApproval(a: Omit<Approval, 'id' | 'at' | 'resolve'>): Pro
 
 // ---- Opening an assistant screen from anywhere ---------------------------------------------------
 
-const VIEW_EVENT = 'inkstone:open-agent-view';
+const VIEW_EVENT = 'inkwright:open-agent-view';
 let viewHosts = 0;
 let pendingView: string | null = null;
 
@@ -172,7 +172,7 @@ export function hostAgentViews(show: (view: string) => void): () => void {
   };
 }
 
-const PROMPT_EVENT = 'inkstone:assistant-prompt';
+const PROMPT_EVENT = 'inkwright:assistant-prompt';
 let promptHosts = 0;
 
 /** Puts text into the assistant's input. Returns false when no assistant panel is open. */

@@ -4,7 +4,7 @@
  * problem details.
  */
 import type { z } from 'zod';
-import type { ApiScope } from '@inkstone/core';
+import type { ApiScope } from '@inkwright/core';
 
 export const API_PREFIX = '/api/v1';
 

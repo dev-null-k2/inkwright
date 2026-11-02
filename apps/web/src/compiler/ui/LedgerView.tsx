@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from 'react';
 import { ExternalLink, RotateCcw } from 'lucide-react';
-import { anchorLink, stripMarkdown, type Claim, type Conflict } from '@inkstone/core';
+import { anchorLink, stripMarkdown, type Claim, type Conflict } from '@inkwright/core';
 import { useApp } from '../../state/app.ts';
 import { relativeTime } from '../../ui/primitives.tsx';
 import { Section } from '../../ui/agent/shared.tsx';

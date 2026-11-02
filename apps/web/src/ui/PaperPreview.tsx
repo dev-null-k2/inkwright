@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { PageSize, PaperSpec } from '@inkstone/core';
+import type { PageSize, PaperSpec } from '@inkwright/core';
 import { drawPaper } from '../canvas/render.ts';
 
 /** A miniature sheet of paper drawn with the real template geometry. */

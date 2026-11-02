@@ -1,6 +1,6 @@
 /**
  * The wire protocol between a sandboxed plugin frame and the app (the host), over
- * `postMessage`. Versioned: every message carries `p: "inkstone-plugin"` and `v: 1`, and the
+ * `postMessage`. Versioned: every message carries `p: "inkwright-plugin"` and `v: 1`, and the
  * host ignores anything else, so a future v2 can run side by side with v1 plugins.
  *
  * Plugin → host: `ready`, `call` (an API method, answered by `result`), `reply` (the answer to a
@@ -10,7 +10,7 @@
 import type { PluginManifest } from './manifest.ts';
 import type { Permission } from './permissions.ts';
 
-export const PROTOCOL = 'inkstone-plugin' as const;
+export const PROTOCOL = 'inkwright-plugin' as const;
 export const PROTOCOL_VERSION = 1 as const;
 
 export type ErrorCode = 'permission_denied' | 'out_of_scope' | 'not_found' | 'invalid_argument' | 'unavailable' | 'timeout' | 'internal';
@@ -82,7 +82,7 @@ export const METHODS = {
   'ui.setHeight': null,
   'clipboard.writeText': 'clipboard:write',
   'messages.post': null,
-  /** Automation API only (`window.inkstone`): plugins declare commands in their manifest. */
+  /** Automation API only (`window.inkwright`): plugins declare commands in their manifest. */
   'commands.add': null,
 } as const satisfies Record<string, Permission | null>;
 

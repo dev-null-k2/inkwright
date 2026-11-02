@@ -4,9 +4,9 @@
  * discard it. Storage and merging live in core branches.ts and sync branch-merge.ts.
  */
 import { create } from 'zustand';
-import { BranchStore, NoteDocument, pageText, type Branch, type NoteMeta, type PageInk } from '@inkstone/core';
-import { applyProposalToBranch, type Proposal } from '@inkstone/ai';
-import { mergeBranchNote } from '@inkstone/sync';
+import { BranchStore, NoteDocument, pageText, type Branch, type NoteMeta, type PageInk } from '@inkwright/core';
+import { applyProposalToBranch, type Proposal } from '@inkwright/ai';
+import { mergeBranchNote } from '@inkwright/sync';
 import { useApp } from '../state/app.ts';
 import { activeSession } from '../lib/session.ts';
 import { trustServices } from '../lib/trust/state.ts';

@@ -1,6 +1,6 @@
 # Proof of authorship
 
-Inkstone can show that a note was written by hand on a particular device, and which parts were
+Inkwright can show that a note was written by hand on a particular device, and which parts were
 not: AI answers, solved results, recognized text, imported files, pasted ink. It is meant for
 students handing in handwritten work and for signed agreements. This page describes what is
 recorded, the certificate format, how verification works, and — just as important — what it does
@@ -13,7 +13,7 @@ verification, no platform code), `packages/core/src/sha256.ts`, and in the app
 ## What is recorded
 
 **How every stroke was made.** Each point already carries position, time since pen-down,
-pressure, tilt and azimuth (`InkPoint`). A stroke written in Inkstone also records its input:
+pressure, tilt and azimuth (`InkPoint`). A stroke written in Inkwright also records its input:
 `"input": "pen" | "touch" | "mouse"` (set by the ink engine at pen-up; strokes from older
 versions or created by code have none).
 
@@ -47,7 +47,7 @@ Imported PDF/image page backgrounds are imports.
 | `from` | for `edit`: the item it came from |
 | `dev` | short id of the signing key of the device that recorded it (first 8 hex digits of its fingerprint) |
 
-The chain head is `h₀ = SHA-256("inkstone.chain/1:" + pageId)`,
+The chain head is `h₀ = SHA-256("inkwright.chain/1:" + pageId)`,
 `hᵢ₊₁ = SHA-256(hᵢ ‖ UTF-8(canonical JSON of eventᵢ))`. Canonical JSON = keys sorted, no
 whitespace, `undefined` omitted. Changing, removing or reordering any event changes every later
 head.
@@ -79,7 +79,7 @@ side of claiming less as yours.
 
 `apps/web/src/authorship/keys.ts`: an ECDSA P-256 key pair made with WebCrypto with
 `extractable: false` — the private key can sign but cannot be read out by any script, including
-Inkstone's. The `CryptoKey` objects are stored in IndexedDB (`inkstone-authorship`), which
+Inkwright's. The `CryptoKey` objects are stored in IndexedDB (`inkwright-authorship`), which
 browsers keep opaquely; in the Android app this is the WebView's app-private storage, the same
 place the existing secret store keeps its wrapping key. Settings › Authorship shows the public
 key's **fingerprint** — SHA-256 of the uncompressed public point (`04 ‖ x ‖ y`), first 10 bytes as
@@ -91,15 +91,15 @@ a session-only key is used and the UI says so.
 
 ## Certificates
 
-A certificate is one JSON document, `format: "inkstone.authorship/1"`. The terms follow
+A certificate is one JSON document, `format: "inkwright.authorship/1"`. The terms follow
 [C2PA content credentials](https://c2pa.org/specifications/): a **claim** containing
 **assertions** about the content, a **claim signature**, and the evidence it refers to.
 
 ```jsonc
 {
-  "format": "inkstone.authorship/1",
+  "format": "inkwright.authorship/1",
   "claim": {
-    "generator": "Inkstone 1.0.0",                       // C2PA claim_generator
+    "generator": "Inkwright 1.0.0",                       // C2PA claim_generator
     "created": "2026-11-14T15:02:11.000Z",
     "subject": { "noteId": "01J…", "title": "Signals homework 4" },
     "signer": { "alg": "ES256", "publicKey": { "kty": "EC", "crv": "P-256", "x": "…", "y": "…" },
@@ -116,7 +116,7 @@ A certificate is one JSON document, `format: "inkstone.authorship/1"`. The terms
     }],
     "totals": { … },                                      // sum of the pages' counts
     "actions": [                                          // C2PA c2pa.actions, with IPTC digital source types
-      { "action": "c2pa.created", "digitalSourceType": "http://cv.iptc.org/newscodes/digitalsourcetype/digitalCreation", "count": 380, "description": "Handwriting written in Inkstone" },
+      { "action": "c2pa.created", "digitalSourceType": "http://cv.iptc.org/newscodes/digitalsourcetype/digitalCreation", "count": 380, "description": "Handwriting written in Inkwright" },
       { "action": "c2pa.created", "digitalSourceType": "http://cv.iptc.org/newscodes/digitalsourcetype/algorithmicMedia", "count": 1, "description": "Tables, solved results, graphs and recognized text made by the app" }
     ],
     "evidenceDigest": "base64url SHA-256 of canonical evidence"
@@ -135,8 +135,8 @@ is and stores the certificate with it as `notes/<id>/assets/authorship-<signedAt
 in `note.json` as `"certificate": { "asset", "signedAt" }` (the latest one). *Download
 certificate* saves the JSON. PDF exports (unless turned off in Settings › Authorship) sign a fresh
 certificate for the exported pages and embed it as an attached file named
-`inkstone-authorship.json` (`/EmbeddedFiles`, MIME `application/json`), plus a one-line
-`/InkstoneAuthorship` entry in the document info.
+`inkwright-authorship.json` (`/EmbeddedFiles`, MIME `application/json`), plus a one-line
+`/InkwrightAuthorship` entry in the document info.
 
 ## Verifying
 
@@ -170,7 +170,7 @@ It **does** show:
 - the signed writing and its complete edit history are exactly what this device's key signed,
   and nothing in them was changed afterwards;
 - the history is consistent: every stroke counted as handwriting was drawn with a pen, finger or
-  mouse in Inkstone, with its pressure, tilt and timing, and was never pasted;
+  mouse in Inkwright, with its pressure, tilt and timing, and was never pasted;
 - AI answers, solved results, recognized text and imported files are labelled and not counted as
   handwriting;
 - when and how long the writing happened, and its rhythm (pauses, speed and its variation,
@@ -191,9 +191,9 @@ It **does not** show:
 ## Future work
 
 - **C2PA export.** The claim maps onto a C2PA manifest (`c2pa.actions` with IPTC digital source
-  types are already used; the chain and counts would become custom `inkstone.*` assertions). A
+  types are already used; the chain and counts would become custom `inkwright.*` assertions). A
   real C2PA manifest needs a JUMBF box and COSE signature in the PDF, and an X.509 certificate
-  chain instead of a bare device key; until then the JSON certificate is Inkstone-specific.
+  chain instead of a bare device key; until then the JSON certificate is Inkwright-specific.
 - Hardware-backed keys (Android Keystore / StrongBox attestation) so a verifier could see the key
   never left secure hardware.
 - Timestamping the chain head with an RFC 3161 time-stamp authority while writing, so the writing

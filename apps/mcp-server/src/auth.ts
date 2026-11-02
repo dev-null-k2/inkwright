@@ -4,7 +4,7 @@
  *
  * - **loopback** (no token, no OAuth): only this computer — requests whose Host and Origin are
  *   loopback addresses. Blocks web pages that try to reach the port through DNS rebinding.
- * - **token**: a shared secret (`--token` / INKSTONE_MCP_TOKEN) as `Authorization: Bearer …`
+ * - **token**: a shared secret (`--token` / INKWRIGHT_MCP_TOKEN) as `Authorization: Bearer …`
  *   (or `?token=` for connectors that can't set headers). For tunnels and simple setups.
  * - **oauth**: an OAuth 2.1 resource server. Access tokens are JWTs (RFC 9068) from an
  *   authorization server *the user runs or chooses* — their own IdP (Keycloak, Authentik, Auth0,
@@ -200,7 +200,7 @@ export function createAuthGate(mode: AuthMode, opts: { publicUrl: string; port: 
         const m = /^Bearer\s+(.+)$/i.exec((req.headers.get('authorization') ?? '').trim());
         const given = m?.[1]?.trim() ?? new URL(req.url).searchParams.get('token') ?? '';
         if (!given || !timingSafeEqual(digest(given), want)) {
-          return { ok: false, response: json(401, { jsonrpc: '2.0', error: { code: -32000, message: 'Unauthorized: missing or wrong bearer token.' }, id: null }, { 'www-authenticate': 'Bearer realm="inkstone"' }) };
+          return { ok: false, response: json(401, { jsonrpc: '2.0', error: { code: -32000, message: 'Unauthorized: missing or wrong bearer token.' }, id: null }, { 'www-authenticate': 'Bearer realm="inkwright"' }) };
         }
         return { ok: true };
       },
@@ -219,7 +219,7 @@ export function createAuthGate(mode: AuthMode, opts: { publicUrl: string; port: 
     authorization_servers: [s.issuer],
     scopes_supported: [s.scopes.read, s.scopes.write],
     bearer_methods_supported: ['header'],
-    resource_name: 'Inkstone notes',
+    resource_name: 'Inkwright notes',
   });
   return {
     mode: 'oauth',

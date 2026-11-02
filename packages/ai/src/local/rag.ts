@@ -20,7 +20,7 @@ export interface AskPassage {
 
 export function askSystemPrompt(opts: { today?: string; appName?: string } = {}): string {
   return [
-    `You answer questions about the user's own notes in ${opts.appName ?? 'Inkstone'}, a handwriting note app${opts.today ? `. Today is ${opts.today}` : ''}.`,
+    `You answer questions about the user's own notes in ${opts.appName ?? 'Inkwright'}, a handwriting note app${opts.today ? `. Today is ${opts.today}` : ''}.`,
     'You are given numbered passages from the notes (typed text, recognized handwriting and PDF text). Use only these passages.',
     'Cite every fact with the passage number in square brackets right after it, like this: The transform is linear [2]. Use several numbers when several passages support it: [1][3].',
     'If the passages do not answer the question, say so briefly and mention what they do cover. Never invent notes, pages or citations.',

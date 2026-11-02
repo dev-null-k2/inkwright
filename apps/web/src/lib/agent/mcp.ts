@@ -25,16 +25,16 @@ import {
   type McpStatus,
   type McpTask,
   type McpToolSettings,
-} from '@inkstone/ai';
-import { newId } from '@inkstone/core';
+} from '@inkwright/ai';
+import { newId } from '@inkwright/core';
 import { APP_VERSION, safeStorage } from '../../platform/env.ts';
 import { getSecret, secrets, setSecret } from '../secrets.ts';
 import { requestElicitation } from './hub.ts';
 
-const KEY = 'inkstone.mcp.v1';
-const TASKS_KEY = 'inkstone.mcp.tasks.v1';
-export const OAUTH_CHANNEL = 'inkstone-mcp-oauth';
-export const OAUTH_CALLBACK_KEY = 'inkstone.mcp.oauth-callback';
+const KEY = 'inkwright.mcp.v1';
+const TASKS_KEY = 'inkwright.mcp.tasks.v1';
+export const OAUTH_CHANNEL = 'inkwright-mcp-oauth';
+export const OAUTH_CALLBACK_KEY = 'inkwright.mcp.oauth-callback';
 
 export interface McpRuntime {
   status: McpStatus;
@@ -128,8 +128,8 @@ function oauthProvider(cfg: McpServerConfig): McpOAuthProvider {
     serverId: cfg.id,
     secrets: secrets(),
     redirectUrl: oauthRedirectUrl(),
-    clientName: 'Inkstone',
-    clientUri: 'https://inkstone.app',
+    clientName: 'Inkwright',
+    clientUri: 'https://inkwright.app',
     clientMetadataUrl: (import.meta.env?.VITE_MCP_CLIENT_METADATA_URL as string | undefined) || undefined,
     onRedirect: (url) => {
       if (popup && !popup.closed) {
@@ -146,7 +146,7 @@ function newConnection(cfg: McpServerConfig): McpConnection {
   const auth = cfg.auth === 'oauth' ? oauthProvider(cfg) : cfg.auth === 'bearer' ? { token: async () => (await getSecret(mcpBearerSecret(cfg.id))) ?? undefined } : undefined;
   const c = new McpConnection({ ...cfg }, {
     auth,
-    clientInfo: { name: 'inkstone', title: 'Inkstone', version: APP_VERSION },
+    clientInfo: { name: 'inkwright', title: 'Inkwright', version: APP_VERSION },
     onElicit: async (req) => (await requestElicitation({ server: req.server, message: req.message, schema: req.schema as never })) as Awaited<ReturnType<ElicitHandler>>,
   });
   connections.set(cfg.id, c);
@@ -193,7 +193,7 @@ export async function addServer(input: { url: string; name?: string; auth: McpAu
 export async function signIn(id: string): Promise<void> {
   const rt = useMcp.getState().runtime[id];
   try {
-    popup = window.open(rt?.pendingAuthUrl ?? 'about:blank', 'inkstone-mcp-signin', 'popup,width=520,height=720');
+    popup = window.open(rt?.pendingAuthUrl ?? 'about:blank', 'inkwright-mcp-signin', 'popup,width=520,height=720');
   } catch {
     popup = null;
   }
@@ -206,7 +206,7 @@ export async function signIn(id: string): Promise<void> {
   if (c?.status === 'connected') { popup?.close(); popup = null; return; }
   if (after?.status === 'needs-auth' && after.pendingAuthUrl && !popup) {
     // Popups are blocked: sign in in this tab and come back.
-    safeStorage.set('inkstone.mcp.return', location.hash);
+    safeStorage.set('inkwright.mcp.return', location.hash);
     location.assign(after.pendingAuthUrl);
   } else if (after?.status !== 'needs-auth') {
     popup?.close();

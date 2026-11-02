@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { FlaskConical, Square } from 'lucide-react';
-import type { EvalCondition, MemoryEvalReport } from '@inkstone/ai';
+import type { EvalCondition, MemoryEvalReport } from '@inkwright/ai';
 import { relativeTime } from '../../ui/primitives.tsx';
 import { useApp } from '../../state/app.ts';
 import { lastMemoryEval, runMemoryEvalNow } from '../memeval.ts';

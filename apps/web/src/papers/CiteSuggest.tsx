@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { BookMarked } from 'lucide-react';
-import { citeTrigger, referenceLabel, suggestReferences, type CiteTrigger } from '@inkstone/core';
+import { citeTrigger, referenceLabel, suggestReferences, type CiteTrigger } from '@inkwright/core';
 import { useApp } from '../state/app.ts';
 import { caretPoint } from '../ui/knowledge/LinkSuggest.tsx';
 import { cx } from '../ui/primitives.tsx';

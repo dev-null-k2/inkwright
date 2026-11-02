@@ -1,19 +1,19 @@
 /**
- * `inkstone-mcp keys …` — manage REST API keys from a terminal (the app's Settings › Developer
+ * `inkwright-mcp keys …` — manage REST API keys from a terminal (the app's Settings › Developer
  * does the same). Keys are written hashed to the vault's `api/keys.json`, so a running server
  * (here or on another computer, once synced) accepts them without a restart.
  */
 import { parseArgs } from 'node:util';
-import { API_SCOPES, type ApiScope } from '@inkstone/core';
+import { API_SCOPES, type ApiScope } from '@inkwright/core';
 import { CliError, expandHome } from '../cli.ts';
 import { createContext } from '../context.ts';
 import { KeyStore } from './keys.ts';
 
-export const KEYS_USAGE = `inkstone-mcp keys — API keys for the REST API (docs/API.md)
+export const KEYS_USAGE = `inkwright-mcp keys — API keys for the REST API (docs/API.md)
 
-  inkstone-mcp keys create --vault <dir> --name <name> --scope <scope> [--scope …] [--expires-days <n>]
-  inkstone-mcp keys list   --vault <dir>
-  inkstone-mcp keys revoke --vault <dir> <key id>
+  inkwright-mcp keys create --vault <dir> --name <name> --scope <scope> [--scope …] [--expires-days <n>]
+  inkwright-mcp keys list   --vault <dir>
+  inkwright-mcp keys revoke --vault <dir> <key id>
 
 Scopes: ${API_SCOPES.join(', ')}
 The key is printed once; only its hash is stored.
@@ -28,16 +28,16 @@ export async function keysCli(argv: string[], out: (s: string) => void = (s) => 
     throw new CliError((e as Error).message);
   }
   const { values, positionals } = parsed;
-  const vault = values.vault ?? env.INKSTONE_VAULT;
+  const vault = values.vault ?? env.INKWRIGHT_VAULT;
   if (!cmd || !['create', 'list', 'revoke'].includes(cmd)) throw new CliError(`Unknown keys command "${cmd ?? ''}".`);
-  if (!vault) throw new CliError('Pass --vault <dir> (or set INKSTONE_VAULT).');
+  if (!vault) throw new CliError('Pass --vault <dir> (or set INKWRIGHT_VAULT).');
   const ctx = await createContext({ root: expandHome(vault), watch: false });
   try {
     const keys = new KeyStore(ctx);
     if (cmd === 'list') {
       const list = await keys.list();
       if (values.json) return out(`${JSON.stringify(list.map(({ hash: _h, ...k }) => k), null, 2)}\n`);
-      if (!list.length) return out('No API keys yet. Create one with: inkstone-mcp keys create --vault … --name … --scope notes:read\n');
+      if (!list.length) return out('No API keys yet. Create one with: inkwright-mcp keys create --vault … --name … --scope notes:read\n');
       for (const k of list) out(`${k.id}  ${k.prefix}_…  ${k.name}  [${k.scopes.join(' ')}]${k.revokedAt ? '  revoked' : k.expiresAt && k.expiresAt < Date.now() ? '  expired' : ''}\n`);
       return;
     }

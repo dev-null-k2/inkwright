@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MemoryFS, Vault, parseWikiLinks } from '@inkstone/core';
+import { MemoryFS, Vault, parseWikiLinks } from '@inkwright/core';
 import { seedSampleLibrary } from './sample.ts';
 
 describe('sample library', () => {

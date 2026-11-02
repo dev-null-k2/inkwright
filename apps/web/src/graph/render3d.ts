@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import type { ForceLayout } from '@inkstone/core';
+import type { ForceLayout } from '@inkwright/core';
 import { clusterExtent, prefersReducedMotion, ringTexture, type DisplayGraph, type GraphRenderer, type GraphTheme, type RGB } from './scene.ts';
 
 /**

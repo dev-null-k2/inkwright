@@ -4,7 +4,7 @@
  */
 import { useState } from 'react';
 import { Check, Pencil, Trash2, X } from 'lucide-react';
-import type { MemoryItem, MemoryKind } from '@inkstone/ai';
+import type { MemoryItem, MemoryKind } from '@inkwright/ai';
 import { requireHub, useAgent } from '../../lib/agent/hub.ts';
 import { IconButton, Segmented } from '../primitives.tsx';
 import { Section } from './shared.tsx';

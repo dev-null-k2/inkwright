@@ -4,7 +4,7 @@
  * file is re-read when it changes on disk (a sync bringing a new or revoked key), checked at most
  * once a second.
  */
-import { API_KEYS_FILE, createApiKey, decodeApiKeys, emptyApiKeys, encodeApiKeys, revokeApiKey, verifyApiKey, type ApiKeyRecord, type ApiKeysFile, type ApiScope } from '@inkstone/core';
+import { API_KEYS_FILE, createApiKey, decodeApiKeys, emptyApiKeys, encodeApiKeys, revokeApiKey, verifyApiKey, type ApiKeyRecord, type ApiKeysFile, type ApiScope } from '@inkwright/core';
 import type { ServerContext } from '../context.ts';
 
 export class KeyStore {

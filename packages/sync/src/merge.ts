@@ -23,7 +23,7 @@ import {
   type NoteMeta,
   type NotebookMeta,
   type PageInk,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import { utf8Decode, utf8Encode } from './util.ts';
 import { mergePageSummaries, mergeTranscript } from './merge-listen.ts';
 import { mergeApiKeys, mergePluginsConfig } from './merge-platform.ts';

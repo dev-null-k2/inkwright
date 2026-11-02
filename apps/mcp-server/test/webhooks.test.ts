@@ -13,7 +13,7 @@ afterEach(async () => {
 
 /** A webhook service on a hand-driven clock with a scripted receiver. */
 async function harness(statuses: (number | 'error')[]) {
-  const stateDir = await mkdtemp(path.join(tmpdir(), 'inkstone-wh-'));
+  const stateDir = await mkdtemp(path.join(tmpdir(), 'inkwright-wh-'));
   dirs.push(stateDir);
   let now = 1_700_000_000_000;
   const calls: { url: string; headers: Record<string, string>; body: string }[] = [];

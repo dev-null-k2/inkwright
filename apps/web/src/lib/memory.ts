@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
-import { MemoryCorpus, chunkNote, hybridSearch, type MemoryChunk, type NoteMeta, type PageInk, type PdfTextItem, type RankedChunk, type RecordingTranscript } from '@inkstone/core';
-import type { MemoryHit, MemorySearchHost } from '@inkstone/ai';
+import { MemoryCorpus, chunkNote, hybridSearch, type MemoryChunk, type NoteMeta, type PageInk, type PdfTextItem, type RankedChunk, type RecordingTranscript } from '@inkwright/core';
+import type { MemoryHit, MemorySearchHost } from '@inkwright/ai';
 import { loadPdfJs } from '../canvas/assets.ts';
 import type { AppVault } from './vault.ts';
 import { currentEmbedder, onLocalAIChange, type Embedder } from './localai.ts';
@@ -16,7 +16,7 @@ import { loadNoteTranscripts } from './listen/transcripts.ts';
  * re-embeds one passage, not the note.
  */
 
-const DB = 'inkstone-memory';
+const DB = 'inkwright-memory';
 const VEC = 'vectors';
 const PDF = 'pdftext';
 

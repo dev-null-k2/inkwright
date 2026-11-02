@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BranchStore, MemoryFS, Vault, newId, point, type InkStroke, type NoteMeta, type PageInk, type TextBox } from '@inkstone/core';
+import { BranchStore, MemoryFS, Vault, newId, point, type InkStroke, type NoteMeta, type PageInk, type TextBox } from '@inkwright/core';
 import { mergeBranchNote, mergePage } from '../src/index.ts';
 
 let now = 10_000;

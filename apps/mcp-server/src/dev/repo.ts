@@ -1,13 +1,13 @@
 /**
- * Scanning a repository on disk into a vault (`inkstone scan`), and reading the vault's code
- * graphs and notes for drift (`inkstone drift`, the `drift_report` MCP tool).
+ * Scanning a repository on disk into a vault (`inkwright scan`), and reading the vault's code
+ * graphs and notes for drift (`inkwright drift`, the `drift_report` MCP tool).
  */
 import { readdir, readFile, stat } from 'node:fs/promises';
 import * as path from 'node:path';
 import {
   CodeStore, driftReport, ignoredPath, languageOf, scanRepository,
   type CodeGraph, type CodeSource, type DriftItem, type RepoFile, type ScanLimits, type ScanProgress, type Vault, type VaultFS,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import { nodeCodeParser } from './treesitter.ts';
 
 /** Files of a repository folder worth parsing (code files, plus go.mod for Go import paths). */

@@ -1,4 +1,4 @@
-import type { VaultFS } from '@inkstone/core';
+import type { VaultFS } from '@inkwright/core';
 import { safePath } from './util.ts';
 
 /** What both sides agreed on the last time a file synced. */
@@ -79,7 +79,7 @@ export interface FsStateStoreOptions {
 }
 
 /**
- * SyncStateStore on its own VaultFS (e.g. an IndexedDBFS named "inkstone-sync", or an app
+ * SyncStateStore on its own VaultFS (e.g. an IndexedDBFS named "inkwright-sync", or an app
  * data folder) — never the vault's FS. Each change is one small journal file, so persisting
  * after every synced file costs O(1); the journal is folded into `state.json` periodically.
  * Bases are stored as plain files under `base/`.

@@ -1,5 +1,5 @@
 import { watch, statSync, type FSWatcher } from 'node:fs';
-import { SearchIndex, Vault, VaultLayout, decodeNote, isSafeId, type NoteMeta, type NotebookMeta } from '@inkstone/core';
+import { SearchIndex, Vault, VaultLayout, decodeNote, isSafeId, type NoteMeta, type NotebookMeta } from '@inkwright/core';
 import { NodeFS, TEMP_PREFIX } from './nodefs.ts';
 import { loadResvgRenderer, type PngRenderer } from './render.ts';
 import { PolicySource, PolicyVault, createServerTrust, loadAuditSigner, type ServerTrust } from './trust.ts';
@@ -37,7 +37,7 @@ export interface ServerContext {
   readonly trust: ServerTrust;
   readonly readOnly: boolean;
   readonly clock: () => number;
-  /** True when this context created `inkstone.json` (the folder was not a vault yet). */
+  /** True when this context created `inkwright.json` (the folder was not a vault yet). */
   readonly createdVault: boolean;
   /** Drops stale caches after external changes (another device, the app, a sync client). */
   refresh(): Promise<void>;
@@ -239,7 +239,7 @@ export function requireId(id: string, what = 'id'): string {
 }
 
 export function requireWritable(ctx: ServerContext): void {
-  if (ctx.readOnly) throw new Error('The Inkstone vault is mounted read-only (--read-only); write tools are disabled.');
+  if (ctx.readOnly) throw new Error('The Inkwright vault is mounted read-only (--read-only); write tools are disabled.');
 }
 
 /** "Parent / Child" path of a notebook. */

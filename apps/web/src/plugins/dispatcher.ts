@@ -1,6 +1,6 @@
 /**
  * The host side of the plugin API: one function, `dispatch`, answers every method a plugin (or
- * the `window.inkstone` automation API) can call. It is the only path from plugin code to the
+ * the `window.inkwright` automation API) can call. It is the only path from plugin code to the
  * app, so this is where permissions are enforced:
  *
  * 1. the method must be in the protocol's `METHODS` table;
@@ -27,7 +27,7 @@ import {
   type NoteSummary,
   type Permission,
   type SearchHit,
-} from '@inkstone/plugin-api';
+} from '@inkwright/plugin-api';
 
 /** A note as the backend sees it, with what scope checks need. */
 export interface BackendNote extends NoteSummary {

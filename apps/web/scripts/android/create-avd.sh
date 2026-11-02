@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installs the emulator + system image (if missing) and creates the Inkstone test AVD.
+# Installs the emulator + system image (if missing) and creates the Inkwright test AVD.
 #
 #   ./create-avd.sh            create (or recreate) the AVD from env.sh settings
 #

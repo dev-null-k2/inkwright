@@ -1,4 +1,4 @@
-import { VaultLayout, exportPageSvg, type NoteMeta, type PageInk } from '@inkstone/core';
+import { VaultLayout, exportPageSvg, type NoteMeta, type PageInk } from '@inkwright/core';
 import type { ServerContext } from './context.ts';
 
 /** Rasterizes an SVG document to PNG at the given pixel width. */

@@ -24,8 +24,8 @@ import {
   type NoteMeta,
   type NotebookMeta,
   type PageInk,
-} from '@inkstone/core';
-import { ActivityStore, RoutineStore } from '@inkstone/ai';
+} from '@inkwright/core';
+import { ActivityStore, RoutineStore } from '@inkwright/ai';
 import { PDFDocument } from 'pdf-lib';
 import { notebookPath, readNoteFresh, type ServerContext } from '../context.ts';
 import { appendToNote, createNote, createNotebook, restoreNote, trashNote, updateNote } from '../tools.ts';
@@ -679,7 +679,7 @@ export function createRoutes(d: ApiDeps): RouteDef[] {
       async handler(req: ApiRequest<{ id: string }>) {
         const w = d.webhooks.get(req.params.id);
         if (!w) throw new ApiError('not_found', `There is no webhook ${req.params.id}.`);
-        const [msgId] = d.webhooks.emit('note.updated', { id: 'test', title: 'Test event from Inkstone', updatedAt: new Date(ctx.clock()).toISOString(), test: true }, w.id);
+        const [msgId] = d.webhooks.emit('note.updated', { id: 'test', title: 'Test event from Inkwright', updatedAt: new Date(ctx.clock()).toISOString(), test: true }, w.id);
         if (!msgId) throw new ApiError('conflict', 'This webhook is off or does not subscribe to note.updated.');
         await d.webhooks.pump();
         const l = d.webhooks.deliveries(w.id).find((x) => x.id === msgId)!;
@@ -741,7 +741,7 @@ async function getNote(ctx: ServerContext, id: string): Promise<ApiResult> {
 async function notePdf(ctx: ServerContext, note: NoteMeta, pages: PageInk[]): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.setTitle(note.title || 'Note');
-  doc.setCreator('Inkstone');
+  doc.setCreator('Inkwright');
   for (const p of pages) {
     const size = pageSizeOf(note, p);
     const png = await ctx.renderPng(await pageSvg(ctx, note, p, { embedAssets: true }), Math.min(4096, Math.round(size.width * 2)));

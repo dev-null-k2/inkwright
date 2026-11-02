@@ -155,7 +155,7 @@ export interface DriftItem extends CodeRefState {
   title: string;
 }
 
-/** Every drifted code link across notes (the "Drift" list, `drift_report`, `inkstone drift`). */
+/** Every drifted code link across notes (the "Drift" list, `drift_report`, `inkwright drift`). */
 export function driftReport(notes: readonly { meta: NoteMeta; pages: readonly PageInk[] }[], graphs: readonly CodeGraph[] | readonly CodeIndex[]): DriftItem[] {
   const indexes = graphs.map((g) => (g instanceof CodeIndex ? g : new CodeIndex(g as CodeGraph)));
   const out: DriftItem[] = [];

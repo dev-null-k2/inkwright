@@ -2,7 +2,7 @@ import {
   autoView, boundsOfStrokes, emptyCells, fitTableToInk, newId, objectRect, pageSizeOf, relayoutStrokes, strokesByCell,
   tableFromCandidate, isInfinite, type GraphObject, type MathObject, type NoteDocument, type Rect,
   type TableCandidate, type TableEdit, type TableObject, type TextBox,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import type { AppVault } from '../lib/vault.ts';
 import { recognizeLocally } from '../lib/recognition.ts';
 import { findEvent, findLinks, findTasks, tasksToMarkdown } from './detect.ts';

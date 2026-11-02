@@ -13,8 +13,8 @@
  */
 import { z } from 'zod';
 import type { AuthInfo, CallToolResult, McpServer, ServerContext as McpContext } from '@modelcontextprotocol/server';
-import { RoutineStore, runSkill, summarizeNote, transcribeHandwriting, type Routine } from '@inkstone/ai';
-import { exportMarkdown, pageText, type NoteMeta } from '@inkstone/core';
+import { RoutineStore, runSkill, summarizeNote, transcribeHandwriting, type Routine } from '@inkwright/ai';
+import { exportMarkdown, pageText, type NoteMeta } from '@inkwright/core';
 import { notebookPath, readNoteFresh, type ServerContext } from './context.ts';
 import type { ActivityLog } from './activity.ts';
 import { approvalElicitation, approvalFromElicitResult, deferringApprover, type ApprovalStore, type Approver } from './approvals.ts';
@@ -47,7 +47,7 @@ export function ownerOf(authInfo: AuthInfo | undefined): string {
   return `${authInfo.clientId}:${sub ?? ''}`;
 }
 
-const NO_AI = 'This needs an AI configured for the Inkstone server (it is separate from the app’s). Start the server with --ai-provider and --ai-model — see docs/AGENTS.md.';
+const NO_AI = 'This needs an AI configured for the Inkwright server (it is separate from the app’s). Start the server with --ai-provider and --ai-model — see docs/AGENTS.md.';
 
 function requireAI(ai: AgentAI | null, vision = false): AgentAI {
   if (!ai) throw new TaskFailure(NO_AI, -32603);
@@ -138,7 +138,7 @@ export function registerAgentTools(server: McpServer, deps: AgentToolDeps): void
           let replace = false;
           const existing = out.filter((x) => x.note.summary?.trim());
           if (save === 'all' && existing.length) {
-            replace = (await approver({ tool: 'update_note', args: { notebook }, title: `Replace the summaries of ${existing.length} ${existing.length === 1 ? 'note' : 'notes'} in “${path}”`, detail: 'Each can be undone from Activity in Inkstone.', source: deps.clientLabel() })) === 'approved';
+            replace = (await approver({ tool: 'update_note', args: { notebook }, title: `Replace the summaries of ${existing.length} ${existing.length === 1 ? 'note' : 'notes'} in “${path}”`, detail: 'Each can be undone from Activity in Inkwright.', source: deps.clientLabel() })) === 'approved';
           }
           t.progress('Saving summaries…');
           const log = deps.activity();
@@ -149,7 +149,7 @@ export function registerAgentTools(server: McpServer, deps: AgentToolDeps): void
           }
         }
         const lines = out.map((x) => `- **${x.note.title || 'Untitled'}** (${x.note.id}): ${x.summary}`);
-        const tail = save === 'none' ? '' : `\n\nSaved ${saved} ${saved === 1 ? 'summary' : 'summaries'}${kept ? `; kept ${kept} existing ${kept === 1 ? 'one' : 'ones'}` : ''}. Changes can be undone in Inkstone (Settings › AI › Activity).`;
+        const tail = save === 'none' ? '' : `\n\nSaved ${saved} ${saved === 1 ? 'summary' : 'summaries'}${kept ? `; kept ${kept} existing ${kept === 1 ? 'one' : 'ones'}` : ''}. Changes can be undone in Inkwright (Settings › AI › Activity).`;
         return { content: [{ type: 'text', text: `# ${path}\n\n${notes.length} ${notes.length === 1 ? 'note' : 'notes'}.\n\n${lines.join('\n') || '_No notes with text to summarize._'}${tail}` }], structuredContent: { notebook: path, summaries: out.map((x) => ({ id: x.note.id, title: x.note.title, summary: x.summary })), saved } };
       });
     },
@@ -161,7 +161,7 @@ export function registerAgentTools(server: McpServer, deps: AgentToolDeps): void
     {
       title: 'Transcribe handwriting',
       description:
-        'Reads handwriting that has not been converted to text yet (one note, a notebook, or every note) with the server’s vision AI and stores the text so search and agents can use it. The ink is untouched; pages that already have text are skipped; each page can be undone in Inkstone’s Activity. Long-running (a task with per-page progress).',
+        'Reads handwriting that has not been converted to text yet (one note, a notebook, or every note) with the server’s vision AI and stores the text so search and agents can use it. The ink is untouched; pages that already have text are skipped; each page can be undone in Inkwright’s Activity. Long-running (a task with per-page progress).',
       inputSchema: z.object({
         id: IdSchema.optional().describe('Only this note.'),
         notebook: z.string().min(1).optional().describe('Only notes in this notebook (id, name or path).'),
@@ -199,7 +199,7 @@ export function registerAgentTools(server: McpServer, deps: AgentToolDeps): void
           const text = (await runSkill(transcribeHandwriting, ai.provider, ai.model, { image: { mediaType: 'image/png', data: Buffer.from(png).toString('base64') }, mode: 'markdown', context: x.note.title }, { signal: t.signal })).trim();
           let saved = false;
           if (a.save && text) {
-            saved = await setRecognizedText(ctx, x.note.id, x.pageId, text, `inkstone-agent:${ai.model}`);
+            saved = await setRecognizedText(ctx, x.note.id, x.pageId, text, `inkwright-agent:${ai.model}`);
             if (saved) deps.activity().push({ kind: 'handwriting_recognized', tool: 'transcribe_pages', noteId: x.note.id, title: x.note.title, pageId: x.pageId, text, summary: `Recognized handwriting on page ${x.index + 1} of “${x.note.title || 'Untitled'}”` });
           }
           done.push({ id: x.note.id, title: x.note.title, page: x.index + 1, text, saved });
@@ -215,7 +215,7 @@ export function registerAgentTools(server: McpServer, deps: AgentToolDeps): void
   const routines = new RoutineStore(ctx.fs);
   server.registerTool(
     'list_routines',
-    { title: 'List routines', description: 'The user’s routines (background agent tasks set up in Inkstone): name, what triggers them, when they last ran.', inputSchema: z.object({}), annotations: { ...READ, title: 'List routines' } },
+    { title: 'List routines', description: 'The user’s routines (background agent tasks set up in Inkwright): name, what triggers them, when they last ran.', inputSchema: z.object({}), annotations: { ...READ, title: 'List routines' } },
     async () => {
       const list = await routines.list();
       return jsonResult({ routines: list.map((r: Routine) => ({ id: r.id, name: r.name, enabled: r.enabled, triggers: r.triggers.map((x) => x.kind), lastRunAt: r.state.lastRunAt ? new Date(r.state.lastRunAt).toISOString() : null, lastStatus: r.state.lastStatus ?? null })) });
@@ -228,7 +228,7 @@ export function registerAgentTools(server: McpServer, deps: AgentToolDeps): void
       {
         title: 'Run a routine',
         description:
-          'Runs one of the user’s routines now with the server’s AI, exactly as Inkstone would (its prompt, its tools; changes are logged and undoable in Activity). Moving notes to Trash waits for the user’s OK. Long-running: a task with progress for Tasks-capable clients.',
+          'Runs one of the user’s routines now with the server’s AI, exactly as Inkwright would (its prompt, its tools; changes are logged and undoable in Activity). Moving notes to Trash waits for the user’s OK. Long-running: a task with progress for Tasks-capable clients.',
         inputSchema: z.object({ routine: z.string().min(1).describe('Routine id or name (see list_routines).') }),
         annotations: { ...WRITE, title: 'Run a routine', openWorldHint: false },
         ...(scopeChallenge ? { scopeChallenge } : {}),
@@ -247,7 +247,7 @@ export function registerAgentTools(server: McpServer, deps: AgentToolDeps): void
           await routines.updateState(r.id, (s) => ({ ...s, lastRunAt: ctx.clock(), lastStatus: res.status, ...(res.error ? { lastError: res.error } : {}) }));
           if (res.status === 'error') throw new TaskFailure(res.error ?? 'The routine failed.');
           const changes = res.run.ops.map((o) => `- ${o.summary}`).join('\n');
-          return { content: [{ type: 'text', text: `${res.reply || `“${r.name}” finished.`}${changes ? `\n\nChanges (undo them in Inkstone › Activity):\n${changes}` : ''}` }], structuredContent: { routine: r.name, status: res.status, runId: res.run.id, changes: res.run.ops.map((o) => o.summary) } };
+          return { content: [{ type: 'text', text: `${res.reply || `“${r.name}” finished.`}${changes ? `\n\nChanges (undo them in Inkwright › Activity):\n${changes}` : ''}` }], structuredContent: { routine: r.name, status: res.status, runId: res.run.id, changes: res.run.ops.map((o) => o.summary) } };
         });
       },
     );
@@ -288,7 +288,7 @@ export function registerAgentTools(server: McpServer, deps: AgentToolDeps): void
     'list_pending_approvals',
     {
       title: 'Actions waiting for approval',
-      description: 'Actions Inkstone’s background agents (routines, the always-on runner) want to take but are waiting for the user’s OK, such as moving a note to Trash. Hosts with MCP Apps show an approval card with Allow / Don’t allow buttons.',
+      description: 'Actions Inkwright’s background agents (routines, the always-on runner) want to take but are waiting for the user’s OK, such as moving a note to Trash. Hosts with MCP Apps show an approval card with Allow / Don’t allow buttons.',
       inputSchema: z.object({}),
       annotations: { ...READ, title: 'Actions waiting for approval' },
       _meta: uiToolMeta(APPROVALS_UI),
@@ -316,7 +316,7 @@ export function registerAgentTools(server: McpServer, deps: AgentToolDeps): void
       },
       async ({ id, approve }) => {
         const a = await deps.approvals.decide(id, approve, deps.clientLabel(), (x) => executeApproval(ctx, x));
-        const text = a.status === 'approved' ? `Done: ${a.title}. It can be undone in Inkstone › Activity.` : a.status === 'denied' ? `Declined: ${a.title}. Nothing was changed.` : `Could not do it: ${a.outcome}`;
+        const text = a.status === 'approved' ? `Done: ${a.title}. It can be undone in Inkwright › Activity.` : a.status === 'denied' ? `Declined: ${a.title}. Nothing was changed.` : `Could not do it: ${a.outcome}`;
         return { content: [{ type: 'text', text }], structuredContent: { approval: { id: a.id, status: a.status, outcome: a.outcome ?? null, title: a.title } }, ...(a.status === 'failed' ? { isError: true } : {}) };
       },
     );

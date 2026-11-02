@@ -19,7 +19,7 @@ import {
   type ProvenanceFile,
   type ProvenanceGen,
   type SourceAnchor,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import { pageImageForAI } from '../../lib/exporter.ts';
 import { useApp } from '../../state/app.ts';
 import { cx, relativeTime } from '../../ui/primitives.tsx';

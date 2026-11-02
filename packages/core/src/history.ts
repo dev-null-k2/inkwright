@@ -168,13 +168,13 @@ export class VersionHistory {
     for (const w of writes) {
       if (existing.has(`${w.name}.json`)) continue;
       existing.add(`${w.name}.json`);
-      await this.fs.writeText(blobPath(meta.id, w.name), key ? JSON.stringify(await sealJson(key, w.json, `inkstone:history:${w.name}`)) : w.json);
+      await this.fs.writeText(blobPath(meta.id, w.name), key ? JSON.stringify(await sealJson(key, w.json, `inkwright:history:${w.name}`)) : w.json);
     }
     const now = this.clock();
     const id = newId(now);
     const { lock: _lock, ...plainMeta } = meta;
     const m: SnapshotManifest = { v: 1, id, noteId: meta.id, takenAt: now, reason, blobs, digest };
-    if (key) m.sealed = await sealJson(key, { meta: plainMeta, pageIds }, `inkstone:snapshot:${id}`);
+    if (key) m.sealed = await sealJson(key, { meta: plainMeta, pageIds }, `inkwright:snapshot:${id}`);
     else { m.meta = plainMeta as NoteMeta; m.pageIds = pageIds; }
     if (opts.device) m.device = opts.device;
     await this.fs.writeText(manifestPath(meta.id, id), JSON.stringify(m));
@@ -192,7 +192,7 @@ export class VersionHistory {
     let meta: NoteMeta, pageIds: string[];
     if (m.sealed) {
       if (!key) return null;
-      ({ meta, pageIds } = await openJson<{ meta: NoteMeta; pageIds: string[] }>(key, m.sealed, `inkstone:snapshot:${m.id}`));
+      ({ meta, pageIds } = await openJson<{ meta: NoteMeta; pageIds: string[] }>(key, m.sealed, `inkwright:snapshot:${m.id}`));
     } else {
       meta = m.meta!;
       pageIds = m.pageIds ?? meta.pageIds;
@@ -205,7 +205,7 @@ export class VersionHistory {
       const o = JSON.parse(raw);
       if (o && o.v === 1 && typeof o.iv === 'string' && typeof o.data === 'string') {
         if (!key) return null;
-        json = await openJson<string>(key, o as SealedBox, `inkstone:history:${m.blobs[i]}`);
+        json = await openJson<string>(key, o as SealedBox, `inkwright:history:${m.blobs[i]}`);
       }
       const page = decodePage(json);
       pages.push({ ...page, id: pageIds[i] ?? page.id });
@@ -272,13 +272,13 @@ export class VersionHistory {
         const json = encodePage(p);
         const name = this.blobName(snapMeta, json);
         blobs.push(name);
-        await this.fs.writeText(blobPath(noteId, name), key ? JSON.stringify(await sealJson(key, json, `inkstone:history:${name}`)) : json);
+        await this.fs.writeText(blobPath(noteId, name), key ? JSON.stringify(await sealJson(key, json, `inkwright:history:${name}`)) : json);
       }
       const pageIds = s.pages.map((p) => p.id);
       const digest = toHex(sha256(JSON.stringify({ m: metaDigestPart(s.meta), blobs, pageIds }))).slice(0, 32);
       const m: SnapshotManifest = { v: 1, id: s.info.id, noteId, takenAt: s.info.takenAt, reason: s.info.reason, blobs, digest };
       const { lock: _l, ...plainMeta } = s.meta;
-      if (key) m.sealed = await sealJson(key, { meta: plainMeta, pageIds }, `inkstone:snapshot:${m.id}`);
+      if (key) m.sealed = await sealJson(key, { meta: plainMeta, pageIds }, `inkwright:snapshot:${m.id}`);
       else { m.meta = plainMeta as NoteMeta; m.pageIds = pageIds; }
       await this.fs.writeText(manifestPath(noteId, m.id), JSON.stringify(m));
     }

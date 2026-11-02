@@ -26,7 +26,7 @@ export async function newNote(page: Page) {
   const btn = page.locator('.new-btn');
   if (await btn.isVisible()) await btn.click();
   else await page.locator('.fab').click();
-  await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
 }
 
 export interface PenOpts {
@@ -76,9 +76,9 @@ export function scribble(x0: number, x1: number, y0: number, y1: number, passes:
 }
 export const circle = (cx: number, cy: number, r: number): Pt[] => Array.from({ length: 90 }, (_, i) => [cx + r * Math.cos((i / 84) * Math.PI * 2) * (1 + 0.04 * Math.sin(i)), cy + r * Math.sin((i / 84) * Math.PI * 2)]);
 
-export const strokes = (page: Page, pageIndex = 0) => page.evaluate((i) => (window as any).__inkstone.doc.page(i).strokes.map((s: any) => ({ id: s.id, pen: s.pen, shape: s.shape, n: s.points.length, color: s.color })), pageIndex);
-export const texts = (page: Page, pageIndex = 0) => page.evaluate((i) => ((window as any).__inkstone.doc.page(i).texts ?? []).map((t: any) => t.text), pageIndex);
-export const noteId = (page: Page) => page.evaluate(() => (window as any).__inkstone.doc.meta.id as string);
+export const strokes = (page: Page, pageIndex = 0) => page.evaluate((i) => (window as any).__inkwright.doc.page(i).strokes.map((s: any) => ({ id: s.id, pen: s.pen, shape: s.shape, n: s.points.length, color: s.color })), pageIndex);
+export const texts = (page: Page, pageIndex = 0) => page.evaluate((i) => ((window as any).__inkwright.doc.page(i).texts ?? []).map((t: any) => t.text), pageIndex);
+export const noteId = (page: Page) => page.evaluate(() => (window as any).__inkwright.doc.meta.id as string);
 
 /**
  * The shortcut modifier the app listens for in this browser: ⌘ (Meta) on Macs, iPads and iPhones,

@@ -16,10 +16,10 @@ import { createContext, type ServerContext } from '../../../apps/mcp-server/src/
 import { serveHttp } from '../../../apps/mcp-server/src/serve.ts';
 import type { RunningHttpServer } from '../../../apps/mcp-server/src/http.ts';
 import { generateSdk, tsType } from '../scripts/codegen.ts';
-import { InkstoneApiError, InkstoneClient, paginate, verifyWebhook } from '../src/index.ts';
+import { InkwrightApiError, InkwrightClient, paginate, verifyWebhook } from '../src/index.ts';
 
 describe('code generation', () => {
-  it('src/generated.ts is up to date with the API (run npm run generate -w @inkstone/sdk)', () => {
+  it('src/generated.ts is up to date with the API (run npm run generate -w @inkwright/sdk)', () => {
     const committed = readFileSync(new URL('../src/generated.ts', import.meta.url), 'utf8');
     expect(committed).toBe(generateSdk(describeApi()));
   });
@@ -34,19 +34,19 @@ describe('code generation', () => {
   });
 });
 
-describe('InkstoneClient against the server', () => {
+describe('InkwrightClient against the server', () => {
   let dir: string;
   let state: string;
   let ctx: ServerContext;
   let http: RunningHttpServer;
-  let client: InkstoneClient;
+  let client: InkwrightClient;
 
   beforeAll(async () => {
-    dir = await mkdtemp(path.join(tmpdir(), 'inkstone-sdk-'));
-    state = await mkdtemp(path.join(tmpdir(), 'inkstone-sdk-state-'));
+    dir = await mkdtemp(path.join(tmpdir(), 'inkwright-sdk-'));
+    state = await mkdtemp(path.join(tmpdir(), 'inkwright-sdk-state-'));
     ctx = await createContext({ root: dir, watch: false, renderPng: null });
     ({ http } = await serveHttp(ctx, parseCli(['--vault', dir, '--http', '0', '--token', 'tok', '--state-dir', state], {}), null, () => {}));
-    client = new InkstoneClient({ baseUrl: `${http.baseUrl}/api/v1`, apiKey: 'tok' });
+    client = new InkwrightClient({ baseUrl: `${http.baseUrl}/api/v1`, apiKey: 'tok' });
   });
 
   afterAll(async () => {
@@ -66,7 +66,7 @@ describe('InkstoneClient against the server', () => {
     expect(await client.getNote({ id: created.id }, { ifNoneMatch: etag })).toBeNull();
     await client.updateNote({ id: created.id, body: { title: 'Renamed' } }, { ifMatch: etag });
     const stale = await client.updateNote({ id: created.id, body: { title: 'Lost' } }, { ifMatch: etag }).catch((e) => e);
-    expect(stale).toBeInstanceOf(InkstoneApiError);
+    expect(stale).toBeInstanceOf(InkwrightApiError);
     expect(stale).toMatchObject({ status: 412, code: 'precondition_failed' });
     for (let i = 0; i < 4; i++) await client.createNote({ body: { title: `Page ${i}`, tags: ['sdk'] } });
     const titles: string[] = [];
@@ -77,7 +77,7 @@ describe('InkstoneClient against the server', () => {
 
   it('makes POST retries safe with automatic idempotency keys', async () => {
     let calls = 0;
-    const flaky = new InkstoneClient({
+    const flaky = new InkwrightClient({
       baseUrl: `${http.baseUrl}/api/v1`,
       apiKey: 'tok',
       fetch: async (url, init) => {
@@ -95,7 +95,7 @@ describe('InkstoneClient against the server', () => {
 
   it('turns problem documents into typed errors', async () => {
     const e = await client.getNote({ id: 'missing' }).catch((x) => x);
-    expect(e).toMatchObject({ name: 'InkstoneApiError', status: 404, code: 'not_found' });
+    expect(e).toMatchObject({ name: 'InkwrightApiError', status: 404, code: 'not_found' });
     const v = await client.createNote({ body: { title: '' } }).catch((x) => x);
     expect(v.problem.errors[0].path).toBe('body.title');
   });

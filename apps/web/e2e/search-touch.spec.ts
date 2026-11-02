@@ -16,6 +16,6 @@ test('on touch screens the library search field opens search everything', async 
   });
   expect(fits).toBe(true);
   await page.locator('.pal-row', { hasText: 'typed text' }).first().tap();
-  await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
   await expect(page.locator('.ink-flash')).toBeVisible();
 });

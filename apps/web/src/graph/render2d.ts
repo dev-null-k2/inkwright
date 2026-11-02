@@ -1,4 +1,4 @@
-import type { ForceLayout } from '@inkstone/core';
+import type { ForceLayout } from '@inkwright/core';
 import { clusterExtent, css, prefersReducedMotion, ringTexture, type DisplayGraph, type GraphRenderer, type GraphTheme } from './scene.ts';
 
 /**

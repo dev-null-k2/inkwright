@@ -1,7 +1,7 @@
 /**
- * The capabilities a plugin (or the in-page `window.inkstone` automation API) can be granted.
+ * The capabilities a plugin (or the in-page `window.inkwright` automation API) can be granted.
  *
- * Inkstone follows the model browsers use for extensions rather than the "full trust" model of
+ * Inkwright follows the model browsers use for extensions rather than the "full trust" model of
  * Obsidian or VS Code: plugin code runs in a sandbox and can only reach notes, the network or
  * the assistant through the host, and the host checks every call against what the user granted.
  * Contribution points (commands, panels, importers, exporters, settings, private storage) need no

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MemoryFS } from '@inkstone/core';
+import { MemoryFS } from '@inkwright/core';
 import { GoogleDriveRemote, MemoryStateStore, PreconditionFailedError, RemoteError, SyncEngine, driveQuote, type GoogleDriveRemoteOptions } from '../src/index.ts';
 import { FakeDrive, ROOT_ID, parseMultipart, parseQ } from './helpers/fake-drive.ts';
 
@@ -22,7 +22,7 @@ function setup(opts: Partial<GoogleDriveRemoteOptions> = {}) {
   return { drive, remote, sleeps, tokenCalls: () => tokenCalls };
 }
 
-function rootFolder(drive: FakeDrive, name = 'Inkstone') {
+function rootFolder(drive: FakeDrive, name = 'Inkwright') {
   return [...drive.files.values()].filter((f) => f.meta.name === name && f.meta.parents?.includes(ROOT_ID) && !f.meta.trashed);
 }
 
@@ -44,13 +44,13 @@ describe('fake Drive server self-checks', () => {
 });
 
 describe('GoogleDriveRemote', () => {
-  it('creates one visible Inkstone folder and mirrors the vault tree', async () => {
+  it('creates one visible Inkwright folder and mirrors the vault tree', async () => {
     const { drive, remote } = setup();
     await Promise.all([
       remote.write('notes/n1/note.json', enc.encode('{"id":"n1"}')),
       remote.write('notes/n1/pages/p1.ink.json', enc.encode('{"id":"p1"}')),
       remote.write('notes/n1/pages/p2.ink.json', enc.encode('{"id":"p2"}')),
-      remote.write('inkstone.json', enc.encode('{}')),
+      remote.write('inkwright.json', enc.encode('{}')),
     ]);
     const roots = rootFolder(drive);
     expect(roots).toHaveLength(1);
@@ -58,7 +58,7 @@ describe('GoogleDriveRemote', () => {
     expect(dec.decode(drive.find('notes/n1/pages/p2.ink.json', root)!.content)).toBe('{"id":"p2"}');
     // Exactly one folder per directory, despite the concurrent uploads.
     const folders = [...drive.files.values()].filter((f) => f.meta.mimeType === 'application/vnd.google-apps.folder');
-    expect(folders.map((f) => f.meta.name).sort()).toEqual(['Inkstone', 'n1', 'notes', 'pages']);
+    expect(folders.map((f) => f.meta.name).sort()).toEqual(['Inkwright', 'n1', 'notes', 'pages']);
     // New files go up as multipart with the right MIME type.
     expect(drive.find('notes/n1/note.json', root)!.meta.mimeType).toBe('application/json');
     expect(drive.count((m, p) => m === 'POST' && p === '/upload/drive/v3/files')).toBe(4);
@@ -67,7 +67,7 @@ describe('GoogleDriveRemote', () => {
   it('lists every file with paths, paging through results (flat and tree modes)', async () => {
     for (const listMode of ['flat', 'tree'] as const) {
       const { drive, remote } = setup({ listMode });
-      const paths = ['inkstone.json', 'notebooks/b1/notebook.json', ...Array.from({ length: 7 }, (_, i) => `notes/n${i}/pages/p.ink.json`), 'notes/n0/assets/img.png'];
+      const paths = ['inkwright.json', 'notebooks/b1/notebook.json', ...Array.from({ length: 7 }, (_, i) => `notes/n${i}/pages/p.ink.json`), 'notes/n0/assets/img.png'];
       for (const p of paths) await remote.write(p, enc.encode(p));
       const fresh = new GoogleDriveRemote({ getAccessToken: async () => drive.validToken, fetch: drive.fetch, listMode });
       const listed = await fresh.list();
@@ -106,7 +106,7 @@ describe('GoogleDriveRemote', () => {
 
   it('lists files from duplicate folders created by racing devices', async () => {
     const drive = new FakeDrive();
-    const root = drive.seed('Inkstone', 'root', { folder: true });
+    const root = drive.seed('Inkwright', 'root', { folder: true });
     const notesA = drive.seed('notes', root.id, { folder: true });
     const notesB = drive.seed('notes', root.id, { folder: true });
     drive.seed('a.json', notesA.id, { content: 'a' });
@@ -246,7 +246,7 @@ describe('GoogleDriveRemote', () => {
     const mk = () => new GoogleDriveRemote({ getAccessToken: async () => drive.validToken, fetch: drive.fetch });
     const a = new MemoryFS();
     const b = new MemoryFS();
-    await a.writeText('inkstone.json', '{"app":"Inkstone"}');
+    await a.writeText('inkwright.json', '{"app":"Inkwright"}');
     await a.writeText('notes/n/note.json', '{"id":"n","title":"T","pageIds":[],"tags":[],"updatedAt":1}');
     await a.writeBytes('notes/n/assets/x.bin', new Uint8Array([1, 2, 3]));
     const ea = new SyncEngine({ local: a, remote: mk(), state: new MemoryStateStore() });
@@ -258,6 +258,6 @@ describe('GoogleDriveRemote', () => {
     await eb.sync();
     const r = await ea.sync();
     expect(r.deleted.local).toEqual(['notes/n/assets/x.bin']);
-    expect(a.paths()).toEqual(['inkstone.json', 'notes/n/note.json']);
+    expect(a.paths()).toEqual(['inkwright.json', 'notes/n/note.json']);
   });
 });

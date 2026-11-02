@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Drives the Inkstone app on the running emulator (or any adb device: set ANDROID_SERIAL).
+# Drives the Inkwright app on the running emulator (or any adb device: set ANDROID_SERIAL).
 #
-#   ./app.sh install                 install the debug APK (env INKSTONE_APK to override)
-#   ./app.sh launch                  (re)start app.inkstone and wait for its activity
+#   ./app.sh install                 install the debug APK (env INKWRIGHT_APK to override)
+#   ./app.sh launch                  (re)start app.inkwright and wait for its activity
 #   ./app.sh stop                    force-stop the app
 #   ./app.sh reset                   clear the app's data (fresh first run)
 #   ./app.sh pid                     print the app's process id
@@ -13,7 +13,7 @@
 #   ./app.sh logcat-clear            empty the log buffers
 #   ./app.sh logcat NAME             save the whole log to $ARTIFACTS/NAME.log and our tags,
 #                                    crashes and ANRs to $ARTIFACTS/NAME.filtered.log
-#   ./app.sh check-crashes NAME      fail if NAME.log shows a crash or ANR of app.inkstone
+#   ./app.sh check-crashes NAME      fail if NAME.log shows a crash or ANR of app.inkwright
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
 
@@ -76,8 +76,8 @@ case "$cmd" in
   check-crashes)
     NAME="${1:?check-crashes NAME}"
     LOGF="$ARTIFACTS/$NAME.log"
-    # Java crashes print "Process: app.inkstone, PID: n" under FATAL EXCEPTION; native ones end
-    # "pid n (app.inkstone)"; the events buffer records am_crash / am_anr.
+    # Java crashes print "Process: app.inkwright, PID: n" under FATAL EXCEPTION; native ones end
+    # "pid n (app.inkwright)"; the events buffer records am_crash / am_anr.
     if grep -E "Process: $APP_ID, PID|am_crash.*$APP_ID|am_anr.*$APP_ID|ANR in $APP_ID|Fatal signal.*\($APP_ID\)" "$LOGF"; then
       log "crash or ANR found in $LOGF"; exit 1
     fi

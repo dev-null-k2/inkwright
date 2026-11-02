@@ -1,6 +1,6 @@
-# Open Inkstone from a URL — no server needed
+# Open Inkwright from a URL — no server needed
 
-Inkstone's web build (`apps/web/dist`) is a set of static files. Put them on any static host and the
+Inkwright's web build (`apps/web/dist`) is a set of static files. Put them on any static host and the
 app opens from that URL on any device with a modern browser: phone, tablet, Mac, Windows, Linux,
 ChromeOS, e-ink Android tablets. Installing it (browser menu → *Install* / *Add to Home Screen*)
 makes it a full-screen app that works offline.
@@ -10,9 +10,9 @@ makes it a full-screen app that works offline.
 | Need | How it works without a server |
 |---|---|
 | Storing notes | On the device (Origin Private File System / IndexedDB in browsers, app storage on Android). Plain files in the vault format (`docs/VAULT_FORMAT.md`). |
-| Sync between devices | Each user's own storage: Google Drive (`drive.file` scope, only files Inkstone created), any WebDAV server (Nextcloud, Synology, Fastmail…), or a local folder that the user syncs with iCloud/Dropbox/OneDrive. Three-way merge runs on the devices. |
+| Sync between devices | Each user's own storage: Google Drive (`drive.file` scope, only files Inkwright created), any WebDAV server (Nextcloud, Synology, Fastmail…), or a local folder that the user syncs with iCloud/Dropbox/OneDrive. Three-way merge runs on the devices. |
 | AI | On the device (local models, see `docs/LOCAL_AI.md`), or straight from the browser to the provider the user chose, with their own key. Keys are encrypted on the device and never touch our infrastructure. |
-| Agents (Claude, ChatGPT…) | The Inkstone MCP server (`apps/mcp-server`) runs on the user's own computer next to their vault. |
+| Agents (Claude, ChatGPT…) | The Inkwright MCP server (`apps/mcp-server`) runs on the user's own computer next to their vault. |
 | Offline | A service worker caches the app; everything except syncing and cloud AI works offline. |
 
 A server only becomes necessary for features that are inherently shared and live, such as real-time

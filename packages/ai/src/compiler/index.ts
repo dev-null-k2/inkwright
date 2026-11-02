@@ -1,4 +1,4 @@
-/** The context compiler's model edges and pipelines (pure logic lives in @inkstone/core compiler/). */
+/** The context compiler's model edges and pipelines (pure logic lives in @inkwright/core compiler/). */
 export * from './store.ts';
 export * from './draft.ts';
 export * from './compile.ts';

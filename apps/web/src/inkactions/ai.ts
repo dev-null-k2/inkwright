@@ -1,4 +1,4 @@
-import type { NoteMeta } from '@inkstone/core';
+import type { NoteMeta } from '@inkwright/core';
 import { getActiveAI, type ActiveAI, type AICallOptions } from '../lib/ai.ts';
 import { aiCanSee } from '../lib/trust/state.ts';
 

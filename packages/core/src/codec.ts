@@ -132,12 +132,12 @@ export function encodeManifest(m: VaultManifest): string {
 
 export function decodeManifest(json: string): VaultManifest {
   const o = JSON.parse(json);
-  return { app: o.app ?? 'Inkstone', formatVersion: Number(o.formatVersion ?? 1), createdAt: Number(o.createdAt ?? 0) };
+  return { app: o.app ?? 'Inkwright', formatVersion: Number(o.formatVersion ?? 1), createdAt: Number(o.createdAt ?? 0) };
 }
 
 /** Relative paths inside a vault. */
 export const VaultLayout = {
-  MANIFEST: 'inkstone.json',
+  MANIFEST: 'inkwright.json',
   NOTES_DIR: 'notes',
   NOTEBOOKS_DIR: 'notebooks',
   noteDir: (noteId: string) => `notes/${noteId}`,

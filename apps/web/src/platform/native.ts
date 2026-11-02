@@ -2,18 +2,18 @@ import { registerPlugin, type PluginListenerHandle } from '@capacitor/core';
 import { isNative, nativePlatform } from './env.ts';
 
 /**
- * Inkstone's own native plugin (android/app/src/main/java/app/inkstone/InkstoneNativePlugin.kt):
+ * Inkwright's own native plugin (android/app/src/main/java/app/inkwright/InkwrightNativePlugin.kt):
  * fine-grained haptic grain via VibrationEffect primitives, stylus button key events (Moto Pen
  * Ultra, S Pen, USI pens), and on-device ML Kit handwriting recognition.
  */
-/** Mirrors FeelProfile in @inkstone/core (feel.ts); sent whole so native needs no tables. */
+/** Mirrors FeelProfile in @inkwright/core (feel.ts); sent whole so native needs no tables. */
 export interface NativeFeelProfile {
   grainPitchMm: number; grainJitter: number; hapticStrength: number;
   soundBaseHz: number; soundHzPer100MmS: number; soundQ: number; soundGain: number;
   crackle: number; fiberMm: number; texture: number;
 }
 
-export interface InkstoneNativePlugin {
+export interface InkwrightNativePlugin {
   capabilities(): Promise<{ richHaptics: boolean; recognition: boolean; stylusKeys: boolean; nativeFeel?: boolean; inkTip?: boolean }>;
   /**
    * Instant ink tip (Android 10+): a transparent front-buffered overlay above the WebView.
@@ -49,7 +49,7 @@ export interface InkstoneNativePlugin {
   recognize(opts: { language: string; lines: { strokes: { x: number[]; y: number[]; t: number[] }[]; width: number; height: number; preContext: string }[] }): Promise<{ lines: string[] }>;
   addListener(event: 'stylusButton', cb: (e: { pressed: boolean; keyCode: number }) => void): Promise<PluginListenerHandle>;
   /**
-   * Files Android handed to Inkstone ("Open with", share sheet) that the web layer hasn't taken
+   * Files Android handed to Inkwright ("Open with", share sheet) that the web layer hasn't taken
    * yet. Each was copied into the app's cache; `path` is a file:// URI for Capacitor Filesystem.
    */
   takeSharedFiles(): Promise<{ files: SharedFile[] }>;
@@ -58,12 +58,12 @@ export interface InkstoneNativePlugin {
    * Times are epoch ms. `opened` is false when no calendar app is installed.
    */
   insertCalendarEvent(opts: { title: string; beginTime: number; endTime: number; allDay: boolean; description?: string; location?: string }): Promise<{ opened: boolean }>;
-  /** A file arrived while Inkstone was running (the same files are not returned by takeSharedFiles). */
+  /** A file arrived while Inkwright was running (the same files are not returned by takeSharedFiles). */
   addListener(event: 'sharedFiles', cb: (e: { files: SharedFile[] }) => void): Promise<PluginListenerHandle>;
 }
 
 export interface SharedFile { name: string; mimeType: string; path: string }
 
-export const InkstoneNative = registerPlugin<InkstoneNativePlugin>('InkstoneNative');
+export const InkwrightNative = registerPlugin<InkwrightNativePlugin>('InkwrightNative');
 
 export const hasNativePlugin = isNative && nativePlatform === 'android';

@@ -1,8 +1,8 @@
 /**
  * Who runs routines automatically: a lease file in the vault (`ai/leases/routines.json`).
  *
- * Routines can be run by the Inkstone app (while it is open) and by the always-on runner
- * (`inkstone-agent run` on a computer). Without coordination both would fire the same daily
+ * Routines can be run by the Inkwright app (while it is open) and by the always-on runner
+ * (`inkwright-agent run` on a computer). Without coordination both would fire the same daily
  * routine, and a note saved in the app would trigger the routine once in the app and again when
  * sync carries the save to the runner's copy of the vault. The rule is simple:
  *
@@ -18,7 +18,7 @@
  * settle on one holder. Expiry is generous (default 10 minutes) because the file travels through
  * the user's sync service and device clocks may disagree by a little.
  */
-import type { VaultFS } from '@inkstone/core';
+import type { VaultFS } from '@inkwright/core';
 
 /** Vault path of the routines lease (documented in docs/VAULT_FORMAT.md). */
 export const ROUTINE_LEASE_PATH = 'ai/leases/routines.json';
@@ -26,7 +26,7 @@ export const ROUTINE_LEASE_PATH = 'ai/leases/routines.json';
 export interface RoutineLease {
   /** Unique per process, e.g. `runner:macbook:4242:k3j2`. */
   holder: string;
-  /** What the app shows: "Inkstone agent on Karthik's MacBook". */
+  /** What the app shows: "Inkwright agent on Karthik's MacBook". */
   label: string;
   kind: 'runner' | 'app';
   acquiredAt: number;

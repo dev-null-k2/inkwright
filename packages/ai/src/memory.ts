@@ -7,7 +7,7 @@
  *
  * Stored in the vault at `ai/memory.json` so it syncs with the notes (docs/VAULT_FORMAT.md).
  */
-import { newId, type VaultFS } from '@inkstone/core';
+import { newId, type VaultFS } from '@inkwright/core';
 import type { AgentTool } from './agent.ts';
 
 export type MemoryKind = 'instruction' | 'fact';

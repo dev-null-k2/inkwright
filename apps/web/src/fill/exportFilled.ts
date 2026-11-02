@@ -1,5 +1,5 @@
 import { PDFContentStream, PDFDocument, PDFName, PDFRef, concatTransformationMatrix, degrees, popGraphicsState, pushGraphicsState, type PDFPage } from 'pdf-lib';
-import { pageSizeOf, type NoteMeta, type PageInk } from '@inkstone/core';
+import { pageSizeOf, type NoteMeta, type PageInk } from '@inkwright/core';
 import { K, SourcePdfs, drawPageItems, drawPaperBackground, drawPdfPageBackground, embedFonts, type ReadAsset } from '../lib/pdfdraw.ts';
 import { fillPdfForm, type FillReport } from './formWriter.ts';
 import { pdfAssetsOf } from './pdfForm.ts';
@@ -7,7 +7,7 @@ import { pdfAssetsOf } from './pdfForm.ts';
 /**
  * "Export filled PDF": the user's original PDF comes back as a real document. The PDF that most
  * pages of the note come from is loaded as is (vector content, text, links, metadata and form
- * stay), its form fields get the values filled in Inkstone (optionally flattened), its pages are
+ * stay), its form fields get the values filled in Inkwright (optionally flattened), its pages are
  * put in the note's order with the user's rotation, and ink, typed text and signatures are drawn
  * on top as vectors. Pages that don't come from that PDF (blank pages, other PDFs, a second copy
  * of a page) are added the same way the note exporter draws them.

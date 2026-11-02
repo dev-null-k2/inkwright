@@ -2,7 +2,7 @@
 name: explain-selection
 description: Explains a passage, term or formula from the user's notes at the level they want (simple, standard or expert), defining each symbol of a formula and gently pointing out mistakes. Use when the user asks what something in their notes means, how it works, or to explain a selection.
 metadata:
-  author: inkstone
+  author: inkwright
   version: "1.0"
 ---
 

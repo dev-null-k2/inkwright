@@ -2,9 +2,9 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
 // Release signing. Put the upload-key settings in android/keystore.properties (git-ignored):
-//   storeFile=/absolute/path/or/relative/to/android/inkstone-upload.jks
+//   storeFile=/absolute/path/or/relative/to/android/inkwright-upload.jks
 //   storePassword=...
-//   keyAlias=inkstone
+//   keyAlias=inkwright
 //   keyPassword=...
 // Without it, release builds fall back to the debug key so they still install for testing
 // (such builds are rejected by Google Play). See docs/ANDROID.md.
@@ -18,10 +18,10 @@ def hasReleaseKeystore = ['storeFile', 'storePassword', 'keyAlias', 'keyPassword
 }
 
 android {
-    namespace = "app.inkstone"
+    namespace = "app.inkwright"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "app.inkstone"
+        applicationId "app.inkwright"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -107,7 +107,7 @@ tasks.matching { it.name == 'mergeReleaseAssets' }.configureEach { task ->
 
 gradle.taskGraph.whenReady { graph ->
     if (!hasReleaseKeystore && graph.allTasks.any { it.project == project && it.name ==~ /(assemble|bundle|package)Release/ }) {
-        logger.warn("Inkstone: android/keystore.properties not found or incomplete — the release build is signed with the DEBUG key. Google Play will reject it; see docs/ANDROID.md.")
+        logger.warn("Inkwright: android/keystore.properties not found or incomplete — the release build is signed with the DEBUG key. Google Play will reject it; see docs/ANDROID.md.")
     }
 }
 

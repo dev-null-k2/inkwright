@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowUpRight, FilePlus2, Hash, Link2, PenLine, Sparkles, X } from 'lucide-react';
-import type { Mention, NoteDocument } from '@inkstone/core';
+import type { Mention, NoteDocument } from '@inkwright/core';
 import { useApp } from '../../state/app.ts';
 import { followLink, linkMention } from '../../lib/knowledge.ts';
 import { hasSemanticProvider, onRelatedProviderChange, relatedNotesProvider } from '../../lib/related.ts';

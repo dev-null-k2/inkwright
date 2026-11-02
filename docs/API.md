@@ -1,13 +1,13 @@
-# The Inkstone API
+# The Inkwright API
 
 Three ways for other software to work with your notes, all without a server of ours:
 
-1. **[REST API](#rest-api)** (`/api/v1`) — served by `inkstone-mcp --http` on your computer,
+1. **[REST API](#rest-api)** (`/api/v1`) — served by `inkwright-mcp --http` on your computer,
    next to MCP and A2A, over your vault folder. OpenAPI 3.1, scoped API keys, webhooks, a typed
    TypeScript SDK.
-2. **[Links](#links)** — `inkstone://new?title=…` and friends, for Shortcuts, Tasker, launchers
+2. **[Links](#links)** — `inkwright://new?title=…` and friends, for Shortcuts, Tasker, launchers
    and other apps.
-3. **[`window.inkstone`](#windowinkstone)** — the plugin API for scripts running in the app's
+3. **[`window.inkwright`](#windowinkwright)** — the plugin API for scripts running in the app's
    page (off by default).
 
 Agents should usually use MCP instead (docs/AGENTS.md); in-app extensions are plugins
@@ -18,8 +18,8 @@ Agents should usually use MCP instead (docs/AGENTS.md); in-app extensions are pl
 ### Start the server
 
 ```sh
-npm run build -w @inkstone/mcp-server
-node apps/mcp-server/dist/index.js --vault ~/Inkstone --http 8765
+npm run build -w @inkwright/mcp-server
+node apps/mcp-server/dist/index.js --vault ~/Inkwright --http 8765
 # REST API at http://127.0.0.1:8765/api/v1 — reference at http://127.0.0.1:8765/api/v1/docs
 ```
 
@@ -33,7 +33,7 @@ node apps/mcp-server/dist/index.js --vault ~/Inkstone --http 8765
 | --- | --- | --- |
 | `--cors-origin <origin>` | none | Let a browser app at that origin call the API (repeatable; `*` for any). Without it, browsers can't read responses. |
 | `--rate-limit <n>` | 600 | Requests per minute per caller (token bucket). |
-| `--state-dir <dir>` | `~/.config/inkstone/api/<vault hash>` | Webhook subscriptions, their secrets and the delivery log — outside the vault, so signing secrets never sync to a cloud drive. |
+| `--state-dir <dir>` | `~/.config/inkwright/api/<vault hash>` | Webhook subscriptions, their secrets and the delivery log — outside the vault, so signing secrets never sync to a cloud drive. |
 | `--embeddings-model <m>` | — | Turns on `mode=semantic`/`hybrid` search, e.g. `text-embedding-3-small` or `nomic-embed-text`. |
 | `--embeddings-url <url>` | OpenAI | Any OpenAI-compatible `/embeddings` base URL (Ollama: `http://127.0.0.1:11434/v1`). |
 | `--embeddings-key-env <NAME>` | `OPENAI_API_KEY` for OpenAI | Where the embedding key is. |
@@ -59,17 +59,17 @@ key is shown once — so a key made on your phone works with the server on your 
 and revoking it anywhere revokes it everywhere (revocation always wins in sync merges).
 
 ```sh
-node apps/mcp-server/dist/index.js keys create --vault ~/Inkstone --name "Shortcuts" --scope notes:read --scope notes:write
-node apps/mcp-server/dist/index.js keys list   --vault ~/Inkstone
-node apps/mcp-server/dist/index.js keys revoke --vault ~/Inkstone <key id>
-export INKSTONE_API_KEY=ink_…
+node apps/mcp-server/dist/index.js keys create --vault ~/Inkwright --name "Shortcuts" --scope notes:read --scope notes:write
+node apps/mcp-server/dist/index.js keys list   --vault ~/Inkwright
+node apps/mcp-server/dist/index.js keys revoke --vault ~/Inkwright <key id>
+export INKWRIGHT_API_KEY=ink_…
 ```
 
 ### Examples
 
 ```sh
 API=http://127.0.0.1:8765/api/v1
-AUTH="Authorization: Bearer $INKSTONE_API_KEY"
+AUTH="Authorization: Bearer $INKWRIGHT_API_KEY"
 
 # List notes tagged "work", newest first; follow nextCursor for more
 curl -s "$API/notes?tag=work&limit=20" -H "$AUTH"
@@ -152,7 +152,7 @@ are the page rendered at 2× on a PDF page of the same size (the app's own PDF e
 
 ```sh
 curl -s -X POST "$API/webhooks" -H "$AUTH" -H 'Content-Type: application/json' \
-  -d '{"url":"https://example.com/inkstone","events":["note.created","note.updated","recording.ended","routine.finished"]}'
+  -d '{"url":"https://example.com/inkwright","events":["note.created","note.updated","recording.ended","routine.finished"]}'
 # → {"id":"…","secret":"whsec_…", …}   (the secret is shown once)
 ```
 
@@ -163,7 +163,7 @@ your phone (after sync), MCP agents, the API, the always-on runner — are repor
 Deliveries follow the [Standard Webhooks](https://www.standardwebhooks.com) specification:
 
 ```http
-POST /inkstone HTTP/1.1
+POST /inkwright HTTP/1.1
 content-type: application/json
 webhook-id: msg_01JD…
 webhook-timestamp: 1730000000
@@ -175,7 +175,7 @@ webhook-signature: v1,K5oZfzN95Z9UVu1EsfQmfVNQhnkZ2pj9o9NDN/H/pI4=
 - Verify: HMAC-SHA256 of `<webhook-id>.<webhook-timestamp>.<raw body>` with the base64-decoded
   part of the secret after `whsec_`, base64-encoded, compared with each `v1,…` entry; reject
   timestamps more than 5 minutes off; de-duplicate by `webhook-id` (retries reuse it). Any
-  Standard Webhooks library works, or `verifyWebhook` from `@inkstone/sdk`.
+  Standard Webhooks library works, or `verifyWebhook` from `@inkwright/sdk`.
 - Answer 2xx quickly. Anything else (or no answer in 15 s) is retried after 5 s, 5 min, 30 min,
   2 h, 5 h, 10 h and 10 h, then marked failed. `410 Gone` turns the subscription off.
 - `GET /webhooks/{id}/deliveries` shows the latest attempt of each message;
@@ -184,15 +184,15 @@ webhook-signature: v1,K5oZfzN95Z9UVu1EsfQmfVNQhnkZ2pj9o9NDN/H/pI4=
 
 ### The TypeScript SDK
 
-`@inkstone/sdk` (packages/sdk) is generated from the OpenAPI document: one typed method per
+`@inkwright/sdk` (packages/sdk) is generated from the OpenAPI document: one typed method per
 operation, plus retries with automatic idempotency keys, typed problem errors, pagination and
 webhook verification. See packages/sdk/README.md and its `examples/`.
 
 ```ts
-import { InkstoneClient, paginate } from '@inkstone/sdk';
-const inkstone = new InkstoneClient({ baseUrl: 'http://127.0.0.1:8765/api/v1', apiKey: process.env.INKSTONE_API_KEY });
-const note = await inkstone.createNote({ body: { title: 'From a script', text: 'Hello' } });
-for await (const n of paginate((cursor) => inkstone.listNotes({ tag: 'work', cursor }))) console.log(n.title);
+import { InkwrightClient, paginate } from '@inkwright/sdk';
+const inkwright = new InkwrightClient({ baseUrl: 'http://127.0.0.1:8765/api/v1', apiKey: process.env.INKWRIGHT_API_KEY });
+const note = await inkwright.createNote({ body: { title: 'From a script', text: 'Hello' } });
+for await (const n of paginate((cursor) => inkwright.listNotes({ tag: 'work', cursor }))) console.log(n.title);
 ```
 
 Other languages: generate a client from `/api/v1/openapi.json` with any OpenAPI 3.1 generator.
@@ -211,18 +211,18 @@ REST and the app's assistant change notes in the same way.
 
 | Link | Does |
 | --- | --- |
-| `inkstone://new?title=…&text=…&tags=a,b&notebook=…` | creates a note (text as typed Markdown) and opens it |
-| `inkstone://open?note=<id>&page=2` or `?title=…` | opens a note at a page |
-| `inkstone://search?q=…` | opens search everything with the query |
-| `inkstone://capture?url=…&title=…&text=…&tags=…` | saves a link (and a quote) as a note tagged `captured` |
-| `inkstone://today` | opens today's daily note |
+| `inkwright://new?title=…&text=…&tags=a,b&notebook=…` | creates a note (text as typed Markdown) and opens it |
+| `inkwright://open?note=<id>&page=2` or `?title=…` | opens a note at a page |
+| `inkwright://search?q=…` | opens search everything with the query |
+| `inkwright://capture?url=…&title=…&text=…&tags=…` | saves a link (and a quote) as a note tagged `captured` |
+| `inkwright://today` | opens today's daily note |
 
-- **Android**: the app registers `inkstone://` (an intent filter); Tasker "Browse URL", Shortcut
+- **Android**: the app registers `inkwright://` (an intent filter); Tasker "Browse URL", Shortcut
   makers and other apps can open these links.
-- **Installed web app** (Chrome, Edge): registers the `web+inkstone://` protocol (browsers only
+- **Installed web app** (Chrome, Edge): registers the `web+inkwright://` protocol (browsers only
   allow `web+` schemes for web apps); the browser asks once before handing links to it.
 - **Any browser**: the same actions as query parameters on the app's address:
-  `https://<your Inkstone>/?action=new&title=Groceries&text=-%20milk`,
+  `https://<your Inkwright>/?action=new&title=Groceries&text=-%20milk`,
   `?action=open&note=…`, `?action=search&q=…`, `?action=capture&url=…`, `?action=today`.
 - iOS Shortcuts: "Open URL" with the web form.
 
@@ -230,18 +230,18 @@ Links only create, open or search — they never delete, change or send anything
 capped at 300 characters and text at 50 000. Turning off **Links from other apps** in Settings ›
 Modules ignores them. The parser is `apps/web/src/developer/deeplinks.ts`.
 
-## window.inkstone
+## window.inkwright
 
 Settings › Developer › Automation API exposes the plugin API (docs/PLUGINS.md) to scripts on
 the app's page — browser extensions, userscripts, the devtools console — with the permissions
 you tick there. Calls go through the same permission-checked dispatcher as plugins, and changes
 appear in Activity as "Automation API". It needs the Developer tools module (Settings ›
-Modules) and is off by default. When it turns on, `window` receives an `inkstone:ready` event.
+Modules) and is off by default. When it turns on, `window` receives an `inkwright:ready` event.
 
 ```js
-await inkstone.app.info();                                   // version, granted permissions
-await inkstone.notes.list({ tag: 'work', limit: 10 });
-await inkstone.notes.create({ title: 'From the console', text: 'hi' });   // needs notes:write
-inkstone.events.on('note.updated', (e) => console.log('saved', e.title)); // needs events
-inkstone.commands.register('stamp', () => inkstone.editor.insertText(new Date().toLocaleString()), { title: 'Insert the date' });
+await inkwright.app.info();                                   // version, granted permissions
+await inkwright.notes.list({ tag: 'work', limit: 10 });
+await inkwright.notes.create({ title: 'From the console', text: 'hi' });   // needs notes:write
+inkwright.events.on('note.updated', (e) => console.log('saved', e.title)); // needs events
+inkwright.commands.register('stamp', () => inkwright.editor.insertText(new Date().toLocaleString()), { title: 'Insert the date' });
 ```

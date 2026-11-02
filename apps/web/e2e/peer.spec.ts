@@ -21,8 +21,8 @@ async function device(browser: Browser, name: string): Promise<Page> {
   await openApp(page);
   // Name the device (Settings › Authorship) and use no STUN server (LAN only).
   await page.evaluate((name) => {
-    const s = JSON.parse(localStorage.getItem('inkstone.settings.v1') ?? '{}');
-    localStorage.setItem('inkstone.settings.v1', JSON.stringify({ ...s, authorship: { ...s.authorship, deviceName: name } }));
+    const s = JSON.parse(localStorage.getItem('inkwright.settings.v1') ?? '{}');
+    localStorage.setItem('inkwright.settings.v1', JSON.stringify({ ...s, authorship: { ...s.authorship, deviceName: name } }));
   }, name);
   await page.reload();
   await expect(page.locator('.library')).toBeVisible();
@@ -50,7 +50,7 @@ async function enter(page: Page, label: RegExp, code: string) {
 interface StrokeView { id: string; author: string | null; n: number }
 
 const doc = (page: Page): Promise<StrokeView[]> => page.evaluate(() => {
-  const d = (window as any).__inkstone.doc;
+  const d = (window as any).__inkwright.doc;
   return d.page(0).strokes.map((s: any) => ({ id: s.id, author: s.author?.name ?? null, n: s.points.length }));
 });
 
@@ -91,7 +91,7 @@ async function home(page: Page) {
 async function openNote(page: Page, title: string) {
   await home(page);
   await page.getByRole('button', { name: `Open ${title}` }).click();
-  await page.waitForFunction((t) => (window as any).__inkstone?.doc?.meta.title === t, title);
+  await page.waitForFunction((t) => (window as any).__inkwright?.doc?.meta.title === t, title);
 }
 
 async function rename(page: Page, title: string) {
@@ -159,7 +159,7 @@ test('two people write on one page at the same time and end with identical pages
   await expect(a.getByText('Grace joined')).toBeVisible({ timeout: 30_000 });
   await a.getByRole('button', { name: 'Done' }).click();
   // Grace lands in her copy of the note, with Ada's ink.
-  await b.waitForFunction(() => (window as any).__inkstone?.doc?.page(0).strokes.length === 1, null, { timeout: 30_000 });
+  await b.waitForFunction(() => (window as any).__inkwright?.doc?.page(0).strokes.length === 1, null, { timeout: 30_000 });
   await expect(b.locator('.live-pill')).toContainText('Live with');
 
   // A stroke in progress on one side shows on the other before pen-up.

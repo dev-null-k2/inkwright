@@ -9,7 +9,7 @@ import {
   transcriptAssetName,
   type PageSummariesFile,
   type TranscriptFile,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import { MemoryRemote, MemoryStateStore, SyncEngine, mergeFileBytes, mergeKindOf, mergePageSummaries, mergeTranscript } from '../src/index.ts';
 
 const seg = (id: string, startMs: number, text = id) => ({ id, startMs, endMs: startMs + 900, text });

@@ -1,4 +1,4 @@
-import { exportObsidianVault, importObsidianVault, type ObsidianImportReport, type VaultFile } from '@inkstone/core';
+import { exportObsidianVault, importObsidianVault, type ObsidianImportReport, type VaultFile } from '@inkwright/core';
 import { useApp } from '../state/app.ts';
 import { useSettings } from '../state/settings.ts';
 import { saveFile } from '../platform/files.ts';
@@ -9,7 +9,7 @@ import { scheduleSync } from './sync.ts';
 /**
  * Obsidian export and import in the app: page pictures are rendered as PNG (with PDF pages and
  * images, exactly as on screen), files go into a zip or straight into a folder the user picks,
- * and Markdown vaults come in from a folder or a zip. The mapping itself is @inkstone/core's
+ * and Markdown vaults come in from a folder or a zip. The mapping itself is @inkwright/core's
  * obsidian.ts (docs/OBSIDIAN.md).
  */
 
@@ -41,40 +41,40 @@ export const canExportToFolder = () => typeof window !== 'undefined' && 'showDir
 export async function exportObsidianZip(): Promise<number> {
   app().toast({ text: 'Preparing your Obsidian vault…' });
   const files = await exportFiles();
-  const { writeZip } = await import('@inkstone/sync');
-  const zip = await writeZip(files.map((f) => ({ path: `Inkstone/${f.path}`, bytes: f.bytes, mtime: f.mtime })));
-  await saveFile(`Inkstone for Obsidian ${new Date().toISOString().slice(0, 10)}.zip`, zip, 'application/zip');
+  const { writeZip } = await import('@inkwright/sync');
+  const zip = await writeZip(files.map((f) => ({ path: `Inkwright/${f.path}`, bytes: f.bytes, mtime: f.mtime })));
+  await saveFile(`Inkwright for Obsidian ${new Date().toISOString().slice(0, 10)}.zip`, zip, 'application/zip');
   return files.length;
 }
 
 /**
  * Writes the Obsidian vault into a folder the user picks (an existing Obsidian vault works: the
- * notes go into an "Inkstone" folder inside it, so nothing of theirs is overwritten).
+ * notes go into an "Inkwright" folder inside it, so nothing of theirs is overwritten).
  */
 export async function exportObsidianToFolder(): Promise<{ folder: string; files: number } | null> {
   let handle: FileSystemDirectoryHandle;
   try {
-    handle = await (window as unknown as { showDirectoryPicker: (o: unknown) => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker({ id: 'inkstone-obsidian', mode: 'readwrite' });
+    handle = await (window as unknown as { showDirectoryPicker: (o: unknown) => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker({ id: 'inkwright-obsidian', mode: 'readwrite' });
   } catch (e) {
     if ((e as Error).name === 'AbortError') return null;
     throw e;
   }
   const files = await exportFiles();
-  const { FileSystemAccessFS } = await import('@inkstone/sync');
+  const { FileSystemAccessFS } = await import('@inkwright/sync');
   const fs = new FileSystemAccessFS(handle);
-  for (const f of files) await fs.writeBytes(`Inkstone/${f.path}`, f.bytes);
+  for (const f of files) await fs.writeBytes(`Inkwright/${f.path}`, f.bytes);
   return { folder: handle.name, files: files.length };
 }
 
 const isZip = (f: File) => /\.zip$/i.test(f.name) || f.type === 'application/zip' || f.type === 'application/x-zip-compressed';
 
-/** True when a zip holds Markdown notes and is not an Inkstone backup. */
+/** True when a zip holds Markdown notes and is not an Inkwright backup. */
 export async function isMarkdownVaultZip(f: File): Promise<boolean> {
   if (!isZip(f)) return false;
-  const { readZip } = await import('@inkstone/sync');
+  const { readZip } = await import('@inkwright/sync');
   const entries = await readZip(new Uint8Array(await f.arrayBuffer()));
   const names = entries.map((e) => e.path.replace(/^[^/]+\//, ''));
-  if (entries.some((e) => /(^|\/)inkstone\.json$/.test(e.path)) && names.some((n) => n.startsWith('notes/'))) return false;
+  if (entries.some((e) => /(^|\/)inkwright\.json$/.test(e.path)) && names.some((n) => n.startsWith('notes/'))) return false;
   return entries.some((e) => /\.(md|markdown)$/i.test(e.path));
 }
 
@@ -83,7 +83,7 @@ async function toVaultFiles(files: readonly File[]): Promise<VaultFile[]> {
   const out: VaultFile[] = [];
   for (const f of files) {
     if (isZip(f)) {
-      const { readZip } = await import('@inkstone/sync');
+      const { readZip } = await import('@inkwright/sync');
       for (const e of await readZip(new Uint8Array(await f.arrayBuffer()))) out.push({ path: e.path, bytes: e.bytes, mtime: e.mtime });
     } else {
       const rel = (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name;

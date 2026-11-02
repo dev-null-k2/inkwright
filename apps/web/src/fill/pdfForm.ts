@@ -1,7 +1,7 @@
-import type { FormFieldValue, InkStroke, NoteMeta, PageInk } from '@inkstone/core';
+import type { FormFieldValue, InkStroke, NoteMeta, PageInk } from '@inkwright/core';
 
 /**
- * PDF form fields (AcroForm) as Inkstone sees them: what pdf.js reports for each widget, mapped to
+ * PDF form fields (AcroForm) as Inkwright sees them: what pdf.js reports for each widget, mapped to
  * a small model the Fill & sign layer can show as tappable fields at any zoom, and the values
  * pdf.js needs to draw them. Values themselves live in `NoteMeta.forms[asset][fieldName]`
  * (docs/VAULT_FORMAT.md); the PDF file is never modified in the vault.
@@ -150,7 +150,7 @@ export function humanize(name: string): string {
   return s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : name;
 }
 
-/** The value to show: what the user entered in Inkstone, else what the PDF came with. */
+/** The value to show: what the user entered in Inkwright, else what the PDF came with. */
 export function effectiveValue(field: PdfField, stored: Record<string, FormFieldValue> | undefined): FormFieldValue {
   const v = stored?.[field.name];
   if (v !== undefined) return coerce(field, v);

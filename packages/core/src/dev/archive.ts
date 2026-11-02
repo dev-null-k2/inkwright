@@ -1,6 +1,6 @@
 /**
  * Reading repository archives without a server: GitHub's "Download tarball" (`.tar.gz`) on any
- * platform. (Zip archives use `readZip` from @inkstone/sync.) Plain ustar with the POSIX pax and
+ * platform. (Zip archives use `readZip` from @inkwright/sync.) Plain ustar with the POSIX pax and
  * GNU long-name extensions GitHub and `git archive` produce; gunzip through the platform's
  * `DecompressionStream` (browsers, Node 18+).
  */

@@ -3,7 +3,7 @@
  * but never leave the device: another device re-adds its own copy of the repository). Missing
  * IndexedDB just means re-adding the folder to re-scan it.
  */
-const DB = 'inkstone-dev';
+const DB = 'inkwright-dev';
 const STORE = 'folders';
 
 function open(): Promise<IDBDatabase | null> {

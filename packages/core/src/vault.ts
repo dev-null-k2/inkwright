@@ -120,7 +120,7 @@ export class Vault {
   async init(): Promise<void> {
     const m = await this.fs.readText(VaultLayout.MANIFEST);
     if (m == null) {
-      await this.fs.writeText(VaultLayout.MANIFEST, encodeManifest({ app: 'Inkstone', formatVersion: VAULT_FORMAT_VERSION, createdAt: this.clock() }));
+      await this.fs.writeText(VaultLayout.MANIFEST, encodeManifest({ app: 'Inkwright', formatVersion: VAULT_FORMAT_VERSION, createdAt: this.clock() }));
     } else {
       decodeManifest(m);
     }

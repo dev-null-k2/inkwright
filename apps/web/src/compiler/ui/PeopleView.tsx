@@ -5,7 +5,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { ExternalLink } from 'lucide-react';
-import { anchorLink, extractActions, extractEntities, type SourceDoc } from '@inkstone/core';
+import { anchorLink, extractActions, extractEntities, type SourceDoc } from '@inkwright/core';
 import { useApp } from '../../state/app.ts';
 import { Switch } from '../../ui/primitives.tsx';
 import { Section } from '../../ui/agent/shared.tsx';

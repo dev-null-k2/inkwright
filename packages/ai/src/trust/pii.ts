@@ -135,7 +135,7 @@ const NOT_NAMES = new Set([
   'The', 'This', 'That', 'There', 'Team', 'Everyone', 'All', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', 'January', 'February',
   'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December', 'Today', 'Tomorrow', 'Yesterday', 'Thanks', 'Thank', 'Best',
   'Regards', 'Cheers', 'Sales', 'Marketing', 'Engineering', 'Support', 'Legal', 'Finance', 'Product', 'Design', 'Customer', 'Customers', 'Client', 'Clients',
-  'Google', 'Microsoft', 'Apple', 'Amazon', 'Claude', 'Gemini', 'ChatGPT', 'Notion', 'Slack', 'Zoom', 'Teams', 'Inkstone', 'Professor', 'Doctor', 'Mom', 'Dad',
+  'Google', 'Microsoft', 'Apple', 'Amazon', 'Claude', 'Gemini', 'ChatGPT', 'Notion', 'Slack', 'Zoom', 'Teams', 'Inkwright', 'Professor', 'Doctor', 'Mom', 'Dad',
   'Hello', 'Hey', 'Hi', 'Dear', 'Please', 'Sincerely', 'Warmly', 'Love', 'Yours', 'Kind', 'Q1', 'Q2', 'Q3', 'Q4', 'PM', 'AM', 'Board', 'Staff', 'Faculty',
 ]);
 
@@ -168,7 +168,7 @@ const RECOGNIZERS: Recognizer[] = [
     validate: (v, text, start) => {
       if (/base64,\s*$/.test(before(text, start, 12))) return false; // data: URLs (images)
       if (/^[0-9a-f-]+$/i.test(v) || /^[0-9A-F-]+$/.test(v)) return false; // hex: hashes, UUIDs, ids
-      if (/^[0-9A-HJKMNP-TV-Z]{22,32}$/.test(v)) return false; // Crockford base32 ids (Inkstone's own)
+      if (/^[0-9A-HJKMNP-TV-Z]{22,32}$/.test(v)) return false; // Crockford base32 ids (Inkwright's own)
       const classes = [/[a-z]/, /[A-Z]/, /\d/].filter((r) => r.test(v)).length;
       if (classes < 3) return false;
       if (/[/_-]/.test(v) && v.split(/[/_-]/).every((p) => /^[a-zA-Z]*$/.test(p) || /^\d+$/.test(p))) return false; // paths and slugs

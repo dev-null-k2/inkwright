@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Ajv2020 } from 'ajv/dist/2020.js';
-import { API_KEYS_FILE, decodeApiKeys } from '@inkstone/core';
+import { API_KEYS_FILE, decodeApiKeys } from '@inkwright/core';
 import { parseCli } from '../src/cli.ts';
 import { serveHttp } from '../src/serve.ts';
 import type { RunningHttpServer } from '../src/http.ts';
@@ -40,7 +40,7 @@ let receiverStatus = 200;
 beforeAll(async () => {
   fx = await makeFixture();
   ctx = await fx.ctx({ renderPng: undefined });
-  stateDir = await mkdtemp(path.join(tmpdir(), 'inkstone-api-state-'));
+  stateDir = await mkdtemp(path.join(tmpdir(), 'inkwright-api-state-'));
   ({ http } = await serveHttp(ctx, parseCli(['--vault', fx.dir, '--http', '0', '--token', 'server-token', '--state-dir', stateDir, '--cors-origin', 'https://app.example.com'], {}), null, () => {}, { eventIntervalMs: 200 }));
   base = `${http.baseUrl}/api/v1`;
   const store = new KeyStore(ctx);
@@ -350,7 +350,7 @@ describe('limits and CORS', () => {
   });
 
   it('rate-limits per key with RateLimit headers and Retry-After', async () => {
-    const dir = await mkdtemp(path.join(tmpdir(), 'inkstone-api-rl-'));
+    const dir = await mkdtemp(path.join(tmpdir(), 'inkwright-api-rl-'));
     const c2 = await fx.ctx();
     const { http: h2 } = await serveHttp(c2, parseCli(['--vault', fx.dir, '--http', '0', '--token', 't', '--rate-limit', '3', '--state-dir', dir], {}), null, () => {});
     try {

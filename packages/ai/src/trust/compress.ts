@@ -20,7 +20,7 @@
  * extra round trip, which can cost more than it saved), and requests without tools (the model
  * cannot retrieve, so only lossless shortening is applied there).
  */
-import { sha256 } from '@inkstone/core';
+import { sha256 } from '@inkwright/core';
 import type { ChatMessage, ContentPart } from '../types.ts';
 
 // ---- Tokens ------------------------------------------------------------------------------------
@@ -359,7 +359,7 @@ export const RETRIEVE_TOOL_DEF = {
   },
 };
 
-const MARK_RE = /\[Inkstone shortened this[^\]]*ref "([0-9a-f]{16})"[^\]]*\]/;
+const MARK_RE = /\[Inkwright shortened this[^\]]*ref "([0-9a-f]{16})"[^\]]*\]/;
 
 /** The ref of a block shortened by the budgeter, if `text` is one. */
 export function shortenedRef(text: string): string | null {
@@ -440,7 +440,7 @@ export class ContextBudgeter {
     }
     if (!r) return null;
     await this.store.put(text);
-    const marked = `${r.text}\n[Inkstone shortened this from ~${tokens.toLocaleString('en-US')} to ~${estimateTokens(r.text).toLocaleString('en-US')} tokens to save cost. Full text: call ${RETRIEVE_TOOL_NAME} with ref "${ref}" (add a query to get only matching parts).]`;
+    const marked = `${r.text}\n[Inkwright shortened this from ~${tokens.toLocaleString('en-US')} to ~${estimateTokens(r.text).toLocaleString('en-US')} tokens to save cost. Full text: call ${RETRIEVE_TOOL_NAME} with ref "${ref}" (add a query to get only matching parts).]`;
     return { text: marked, item: { ref, method: r.method, originalTokens: tokens, compressedTokens: estimateTokens(marked) } };
   }
 

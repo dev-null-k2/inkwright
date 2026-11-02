@@ -2,7 +2,7 @@ import { readdir, readFile, symlink, mkdir, mkdtemp, writeFile, rm } from 'node:
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { VaultLayout, contentBounds, decodeNote, decodePage, textBoxHeight } from '@inkstone/core';
+import { VaultLayout, contentBounds, decodeNote, decodePage, textBoxHeight } from '@inkwright/core';
 import { createContext, type ServerContext } from '../src/context.ts';
 import { NodeFS } from '../src/nodefs.ts';
 import { dailyReviewPrompt, summarizeNotePrompt, todosFromNotesPrompt } from '../src/prompts.ts';
@@ -76,7 +76,7 @@ describe('list_notes', () => {
 describe('search_notes', () => {
   it('finds recognized handwriting, typed text and titles with prefix matching', async () => {
     const r = json(await searchNotes(ctx, { query: 'lau bet' }));
-    expect(r.hits[0]).toMatchObject({ id: 'LAUNCH', title: 'Launch plan', notebook: 'Work / Projects', uri: 'inkstone://notes/LAUNCH' });
+    expect(r.hits[0]).toMatchObject({ id: 'LAUNCH', title: 'Launch plan', notebook: 'Work / Projects', uri: 'inkwright://notes/LAUNCH' });
     const maria = json(await searchNotes(ctx, { query: 'maria' }));
     expect(maria.hits).toHaveLength(1);
     expect(maria.hits[0].page).toBe(1);
@@ -121,7 +121,7 @@ describe('read_note', () => {
     expect(md).toContain('## Page 2');
     expect(md).toContain('Budget: 5k for the **beta** cohort');
     const meta = json(r, 1);
-    expect(meta).toMatchObject({ id: 'LAUNCH', notebook: 'Work / Projects', uri: 'inkstone://notes/LAUNCH' });
+    expect(meta).toMatchObject({ id: 'LAUNCH', notebook: 'Work / Projects', uri: 'inkwright://notes/LAUNCH' });
     expect(meta.pageDetails[0]).toMatchObject({ page: 1, strokes: 2, handwritingRecognized: true, recognizedBy: 'mlkit', needsRecognition: false });
     expect(meta.pageDetails[1]).toMatchObject({ page: 2, textBoxes: 1, needsRecognition: false });
   });
@@ -364,15 +364,15 @@ describe('get_recent_handwriting', () => {
 describe('resources and prompts', () => {
   it('serves notes as Markdown and pages as SVG', async () => {
     const note = await readNoteResource(ctx, 'LAUNCH');
-    expect(note.contents[0]).toMatchObject({ uri: 'inkstone://notes/LAUNCH', mimeType: 'text/markdown' });
+    expect(note.contents[0]).toMatchObject({ uri: 'inkwright://notes/LAUNCH', mimeType: 'text/markdown' });
     expect((note.contents[0] as { text: string }).text).toContain('Call Maria about pricing');
     const svg = await readPageSvgResource(ctx, 'LAUNCH', '2');
-    expect(svg.contents[0]).toMatchObject({ uri: 'inkstone://notes/LAUNCH/pages/2.svg', mimeType: 'image/svg+xml' });
+    expect(svg.contents[0]).toMatchObject({ uri: 'inkwright://notes/LAUNCH/pages/2.svg', mimeType: 'image/svg+xml' });
     await expect(readPageSvgResource(ctx, 'LAUNCH', '5')).rejects.toThrow(/does not exist/);
     await expect(readNoteResource(ctx, '..%2F..%2Fetc')).rejects.toThrow(/Invalid note id/);
     const list = await listNoteResources(ctx);
-    expect(list.resources.map((r) => r.uri)).toContain('inkstone://notes/GROCERIES');
-    expect(list.resources.map((r) => r.uri)).not.toContain('inkstone://notes/TRASHED');
+    expect(list.resources.map((r) => r.uri)).toContain('inkwright://notes/GROCERIES');
+    expect(list.resources.map((r) => r.uri)).not.toContain('inkwright://notes/TRASHED');
   });
 
   it('builds prompts from note content', async () => {
@@ -407,7 +407,7 @@ describe('read-only mode', () => {
   });
 
   it('does not create a manifest in a read-only empty folder', async () => {
-    const dir = await mkdtemp(path.join(tmpdir(), 'inkstone-ro-'));
+    const dir = await mkdtemp(path.join(tmpdir(), 'inkwright-ro-'));
     try {
       const ro = await createContext({ root: dir, readOnly: true, watch: false });
       expect(json(await listNotes(ro, {})).total).toBe(0);
@@ -430,7 +430,7 @@ describe('path safety (NodeFS)', () => {
   });
 
   it('refuses to follow symlinks out of the vault', async () => {
-    const outside = await mkdtemp(path.join(tmpdir(), 'inkstone-outside-'));
+    const outside = await mkdtemp(path.join(tmpdir(), 'inkwright-outside-'));
     try {
       await mkdir(path.join(outside, 'EVIL'), { recursive: true });
       await writeFile(path.join(outside, 'EVIL', 'note.json'), JSON.stringify({ id: 'EVIL', title: 'outside' }));
@@ -447,7 +447,7 @@ describe('path safety (NodeFS)', () => {
   it('writes atomically and hides temp files', async () => {
     const fs = new NodeFS(fx.dir);
     await fs.writeText('notes/NEW/note.json', '{"id":"NEW"}');
-    await writeFile(path.join(fx.dir, 'notes', 'NEW', '.inkstone-tmp-123-abc'), 'partial');
+    await writeFile(path.join(fx.dir, 'notes', 'NEW', '.inkwright-tmp-123-abc'), 'partial');
     expect((await fs.list('notes/NEW')).map((e) => e.name)).toEqual(['note.json']);
     expect(await fs.readText('notes/NEW/note.json')).toBe('{"id":"NEW"}');
     expect(await fs.readText('notes/NEW/missing.json')).toBeNull();
@@ -466,7 +466,7 @@ describe('helpers', () => {
 
   it('parses the command line', () => {
     expect(parseCli(['--vault', '/tmp/v', '--read-only'], {})).toMatchObject({ vault: '/tmp/v', readOnly: true, watch: true });
-    expect(parseCli([], { INKSTONE_VAULT: '/x/y' }).vault).toBe('/x/y');
+    expect(parseCli([], { INKWRIGHT_VAULT: '/x/y' }).vault).toBe('/x/y');
     expect(parseCli(['--vault', '~/Notes'], {}).vault).toMatch(/Notes$/);
     expect(parseCli(['--vault', 'v', '--http', '8765', '--token', 's'], {})).toMatchObject({ http: 8765, token: 's' });
     expect(() => parseCli(['--http', 'abc'], {})).toThrow(/port/);

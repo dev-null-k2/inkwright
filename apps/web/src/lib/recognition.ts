@@ -1,5 +1,5 @@
-import { segmentLines, type InkStroke, type RecognizedLine } from '@inkstone/core';
-import { InkstoneNative, hasNativePlugin } from '../platform/native.ts';
+import { segmentLines, type InkStroke, type RecognizedLine } from '@inkwright/core';
+import { InkwrightNative, hasNativePlugin } from '../platform/native.ts';
 import { useSettings } from '../state/settings.ts';
 
 /**
@@ -34,7 +34,7 @@ export async function availableEngine(): Promise<RecognitionEngine> {
   if (s.engine === 'ai') return 'ai';
   if (hasNativePlugin && nativeState !== 'unavailable') {
     try {
-      const r = await InkstoneNative.prepareRecognizer({ language: s.language });
+      const r = await InkwrightNative.prepareRecognizer({ language: s.language });
       nativeState = r.state === 'ready' ? 'ready' : r.state === 'downloading' ? 'unknown' : 'unavailable';
       if (r.state === 'ready') return 'native';
     } catch {
@@ -69,7 +69,7 @@ export async function recognizeLocally(strokes: InkStroke[]): Promise<{ text: st
       pre = '';
       return item;
     });
-    const r = await InkstoneNative.recognize({ language: lang, lines: payload });
+    const r = await InkwrightNative.recognize({ language: lang, lines: payload });
     const anchored = lines.map((l, i) => ({ text: (r.lines[i] ?? '').trim(), strokeIds: l.strokes.map((s) => s.id), bounds: l.bounds })).filter((l) => l.text);
     return { text: r.lines.filter((x) => x.trim()).join('\n'), engine, lines: anchored };
   }

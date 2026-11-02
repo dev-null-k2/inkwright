@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { pageSizeOf, type NoteDocument } from '@inkstone/core';
+import { pageSizeOf, type NoteDocument } from '@inkwright/core';
 import type { InkEngine } from '../canvas/engine.ts';
 import type { AppVault } from '../lib/vault.ts';
 import { useUnderlayView } from './photo.ts';

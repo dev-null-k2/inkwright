@@ -15,8 +15,8 @@
  *   collab.ink      both ways      { from, sid, page, pen, color, size, at, pts, done? }
  */
 import { create } from 'zustand';
-import { CollabReplica, fromBase64Url, newId, newNote, newPage, pagesFromSnapshot, type CollabOp, type CollabSnapshot, type ItemAuthor, type NoteDocument, type NoteMeta, type PenType } from '@inkstone/core';
-import { isOffer, keyFingerprint, type CollabPermission, type PeerLink } from '@inkstone/sync';
+import { CollabReplica, fromBase64Url, newId, newNote, newPage, pagesFromSnapshot, type CollabOp, type CollabSnapshot, type ItemAuthor, type NoteDocument, type NoteMeta, type PenType } from '@inkwright/core';
+import { isOffer, keyFingerprint, type CollabPermission, type PeerLink } from '@inkwright/sync';
 import { useApp } from '../state/app.ts';
 import { answerConnection, readCode, startConnection, type Connected, type PendingOffer } from './connect.ts';
 import { deviceIdentity, shortKeyId } from './identity.ts';

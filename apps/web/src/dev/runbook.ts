@@ -1,5 +1,5 @@
 /**
- * Running runbook blocks from a note (the pure parsing is @inkstone/core runbook.ts):
+ * Running runbook blocks from a note (the pure parsing is @inkwright/core runbook.ts):
  *
  * - ```http — one request from this device, after the user approves that exact request. The
  *   response's status, headers (secrets masked) and body (pretty-printed, cut) are shown.
@@ -14,8 +14,8 @@
 import {
   dataTableFrom, isDataAsset, maskHeader, parseHttpBlock, shapeBody,
   type HttpResult, type QueryResult, type RunbookBlock, type RunbookLang,
-} from '@inkstone/core';
-import { RunRecorder } from '@inkstone/ai';
+} from '@inkwright/core';
+import { RunRecorder } from '@inkwright/ai';
 import { agentHub } from '../lib/agent/hub.ts';
 import type { AppVault } from '../lib/vault.ts';
 import { askConfirm } from '../ui/prompts.tsx';
@@ -190,7 +190,7 @@ const POSTLUDE = `
 
 async function runJs(block: RunbookBlock, started: number): Promise<{ out: RunOutput; summary: string }> {
   const url = URL.createObjectURL(new Blob([PRELUDE, block.code, POSTLUDE], { type: 'text/javascript' }));
-  const worker = new Worker(url, { name: 'inkstone-runbook-js' });
+  const worker = new Worker(url, { name: 'inkwright-runbook-js' });
   const logs: string[] = [];
   try {
     const result = await new Promise<{ value?: string; error?: string }>((resolve) => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { deflateRawSync } from 'node:zlib';
-import { MemoryFS, Vault, decodePage, newId, point, walk } from '@inkstone/core';
+import { MemoryFS, Vault, decodePage, newId, point, walk } from '@inkwright/core';
 import { crc32, exportVaultZip, importVaultZip, readZip, writeZip } from '../src/index.ts';
 
 const enc = new TextEncoder();
@@ -17,7 +17,7 @@ async function sampleVault() {
   pages[0]!.strokes.push({ id: newId(clock()), pen: 'fountain', color: '#FF000000', size: 2, createdAt: clock(), points: [point(1, 2, 0, 0.5), point(3, 4, 10, 0.6)] });
   await vault.saveNote(note, pages);
   await vault.writeAsset(note.id, 'image.bin', Uint8Array.from({ length: 300 }, (_, i) => (i * 7) & 255));
-  await fs.writeText('.inkstone/cache.json', '{}');
+  await fs.writeText('.inkwright/cache.json', '{}');
   return { fs, vault, note, pages };
 }
 
@@ -108,16 +108,16 @@ describe('vault backup', () => {
     const { fs } = await sampleVault();
     const zip = await exportVaultZip(fs);
     const names = (await readZip(zip)).map((e) => e.path);
-    expect(names).not.toContain('.inkstone/cache.json');
+    expect(names).not.toContain('.inkwright/cache.json');
     const target = new MemoryFS(clock);
     await target.writeText('stale/file.txt', 'to be replaced');
     const report = await importVaultZip(target, zip, { mode: 'replace' });
     expect(report.written).toHaveLength(names.length);
     const expected = await contents(fs);
-    delete expected['.inkstone/cache.json'];
+    delete expected['.inkwright/cache.json'];
     expect(await contents(target)).toEqual(expected);
     const all = await exportVaultZip(fs, { includeHidden: true });
-    expect((await readZip(all)).map((e) => e.path)).toContain('.inkstone/cache.json');
+    expect((await readZip(all)).map((e) => e.path)).toContain('.inkwright/cache.json');
   });
 
   it('merges a backup into a vault that has moved on, without losing new strokes', async () => {

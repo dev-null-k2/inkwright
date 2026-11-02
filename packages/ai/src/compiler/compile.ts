@@ -44,7 +44,7 @@ import {
   type RecordingTranscript,
   type SourceDoc,
   type WikiPlan,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import type { NewActivityOp } from '../activity.ts';
 import { compileGen, draftPage, type CompilerAI } from './draft.ts';
 import type { CompilerConfig, CompilerStore, ProposalItem, WikiProposal } from './store.ts';

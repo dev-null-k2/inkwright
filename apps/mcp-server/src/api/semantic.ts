@@ -8,8 +8,8 @@
  * note-level index and vector similarity. Vectors are cached in memory by passage hash, so only
  * new or changed passages are embedded again.
  */
-import { MemoryCorpus, chunkEmbeddingText, chunkNote, hybridSearch, type MemoryChunk, type RankedChunk } from '@inkstone/core';
-import { remoteEmbed, type RemoteEmbeddingConfig } from '@inkstone/ai';
+import { MemoryCorpus, chunkEmbeddingText, chunkNote, hybridSearch, type MemoryChunk, type RankedChunk } from '@inkwright/core';
+import { remoteEmbed, type RemoteEmbeddingConfig } from '@inkwright/ai';
 import type { ServerContext } from '../context.ts';
 
 export interface EmbeddingSettings {

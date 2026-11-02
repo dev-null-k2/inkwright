@@ -3,8 +3,8 @@ import { Code2, ExternalLink } from 'lucide-react';
 import {
   formatReceipt, layoutDiagram, markCodeRefReviewed, parseDiagramInput, searchSymbols, validateDiagram,
   type CodeSymbol, type DiagramIR, type DriftItem, type RepairReceipt,
-} from '@inkstone/core';
-import { codeRefResolver } from '@inkstone/ai';
+} from '@inkwright/core';
+import { codeRefResolver } from '@inkwright/ai';
 import { noteChanged } from '../lib/actions.ts';
 import { activeSession } from '../lib/session.ts';
 import { useApp } from '../state/app.ts';

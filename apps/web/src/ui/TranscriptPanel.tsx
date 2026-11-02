@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AudioLines, Cloud, Download, Globe, ListChecks, RefreshCw, ShieldCheck, Sparkles, X } from 'lucide-react';
-import { formatBytes, whereExplanation } from '@inkstone/ai';
-import { formatStamp, newId, type AudioClip, type NoteDocument, type SpeechWhere, type TranscriptFile, type TranscriptSegment } from '@inkstone/core';
+import { formatBytes, whereExplanation } from '@inkwright/ai';
+import { formatStamp, newId, type AudioClip, type NoteDocument, type SpeechWhere, type TranscriptFile, type TranscriptSegment } from '@inkwright/core';
 import { useApp } from '../state/app.ts';
 import type { AppVault } from '../lib/vault.ts';
 import { downloadModel, modelKey, refOf, useLocalAI } from '../lib/localai.ts';

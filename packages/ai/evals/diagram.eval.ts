@@ -3,13 +3,13 @@
  * validator answers with a receipt, and the model repairs until the diagram is valid — or the tool
  * stops it. Scored offline with a scripted model that makes the mistakes real models make (an
  * unknown node id, a misspelt kind, a dependency cycle, an invented code symbol); live mode
- * (INKSTONE_EVAL_PROVIDER/_KEY/_MODEL) runs the same prompts and checks against a real model.
+ * (INKWRIGHT_EVAL_PROVIDER/_KEY/_MODEL) runs the same prompts and checks against a real model.
  *
  * The invariants: the loop converges when the model follows the receipt, and invalid IR never
  * lands on a page.
  */
 import { afterAll, describe, expect, it } from 'vitest';
-import { validateDiagram, type CodeGraph, type DiagramIR } from '@inkstone/core';
+import { validateDiagram, type CodeGraph, type DiagramIR } from '@inkwright/core';
 import {
   createCodeTools, createDiagramTool, createScriptedProvider, runAgent, codeRefResolver,
   type AgentResult, type DevToolHost, type Provider, type ScriptStep, type ScriptedTurn,

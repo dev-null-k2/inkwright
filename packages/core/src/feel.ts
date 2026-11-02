@@ -173,7 +173,7 @@ export class GrainScheduler {
  * like paper, not digital clicks. Loudness rises compressively with speed and with pressure.
  *
  * Allocation-free; runs inside an AudioWorklet on the web and is ported 1:1 to the Android audio
- * thread (InkstoneNative). Self-contained on purpose (no references outside the class) so its
+ * thread (InkwrightNative). Self-contained on purpose (no references outside the class) so its
  * source can be shipped into an AudioWorklet via `ScratchSynth.toString()`.
  */
 export class ScratchSynth {

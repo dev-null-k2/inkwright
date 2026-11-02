@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Download, FolderInput, FolderOutput, LayoutTemplate, Pencil, Trash2, Upload } from 'lucide-react';
-import { PAGE_SIZE_PRESETS, type NoteTemplate } from '@inkstone/core';
+import { PAGE_SIZE_PRESETS, type NoteTemplate } from '@inkwright/core';
 import { listTemplates, templateStore } from '../../lib/knowledge.ts';
 import { canExportToFolder, exportObsidianToFolder, exportObsidianZip, importMarkdownVault, pickFolder } from '../../lib/obsidian.ts';
 import { useApp } from '../../state/app.ts';
@@ -87,7 +87,7 @@ export function KnowledgeSettings() {
           {canExportToFolder() && (
             <button type="button" className="btn" disabled={busy} onClick={() => void run(async () => {
               const r = await exportObsidianToFolder();
-              if (r) toast({ text: `Wrote ${r.files} files to “${r.folder}/Inkstone”`, tone: 'success' });
+              if (r) toast({ text: `Wrote ${r.files} files to “${r.folder}/Inkwright”`, tone: 'success' });
             })}><FolderOutput size={16} /> Export into a folder</button>
           )}
         </div>

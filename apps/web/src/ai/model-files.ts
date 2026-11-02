@@ -1,4 +1,4 @@
-import { variantFiles, getLocalModel, type ModelRef, type RepoFile } from '@inkstone/ai';
+import { variantFiles, getLocalModel, type ModelRef, type RepoFile } from '@inkwright/ai';
 
 /**
  * Model weights on this device, in the Origin Private File System (OPFS): one folder per
@@ -11,7 +11,7 @@ import { variantFiles, getLocalModel, type ModelRef, type RepoFile } from '@inks
  * which only exist in workers, so downloads run in the AI worker.
  */
 
-const ROOT = 'inkstone-models';
+const ROOT = 'inkwright-models';
 const INDEX = '.index.json';
 export const HF_HOST = 'https://huggingface.co';
 

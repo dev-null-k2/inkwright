@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FilePlus2, FileText, Search } from 'lucide-react';
-import { suggestNotes, type NoteMeta } from '@inkstone/core';
+import { suggestNotes, type NoteMeta } from '@inkwright/core';
 import { useApp } from '../../state/app.ts';
 import { Dialog, cx, relativeTime } from '../primitives.tsx';
 import { argbCss } from './color.ts';

@@ -1,10 +1,10 @@
 /**
  * Context packs and AGENTS.md in the app: gathers the chosen notes, the compiled pages that cite
  * them and images of handwriting nobody has transcribed, builds the pack (core packs.ts), saves
- * it in the vault (so the MCP server serves it as `inkstone://packs/{id}`) and downloads it as
+ * it in the vault (so the MCP server serves it as `inkwright://packs/{id}`) and downloads it as
  * Markdown, JSON or an Agent Skill folder (.zip).
  */
-import { agentsMd, buildContextPack, extractClaims, boundsOfStrokes, pageText, rectIsEmpty, textItemKey, unitAnchor, type ContextPack, type PackImage, type PackNote, type PackPage } from '@inkstone/core';
+import { agentsMd, buildContextPack, extractClaims, boundsOfStrokes, pageText, rectIsEmpty, textItemKey, unitAnchor, type ContextPack, type PackImage, type PackNote, type PackPage } from '@inkwright/core';
 import { pageImageForAI } from '../lib/exporter.ts';
 import { agentHub } from '../lib/agent/hub.ts';
 import { saveFile } from '../platform/files.ts';
@@ -71,7 +71,7 @@ export async function downloadPack(pack: ContextPack, format: 'md' | 'json' | 's
   const enc = new TextEncoder();
   if (format === 'md') return saveFile(`${fileBase(pack)}.md`, enc.encode(pack.markdown), 'text/markdown');
   if (format === 'json') return saveFile(`${fileBase(pack)}.json`, enc.encode(JSON.stringify(pack.json, null, 1)), 'application/json');
-  const { writeZip } = await import('@inkstone/sync');
+  const { writeZip } = await import('@inkwright/sync');
   const zip = await writeZip(Object.entries(pack.skill).map(([path, v]) => ({ path, bytes: typeof v === 'string' ? enc.encode(v) : v })));
   return saveFile(`${fileBase(pack)} skill.zip`, zip, 'application/zip');
 }

@@ -1,13 +1,13 @@
 # Modules and plugins
 
-Inkstone is built from switchable **modules** (its own features) and can run **plugins** (code
+Inkwright is built from switchable **modules** (its own features) and can run **plugins** (code
 other people write). Both are designed so that adding or removing something never puts a note
 at risk: data a feature wrote stays in the vault whether the feature is on, off or uninstalled.
 
 - [Modules](#modules) — Settings › Modules
 - [Plugins for users](#plugins-for-users) — Settings › Plugins
 - [Writing a plugin](#writing-a-plugin) — manifest, API, permissions, sandbox
-- [How plugins, MCP servers, the REST API and window.inkstone fit together](#how-it-fits-together)
+- [How plugins, MCP servers, the REST API and window.inkwright fit together](#how-it-fits-together)
 
 ## Modules
 
@@ -77,8 +77,8 @@ under Export, importers in the palette, and assistant tools in the assistant.
 ## Writing a plugin
 
 ```sh
-npm create inkstone-plugin my-plugin        # once published; in this repo:
-node examples/create-inkstone-plugin/index.mjs my-plugin
+npm create inkwright-plugin my-plugin        # once published; in this repo:
+node examples/create-inkwright-plugin/index.mjs my-plugin
 ```
 
 Then Settings › Plugins › From a folder, pick `my-plugin`. Re-install from the folder after a
@@ -113,7 +113,7 @@ assistant tool, exporter, settings, events) and `examples/plugins/webhook` (netw
 }
 ```
 
-`validateManifest` in `@inkstone/plugin-api` is the reference (the template's `npm run check`
+`validateManifest` in `@inkwright/plugin-api` is the reference (the template's `npm run check`
 uses it). Plugins with `"activation": "onUse"` (the default) only start when one of their
 contributions is used; `"startup"` starts them with the app (needed to hear events in the
 background).
@@ -123,24 +123,24 @@ background).
 One ES module (no imports — bundle dependencies in if you have any) whose default export is:
 
 ```js
-/** @typedef {import('@inkstone/plugin-api').InkstoneAPI} InkstoneAPI */
+/** @typedef {import('@inkwright/plugin-api').InkwrightAPI} InkwrightAPI */
 export default {
-  /** @param {InkstoneAPI} inkstone */
-  activate(inkstone) {
-    inkstone.commands.register('count', async () => { /* … */ });
-    inkstone.ai.registerTool('reading_time', async (args) => ({ minutes: 3 }));
-    inkstone.exporters.register('txt', ({ note }) => ({ text: note.markdown }));
-    inkstone.importers.register('csv', ({ name, text }) => text.split('\n').map((row) => ({ title: row, text: '' })));
+  /** @param {InkwrightAPI} inkwright */
+  activate(inkwright) {
+    inkwright.commands.register('count', async () => { /* … */ });
+    inkwright.ai.registerTool('reading_time', async (args) => ({ minutes: 3 }));
+    inkwright.exporters.register('txt', ({ note }) => ({ text: note.markdown }));
+    inkwright.importers.register('csv', ({ name, text }) => text.split('\n').map((row) => ({ title: row, text: '' })));
   },
   deactivate() {},
   panels: {
     /** Each panel renders in its own sandboxed frame. */
-    async stats(root, inkstone) { root.textContent = String((await inkstone.notes.list()).length); },
+    async stats(root, inkwright) { root.textContent = String((await inkwright.notes.list()).length); },
   },
 };
 ```
 
-### The API (`InkstoneAPI`, protocol version 1)
+### The API (`InkwrightAPI`, protocol version 1)
 
 | Call | Permission |
 | --- | --- |
@@ -179,7 +179,7 @@ Panels are separate frames with the same rules; they get the app's palette as CS
 (`--ink`, `--ink-2`, `--line`, `--iron`, `--font-title`…) so they look native.
 
 The host (`apps/web/src/plugins/`) talks to frames over `postMessage` with the versioned protocol
-in `@inkstone/plugin-api` (`protocol.ts`): messages carry `p: "inkstone-plugin"` and `v: 1`; the
+in `@inkwright/plugin-api` (`protocol.ts`): messages carry `p: "inkwright-plugin"` and `v: 1`; the
 host accepts messages only from that frame's window, checks the method against the `METHODS`
 table and the permission on every call (`dispatcher.ts`), so revocation is immediate.
 
@@ -193,12 +193,12 @@ installed app. A plugin can still use CPU while it runs; switching it off stops 
 | | Runs where | Talks to | For |
 | --- | --- | --- | --- |
 | **Plugins** | inside the app, sandboxed | the plugin API (permission-checked) | UI: commands, panels, exporters/importers, assistant tools |
-| **`window.inkstone`** | the app's page (Settings › Developer, off by default) | the same API and permission model, as "Automation API" | browser extensions, userscripts, the console |
+| **`window.inkwright`** | the app's page (Settings › Developer, off by default) | the same API and permission model, as "Automation API" | browser extensions, userscripts, the console |
 | **MCP servers** (Settings › AI › Connected apps) | anywhere; the assistant connects to them | MCP | giving the in-app assistant outside tools (calendars, issue trackers…) |
-| **`inkstone-mcp`** | your computer, over the vault folder | MCP, A2A, REST (`/api/v1`) | outside agents and programs using your notes (docs/AGENTS.md, docs/API.md) |
-| **Links** | the OS / browser | `inkstone://…`, `?action=…` | Shortcuts, Tasker, launchers (docs/API.md § Links) |
+| **`inkwright-mcp`** | your computer, over the vault folder | MCP, A2A, REST (`/api/v1`) | outside agents and programs using your notes (docs/AGENTS.md, docs/API.md) |
+| **Links** | the OS / browser | `inkwright://…`, `?action=…` | Shortcuts, Tasker, launchers (docs/API.md § Links) |
 
-Rules of thumb: if it needs UI inside Inkstone, write a plugin. If it gives the assistant
+Rules of thumb: if it needs UI inside Inkwright, write a plugin. If it gives the assistant
 abilities that live elsewhere, connect an MCP server — a plugin's `ai:tools` is for small
 tools that need nothing but the notes the plugin may read. If it is a program or agent working
-on the notes from outside, use `inkstone-mcp` (MCP for agents, REST for programs).
+on the notes from outside, use `inkwright-mcp` (MCP for agents, REST for programs).

@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1.7
 #
-# Inkstone appliance images (docs/ENTERPRISE.md). One Dockerfile, two targets:
+# Inkwright appliance images (docs/ENTERPRISE.md). One Dockerfile, two targets:
 #
-#   docker build -f deploy/Dockerfile --target server -t inkstone-server .   # MCP + A2A + routine runner
-#   docker build -f deploy/Dockerfile --target web    -t inkstone-web .      # the web app behind nginx
+#   docker build -f deploy/Dockerfile --target server -t inkwright-server .   # MCP + A2A + routine runner
+#   docker build -f deploy/Dockerfile --target web    -t inkwright-web .      # the web app behind nginx
 #
 # Pin base images by digest in production (see docs/ENTERPRISE.md › Supply chain); the tags below
 # are the versions this file was written and tested against.
@@ -29,7 +29,7 @@ RUN --mount=type=cache,target=/root/.npm npm ci --ignore-scripts
 COPY . .
 # The appliance's web build asks for the administrator's managed AI policy next to index.html.
 ENV VITE_MANAGED_POLICY_URL=managed-policy.json
-RUN npm run build -w @inkstone/web && npm run build -w @inkstone/mcp-server && mkdir -p /out/vault
+RUN npm run build -w @inkwright/web && npm run build -w @inkwright/mcp-server && mkdir -p /out/vault
 
 # ---- Server: the bundled MCP/A2A server and runner, no shell, non-root --------------------------
 FROM ${RUNTIME_IMAGE} AS server
@@ -40,14 +40,14 @@ COPY --from=build /src/node_modules/@resvg ./node_modules/@resvg
 # The vault volume mount point, owned by the runtime user so a fresh named volume is writable.
 COPY --from=build --chown=65532:65532 /out/vault /vault
 ENV NODE_ENV=production \
-    INKSTONE_VAULT=/vault \
-    INKSTONE_HTTP_PORT=8765 \
-    INKSTONE_HOST=0.0.0.0
+    INKWRIGHT_VAULT=/vault \
+    INKWRIGHT_HTTP_PORT=8765 \
+    INKWRIGHT_HOST=0.0.0.0
 USER nonroot
 EXPOSE 8765
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD ["/nodejs/bin/node", "-e", "fetch('http://127.0.0.1:8765/healthz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
-# `run` serves MCP (and A2A with INKSTONE_A2A=1) on the HTTP port and runs routines.
+# `run` serves MCP (and A2A with INKWRIGHT_A2A=1) on the HTTP port and runs routines.
 ENTRYPOINT ["/nodejs/bin/node", "dist/agent.js"]
 CMD ["run"]
 

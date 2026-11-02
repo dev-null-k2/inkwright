@@ -1,6 +1,6 @@
 {
-  "name": "Inkstone",
-  "short_name": "Inkstone",
+  "name": "Inkwright",
+  "short_name": "Inkwright",
   "description": "Handwriting notes that feel like paper, on every device, with your own AI.",
   "id": "/",
   "start_url": "./",
@@ -21,7 +21,7 @@
     { "action": "./", "accept": { "application/pdf": [".pdf"], "image/*": [".png", ".jpg", ".jpeg", ".webp", ".heic", ".heif"], "text/plain": [".txt"], "text/markdown": [".md", ".markdown"] } }
   ],
   "protocol_handlers": [
-    { "protocol": "web+inkstone", "url": "./?link=%s" }
+    { "protocol": "web+inkwright", "url": "./?link=%s" }
   ],
   "share_target": {
     "action": "./share-target",

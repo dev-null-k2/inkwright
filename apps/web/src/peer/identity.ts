@@ -3,20 +3,20 @@
  * how it reaches them (docs/COLLABORATION.md).
  *
  * The identity key is an X25519 key pair made with WebCrypto as **non-extractable**: the private
- * half can be used for key agreement but never read out by any script, Inkstone's included. Like
+ * half can be used for key agreement but never read out by any script, Inkwright's included. Like
  * the authorship key, the CryptoKey object itself lives in IndexedDB (stored opaquely by the
  * browser; app-private storage on Android). Paired devices are remembered by their *public*
  * keys only, in local storage, and can be removed at any time — a removed device can no longer
  * connect, because its key is no longer accepted.
  */
 import { create } from 'zustand';
-import { generateKeyPair, keyFingerprint, x25519Supported, type DeviceInfo, type KeyPair } from '@inkstone/sync';
-import { fromBase64Url, newId, toBase64Url } from '@inkstone/core';
+import { generateKeyPair, keyFingerprint, x25519Supported, type DeviceInfo, type KeyPair } from '@inkwright/sync';
+import { fromBase64Url, newId, toBase64Url } from '@inkwright/core';
 import { safeStorage } from '../platform/env.ts';
 import { useSettings } from '../state/settings.ts';
 import { getSecret, setSecret } from '../lib/secrets.ts';
 
-const DB = 'inkstone-peer';
+const DB = 'inkwright-peer';
 const STORE = 'keys';
 
 export interface PairedDevice {
@@ -47,7 +47,7 @@ interface PeerStored {
 /** Google's public STUN server: only tells each device its public address; sees no content. */
 export const DEFAULT_STUN = ['stun:stun.l.google.com:19302'];
 
-const KEY = 'inkstone.peer.v1';
+const KEY = 'inkwright.peer.v1';
 
 const NETWORK_DEFAULTS: PeerNetwork = { stun: DEFAULT_STUN, turn: null, relayUrl: '' };
 
@@ -136,7 +136,7 @@ export function deviceIdentity(): Promise<Identity> {
 
 /** The name people see for this device (Settings › Authorship's device name, or a plain default). */
 export function deviceName(): string {
-  return useSettings.getState().authorship.deviceName.trim() || 'Inkstone device';
+  return useSettings.getState().authorship.deviceName.trim() || 'Inkwright device';
 }
 
 /** A short, stable id for a peer's key, used as `author.id` on what they write. */

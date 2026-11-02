@@ -1,5 +1,5 @@
-import { extractJson, runSkill, type Skill } from '@inkstone/ai';
-import { boundsOfStrokes, strokesByCell, tableRect, type InkStroke, type NoteDocument, type PageInk, type TableObject } from '@inkstone/core';
+import { extractJson, runSkill, type Skill } from '@inkwright/ai';
+import { boundsOfStrokes, strokesByCell, tableRect, type InkStroke, type NoteDocument, type PageInk, type TableObject } from '@inkwright/core';
 import { getActiveAI, transcribePage } from '../lib/ai.ts';
 import { pageImageForAI } from '../lib/exporter.ts';
 import { availableEngine, recognizeLocally } from '../lib/recognition.ts';

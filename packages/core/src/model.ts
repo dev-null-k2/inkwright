@@ -1,5 +1,5 @@
 /**
- * Inkstone's portable data model. Everything a user creates is plain JSON in a "vault" folder
+ * Inkwright's portable data model. Everything a user creates is plain JSON in a "vault" folder
  * (see docs/VAULT_FORMAT.md), so it syncs through any folder sync and is readable by other tools
  * and AI agents. Units: 1 page unit = 1/96 inch (CSS px at 100%).
  */
@@ -62,7 +62,7 @@ export interface InkStroke {
   /** Set when the stroke was snapped to a geometric shape. */
   shape?: ShapeKind;
   /**
-   * How a stroke written in Inkstone was made: stylus, finger or mouse. Set by the ink engine
+   * How a stroke written in Inkwright was made: stylus, finger or mouse. Set by the ink engine
    * when the stroke is drawn; absent for strokes from older versions or created by code.
    */
   input?: StrokeInput;
@@ -402,7 +402,7 @@ export interface NoteMeta {
   /** Set on daily notes ("Today"): the local calendar day, `YYYY-MM-DD`. */
   daily?: string;
   /**
-   * Front-matter properties brought in from Markdown/Obsidian that Inkstone has no field for
+   * Front-matter properties brought in from Markdown/Obsidian that Inkwright has no field for
    * (`aliases`, `status`, …). Kept as-is and written back on Obsidian export.
    */
   properties?: Record<string, unknown>;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MemorySecretStore } from '@inkstone/ai';
-import type { InkStroke } from '@inkstone/core';
+import { MemorySecretStore } from '@inkwright/ai';
+import type { InkStroke } from '@inkwright/core';
 import { detectHorizontalLines, findBoxAround, grayFromRGBA, placeMark, placeText, type GrayImage } from './snap.ts';
 import { SignatureLibrary, inkForPlacement, normalizeInk, removeBackground, tintInk } from './signatures.ts';
 
@@ -117,12 +117,12 @@ describe('signature library', () => {
     expect((await again.list()).map((s) => s.kind)).toEqual(['initials', 'signature']);
     await again.remove(a.id);
     expect((await new SignatureLibrary(store).list()).map((s) => s.kind)).toEqual(['initials']);
-    expect(await store.get('inkstone.signatures.v1')).toContain('initials');
+    expect(await store.get('inkwright.signatures.v1')).toContain('initials');
   });
 
   it('ignores a damaged store', async () => {
     const store = new MemorySecretStore();
-    await store.set('inkstone.signatures.v1', '{not json');
+    await store.set('inkwright.signatures.v1', '{not json');
     expect(await new SignatureLibrary(store).list()).toEqual([]);
   });
 });

@@ -1,16 +1,16 @@
 import { randomBytes } from 'node:crypto';
 import { promises as fsp, realpathSync } from 'node:fs';
 import * as path from 'node:path';
-import { normalizePath, type FsEntry, type VaultFS } from '@inkstone/core';
+import { normalizePath, type FsEntry, type VaultFS } from '@inkwright/core';
 
 /** Prefix of in-flight temp files; hidden from listings so readers never see half-written data. */
-export const TEMP_PREFIX = '.inkstone-tmp-';
+export const TEMP_PREFIX = '.inkwright-tmp-';
 
 /**
  * VaultFS over a real folder (the user's synced vault). Every path is resolved inside the root and
  * re-checked after following symlinks, so nothing can be read or written outside the vault. Writes
  * go to a temp file in the same directory and are renamed into place, so sync clients (Google
- * Drive, iCloud, Dropbox) and the Inkstone app never observe a truncated note.
+ * Drive, iCloud, Dropbox) and the Inkwright app never observe a truncated note.
  */
 export class NodeFS implements VaultFS {
   readonly root: string;

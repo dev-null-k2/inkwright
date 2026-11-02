@@ -12,12 +12,12 @@ import {
   type NoteMeta,
   type PageInk,
   type TranscriptFile,
-} from '@inkstone/core';
+} from '@inkwright/core';
 
 // ---- Mocks: no worker, no settings store, a scripted AI ---------------------------------------------
 const state = vi.hoisted(() => ({ asrInstalled: false, browser: false, provider: null as null | { id: string; label: string; transcribe: () => Promise<string> } }));
 vi.mock('../localai.ts', async () => {
-  const ai = await import('@inkstone/ai');
+  const ai = await import('@inkwright/ai');
   const spec = ai.getLocalModel('moonshine-base')!;
   return {
   currentEmbedder: async () => null,

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { readingSegments, unreadHandwriting, type NoteDocument, type ReadingSegment, type SegmentFilter } from '@inkstone/core';
+import { readingSegments, unreadHandwriting, type NoteDocument, type ReadingSegment, type SegmentFilter } from '@inkwright/core';
 import type { InkEngine } from '../canvas/engine.ts';
 import { recognizeLocally } from '../lib/recognition.ts';
 import { useInkPrefs } from '../inkactions/prefs.ts';

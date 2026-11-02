@@ -3,12 +3,12 @@
  * WebGPU, or on the CPU via WebAssembly, off the main thread so writing never stutters. Models are
  * downloaded once into OPFS (resumable) and served to transformers.js through a custom cache, so
  * after the first download everything works offline. The app talks to this file only through the
- * `LocalEngine` protocol in @inkstone/ai.
+ * `LocalEngine` protocol in @inkwright/ai.
  */
 import * as T from '@huggingface/transformers';
 import ortWasmUrl from 'onnxruntime-web/ort-wasm-simd-threaded.asyncify.wasm?url';
 import ortMjsUrl from 'onnxruntime-web/ort-wasm-simd-threaded.asyncify.mjs?url';
-import { normalize, serveLocalEngine, truncateEmbedding, type DownloadProgress, type GenerateRequest, type GenerateResult, type LocalEngine, type ModelRef, type ModelStatus, type PortLike, type TranscribeRequest, type TranscribeResult } from '@inkstone/ai';
+import { normalize, serveLocalEngine, truncateEmbedding, type DownloadProgress, type GenerateRequest, type GenerateResult, type LocalEngine, type ModelRef, type ModelStatus, type PortLike, type TranscribeRequest, type TranscribeResult } from '@inkwright/ai';
 import { HF_HOST, fileHandle, filesFor, opfsAvailable, parseCacheKey, readIndex, readStored, removeStored, repoDir, storedSize, storedStatus, writeManifest } from './model-files.ts';
 
 const env = T.env as any;

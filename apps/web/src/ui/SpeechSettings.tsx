@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { recommendAsr, whereExplanation, type SpeechPreference } from '@inkstone/ai';
+import { recommendAsr, whereExplanation, type SpeechPreference } from '@inkwright/ai';
 import { asrChoice, initLocalAI, localAISupported, useLocalAI } from '../lib/localai.ts';
 import { resolveSpeech, speechLanguage, useSpeechPrefs, type ResolvedSpeech } from '../lib/listen/engines.ts';
 import { ModelPicker } from './LocalAISettings.tsx';

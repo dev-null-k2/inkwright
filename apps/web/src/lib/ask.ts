@@ -1,5 +1,5 @@
-import { buildAskMessages, type AskPassage, type Provider } from '@inkstone/ai';
-import { formatStamp, type RankedChunk } from '@inkstone/core';
+import { buildAskMessages, type AskPassage, type Provider } from '@inkwright/ai';
+import { formatStamp, type RankedChunk } from '@inkwright/core';
 
 /**
  * "Ask your notes": find the passages that answer a question (hybrid search over every note) and

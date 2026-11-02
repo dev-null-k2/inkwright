@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { create } from 'zustand';
-import { matchScore } from '@inkstone/core';
+import { matchScore } from '@inkwright/core';
 
 /**
  * Commands the search palette can run ("New note", "Export PDF", "Writing sound"…). Screens

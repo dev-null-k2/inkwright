@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { create } from 'zustand';
 import { ChevronDown, Download, FolderOpen, Link2, Puzzle, RefreshCw, ShieldCheck, Trash2, Upload } from 'lucide-react';
-import { PERMISSION_INFO, describeScope, type Permission, type PluginManifest } from '@inkstone/plugin-api';
+import { PERMISSION_INFO, describeScope, type Permission, type PluginManifest } from '@inkwright/plugin-api';
 import { Dialog, Switch, cx } from '../ui/primitives.tsx';
 import { askConfirm } from '../ui/prompts.tsx';
 import { useApp } from '../state/app.ts';
@@ -181,7 +181,7 @@ export function PluginsSettings() {
               onChange={(e) => { const files = [...(e.target.files ?? [])]; e.target.value = ''; if (files.length) void run(() => installFlow(() => packageFromFolder(files, APP_VERSION), toast)); }} />
           </div>
         </div>
-        <p className="set-note">Only install plugins from people you trust. Writing your own? See docs/PLUGINS.md and the template in examples/create-inkstone-plugin.</p>
+        <p className="set-note">Only install plugins from people you trust. Writing your own? See docs/PLUGINS.md and the template in examples/create-inkwright-plugin.</p>
       </section>
 
       {logLines.length > 0 && (
@@ -230,7 +230,7 @@ function PluginCard({ p }: { p: LoadedPlugin }) {
               toast({ text: `${name} uninstalled` });
             }}><Trash2 size={14} /> Uninstall</button>
           </div>
-          <p className="muted small">Id {m.id} · plugin API {m.apiVersion} · needs Inkstone {m.minAppVersion}+ · from {p.record.source.kind === 'url' ? p.record.source.url : p.record.source.kind === 'catalog' ? 'the curated list' : p.record.source.name}</p>
+          <p className="muted small">Id {m.id} · plugin API {m.apiVersion} · needs Inkwright {m.minAppVersion}+ · from {p.record.source.kind === 'url' ? p.record.source.url : p.record.source.kind === 'catalog' ? 'the curated list' : p.record.source.name}</p>
         </div>
       )}
       {open && !m && (

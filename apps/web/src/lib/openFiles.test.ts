@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PAGE_SIZES } from '@inkstone/core';
+import { PAGE_SIZES } from '@inkwright/core';
 import { classifyFile, isHeic, textToPages } from './openFiles.ts';
 import { describePages } from './pageTools.ts';
 import { checkmark, cross, formDate } from '../fill/marks.ts';

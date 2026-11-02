@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
-import { newId, pageSizeOf, type NoteDocument, type PageSize, type TextBox } from '@inkstone/core';
+import { newId, pageSizeOf, type NoteDocument, type PageSize, type TextBox } from '@inkwright/core';
 import type { InkEngine } from '../canvas/engine.ts';
 import { inspectPdf } from '../canvas/assets.ts';
 import type { AppVault } from './vault.ts';
 import { useApp } from '../state/app.ts';
-import { InkstoneNative, hasNativePlugin } from '../platform/native.ts';
+import { InkwrightNative, hasNativePlugin } from '../platform/native.ts';
 
 /**
  * Opening files from the device, whichever way they arrive: the library's "Open file", drag and
  * drop onto the library or onto an open note, the installed desktop app's file handler ("Open
- * with Inkstone" in Finder/Explorer, `launchQueue`), the Web Share Target (share to Inkstone), and
- * Android's "Open with" / share sheet (InkstoneNativePlugin).
+ * with Inkwright" in Finder/Explorer, `launchQueue`), the Web Share Target (share to Inkwright), and
+ * Android's "Open with" / share sheet (InkwrightNativePlugin).
  */
 
 export type FileKind = 'pdf' | 'image' | 'text' | 'backup' | 'unknown';
@@ -28,7 +28,7 @@ export function classifyFile(f: { name: string; type: string }): FileKind {
 
 export const isHeic = (f: { name: string; type: string }) => /image\/hei[cf]/i.test(f.type) || /\.hei[cf]$/i.test(f.name);
 
-/** The `accept` list for file pickers: everything Inkstone can open. */
+/** The `accept` list for file pickers: everything Inkwright can open. */
 export const OPENABLE = 'application/pdf,image/*,.heic,.heif,text/plain,text/markdown,.txt,.md,.markdown,.zip';
 
 /**
@@ -205,7 +205,7 @@ export function useFileDrop(el: HTMLElement | null, onFiles: (files: File[], e: 
 
 // ---- Files handed to the app by the system ------------------------------------------------------
 
-/** Imports files the system opened Inkstone with and opens the first resulting note. */
+/** Imports files the system opened Inkwright with and opens the first resulting note. */
 async function openIncoming(files: File[], text?: string) {
   const { importFiles, importText } = await import('./actions.ts');
   const app = useApp.getState();
@@ -223,11 +223,11 @@ function base64Bytes(b64: string): Uint8Array {
 }
 
 /**
- * Hooks up every way the system can hand Inkstone a file. Call once, after the vault is open.
+ * Hooks up every way the system can hand Inkwright a file. Call once, after the vault is open.
  *  - PWA file handlers (manifest `file_handlers`): `launchQueue` delivers file handles.
  *  - Web Share Target (manifest `share_target`, POST): the service worker stashes the shared
  *    files in Cache Storage and reloads the app with `?share=1`.
- *  - Android: MainActivity's intent filters; InkstoneNativePlugin copies the content into the
+ *  - Android: MainActivity's intent filters; InkwrightNativePlugin copies the content into the
  *    app's cache and reports it here (`takeSharedFiles` at start, `sharedFiles` while running).
  */
 export function installOpenHandlers(): void {
@@ -240,7 +240,7 @@ export function installOpenHandlers(): void {
 
   if (new URLSearchParams(location.search).has('share') && 'caches' in window) {
     void (async () => {
-      const cache = await caches.open('inkstone-share');
+      const cache = await caches.open('inkwright-share');
       const files: File[] = [];
       let text = '';
       for (const req of await cache.keys()) {
@@ -274,8 +274,8 @@ export function installOpenHandlers(): void {
       await openIncoming(files);
     };
     // Listen first, then take what arrived before: a copy finishing in between is never lost.
-    void InkstoneNative.addListener('sharedFiles', (e) => void take(e.files))
-      .then(() => InkstoneNative.takeSharedFiles())
+    void InkwrightNative.addListener('sharedFiles', (e) => void take(e.files))
+      .then(() => InkwrightNative.takeSharedFiles())
       .then((r) => take(r.files))
       .catch(() => {});
   }

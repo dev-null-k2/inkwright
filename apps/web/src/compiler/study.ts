@@ -5,7 +5,7 @@
  * sentence it tests, so "Show in notes" opens the exact place.
  */
 import { create } from 'zustand';
-import { makeCards, gradeTeachBack, runSkill, transcribeHandwriting, type CompilerAI, type TutorVerdict } from '@inkstone/ai';
+import { makeCards, gradeTeachBack, runSkill, transcribeHandwriting, type CompilerAI, type TutorVerdict } from '@inkwright/ai';
 import {
   deckStats,
   dueCards,
@@ -23,7 +23,7 @@ import {
   type SourceUnit,
   type StudyCard,
   type StudyDeck,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import { getActiveAI } from '../lib/ai.ts';
 import { recognizeLocally } from '../lib/recognition.ts';
 import { useSettings } from '../state/settings.ts';

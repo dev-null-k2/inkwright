@@ -1,6 +1,6 @@
 # Word count & reading time
 
-An example Inkstone plugin that shows every kind of contribution a plugin can make:
+An example Inkwright plugin that shows every kind of contribution a plugin can make:
 
 | Contribution | What it does |
 | --- | --- |

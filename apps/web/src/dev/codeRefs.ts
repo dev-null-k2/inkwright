@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { codeRefStates, markCodeRefReviewed, newId, withCodeBaselines, type CodeRefState, type InkLink, type NoteDocument } from '@inkstone/core';
+import { codeRefStates, markCodeRefReviewed, newId, withCodeBaselines, type CodeRefState, type InkLink, type NoteDocument } from '@inkwright/core';
 import { useDev } from './store.ts';
 
 /**

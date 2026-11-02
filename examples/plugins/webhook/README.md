@@ -8,5 +8,5 @@ with the note's title to the URL set in Settings › Plugins.
 - **slack**: `{"text"}` — Slack incoming webhooks, Discord's `/slack` endpoint, Mattermost.
 
 Permissions: see the open note and selection; connect to the internet (any https site, since you
-choose the URL). The request is made by Inkstone on the plugin's behalf, without cookies; the
+choose the URL). The request is made by Inkwright on the plugin's behalf, without cookies; the
 receiving site must allow cross-origin requests (most webhook services do).

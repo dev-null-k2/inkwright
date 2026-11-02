@@ -13,7 +13,7 @@
  * Files that two devices can change at once are either merged by sync (decks, provenance) or one
  * file per thing (proposals, ledger decisions), like the activity log.
  */
-import { decodeDeck, encodeDeck, isSafeId, type CompilerState, type ProvClaim, type ProvenanceGen, type StudyDeck, type VaultFS, type WikiPageKind, emptyCompilerState, STUDY_DIR } from '@inkstone/core';
+import { decodeDeck, encodeDeck, isSafeId, type CompilerState, type ProvClaim, type ProvenanceGen, type StudyDeck, type VaultFS, type WikiPageKind, emptyCompilerState, STUDY_DIR } from '@inkwright/core';
 
 export const COMPILER_DIR = 'ai/compiler';
 export const LEDGER_DIR = 'ai/ledger';

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { volumeToGain } from '@inkstone/core';
+import { volumeToGain } from '@inkwright/core';
 
 const native = vi.hoisted(() => ({
   enabled: false,
@@ -10,7 +10,7 @@ vi.mock('./native.ts', () => {
   const rec = (name: string) => (opts?: unknown) => { native.calls.push([name, opts]); return Promise.resolve(name === 'capabilities' ? { richHaptics: true, recognition: true, stylusKeys: true, nativeFeel: true } : undefined); };
   return {
     get hasNativePlugin() { return native.enabled; },
-    InkstoneNative: { capabilities: rec('capabilities'), grain: rec('grain'), confirm: rec('confirm'), feelBegin: rec('feelBegin'), feelEnd: rec('feelEnd'), feelPrepare: rec('feelPrepare'), feelPreview: rec('feelPreview') },
+    InkwrightNative: { capabilities: rec('capabilities'), grain: rec('grain'), confirm: rec('confirm'), feelBegin: rec('feelBegin'), feelEnd: rec('feelEnd'), feelPrepare: rec('feelPrepare'), feelPreview: rec('feelPreview') },
   };
 });
 

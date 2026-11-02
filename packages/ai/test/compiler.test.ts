@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MemoryFS, Vault, extractSource, locateClaims, newId, textItemKey, type NoteMeta } from '@inkstone/core';
+import { MemoryFS, Vault, extractSource, locateClaims, newId, textItemKey, type NoteMeta } from '@inkwright/core';
 import {
   CompilerStore,
   RunRecorder,
