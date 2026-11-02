@@ -1,0 +1,1 @@
+First release: paper-feel handwriting, AI that answers in ink, a wiki that cites your pages, search your handwriting, sync through your own Drive or WebDAV, and private on-device AI.

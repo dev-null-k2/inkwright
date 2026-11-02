@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy policy — Inkwright</title>
+<meta name="description" content="Inkwright collects nothing. Your notes stay on your devices and in storage you choose.">
+<link rel="icon" href="app/favicon.svg" type="image/svg+xml">
+<style>
+  :root { --desk:#e8e5ea; --paper:#fffdf7; --ink:#2b2330; --ink-2:#5f5666; --line:rgba(43,35,48,.12); --iron:#356b53; color-scheme: light dark; }
+  @media (prefers-color-scheme: dark) { :root { --desk:#1a161c; --paper:#221d25; --ink:#eee8f0; --ink-2:#b9b0bf; --line:rgba(238,232,240,.12); --iron:#8cc4a8; } }
+  body { margin:0; background:var(--desk); color:var(--ink); font:17px/1.65 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 40px 20px 80px; }
+  article { background: var(--paper); border-radius: 14px; padding: clamp(20px, 5vw, 48px); border: 1px solid var(--line); }
+  h1, h2 { font-family: 'Brygada 1918', 'Iowan Old Style', Georgia, serif; font-weight: 500; line-height: 1.2; }
+  h1 { font-size: 34px; margin-top: 0; } h2 { font-size: 24px; margin-top: 2em; }
+  a { color: var(--iron); } code { font-size: .9em; } p, li { color: var(--ink); } em { color: var(--ink-2); }
+  nav { margin-bottom: 18px; } nav a { text-decoration: none; font-weight: 600; }
+</style></head>
+<body><main><nav><a href="./">← Inkwright</a></nav><article>
+<h1>Inkwright privacy policy</h1>
+<p><em>Last updated: November 2026</em></p>
+<p>Inkwright is a note-taking app. Your notes stay under your control.</p>
+<p><strong>What we collect:</strong> nothing. Inkwright has no accounts or servers of its own, and no analytics, ads or tracking. The developer never receives your notes, recordings, keys or usage data.</p>
+<p><strong>Where your notes live:</strong></p>
+<ul>
+<li>On your device: app storage on Android and iOS, browser storage on the web.</li>
+<li>If you turn on sync: in <strong>your</strong> Google Drive (the visible &quot;Inkwright&quot; folder; Inkwright can see only files it created), on <strong>your</strong> WebDAV server, or in a folder you choose. Data goes straight from your device to that service under your account.</li>
+<li>If you pair devices or share a page live: directly between the devices, end to end encrypted (see <a href="https://github.com/karthikkasukurti/inkwright/blob/main/docs/COLLABORATION.md">COLLABORATION.md</a>). A STUN server (Google&#39;s by default; you can change or clear it) learns your devices&#39; public IP addresses so they can find each other; a TURN relay or signalling server, if you set one up, carries only encrypted data. A live-session guest keeps a copy of the shared page in their own notes.</li>
+</ul>
+<p><strong>AI features</strong> work only when you turn them on. You either add your own API key for a provider such as OpenAI, Anthropic, Google, OpenRouter or a local model, or you use Claude inside claude.ai.</p>
+<ul>
+<li>When you ask the assistant something, Inkwright sends the request and the note content it needs (text, or page images for handwriting) directly from your device to that provider. That provider&#39;s own privacy policy applies.</li>
+<li>API keys are encrypted on your device and are never synced or sent anywhere except to the provider they belong to.</li>
+<li><strong>Connected apps:</strong> if you connect an app such as Notion or Linear (through the Model Context Protocol), the assistant sends that app the requests it makes on your behalf, straight from your device. Sign-ins and tokens are encrypted on your device and never synced. By default the assistant asks before anything that changes things in a connected app.</li>
+<li><strong>Memory, skills, routines and the activity log</strong> are stored with your notes (in the <code>ai</code> folder of your vault) and sync wherever your notes sync. Nothing is remembered about you unless you write it or accept a suggestion.</li>
+<li><strong>Routines</strong> run while Inkwright is open on one of your devices, with the AI you chose — or, if you install the optional always-on runner on your own computer, from that computer with the AI you configure for it.</li>
+<li><strong>Outside agents</strong> (the optional Inkwright MCP server, A2A agent and runner) run on your computer over your notes folder. They talk only to the agents you connect and the AI provider you configure; sign-in is a token you set or your own identity provider. Nothing goes through a service of ours.</li>
+</ul>
+<p><strong>On-device handwriting recognition</strong> (Android) runs entirely on the phone. Google&#39;s language model is downloaded once, and your handwriting never leaves the device.</p>
+<p><strong>On-device AI in the Android app</strong> (Gemini Nano through Android&#39;s AICore, its summary, proofreading and image-description tools, or an open model such as Gemma 4 run by Inkwright) works on the phone: your notes and questions are not sent anywhere. Android downloads Gemini Nano itself; open models are downloaded once from Hugging Face (a plain file download — no notes or account details are sent). Android applies its own usage quotas to Gemini Nano.</p>
+<p><strong>Signatures and initials</strong> you save for Fill &amp; sign stay on your device, encrypted, and are never synced. A signature is only copied into a document when you place it there.</p>
+<p><strong>Smart ink</strong> (tables, solving maths, circled dates) works on your device. Handwriting is read by on-device recognition where available; it is sent to your AI provider only when you tap an action that needs it, or if you turned on automatic AI recognition. Calendar events are files you download or your calendar app&#39;s own &quot;new event&quot; screen — Inkwright never reads your calendar.</p>
+<p><strong>Locked notes:</strong> you can lock a note with a passcode. Its pages, pictures, recordings, version history, summary and form values are then encrypted on your device before they are saved, so the copies on your device and in your Drive, WebDAV server or folder are unreadable without the passcode. Search, links, the assistant, routines, outside agents and library thumbnails skip locked notes; the assistant button is hidden while one is open, and smart ink never sends a locked note to an AI on its own. The title, tags, notebook, dates and number of pages stay visible so the note can be listed. <strong>There is no recovery:</strong> Inkwright never stores the passcode or the key, so a forgotten passcode means the note can&#39;t be opened by anyone, including the developer. See &quot;Threat model for locked notes&quot; below.</p>
+<p><strong>Proof of authorship:</strong> each page keeps a history of edits (what changed and when, as content fingerprints) so you can sign a certificate of your handwriting. The signing key is made on your device and cannot be exported. Certificates contain the signed handwriting, its timing and your key&#39;s fingerprint; they leave your device only when you share them or export a PDF with one attached (Settings › Authorship can turn that off).</p>
+<p><strong>Microphone:</strong> used only while you record an audio note, dictate, or hold the microphone button to talk to the assistant. Recordings are saved with the note. Speech for the assistant is turned into text by your browser&#39;s speech recognition (which may use the browser maker&#39;s servers); in the Android app by Android&#39;s speech recognition, on the phone where the phone supports it (Settings › AI says whether it does; otherwise Android works offline when the language is downloaded and may use Google&#39;s servers when it isn&#39;t); or, where none is available, by your AI provider. It is not stored.</p>
+<p><strong>Transcripts (speech to text):</strong> while you record, Inkwright can write down what is said, line it up with your writing and summarize each page. Inkwright always shows where the audio is being turned into text:</p>
+<ul>
+<li><strong>On this device</strong> (the default once the speech model is downloaded, and always when you choose &quot;This device&quot; in Settings › AI › Speech to text): an open speech model (Moonshine or Whisper) runs inside the app. No audio and no transcript leaves your device. The model is downloaded once from Hugging Face; that download sends nothing about you.</li>
+<li><strong>Browser speech service</strong>: your browser&#39;s speech recognition hears the audio. Most browsers process it on their maker&#39;s servers (Google, Apple or Microsoft), under that company&#39;s privacy policy. Inkwright uses this only if you have not downloaded the on-device model, or if you choose it.</li>
+<li><strong>Your AI provider</strong>: the audio is sent in short pieces, straight from your device, to the provider whose key you added (for example OpenAI, Groq or Google), under that provider&#39;s privacy policy.</li>
+</ul>
+<p>Choosing &quot;This device&quot; never falls back to the browser or a provider: if the model is not downloaded, Inkwright offers the download instead. Dictated speech is not stored; only the text you keep. Transcripts, recording summaries and page summaries are saved with the note (next to the recording) and sync wherever your notes sync. Questions you ask during a recording, and summaries, are answered by the assistant&#39;s AI — on this device unless you chose a provider.</p>
+<p><strong>Deleting data:</strong> delete notes in the app. Trash empties after 30 days, or right away with &quot;Delete forever&quot;. Uninstall the app or clear site data to remove everything stored on the device. Synced copies stay in your Drive or server until you delete them there.</p>
+<p><strong>Children:</strong> Inkwright is not directed at children under 13.</p>
+<h2>Threat model for locked notes</h2>
+<p>What a lock protects against:</p>
+<ul>
+<li><strong>Someone who gets the files</strong> — a synced copy in a cloud account, a backup, a stolen or shared
+computer&#39;s vault folder, the browser&#39;s storage: they see the note&#39;s title, tags, notebook, dates,
+page count and page sizes, the number and size of its pictures and recordings, and when it was
+changed, but not what is written, drawn, typed, recorded or summarised in it.</li>
+<li><strong>Tampering:</strong> encryption is authenticated (AES-GCM) and bound to each file&#39;s role and name, so a
+changed, truncated or swapped file fails to open instead of showing altered content.</li>
+<li><strong>Guessing the passcode offline:</strong> the key is stretched with PBKDF2-SHA-256 at 600,000 iterations
+and a random salt per note, which makes each guess slow. A short or common passcode can still be
+guessed by a determined attacker with the files — use a long one for anything sensitive.</li>
+</ul>
+<p>What it does not protect against:</p>
+<ul>
+<li><strong>A device that is unlocked and in someone else&#39;s hands while the note is open</strong>, or malware on
+the device: while a note is open its content is in memory, readable like any open note.</li>
+<li><strong>Copies made while the note was not locked.</strong> Locking rewrites the files, but earlier unencrypted
+copies may survive elsewhere: old file revisions kept by Google Drive or a WebDAV server, backups,
+exports, PDFs or images you shared. Lock a note before syncing sensitive content, and delete old
+revisions in your storage service if needed.</li>
+<li><strong>Metadata:</strong> titles, tags and dates stay readable (pick a neutral title if the title is sensitive).</li>
+<li><strong>What you do with an open note:</strong> exports, printing and copying pages out produce unencrypted files,
+and if you tap an AI action yourself (for example &quot;Ask AI&quot; on a selection) the content goes to the
+AI provider you chose.</li>
+<li><strong>Forgetting the passcode:</strong> there is no reset, recovery key or back door.</li>
+</ul>
+<p>The passcode is never written anywhere; the key exists only in memory while the note is open and is
+forgotten when you leave it. Locking and unlocking happen entirely on your device.</p>
+<p><strong>Contact:</strong> [your support email]</p>
+
+</article></main></body></html>
