@@ -17,3 +17,5 @@ export * from './tools/memory-host.ts';
 export * from './skills.ts';
 export * from './secrets.ts';
 export * from './scripted.ts';
+export * from './local/index.ts';
+export * from './tools/memory.ts';

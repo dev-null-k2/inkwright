@@ -201,7 +201,19 @@ export interface PageInk {
   recognizedText?: string;
   recognizedAt?: number;
   recognizedBy?: string;
+  /**
+   * Where each recognized line sits on the page, when the recognizer worked line by line. Lets
+   * search results and AI citations point at the exact handwriting, not just the page.
+   */
+  recognizedLines?: RecognizedLine[];
   formatVersion: number;
+}
+
+/** One line of recognized handwriting: its text, the strokes it came from and their bounds (page units). */
+export interface RecognizedLine {
+  text: string;
+  strokeIds: string[];
+  bounds: { minX: number; minY: number; maxX: number; maxY: number };
 }
 
 /** An audio recording made while writing. Strokes' `createdAt` lines up with `startedAt`. */
