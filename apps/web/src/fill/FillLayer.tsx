@@ -8,7 +8,7 @@ import { recognizeLocally } from '../lib/recognition.ts';
 import { useApp } from '../state/app.ts';
 import { safeStorage } from '../platform/env.ts';
 import { Dialog, IconButton, Switch, cx } from '../ui/primitives.tsx';
-import { coerce, clampText, effectiveValue, missingRequired, pdfAssetsOf, placeWidgets, readPdfFormFromDoc, withFormValue, type PdfField, type PdfFormInfo, type PlacedWidget } from './pdfForm.ts';
+import { appendRecognized, coerce, clampText, effectiveValue, strokeInField, missingRequired, pdfAssetsOf, placeWidgets, readPdfFormFromDoc, withFormValue, type PdfField, type PdfFormInfo, type PlacedWidget } from './pdfForm.ts';
 import { grayFromRGBA, placeMark, placeText, type GrayImage } from './snap.ts';
 import { FORM_INK, checkmark, cross, formDate } from './marks.ts';
 import { SignaturePicker, SIGN_COLORS, recolorPng } from './SignatureDialogs.tsx';
@@ -110,11 +110,7 @@ export function FillLayer({ doc, engine, vault, host, active, onActive, sel, onT
     const seen = new Set(doc.pages.flatMap((p) => p.strokes.map((s) => s.id)));
     const timers = new Map<string, ReturnType<typeof setTimeout>>();
     const textWidgets = placed.filter((w) => w.field.kind === 'text' && !w.field.readOnly);
-    const inside = (s: InkStroke, r: Rect) => {
-      const xs = s.points.map((p) => p.x), ys = s.points.map((p) => p.y);
-      const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
-      return cx >= r.minX && cx <= r.maxX && cy >= r.minY - 6 && cy <= r.maxY + 6;
-    };
+    const inside = strokeInField;
     const unsub = doc.subscribe(() => {
       doc.pages.forEach((p, pageIndex) => {
         for (const s of p.strokes) {
@@ -136,7 +132,7 @@ export function FillLayer({ doc, engine, vault, host, active, onActive, sel, onT
       if (!text) return;
       const before = valueOf(w.asset, w.field);
       const prev = typeof before === 'string' ? before : '';
-      setValue(w.asset, w.field, clampText(w.field, prev ? `${prev} ${text}` : text));
+      setValue(w.asset, w.field, appendRecognized(w.field, prev, text));
       doc.deleteStrokes(w.pageIndex, new Set(strokes.map((s) => s.id)), 'Write into field');
       toast({ text: `Wrote “${text}” into ${w.field.label}`, action: { label: 'Keep ink', run: () => { engine.undo(); setValue(w.asset, w.field, prev); } } });
     };
@@ -295,11 +291,15 @@ export function FillLayer({ doc, engine, vault, host, active, onActive, sel, onT
   const box = { left: host.offsetLeft, top: host.offsetTop, width: W, height: H };
   const zoom = engine.zoom;
 
+  // The chip is an invitation: once the user has filled in (or dismissed it) it doesn't come back.
+  const dismissChip = () => { setChipGone(true); safeStorage.set(`inkstone.fillchip.${doc.meta.id}`, '1'); };
+  useEffect(() => { if (active && !chipGone) dismissChip(); }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const chip = !active && count > 0 && !chipGone && (
     <div className="fill-chip" role="status">
       <span>This PDF has {count} {count === 1 ? 'field' : 'fields'} to fill in</span>
-      <button type="button" className="btn btn-sm btn-primary" onClick={() => onActive(true)}>Fill in</button>
-      <IconButton label="Dismiss" onClick={() => { setChipGone(true); safeStorage.set(`inkstone.fillchip.${doc.meta.id}`, '1'); }}><X size={15} /></IconButton>
+      <button type="button" className="btn btn-sm btn-primary" onClick={() => { dismissChip(); onActive(true); }}>Fill in</button>
+      <IconButton label="Dismiss" onClick={dismissChip}><X size={15} /></IconButton>
     </div>
   );
 
@@ -411,9 +411,14 @@ function FieldView({ w, rect, zoom, value, draft, host, onDraft, onCommit, onSig
   if (f.kind === 'text') {
     const text = draft ?? (typeof value === 'string' ? value : '');
     if (f.comb && f.maxLen > 0) {
-      const cell = rect.w / f.maxLen;
-      const ch = fontPx * 0.6;
-      Object.assign(style, { fontFamily: 'var(--font-mono)', letterSpacing: Math.max(0, cell - ch), paddingLeft: Math.max(0, (cell - ch) / 2), textAlign: 'left' });
+      // One character per box: a monospace face (advance 0.6 em) spaced to the box pitch, sized
+      // to fit a box. Spacing is trimmed by the start padding spread over the boxes so the last
+      // character never scrolls the field.
+      const cell = (rect.w - 2) / f.maxLen;
+      const size = Math.min(fontPx, (cell * 0.8) / 0.6, rect.h * 0.78);
+      const ch = size * 0.6;
+      const pad = Math.max(0, (cell - ch) / 2);
+      Object.assign(style, { fontFamily: 'var(--font-mono)', fontSize: size, paddingLeft: pad, paddingRight: 0, letterSpacing: Math.max(0, cell - ch - pad / f.maxLen - 0.5), textAlign: 'left' });
     }
     const props = {
       ...common,

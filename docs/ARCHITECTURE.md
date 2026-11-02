@@ -60,6 +60,27 @@ Sync (`@inkstone/sync`) compares content hashes with the last-synced state and r
 - Ink and note files merge three-way by item id, so two devices editing offline never lose strokes.
 - A safety check refuses runs that would delete most of a vault.
 
+## Fill & sign and opening files (`apps/web/src/fill/`, `lib/openFiles.ts`)
+
+- **Form fields:** `pdfForm.ts` reads AcroForm widgets with pdf.js and maps them onto the note's pages
+  through page order and rotation. `FillLayer.tsx` shows them as HTML fields positioned from the
+  engine's viewport; a pen contact on a field is re-dispatched to the canvas so writing still inks,
+  and ink written inside a text field is recognized into it when an on-device recognizer exists.
+  Values live in `NoteMeta.forms`; `AssetCache` renders PDF pages with pdf.js annotation storage so
+  the canvas, thumbnails and PNG export show them.
+- **Flat forms:** `snap.ts` finds printed underlines and boxes in the page's pixels so placed text,
+  checkmarks and signatures land on the line or in the box. Placed items are ordinary ink, text and
+  images, so lasso, undo, sync and export already handle them.
+- **Signatures:** `signatures.ts` (library in the encrypted secret store), `SignatureDialogs.tsx`
+  (draw with real ink, type in a handwriting style, or import an image with the paper removed).
+- **Export:** `exportFilled.ts` loads the original PDF with pdf-lib, fills its AcroForm
+  (`formWriter.ts`, optionally flattened), keeps original pages in the note's order and draws ink
+  on top through a CTM that undoes the page's crop box and rotation. The note exporter
+  (`lib/exporter.ts`) shares the drawing code in `lib/pdfdraw.ts`.
+- **Opening files:** library Open file and drag and drop, drops onto a note, the PWA file handler
+  (`launchQueue`), the POST share target (the service worker stashes files in Cache Storage), and
+  Android intents. Text and Markdown become typed notes.
+
 ## AI (`@inkstone/ai`, `apps/web/src/lib/ai.ts`)
 
 - **Providers:** one `Provider` interface over OpenAI-compatible APIs (OpenAI, OpenRouter, Groq, Mistral, xAI, DeepSeek, Together, Fireworks, Perplexity, Cerebras, Azure, Ollama, LM Studio, custom), Anthropic, Gemini, and Claude through the claude.ai `sample` capability. Requests stream, retry and send images. Tool calling is unified across providers, with a prompt-based fallback for models without native tools.
