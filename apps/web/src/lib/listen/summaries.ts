@@ -50,7 +50,7 @@ export function pagesToSummarize(pages: readonly PageInk[], recordings: readonly
  * `onPage` reports each one as it is done.
  */
 export async function summarizePages(vault: AppVault, note: Pick<NoteMeta, 'id' | 'title' | 'recordings'>, pages: readonly PageInk[], opts: { pageIndexes?: number[]; clipIds?: string[]; signal?: AbortSignal; ai?: ActiveAI | null; onPage?: (pageIndex: number, s: PageSummary) => void } = {}): Promise<Map<number, PageSummary>> {
-  const ai = opts.ai ?? (await getActiveAI());
+  const ai = opts.ai ?? (await getActiveAI({ task: 'background', source: 'listen', label: 'Page summaries', notes: [note] }));
   if (!ai) throw new NoAIError();
   const all = await loadNoteTranscripts(vault, note);
   const recordings = opts.clipIds ? all.filter((r) => opts.clipIds!.includes(r.clip.id)) : all;
@@ -76,7 +76,7 @@ export async function summarizePages(vault: AppVault, note: Pick<NoteMeta, 'id' 
 
 /** The whole recording's summary, key terms and to-dos, saved into its transcript file. */
 export async function summarizeLecture(vault: AppVault, note: Pick<NoteMeta, 'id' | 'title' | 'recordings'>, pages: readonly PageInk[], clipId: string, opts: { signal?: AbortSignal; ai?: ActiveAI | null } = {}): Promise<LectureSummary | null> {
-  const ai = opts.ai ?? (await getActiveAI());
+  const ai = opts.ai ?? (await getActiveAI({ task: 'heavy', source: 'listen', label: 'Lecture summary', notes: [note] }));
   if (!ai) throw new NoAIError();
   const rec = (await loadNoteTranscripts(vault, note)).find((r) => r.clip.id === clipId);
   if (!rec || !rec.file.segments.length) return null;

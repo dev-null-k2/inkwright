@@ -2,6 +2,7 @@ import {
   createClaudeSampleProvider,
   createProvider,
   getProviderInfo,
+  isLoopbackUrl,
   guessModelCapabilities,
   runSkill,
   transcribeHandwriting,
@@ -13,6 +14,8 @@ import {
   type NotebookInfo,
   type NotePatch,
   type Provider,
+  type TaskKind,
+  type TrustRun,
 } from '@inkstone/ai';
 import {
   contentBounds,
@@ -45,6 +48,23 @@ export interface ActiveAI {
   label: string;
   vision: boolean;
   tools: boolean;
+  /** Runs on this device (on-device model, Chrome's AI, or a server on localhost). */
+  local?: boolean;
+  /** Key for budgets and usage: the provider config id (or `device` / the built-in Claude). */
+  budgetKey?: string;
+  /** The trust run behind a guarded AI (notes seen, injection taint), shared with agent tools. */
+  trust?: TrustRun;
+}
+
+/** What a caller tells the AI gateway about a call (see lib/trust/gateway.ts). */
+export interface AICallOptions {
+  /** background | chat | heavy | vision (inferred per request when omitted). */
+  task?: TaskKind;
+  /** Who is asking, for the audit trail: assistant, routine, smart-ink, listen, ask, … */
+  source?: string;
+  label?: string;
+  /** Notes whose content the call will carry (routing for local-only notes, the audit trail). */
+  notes?: ReadonlyArray<{ id: string; title?: string; notebookId?: string; tags?: readonly string[] }>;
 }
 
 let claudeSample: { fn: any; images: boolean } | null | undefined;
@@ -80,27 +100,48 @@ export async function providerFromConfig(cfg: AIProviderConfig, keyOverride?: st
   return createProvider({ providerId: cfg.providerId as any, apiKey, baseUrl: cfg.baseUrl, azureApiVersion: cfg.azureApiVersion } as any);
 }
 
-/** The AI the user chose in Settings, or Claude built into the preview. */
-export async function getActiveAI(): Promise<ActiveAI | null> {
+/**
+ * The AI to use for a call, through the trust gateway: routed by the AI policy, with the privacy
+ * firewall, context budgeter, meter and audit trail around every request. All app features get
+ * their AI here (or from `aiForRoutine`, which goes through the same gateway).
+ */
+export async function getActiveAI(opts: AICallOptions = {}): Promise<ActiveAI | null> {
+  const base = await resolveActiveAI();
+  const { guardActiveAI } = await import('./trust/gateway.ts');
+  return guardActiveAI(base, opts);
+}
+
+/**
+ * The AI the user chose in Settings, or Claude built into the preview — before policy. Only the
+ * trust gateway should call this; everything else uses `getActiveAI`.
+ */
+export async function resolveActiveAI(): Promise<ActiveAI | null> {
   const s = useSettings.getState().ai;
   const cfg = s.providers.find((p) => p.id === s.activeId);
   // Without a provider the assistant runs on this device; with one, Settings › AI › "Who answers" decides.
   const pick = await pickAssistant({ providerConfigured: !!cfg && cfg.id !== CLAUDE_BUILTIN_ID, builtinClaude: hasBuiltinClaude() });
   if (pick.kind === 'device' || pick.kind === 'chrome' || pick.kind === 'native') {
     const local = localActiveAI(pick.kind);
-    if (local) return local;
+    if (local) return { ...local, local: true, budgetKey: 'device' };
   }
-  if (cfg && cfg.id !== CLAUDE_BUILTIN_ID) {
-    const info = getProviderInfo(cfg.providerId);
-    const provider = await providerFromConfig(cfg);
-    const caps = guessModelCapabilities(cfg.model);
-    return { provider, model: cfg.model, label: `${info?.label ?? cfg.label} · ${cfg.model}`, vision: (info?.capabilities.vision ?? true) && caps.vision, tools: info?.capabilities.tools ?? true };
-  }
+  if (cfg && cfg.id !== CLAUDE_BUILTIN_ID) return activeFromConfig(cfg);
+  return builtinActiveAI();
+}
+
+/** A configured provider as an ActiveAI (local when it is a server on this machine). */
+export async function activeFromConfig(cfg: AIProviderConfig): Promise<ActiveAI> {
+  const info = getProviderInfo(cfg.providerId);
+  const provider = await providerFromConfig(cfg);
+  const caps = guessModelCapabilities(cfg.model);
+  const local = isLoopbackUrl(cfg.baseUrl?.trim() || info?.defaultBaseUrl);
+  return { provider, model: cfg.model, label: `${info?.label ?? cfg.label} · ${cfg.model}`, vision: (info?.capabilities.vision ?? true) && caps.vision, tools: info?.capabilities.tools ?? true, local, budgetKey: cfg.id };
+}
+
+/** Claude built into the claude.ai preview, when running there. */
+export async function builtinActiveAI(): Promise<ActiveAI | null> {
   const c = await builtinClaude();
-  if (c) {
-    return { provider: createClaudeSampleProvider(c.fn, { images: c.images }), model: 'default', label: 'Claude (built into this preview)', vision: c.images, tools: true };
-  }
-  return null;
+  if (!c) return null;
+  return { provider: createClaudeSampleProvider(c.fn, { images: c.images }), model: 'default', label: 'Claude (built into this preview)', vision: c.images, tools: true, local: false, budgetKey: CLAUDE_BUILTIN_ID };
 }
 
 // ---- Tool host over the real vault ------------------------------------------------------------
@@ -252,7 +293,7 @@ export { textBoxHeight };
  * (best for messy handwriting), otherwise the on-device recognizer.
  */
 export async function transcribePage(vault: AppVault, doc: NoteDocument, pageIndex: number, strokes?: InkStroke[], mode: 'plain' | 'markdown' = 'plain'): Promise<string | null> {
-  const ai = await getActiveAI().catch(() => null);
+  const ai = await getActiveAI({ task: 'vision', source: 'handwriting', notes: [doc.meta] }).catch(() => null);
   const page = doc.page(pageIndex);
   if (ai?.vision) {
     let region: { minX: number; minY: number; maxX: number; maxY: number } | undefined;

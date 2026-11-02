@@ -97,7 +97,7 @@ export async function canRead(): Promise<boolean> {
 
 /** Reads maths: the AI's vision when available (it also gives steps), else on-device recognition. */
 export async function readMath(vault: AppVault, doc: NoteDocument, pageIndex: number, strokes: InkStroke[]): Promise<MathReading> {
-  const ai = await getActiveAI().catch(() => null);
+  const ai = await getActiveAI({ task: 'vision', source: 'smart-ink', notes: [doc.meta] }).catch(() => null);
   if (ai?.vision) {
     const img = await inkImage(vault, doc, pageIndex, strokes);
     const r = await runSkill(readMathSkill, ai.provider, ai.model, { image: { mediaType: img.mediaType, data: img.base64 } });
@@ -113,7 +113,7 @@ export async function readText(vault: AppVault, doc: NoteDocument, pageIndex: nu
   const local = await recognizeLocally(strokes).catch(() => null);
   if (local) return { text: local.text, by: 'local' };
   if (!allowAI) return null;
-  const ai = await getActiveAI().catch(() => null);
+  const ai = await getActiveAI({ task: 'vision', source: 'smart-ink', notes: [doc.meta] }).catch(() => null);
   if (!ai?.vision) return null;
   const text = await transcribePage(vault, doc, pageIndex, strokes, 'plain');
   return text == null ? null : { text, by: 'ai' };
@@ -152,7 +152,7 @@ export const readTableSkill: Skill<TableReadInput, string[][]> = {
 };
 
 export async function readTableCells(vault: AppVault, doc: NoteDocument, pageIndex: number, t: TableObject): Promise<string[][]> {
-  const ai = await getActiveAI().catch(() => null);
+  const ai = await getActiveAI({ task: 'vision', source: 'smart-ink', notes: [doc.meta] }).catch(() => null);
   if (!ai?.vision) throw new Error('Reading table cells needs an AI with vision (Settings › AI) or the Android app.');
   const page = doc.page(pageIndex);
   const ink = [...strokesByCell(t, page.strokes).values()].flat();

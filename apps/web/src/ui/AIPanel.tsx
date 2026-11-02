@@ -84,7 +84,7 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
   // A connected app's prompt was picked: put it in the input to review and send.
   useEffect(() => hostPromptInput((text) => { setView(null); setInput(text); }), []);
 
-  useEffect(() => { void getActiveAI().then(setAi).catch(() => setAi(null)); }, [aiSettings]);
+  useEffect(() => { void getActiveAI({ source: 'assistant' }).then(setAi).catch(() => setAi(null)); }, [aiSettings]);
   useEffect(() => { scroll.current?.scrollTo({ top: scroll.current.scrollHeight, behavior: 'smooth' }); }, [items]);
 
   // A lasso selection was sent here: attach it as an image.
@@ -231,7 +231,9 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
         tools: prep.tools,
         maxSteps: 12,
         signal: abort.current.signal,
-        confirm: async (call) => {
+        confirm: async (call, tool) => {
+          // The trust layer asks for writes after the run read something that looks like planted instructions.
+          if (tool.confirmReason && !tool.destructive) return askConfirm('Allow this change?', `${tool.confirmReason} The assistant wants to ${TOOL_LABELS[call.name]?.toLowerCase() ?? call.name}: ${JSON.stringify(call.arguments).slice(0, 200)}`, 'Allow');
           const app = describeMcpToolName(call.name);
           if (app) return askConfirm(`Allow ${app.server} to run “${app.tool}”?`, `The assistant wants to use ${app.server}: ${JSON.stringify(call.arguments).slice(0, 300)}`, 'Allow');
           if (!confirmDestructive) return true;
@@ -296,7 +298,7 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
       </header>
       {ai === null && (
         <div className="ai-setup">
-          <LocalAISetup onReady={() => void getActiveAI().then(setAi)} />
+          <LocalAISetup onReady={() => void getActiveAI({ source: 'assistant' }).then(setAi)} />
           <p className="ai-setup-lead">Use any AI with your notes.</p>
           <p className="muted">Add a key from OpenAI, Anthropic, Google Gemini, OpenRouter, Groq, Mistral, xAI or DeepSeek, or point Inkstone at a local model in Ollama or LM Studio. Keys stay encrypted on this device.</p>
           <button type="button" className="btn btn-primary" onClick={onOpenSettings}>Connect an AI</button>
