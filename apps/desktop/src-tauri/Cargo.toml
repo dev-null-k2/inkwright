@@ -1,0 +1,61 @@
+[package]
+name = "inkwright-desktop"
+version = "1.0.0"
+description = "Inkwright for macOS, Windows and Linux"
+authors = ["Inkwright contributors"]
+license = "Apache-2.0"
+edition = "2021"
+rust-version = "1.82"
+
+[lib]
+# The `_lib` suffix keeps the library and binary names apart (a Cargo limitation on Windows).
+name = "inkwright_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "=2.7.3", features = [] }
+
+[dependencies]
+# Tauri crates are pinned to the same minor versions as @tauri-apps/api and @tauri-apps/cli.
+tauri = { version = "=2.12.4", features = ["tray-icon", "image-png"] }
+tauri-plugin-autostart = "=2.7.0"
+tauri-plugin-deep-link = "=2.6.2"
+tauri-plugin-process = "=2.4.0"
+tauri-plugin-single-instance = { version = "=2.5.4", features = ["deep-link"] }
+tauri-plugin-updater = "=2.14.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Screen capture and the window in front (memory timeline).
+xcap = "=0.9.8"
+# Calendar subscriptions (journal): fetched here because calendar servers don't send CORS headers.
+reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "system-proxy"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+getrandom = "0.3"
+percent-encoding = "2"
+# Changes to the vault folder made by others (the MCP sidecar, Obsidian, folder sync).
+notify = "=8.2.0"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# Idle time and screen lock from the desktop session (GNOME Mutter, freedesktop ScreenSaver).
+zbus = { version = "5", default-features = false, features = ["blocking-api", "async-io"] }
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = [
+  "Win32_Foundation",
+  "Win32_System_Com",
+  "Win32_System_SystemInformation",
+  "Win32_System_Threading",
+  "Win32_UI_Accessibility",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_WindowsAndMessaging",
+] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true
