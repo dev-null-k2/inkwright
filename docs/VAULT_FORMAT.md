@@ -13,6 +13,11 @@ reference implementation is `packages/core/src/codec.ts` + `vault.ts`.
   notes/<noteId>/pages/<pageId>.ink.json  PageInk (compact JSON) — the source of truth for ink
   notes/<noteId>/pages/<pageId>.svg     SVG render of the page — generated
   notes/<noteId>/assets/<name>          images, PDFs, audio recordings referenced by pages/notes
+  ai/skills/<name>/SKILL.md             Agent Skills the user imported (+ their bundled files)
+  ai/skills.json                        which skills are switched off
+  ai/memory.json                        assistant memory: instructions, facts, proposals
+  ai/routines/<routineId>.json          routines (background agents) and their run state
+  ai/activity/<runId>.json              AI activity log: what agents changed, for undo
 ```
 
 Rules
@@ -77,3 +82,64 @@ Sync engines (Google Drive, WebDAV, local folder) mirror this tree file-for-file
 images are unioned by id with deletions honoured from either side; scalar metadata takes the most
 recent `updatedAt`. Derived files are regenerated after merge. Sync state lives outside the vault
 (app storage), never inside it.
+
+## Assistant data (`ai/`)
+
+Everything the in-app assistant keeps lives next to the notes so it syncs with them. All files
+are JSON (or Markdown for skills); readers ignore unknown fields. Sync treats them as whole files
+(three-way merge is only for ink and note files), so each run and routine is its own file and two
+devices rarely touch the same one. Nothing secret is stored here: API keys, MCP sign-ins and
+tokens stay in each device's encrypted secret store and never sync.
+
+**Skills** — `ai/skills/<name>/` is an [Agent Skill](https://agentskills.io/specification):
+`SKILL.md` with YAML frontmatter (`name` — must equal the folder name, 1–64 chars of `a-z0-9-`,
+no leading/trailing/double hyphens; `description` ≤ 1024 chars; optional `license`,
+`compatibility` ≤ 500 chars, `metadata` (string map), `allowed-tools`) and any bundled files
+(`references/`, `assets/`, `scripts/`). Inkstone never executes scripts. `ai/skills.json` is
+`{ "disabled": ["skill-name", …] }` (built-in skills can be switched off too; they ship with the
+app and are not written here).
+
+**Memory** — `ai/memory.json`:
+
+```jsonc
+{ "version": 1, "items": [
+  { "id", "kind": "instruction|fact", "text", "status": "active|proposed",
+    "source": "user|assistant", "createdAt", "updatedAt", "reason?" }
+] }
+```
+
+Only `active` items reach the model. `proposed` items come from the assistant's `remember` tool
+and wait for the user.
+
+**Routines** — `ai/routines/<id>.json`:
+
+```jsonc
+{ "id", "name", "prompt", "enabled", "ai": "<provider config id>|null",
+  "tools": { "notes": "read|write", "skills": true, "mcpServers": ["<connection id>"] },
+  "triggers": [ { "kind": "daily", "time": "18:00" }, { "kind": "weekly", "day": 1, "time": "08:00" },
+                { "kind": "note-saved", "tag": "email" }, { "kind": "recording-ended" },
+                { "kind": "before-date", "days": 3, "keyword": "exam" } ],
+  "template?", "createdAt", "updatedAt",
+  "state": { "lastRunAt?", "lastStatus?", "lastError?", "slots": { "<trigger index>": <slot ms> },
+             "firedDates": ["<noteId>@YYYY-MM-DD"] } }
+```
+
+Times are the device's local time. A routine runs while Inkstone is open; a slot missed while it
+was closed runs once on the next open (`slots` records it so no device repeats it).
+
+**Activity** — `ai/activity/<runId>.json`, one run per assistant turn, routine run or external
+agent connection (the MCP server writes these too):
+
+```jsonc
+{ "id", "source": "assistant|routine|external", "label", "routineId?", "prompt?",
+  "startedAt", "endedAt?", "status": "running|done|error|cancelled", "reply?", "error?",
+  "ops": [ { "id", "at", "tool", "summary", "undoneAt?", "undoNote?", "kind": … } ] }
+```
+
+Op kinds and how undo reverses them: `note_created {noteId, title}` → move to Trash;
+`note_trashed {noteId, title}` → restore; `text_appended {noteId, pageId, textId, text,
+addedPage?}` → remove that text box (and the page, if it was added and is now empty);
+`meta_changed {noteId, before, after}` (fields `title`, `tags`, `notebookId` (null = unfiled),
+`pinned`, `summary` (null = none)) → put back each field that still has the `after` value;
+`notebook_created {notebookId, name}` → delete it if still empty; `external {server, detail?}` —
+a change in a connected app, listed only. The newest 300 runs are kept.
