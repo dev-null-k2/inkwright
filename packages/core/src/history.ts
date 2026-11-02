@@ -4,6 +4,7 @@ import type { InkStroke, NoteMeta, PageInk, SealedBox } from './model.ts';
 import { openJson, sealJson } from './lock.ts';
 import { sha256, toHex } from './sha256.ts';
 import type { Vault } from './vault.ts';
+import { branchBlobsInUse } from './branches.ts';
 
 /**
  * Version history: automatic snapshots of a note, stored in the vault next to it so they sync
@@ -234,6 +235,8 @@ export class VersionHistory {
       removed++;
     }
     const used = new Set(all.filter((m) => keep.has(m.id)).flatMap((m) => m.blobs));
+    // Open branches (branches.ts) share these blobs: what they still show is kept.
+    for (const h of await branchBlobsInUse(this.fs, noteId)) used.add(h);
     for (const e of await this.fs.list(`${dir(noteId)}/blobs`)) {
       const name = e.name.replace(/\.json$/, '');
       if (e.kind === 'file' && !used.has(name)) await this.fs.delete(blobPath(noteId, name));
