@@ -111,6 +111,8 @@ export interface EngineCallbacks {
   onButtonToggle?(): void;
   onSeek?(createdAt: number): void;
   onInteraction?(kind: 'pen' | 'touch' | 'mouse'): void;
+  /** Ink is being laid down (true) or the stroke has ended (false): lets the chrome step back. */
+  onWriting?(active: boolean): void;
   onViewportSaved?(v: { zoom: number; panX: number; panY: number }): void;
 }
 
@@ -133,7 +135,7 @@ type Gesture =
   | { kind: 'tap'; pointerId: number; x: number; y: number; t: number; tool: Tool };
 
 const DPR_CAP = 3;
-const DESK_FALLBACK = '#dde2e6';
+const DESK_FALLBACK = '#e8e5ea';
 
 /**
  * The ink engine: a low-latency, palm-rejecting, pressure-aware canvas. Committed content is
@@ -1012,6 +1014,7 @@ export class InkEngine {
     };
     this.armHold();
     this.feel?.begin(resolved.preset.pen, pointerKind(e), first.p);
+    this.callbacks.onWriting?.(true);
     if (e.pointerType === 'pen' && this.prefs.instantInk && this.inkTip && INSTANT_INK_PENS.has(resolved.preset.pen)) {
       // A touch thinner than the live line so the tip hides under the web ink once it catches up.
       const w = nominalWidth(resolved.preset.pen, resolved.preset.size, first.p) * 0.9;
@@ -1222,7 +1225,7 @@ export class InkEngine {
 
   private cancelGesture() {
     const g = this.gesture;
-    if (g.kind === 'stroke') { clearTimeout(g.holdTimer); this.feel?.end(); this.inkTip?.end(true); }
+    if (g.kind === 'stroke') { clearTimeout(g.holdTimer); this.feel?.end(); this.inkTip?.end(true); this.callbacks.onWriting?.(false); }
     if (g.kind === 'erase') { this.doc.clearPreview(g.pageIndex); this.feel?.end(); }
     if (g.kind === 'lasso') this.lassoSvg.innerHTML = '';
     if (g.kind === 'move') this.invalidate();
@@ -1309,6 +1312,7 @@ export class InkEngine {
   private finishStroke(g: Extract<Gesture, { kind: 'stroke' }>) {
     clearTimeout(g.holdTimer);
     this.feel?.end();
+    this.callbacks.onWriting?.(false);
     if (!g.shape) this.inkTip?.end(false);
     this.gesture = { kind: 'none' };
     const stroke: InkStroke = g.shape

@@ -64,7 +64,8 @@ test('importing a PDF creates annotatable pages and exports a vector PDF', async
   await expect(page.locator('.ed-title-text')).toHaveText('Lecture slides');
   await pen(page, word(200, 220, 160));
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export and share' }).click();
+  await page.getByRole('button', { name: 'More', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Export and share/ }).click();
   await page.getByRole('menuitem', { name: /PDF/ }).click();
   const d = await download;
   const path = await d.path();
@@ -79,7 +80,8 @@ test('markdown export contains typed text', async ({ page }) => {
   await page.locator('.note-open').first().click();
   await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export and share' }).click();
+  await page.getByRole('button', { name: 'More', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Export and share/ }).click();
   await page.getByRole('menuitem', { name: /Markdown/ }).click();
   const d = await download;
   const fs = await import('node:fs');

@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@fontsource-variable/hanken-grotesk';
 import '@fontsource-variable/newsreader';
+import '@fontsource-variable/brygada-1918';
 import '@fontsource-variable/caveat';
 import '@fontsource-variable/jetbrains-mono';
 import './styles/tokens.css';

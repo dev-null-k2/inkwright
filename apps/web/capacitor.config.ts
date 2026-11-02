@@ -22,7 +22,7 @@ const config: CapacitorConfig = {
   },
   plugins: {
     // @capacitor/splash-screen is not installed; these apply if it is added later. Android 12+
-    // always shows the system splash (#DDE2E6, or #14181C in dark mode; see
+    // always shows the system splash (#E8E5EA, or #1A161C in dark mode; see
     // android/app/src/main/res/values*/) until the WebView's first frame. The WebView background
     // is set natively to the same colour so dark mode never flashes white.
     SplashScreen: {

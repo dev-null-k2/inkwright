@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Inkstone brand colours (see the favicon in apps/web/index.html). -->
-    <color name="ic_launcher_background">#1C232B</color>
-    <color name="inkstone_slate">#1C232B</color>
-    <color name="inkstone_paper">#F3F5F6</color>
-    <color name="inkstone_cinnabar">#B8432F</color>
-    <color name="inkstone_splash">#DDE2E6</color>
+    <!-- Inkstone brand colours: the Duan stone, its ink well and jade stone-eye (see src/styles/tokens.css). -->
+    <color name="ic_launcher_background">#2E2533</color>
+    <color name="inkstone_slate">#2E2533</color>
+    <color name="inkstone_well">#120D15</color>
+    <color name="inkstone_sheen">#61FFFFFF</color>
+    <color name="inkstone_face">#14FFFFFF</color>
+    <color name="inkstone_jade">#5E9C7E</color>
+    <color name="inkstone_jade_ring">#665E9C7E</color>
+    <color name="inkstone_paper">#F6F3F7</color>
+    <color name="inkstone_cinnabar">#B3412F</color>
+    <color name="inkstone_splash">#E8E5EA</color>
 </resources>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Dark mode: matches the web app's dark theme-color so nothing flashes light. -->
-    <color name="inkstone_splash">#14181C</color>
+    <color name="inkstone_splash">#1A161C</color>
 </resources>
