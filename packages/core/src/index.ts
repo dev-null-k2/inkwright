@@ -48,3 +48,4 @@ export * from './canvasdag/index.ts';
 export * from './photoink/index.ts';
 export * from './inkanswer/index.ts';
 export * from './readaloud/index.ts';
+export * from './importers/index.ts';
