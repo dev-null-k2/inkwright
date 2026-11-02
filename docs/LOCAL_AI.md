@@ -204,7 +204,17 @@ assistant reply.
   ```
 
   `INKSTONE_REAL_MODELS=chat` also downloads Granite 4.0 350M and answers an Ask question on the
-  CPU. Large files are relayed in 64 MB slices, which also exercises download resume.
+  CPU. Large files are relayed in 16 MB slices, which also exercises download resume.
+  `INKSTONE_REAL_MODELS=1 npx vitest run --project ai packages/ai/test/local-models.live.test.ts`
+  checks every catalog size against the live repositories.
+
+  Results on the development machine (Nov 2026):
+  - The embedding test passes, including resume across relay slices.
+  - The catalog check passes for all eight models.
+  - The chat test downloaded about 350 MB, then the headless page was killed by the sandbox's
+    memory limit (8 GB shared with other builds). Generation itself is verified with the same
+    transformers.js calls in Node: Qwen3 0.6B, `enable_thinking: false`, streaming. Run the chat
+    test on a machine with more memory.
 
 ## Sources
 

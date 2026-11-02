@@ -9,10 +9,10 @@ async function useMiniLM(page: Page) {
 /**
  * Relays Hugging Face requests through Node, so they use this machine's network settings.
  * Playwright can only hand a page a few hundred MB per response, so file downloads are relayed in
- * slices of at most 64 MB: a cut-short response is exactly what the app's resumable downloader
+ * slices of at most 16 MB: a cut-short response is exactly what the app's resumable downloader
  * recovers from (it asks for the rest with an HTTP Range request).
  */
-const SLICE = 64 << 20;
+const SLICE = 16 << 20;
 async function relayToHuggingFace(route: Route) {
   const req = route.request();
   const out: Record<string, string> = { 'access-control-allow-origin': '*' };
@@ -75,7 +75,7 @@ test('model downloads show their size, survive an interruption and resume where 
   await useMiniLM(page);
   await openApp(page);
   await openAISettings(page);
-  const row = page.locator('.lai-row', { hasText: 'Search model' });
+  const row = page.locator('.lai-row', { has: page.getByRole('combobox', { name: 'Search model' }) });
   await expect(row.locator('select')).toHaveValue('minilm-l6');
   // The size is shown before anything is downloaded.
   await row.getByRole('button', { name: 'Download · 24 MB' }).click();
@@ -110,9 +110,16 @@ test('real on-device embeddings find notes by meaning (opt-in, downloads 24 MB)'
   await page.addInitScript(() => localStorage.setItem('inkstone.localai.v1', JSON.stringify({ embedModel: 'minilm-l6', embeddings: 'device' })));
   await openApp(page);
   await openAISettings(page);
-  const row = page.locator('.lai-row', { hasText: 'Search model' });
+  const row = page.locator('.lai-row', { has: page.getByRole('combobox', { name: 'Search model' }) });
   await row.getByRole('button', { name: /Download/ }).click();
-  await expect(row).toContainText('On this device', { timeout: 180_000 });
+  // Files over one relay slice arrive in parts; each part is resumed like a dropped connection.
+  const done = row.getByText('On this device');
+  for (let i = 0; i < 10 && !(await done.isVisible()); i++) {
+    const resume = row.getByRole('button', { name: /Resume/ });
+    await expect(resume.or(done)).toBeVisible({ timeout: 120_000 });
+    if (await resume.isVisible()) await resume.click();
+  }
+  await expect(done).toBeVisible({ timeout: 180_000 });
   await expect(page.locator('.lai-row', { hasText: 'passages ready' })).toContainText(/(\d+) of \1 passages ready/, { timeout: 120_000 });
   await page.keyboard.press('Control+k');
   // No keyword overlap with "Everything is saved as plain files … sync them with Google Drive".
@@ -138,7 +145,7 @@ test('real on-device chat answers Ask from the notes (opt-in, downloads ~0.6 GB)
   await page.locator('.lai-offer').getByRole('button', { name: /Download/ }).click();
   // The relay delivers big files in slices; each cut is resumed exactly like a dropped connection.
   const foot = page.locator('.pal-foot', { hasText: 'Answered by' });
-  for (let i = 0; i < 40 && !(await foot.isVisible()); i++) {
+  for (let i = 0; i < 80 && !(await foot.isVisible()); i++) {
     const resume = page.locator('.lai-offer').getByRole('button', { name: /Resume download/ });
     await expect(resume.or(foot)).toBeVisible({ timeout: 120_000 });
     if (await resume.isVisible()) { console.log(`resuming (${await resume.innerText()})`); await resume.click(); }
