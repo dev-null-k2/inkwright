@@ -386,6 +386,8 @@ export interface CompiledPage {
 export interface CompilerState {
   formatVersion: 1;
   pages: Record<string, CompiledPage>;
+  /** Pages whose proposed change the user rejected, by key → fingerprint: not proposed again until their sources change. */
+  declined?: Record<string, string>;
   lastCompileAt?: number;
 }
 
@@ -393,7 +395,7 @@ export const emptyCompilerState = (): CompilerState => ({ formatVersion: 1, page
 
 /** Pages that are new or whose sources changed, and compiled pages that lost all their sources. */
 export function compileWork(plan: readonly PlannedPage[], state: CompilerState, opts: { only?: ReadonlySet<string>; force?: boolean } = {}): { changed: PlannedPage[]; orphaned: CompiledPage[] } {
-  const changed = plan.filter((p) => (!opts.only || opts.only.has(p.key)) && (opts.force || state.pages[p.key]?.fingerprint !== p.fingerprint));
+  const changed = plan.filter((p) => (!opts.only || opts.only.has(p.key)) && (opts.force || (state.pages[p.key]?.fingerprint !== p.fingerprint && state.declined?.[p.key] !== p.fingerprint)));
   const keys = new Set(plan.map((p) => p.key));
   const orphaned = opts.only ? [] : Object.values(state.pages).filter((p) => !keys.has(p.key));
   return { changed, orphaned };

@@ -94,7 +94,7 @@ export function stem(w: string): string {
   if (w.endsWith('ies') && w.length > 4) return w.slice(0, -3) + 'y';
   if (w.endsWith('sses')) return w.slice(0, -2);
   if (w.endsWith('ing') && w.length > 5) return w.slice(0, -3);
-  if (w.endsWith('ed') && w.length > 4) return w.slice(0, -2).replace(/(.)\1$/, '$1');
+  if (w.endsWith('ed') && w.length > 4 && !w.endsWith('eed')) return w.slice(0, -2).replace(/(.)\1$/, '$1');
   if (w.endsWith('es') && /(ch|sh|x|ss|z)es$/.test(w)) return w.slice(0, -2);
   if (w.endsWith('s') && !w.endsWith('ss') && !w.endsWith('us') && !w.endsWith('is')) return w.slice(0, -1);
   return w;

@@ -18,7 +18,7 @@
 import { hashText } from '../memory.ts';
 import type { SourceDoc, SourceUnit } from './extract.ts';
 import { extractDates } from './entities.ts';
-import { contentWords, jaccard, stripMarkdown } from './text.ts';
+import { contentWords, jaccard, stem, stripMarkdown } from './text.ts';
 
 export type Dimension = 'time' | 'data' | 'money' | 'percent' | 'rate' | 'length' | 'mass' | 'temperature' | 'count';
 export type Comparator = 'lt' | 'le' | 'gt' | 'ge' | 'eq' | 'approx';
@@ -49,6 +49,12 @@ export interface Claim {
   subject: string[];
   /** Measured concepts inferred from units and words (`latency`, `cost`, `memory`…). */
   concepts: string[];
+  /**
+   * Subject words before the value ("Postgres p99 latency" in "Postgres p99 latency is 15 ms"):
+   * the noun phrase that names what is measured. Words after it ("on main", "in October") are
+   * circumstances, not the subject, so they never make two claims look like different things.
+   */
+  head: string[];
   cmp?: Comparator;
   qty?: Quantity;
   /** `YYYY-MM-DD` for date claims. */
@@ -59,6 +65,8 @@ export interface Claim {
   supersedes?: boolean;
   /** The note's last edit (newer claims win supersessions). */
   at: number;
+  /** The note's title (claims from notes about different things rarely disagree). */
+  title: string;
   /** Tags, notebook and links of the note: shared context raises confidence. */
   context: string[];
 }
@@ -129,7 +137,7 @@ const CMP_RULES: Array<[RegExp, Comparator]> = [
 ];
 
 const MUST = /\b(?:must|should|shall|needs? to|has to|have to|required?|requirement|sla|slo|target|goal|budget|limit|cap|cannot|can't|mustn't|may not|keep (?:it |them )?(?:under|below|within)|stay(?:s)? (?:under|below|within)|not exceed|at most|no more than|at least|maximum|minimum)\b/i;
-const MEASURE = /\b(?:averages?|averaged|measured|measures|came in at|comes in at|clocked|hits?|hit|reached|reaches|takes?|took|costs?|cost|is|are|was|were|runs? at|p50|p90|p95|p99|median|mean|currently|now at|observed|benchmark(?:ed)?|got|gets|uses?|used)\b/i;
+const MEASURE = /\b(?:averages?|averaged|measured|measures|came in at|comes in at|clocked|hits?|hit|reached|reaches|takes?|took|lasts?|lasted|costs?|cost|is|are|was|were|runs? at|p50|p90|p95|p99|median|mean|currently|now at|observed|benchmark(?:ed)?|got|gets|uses?|used)\b/i;
 const SUPERSEDE = /\b(?:moved to|moved|postponed|rescheduled|pushed (?:back|out) to|pushed to|changed to|now|instead|updated to|revised to|no longer|new date|delayed to|brought forward to)\b/i;
 const NEGATE = /\b(?:not|no longer|won't|will not|don't|do not|never|drop(?:ped)?|abandon(?:ed)?|cancel(?:l?ed)?|ruled? out|reject(?:ed)?|scrap(?:ped)?|against)\b/i;
 const DECIDE = /\b(?:decided|decision|we(?:'ll| will)|agreed|going with|chose|chosen|choose|picked|settled on|plan is to|we're using|we are using|switch(?:ing)? to|adopt(?:ed|ing)?)\b/i;
@@ -137,7 +145,7 @@ const EVENT = /\b(launch(?:es|ed)?|release|deadline|due|exam|test|meeting|demo|r
 
 /** Measured concepts, so differently worded claims about the same quantity meet. */
 const CONCEPTS: Array<{ name: string; dim: Dimension; words: RegExp; maxBase?: number }> = [
-  { name: 'latency', dim: 'time', maxBase: 30, words: /\b(?:latenc\w*|response(?: time)?|round[- ]?trip|rtt|p50|p90|p95|p99|ttfb|lag|delay|pipeline|request|query|endpoint|api|render(?:ing)?|frame|load(?:ing)? time|page load|averages?|median)\b/i },
+  { name: 'latency', dim: 'time', maxBase: 30, words: /\b(?:latenc\w*|response(?: time)?|respond\w*|round[- ]?trip|rtt|p50|p90|p95|p99|ttfb|lag|delay|pipeline|request|query|queries|search|return\w*|endpoint|api|render(?:ing)?|frame|load(?:ing)? time|page load|cold start|startup|averages?|median)\b/i },
   { name: 'duration', dim: 'time', words: /\b(?:takes?|took|duration|build|run(?:time)?|long|minutes?|hours?|days?)\b/i },
   { name: 'cost', dim: 'money', words: /./ },
   { name: 'memory', dim: 'data', words: /\b(?:memory|ram|heap|footprint|rss)\b/i },
@@ -149,6 +157,24 @@ const CONCEPTS: Array<{ name: string; dim: Dimension; words: RegExp; maxBase?: n
   { name: 'accuracy', dim: 'percent', words: /\b(?:accuracy|accurate|precision|recall|f1|score)\b/i },
 ];
 
+/** Concepts where more is better: a bare "SLA 99.9%" or "target 1000 rps" is a floor, not a cap. */
+const HIGHER_IS_BETTER = new Set(['availability', 'coverage', 'accuracy', 'throughput']);
+const UPPER_WORDS = /\b(?:limit|cap|budget|max|maximum|ceiling|at most|no more than)\b/i;
+
+/**
+ * The direction of a constraint written without a comparator ("our SLA is 99.9% uptime"):
+ * explicit cap words mean at most; otherwise the concept decides; otherwise time, data and money
+ * are caps and rates floors. Unknown direction: no claim (better silent than wrong).
+ */
+function defaultComparator(text: string, qty: Quantity, concepts: string[]): Comparator | undefined {
+  if (UPPER_WORDS.test(text)) return 'le';
+  if (concepts.some((c) => HIGHER_IS_BETTER.has(c))) return 'ge';
+  if (concepts.length) return 'le';
+  if (qty.dim === 'time' || qty.dim === 'data' || qty.dim === 'money') return 'le';
+  if (qty.dim === 'rate') return 'ge';
+  return undefined;
+}
+
 function comparatorBefore(text: string, index: number): Comparator | undefined {
   const before = text.slice(Math.max(0, index - 32), index);
   for (const [re, c] of CMP_RULES) if (re.test(before)) return c;
@@ -156,7 +182,9 @@ function comparatorBefore(text: string, index: number): Comparator | undefined {
 }
 
 /** Words that describe the comparison rather than the subject. */
-const NON_SUBJECT = new Set(['must', 'should', 'stay', 'stays', 'under', 'below', 'less', 'fewer', 'lower', 'over', 'above', 'more', 'greater', 'higher', 'least', 'most', 'max', 'maximum', 'minimum', 'min', 'limit', 'budget', 'target', 'goal', 'require', 'requirement', 'required', 'need', 'keep', 'exceed', 'average', 'averag', 'measure', 'measur', 'came', 'come', 'hit', 'reach', 'take', 'took', 'cost', 'currently', 'now', 'around', 'about', 'roughly', 'approx', 'nearly', 'almost', 'within', 'cap', 'capp', 'new', 'old', 'current', 'decid', 'decision', 'agre', 'chose', 'plan', 'go', 'going', 'pick', 'settl', 'mov', 'moved', 'postpon', 'reschedul', 'push', 'chang', 'instead', 'updat', 'revis', 'delay', 'long', 'longer', 'shorter', 'faster', 'slower', 'p50', 'p90', 'p95', 'p99', 'median', 'mean', 'sla', 'slo'].map((w) => w));
+const NON_SUBJECT_WORDS = ['must', 'should', 'stay', 'stays', 'under', 'below', 'less', 'fewer', 'lower', 'over', 'above', 'more', 'greater', 'higher', 'least', 'most', 'max', 'maximum', 'minimum', 'min', 'limit', 'budget', 'target', 'goal', 'require', 'requirement', 'required', 'need', 'keep', 'exceed', 'average', 'averag', 'measure', 'measur', 'came', 'come', 'hit', 'reach', 'take', 'took', 'cost', 'currently', 'now', 'around', 'about', 'roughly', 'approx', 'nearly', 'almost', 'within', 'cap', 'capp', 'new', 'old', 'current', 'decid', 'decision', 'agre', 'chose', 'plan', 'go', 'going', 'pick', 'settl', 'mov', 'moved', 'postpon', 'reschedul', 'push', 'chang', 'instead', 'updat', 'revis', 'delay', 'long', 'longer', 'shorter', 'faster', 'slower', 'p50', 'p90', 'p95', 'p99', 'median', 'mean', 'sla', 'slo', 'exceed', 'exceeds', 'last', 'lasts', 'lasted'];
+/** Compared as stems, the way `contentWords` returns words. */
+const NON_SUBJECT = new Set([...NON_SUBJECT_WORDS, ...NON_SUBJECT_WORDS.map(stem)]);
 
 const UNIT_WORDS = new Set(Object.keys(UNITS).map((u) => u.toLowerCase()));
 
@@ -192,7 +220,7 @@ function claimsOfUnit(u: SourceUnit, doc: SourceDoc, context: string[], ref: Dat
   const text = stripMarkdown(u.text);
   if (/\?\s*$/.test(text) || text.length > 400) return [];
   const out: Claim[] = [];
-  const base = { unitId: u.id, noteId: u.noteId, hash: u.hash, text: u.text, at: doc.updatedAt, context: [...context, ...(u.heading ? [`h:${u.heading.toLowerCase()}`] : [])] };
+  const base = { unitId: u.id, noteId: u.noteId, hash: u.hash, text: u.text, at: doc.updatedAt, title: doc.title, context: [...context, ...(u.heading ? [`h:${u.heading.toLowerCase()}`] : [])] };
   const supersedes = SUPERSEDE.test(text);
   const must = MUST.test(text);
   let n = 0;
@@ -200,19 +228,22 @@ function claimsOfUnit(u: SourceUnit, doc: SourceDoc, context: string[], ref: Dat
     const cmp = comparatorBefore(text, q.index) ?? (must ? undefined : MEASURE.test(text) ? 'eq' : undefined);
     if (!cmp && !must) continue;
     const kind: ClaimKind = must ? 'constraint' : 'measurement';
-    const { index: _i, raw: _r, ...qty } = q;
-    out.push({ ...base, id: `${u.id}#${n++}`, kind, subject: subjectOf(text), concepts: conceptsOf(text, qty), cmp: cmp ?? (kind === 'constraint' ? 'le' : 'eq'), qty, ...(supersedes ? { supersedes } : {}) });
+    const { index, raw: _r, ...qty } = q;
+    const concepts = conceptsOf(text, qty);
+    const dir = cmp ?? (kind === 'constraint' ? defaultComparator(text, qty, concepts) : 'eq');
+    if (!dir) continue;
+    out.push({ ...base, id: `${u.id}#${n++}`, kind, subject: subjectOf(text), head: subjectOf(text.slice(0, index)), concepts, cmp: dir, qty, ...(supersedes ? { supersedes } : {}) });
   }
   const ev = EVENT.exec(text);
   if (ev) {
     for (const d of extractDates(text, ref, opts)) {
       if (/^(?:today|tonight|tomorrow|tmrw|yesterday)$/i.test(d.text)) continue;
-      out.push({ ...base, id: `${u.id}#${n++}`, kind: 'date', subject: subjectOf(text, d.text.split(/\s+/)), concepts: [`event:${ev[1]!.toLowerCase().replace(/(?:es|ed|s|ping)$/, '')}`], date: d.date, ...(supersedes ? { supersedes } : {}) });
+      out.push({ ...base, id: `${u.id}#${n++}`, kind: 'date', subject: subjectOf(text, d.text.split(/\s+/)), head: subjectOf(text.slice(0, d.index), d.text.split(/\s+/)), concepts: [`event:${ev[1]!.toLowerCase().replace(/(?:es|ed|s|ping)$/, '')}`], date: d.date, ...(supersedes ? { supersedes } : {}) });
       break;
     }
   }
   if (DECIDE.test(text) && !out.length) {
-    out.push({ ...base, id: `${u.id}#${n++}`, kind: 'decision', subject: subjectOf(text), concepts: [], polarity: NEGATE.test(text) ? -1 : 1, ...(supersedes ? { supersedes } : {}) });
+    out.push({ ...base, id: `${u.id}#${n++}`, kind: 'decision', subject: subjectOf(text), head: subjectOf(text), concepts: [], polarity: NEGATE.test(text) ? -1 : 1, ...(supersedes ? { supersedes } : {}) });
   }
   return out;
 }
@@ -253,11 +284,19 @@ export function subjectSimilarity(a: Claim, b: Claim): number {
   const concept = a.concepts.some((c) => b.concepts.includes(c));
   const strong = concept && a.concepts.concat(b.concepts).some((c) => c !== 'duration');
   let s = Math.max(words * 1.4, sharedWords >= 2 ? 0.6 : sharedWords === 1 ? 0.35 : 0);
-  if (concept) s = Math.max(s, strong ? 0.62 : 0.3) + (sharedWords ? 0.15 : 0);
+  // A shared measured concept alone ("latency" vs "pipeline … ms") is suggestive, not enough:
+  // it needs shared words or shared context (tag, notebook, heading, link) to clear the threshold.
+  if (concept) s = Math.max(s, strong ? 0.55 : 0.3) + (sharedWords ? 0.15 : 0);
+  // Each side naming something the other doesn't ("Postgres p99" vs "Kafka p99") is the commonest
+  // false alarm: two measurements of different things. Words that only name the measured concept
+  // ("latency", "pipeline") don't count as naming something else.
+  const conceptRes = CONCEPTS.filter((c) => c.words.source !== '.' && (a.concepts.includes(c.name) || b.concepts.includes(c.name))).map((c) => c.words);
+  const distinct = (xs: string[], ys: string[]) => xs.filter((w) => w.length >= 3 && !ys.includes(w) && !conceptRes.some((re) => re.test(w))).length;
+  s -= Math.min(0.4, 0.2 * Math.min(distinct(a.head, b.head), distinct(b.head, a.head)));
   const ctx = a.context.filter((c) => b.context.includes(c)).length;
   if (ctx) s += Math.min(0.2, 0.1 * ctx);
   if (a.noteId === b.noteId) s += 0.05;
-  return Math.min(1, s);
+  return Math.max(0, Math.min(1, s));
 }
 
 const fmt = (q: Quantity) => {
@@ -304,6 +343,13 @@ function pairConflict(a: Claim, b: Claim): { kind: ConflictKind; reason: string;
       return null;
     }
     if (a.cmp === 'eq' || a.cmp === 'approx' || b.cmp === 'eq' || b.cmp === 'approx') {
+      // Two measurements that differ are usually two different things or two different days.
+      // Only call it a disagreement inside one note, or between notes that share context and
+      // whose titles share a word ("Atlas benchmark" / "Atlas perf").
+      const sameNote = a.noteId === b.noteId;
+      const sharedCtx = a.context.some((c) => b.context.includes(c));
+      const ta = new Set(contentWords(a.title)), tb = contentWords(b.title);
+      if (!sameNote && !(sharedCtx && tb.some((w) => ta.has(w)))) return null;
       const diff = Math.abs(a.qty.base - b.qty.base) / Math.max(a.qty.base, b.qty.base);
       const tol = a.cmp === 'approx' || b.cmp === 'approx' ? 0.35 : 0.25;
       if (diff <= tol || a.supersedes || b.supersedes) return null;
