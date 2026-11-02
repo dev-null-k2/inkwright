@@ -30,7 +30,8 @@ import {
   type Provider,
 } from '@inkstone/ai';
 import { BUILD_TARGET, isNative, safeStorage } from '../platform/env.ts';
-import { createNativeProvider, nativeLLM, nativeLLMReady } from '../platform/native-llm.ts';
+import { createNativeProvider, nativeLLM, nativeLLMReady, nativeLLMs } from '../platform/native-llm.ts';
+import { initNativeAI } from './native-ai.ts';
 import { useSettings } from '../state/settings.ts';
 import { opfsAvailable, removeStored, storedStatus } from '../ai/model-files.ts';
 import { getSecret } from './secrets.ts';
@@ -157,6 +158,8 @@ let init: Promise<void> | null = null;
 export function initLocalAI(): Promise<void> {
   if (!init) {
     init = (async () => {
+      // Android: Gemini Nano / LiteRT-LM engines register themselves here (no-op elsewhere).
+      await initNativeAI();
       const hardware = localAISupported() ? await detectHardware(navigator as any) : null;
       const chrome = await chromeAIAvailability(chromeLanguageModel());
       useLocalAI.setState({ hardware, rec: hardware ? recommendLocal(hardware) : null, chrome });
@@ -300,6 +303,7 @@ export interface LocalActiveAI {
 /** Decides who answers, given what the app knows about configured providers. */
 export async function pickAssistant(ctx: { providerConfigured: boolean; builtinClaude: boolean }): Promise<AssistantChoice> {
   await initLocalAI();
+  await initNativeAI(); // idempotent; registers Android engines if the first attempt came too early
   const s = useLocalAI.getState();
   const chat = chatChoice();
   return chooseAssistant({
@@ -307,6 +311,8 @@ export async function pickAssistant(ctx: { providerConfigured: boolean; builtinC
     providerConfigured: ctx.providerConfigured,
     builtinClaude: ctx.builtinClaude,
     nativeReady: await nativeLLMReady(),
+    // Native engines are only registered by the Android shell, where they beat the WebView runtime.
+    preferNative: nativeLLMs().length > 0,
     deviceInstalled: isInstalled(chat),
     deviceRunnable: !!chat,
     chrome: s.chrome,

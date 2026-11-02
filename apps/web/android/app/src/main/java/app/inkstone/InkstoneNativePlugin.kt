@@ -1,7 +1,9 @@
 package app.inkstone
 
+import android.Manifest
 import android.content.Intent
 import android.util.Log
+import app.inkstone.ai.AiBridge
 import app.inkstone.files.IncomingFiles
 import app.inkstone.feel.FeelProfile
 import app.inkstone.feel.FeelSettings
@@ -17,8 +19,11 @@ import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
+import com.getcapacitor.PermissionState
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
+import com.getcapacitor.annotation.Permission
+import com.getcapacitor.annotation.PermissionCallback
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -55,14 +60,21 @@ import org.json.JSONObject
  *                                     shared to Inkstone, copied into the cache (see [IncomingFiles])
  *  - event 'sharedFiles'            → { files } the same, for files arriving while Inkstone runs
  *
+ *  - ai* / speech*                  → on-device AI (Gemini Nano, ML Kit GenAI tasks, LiteRT-LM models,
+ *                                     offline speech recognition); documented in [AiBridge]
+ *
  * All feel* and inkTip* methods resolve at once (inkTipPrepare once the overlay's surface is up);
  * the work is posted to the UI thread (see [NativePaperFeel], [NativeInkTip]).
  */
-@CapacitorPlugin(name = "InkstoneNative")
+@CapacitorPlugin(
+    name = "InkstoneNative",
+    permissions = [Permission(alias = InkstoneNativePlugin.MICROPHONE, strings = [Manifest.permission.RECORD_AUDIO])],
+)
 class InkstoneNativePlugin : Plugin() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private lateinit var haptics: HapticGrainEngine
     private lateinit var recognizer: HandwritingRecognizer
+    private lateinit var ai: AiBridge
 
     /** The native paper-feel engine; [MainActivity] feeds it every MotionEvent. Null until [load]. */
     var paperFeel: NativePaperFeel? = null
@@ -80,6 +92,7 @@ class InkstoneNativePlugin : Plugin() {
         recognizer = HandwritingRecognizer(scope)
         paperFeel = NativePaperFeel(context.applicationContext, haptics)
         inkTip = NativeInkTip { bridge?.webView }
+        ai = AiBridge(context.applicationContext, scope) { event, data -> notifyListeners(event, data) }
         // Launched by "Open with" / share: the intent that started the activity.
         activity?.intent?.let(::receive)
     }
@@ -132,6 +145,7 @@ class InkstoneNativePlugin : Plugin() {
         inkTip?.release()
         if (::haptics.isInitialized) haptics.release()
         if (::recognizer.isInitialized) recognizer.close()
+        if (::ai.isInitialized) ai.close()
         scope.cancel()
         super.handleOnDestroy()
     }
@@ -273,6 +287,33 @@ class InkstoneNativePlugin : Plugin() {
         }
     }
 
+    // ---- On-device AI (see AiBridge for the wire format) ------------------------------------------
+
+    @PluginMethod fun aiStatus(call: PluginCall) = ai.status(call)
+    @PluginMethod fun aiDownload(call: PluginCall) = ai.download(call)
+    @PluginMethod fun aiCancelDownload(call: PluginCall) = ai.cancelDownload(call)
+    @PluginMethod fun aiDeleteModel(call: PluginCall) = ai.deleteModel(call)
+    @PluginMethod fun aiUnload(call: PluginCall) = ai.unload(call)
+    @PluginMethod fun aiGenerate(call: PluginCall) = ai.generate(call)
+    @PluginMethod fun aiTask(call: PluginCall) = ai.task(call)
+    @PluginMethod fun aiCancel(call: PluginCall) = ai.cancel(call)
+    @PluginMethod fun speechStop(call: PluginCall) = ai.speechStop(call)
+    @PluginMethod fun speechCancel(call: PluginCall) = ai.speechCancel(call)
+    @PluginMethod fun speechTranscribe(call: PluginCall) = ai.speechTranscribe(call)
+
+    /** Live recognition needs RECORD_AUDIO; asks for it first when the WebView never did. */
+    @PluginMethod
+    fun speechStart(call: PluginCall) {
+        if (getPermissionState(MICROPHONE) == PermissionState.GRANTED) ai.speechStart(call)
+        else requestPermissionForAlias(MICROPHONE, call, "onMicrophonePermission")
+    }
+
+    @PermissionCallback
+    private fun onMicrophonePermission(call: PluginCall) {
+        if (getPermissionState(MICROPHONE) == PermissionState.GRANTED) ai.speechStart(call)
+        else call.reject("Inkstone needs microphone access for voice input. Allow it in Android’s app settings.", "permission")
+    }
+
     /** Called by [MainActivity] on the UI thread for stylus button key events. */
     fun emitStylusButton(event: StylusButtonEvent) {
         notifyListeners(
@@ -321,6 +362,7 @@ class InkstoneNativePlugin : Plugin() {
 
     companion object {
         const val NAME = "InkstoneNative"
+        const val MICROPHONE = "microphone"
         const val EVENT_STYLUS_BUTTON = "stylusButton"
         const val EVENT_SHARED_FILES = "sharedFiles"
         private const val DEFAULT_LANGUAGE = "en-US"

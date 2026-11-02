@@ -15,6 +15,12 @@ export interface AssistantSituation {
   builtinClaude: boolean;
   /** A native on-device model (e.g. Gemini Nano through the Android app) is ready. */
   nativeReady: boolean;
+  /**
+   * Prefer a ready native model over a downloaded in-browser model even when the person chose
+   * "this device" (the Android app: native engines use the NPU/GPU directly and are several times
+   * faster than WebGPU/WASM in the WebView). Off by default.
+   */
+  preferNative?: boolean;
   /** The chosen on-device chat model is downloaded. */
   deviceInstalled: boolean;
   /** This device can run some on-device chat model (it may still need downloading). */
@@ -40,6 +46,7 @@ export function chooseAssistant(s: AssistantSituation): AssistantChoice {
       if (s.builtinClaude) return { kind: 'claude-builtin' };
       break;
     case 'device':
+      if (s.preferNative && s.nativeReady) return { kind: 'native' };
       if (s.deviceInstalled) return { kind: 'device' };
       if (s.nativeReady) return { kind: 'native' };
       if (s.deviceRunnable) return { kind: 'offer-download' };

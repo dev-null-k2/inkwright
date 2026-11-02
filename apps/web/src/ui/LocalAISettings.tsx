@@ -11,6 +11,7 @@ import {
 import { appMemory, useMemoryStatus } from '../lib/memory.ts';
 import { askConfirm } from './prompts.tsx';
 import { IconButton, Segmented, cx } from './primitives.tsx';
+import { NativeAISettings } from './NativeAISettings.tsx';
 
 /**
  * Settings › AI, on-device part: what this device can run, the model for each role with its size
@@ -29,6 +30,7 @@ export function LocalAISettings() {
       <section className="set-group">
         <h2>On this device</h2>
         <div className="set-card">
+          <NativeAISettings />
           {!supported ? (
             <p className="set-empty">On-device models aren’t available in this version of Inkstone. Use the installed app or the web app for private, offline AI.</p>
           ) : (

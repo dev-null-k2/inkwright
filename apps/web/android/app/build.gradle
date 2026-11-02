@@ -80,6 +80,13 @@ dependencies {
     implementation project(':capacitor-android')
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$kotlinxCoroutinesVersion"
     implementation "com.google.mlkit:digital-ink-recognition:$mlkitDigitalInkVersion"
+    implementation "com.google.mlkit:genai-prompt:$mlkitGenAiPromptVersion"
+    implementation "com.google.mlkit:genai-summarization:$mlkitGenAiTasksVersion"
+    implementation "com.google.mlkit:genai-proofreading:$mlkitGenAiTasksVersion"
+    implementation "com.google.mlkit:genai-rewriting:$mlkitGenAiTasksVersion"
+    implementation "com.google.mlkit:genai-image-description:$mlkitGenAiTasksVersion"
+    implementation "com.google.ai.edge.litertlm:litertlm-android:$litertLmVersion"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-guava:$kotlinxCoroutinesVersion"
     implementation "androidx.graphics:graphics-core:$androidxGraphicsCoreVersion"
     implementation "androidx.input:input-motionprediction:$androidxMotionPredictionVersion"
     testImplementation "junit:junit:$junitVersion"

@@ -17,11 +17,18 @@ ext {
     androidxEspressoCoreVersion = '3.7.0'
     cordovaAndroidVersion = '14.0.1'
 
-    // Kotlin for the InkstoneNative plugin; same versions @capacitor/filesystem builds with.
-    kotlin_version = '2.2.20'
-    kotlinxCoroutinesVersion = '1.10.2'
+    // Kotlin for the InkstoneNative plugin. 2.4 because LiteRT-LM 0.19 and ML Kit GenAI Prompt
+    // beta5 ship Kotlin 2.4 metadata, which older compilers refuse to read (docs/ANDROID.md).
+    kotlin_version = '2.4.21'
+    kotlinxCoroutinesVersion = '1.11.0'
     // On-device handwriting recognition.
     mlkitDigitalInkVersion = '19.0.0'
+    // On-device AI (docs/LOCAL_AI.md, "Android"): Gemini Nano through ML Kit GenAI (AICore), the
+    // GenAI task APIs, and LiteRT-LM for open models on phones without AICore. Model files from
+    // Hugging Face are pinned in ai/LiteRtModels.kt and need LiteRT-LM 0.19+ for their GPU path.
+    mlkitGenAiPromptVersion = '1.0.0-beta5'
+    mlkitGenAiTasksVersion = '1.0.0-beta1'
+    litertLmVersion = '0.19.0'
     // Instant ink tip: front-buffered overlay (CanvasFrontBufferedRenderer, API 29+) and motion prediction.
     androidxGraphicsCoreVersion = '1.0.4'
     androidxMotionPredictionVersion = '1.0.0'

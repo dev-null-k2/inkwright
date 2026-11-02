@@ -16,7 +16,7 @@ built. Sources are listed at the end.
 | Chat (assistant, Ask) | By device tier: **Qwen3 4B Instruct 2507** (2.9 GB), **Qwen3 1.7B** (1.4 GB), **Qwen3 0.6B** (583 MB), **Granite 4.0 350M** (583 MB, CPU) | same worker |
 | Speech to text (transcripts, dictation) | English: **Moonshine Base** (157 MB GPU / 67 MB CPU), **Moonshine Tiny** on CPU-only devices (32 MB); other languages: **Whisper Base** (209 / 80 MB); big GPUs: **Whisper Large v3 Turbo** (566 MB) | same worker |
 | Chrome's own model | **Chrome built-in AI** (Prompt API, Gemini Nano) when the browser has it | `LanguageModel` |
-| Native model (later) | `NativeLLM` hook for Gemini Nano (ML Kit GenAI / AICore) or LiteRT-LM on Android, Foundation Models on iOS | host app |
+| Native models (Android app) | **Gemini Nano** through ML Kit GenAI (AICore phones), its task APIs (summaries, proofreading, image descriptions), otherwise **Gemma 4 E2B** / **Qwen3 1.7B** / **Qwen3 0.6B** (Gemma 4 E4B as a choice) through LiteRT-LM on the GPU; voice through Android's on-device `SpeechRecognizer` — see [Android](#android-native-engines) | Kotlin plugin, `NativeLLM` |
 | Desktop servers | Ollama, LM Studio, llama.cpp `llama-server`, Foundry Local, found automatically | existing OpenAI-compatible provider |
 
 Every model we ship a download for is **Apache-2.0 or MIT**, so we can ship it in a paid app
@@ -71,7 +71,7 @@ Testing).
 |---|---|---|---|
 | Chrome / Edge, Windows · macOS · Linux · ChromeOS | yes (Chrome 113+) | Chrome 148+, desktop only. Gemini Nano needs ~22 GB free, 16 GB RAM and more than 4 cores, or 4 GB VRAM | Recent Chrome versions may ask the user before a site reaches local servers |
 | Chrome on Android | yes since Chrome 121 (Android 12+, Adreno and Mali GPUs first) | not yet; an Android implementation on the OS model is being prototyped | |
-| Android WebView (the Capacitor app) | follows Chromium, but the WebGPU launch did not promise it on every WebView. Varies by device and GPU driver | **not available** in WebView | We detect at run time and fall back to WASM. For native speed use the `NativeLLM` hook (Gemini Nano through ML Kit GenAI, or LiteRT-LM) |
+| Android WebView (the Capacitor app) | follows Chromium, but the WebGPU launch did not promise it on every WebView. Varies by device and GPU driver | **not available** in WebView | We detect at run time and fall back to WASM — but the app prefers its native engines (Gemini Nano through ML Kit GenAI, or LiteRT-LM), which run on the NPU/GPU directly |
 | Safari 26 (macOS 26, iOS/iPadOS 26, visionOS 26) | on by default in all Safari 26 versions | no | WKWebView: verify per OS version (earlier betas exposed `navigator.gpu` without GPU access in some apps). WebKit's per-tab memory limit on iOS is why iOS uses the small tier |
 | Firefox | Windows first; other platforms in progress | no | Falls back to WASM |
 
@@ -123,6 +123,14 @@ apps/web/src/lib/listen/           capture, engines (device/browser/provider/nat
                                    summaries, dictation, vault IO
 apps/web/src/ui/TranscriptPanel.tsx, Dictation.tsx, SpeechSettings.tsx, PageSummaries.tsx
 apps/web/src/platform/native-speech.ts  NativeSpeech hook (interface only)
+apps/web/src/platform/native-llm.ts  NativeLLM registry (several engines, first ready answers),
+                                   native provider, image descriptions for text-only engines
+apps/web/src/ai/native/            Android bridge: NativeLLM over aiGenerate + aiDelta events,
+                                   task APIs, Transcriber (16 kHz PCM), live speech sessions
+apps/web/src/lib/native-ai.ts      Android status, downloads, engine/model choice, registration,
+                                   summaries/proofreading through the task APIs
+apps/web/src/ui/NativeAISettings.tsx  Settings rows and the assistant's offer on Android
+apps/web/android/app/src/main/java/app/inkstone/ai/  the Kotlin engines (docs/ANDROID.md)
 ```
 
 **Downloads.** The worker lists the model repository from the Hugging Face API, which gives exact
@@ -140,9 +148,52 @@ file; it caches it the first time it is used.
 1. With a provider configured: the provider (or whatever the person picked under *Who answers*).
 2. Otherwise: Claude built into the claude.ai preview, then a ready native model, then the
    downloaded on-device model, then Chrome built-in AI.
-3. If none is ready: offer the on-device download once, showing its size.
+3. If none is ready: offer the on-device download once, showing its size. In the Android app the
+   offer is Gemini Nano (an AICore download) when the phone has it, else the recommended open
+   model; the WebView model is offered only when neither fits.
 
-Answers always show which AI answered.
+With `preferNative` (set when the Android shell registered native engines) a ready native engine
+also wins when the person chose *This device*: it is several times faster than the same model in
+the WebView. Answers always show which AI answered.
+
+## Android: native engines
+
+In the Android app the WebView runtime is the last resort. The plugin offers (details, wire
+format and device list in docs/ANDROID.md):
+
+| Engine | Used for | Size | Licence |
+|---|---|---|---|
+| Gemini Nano (ML Kit GenAI Prompt API, AICore) | assistant, Ask, skills | managed by Android, shared by all apps | Google's terms for AICore; nothing to ship |
+| ML Kit summarization | the assistant's *Summarize* when Gemini Nano answers and the note language (the handwriting setting) is English, Japanese or Korean | small adapter, by Android | same |
+| ML Kit proofreading | cleaning up on-device handwriting recognition (*Transcribe*, convert selection, smart read) | small adapter | same |
+| ML Kit image description | describing an image attached to a question (a lasso selection) so text-only Gemini Nano can answer about it | small adapter | same |
+| ML Kit rewriting | wired through the bridge (`nativeTask({ task: 'rewrite', tone })`), not yet in the UI: the free-form prompt covers rewrites today | small adapter | same |
+| Gemma 4 E2B (`gemma-4-E2B-it.litertlm`) | assistant on ~8 GB+ phones without Gemini Nano | 2.59 GB | Apache-2.0 |
+| Gemma 4 E4B (`gemma-4-E4B-it.litertlm`) | a choice on 12 GB+ phones | 3.66 GB | Apache-2.0 |
+| Qwen3 1.7B (`Qwen3-1.7B_dynamic_wi4b32_afp32.litertlm`) | default on 6 GB phones | 977 MB | Apache-2.0 |
+| Qwen3 0.6B (`qwen3_0_6b_mixed_int4.litertlm`) | default on 4 GB phones | 498 MB | Apache-2.0 |
+| Android `SpeechRecognizer` (on-device where installed) | voice input in the assistant; a `Transcriber` for recordings on Android 13+ | language packs by Android | system |
+
+Why these:
+
+- **Gemini Nano first.** It is already on the phone (no download of ours), runs on the NPU, and
+  Google tunes the task adapters. Its limits: only the phones on Google's list (not the Razr Fold
+  as of November 2026), a per-app quota (`busy`, `quota`), foreground only, and a context of a
+  few thousand tokens. The bridge maps each to a plain message.
+- **LiteRT-LM, not MediaPipe LLM Inference.** MediaPipe's LLM Inference API is in maintenance
+  mode; LiteRT-LM is its successor, has a Kotlin API with streaming `Flow`s and cancel, runs
+  `.litertlm` files on the GPU (OpenCL) or CPU, and is what litert-community publishes for. Its
+  0.19 release is required by the current GPU exports, which is why the app builds with Kotlin 2.4.
+- **Open models with open licences.** Same rule as the web catalog: Apache-2.0 or MIT. Gemma 3 /
+  3n (Gemma Terms) and Llama 3.2 are left out; Gemma 4 is Apache-2.0. Files are pinned to a commit
+  and a SHA-256, and come from huggingface.co (reachable from phones and from the build machine).
+- **Speech**: Android's own recognizer, because it already ships on-device models on most phones
+  and needs no download of ours; `createOnDeviceSpeechRecognizer` guarantees audio stays on the
+  phone, and the UI says when only "prefer offline" is available.
+
+Not used yet: LiteRT-LM's NPU backend (models must be compiled per chip and ship vendor
+libraries), on-device embeddings through LiteRT-LM's EmbeddingGemma 2 (search keeps using the
+WebView embedder), and ML Kit GenAI's speech recognition API (alpha in November 2026).
 
 **Memory index.** Every path that updates the keyword index (editor saves, sync, imports, the
 assistant, trash) also updates the passage corpus. Passages carry note id, page index, a
@@ -259,10 +310,8 @@ service / sent to a provider), and the transcript file records it (`where`).
   Ink already recognizes offline through the native plugin.
 - **Streaming speech models.** Moonshine Streaming (MIT) would give word-by-word on-device
   captions instead of a line every pause, once transformers.js supports `moonshine_streaming`.
-- **Native speech.** Implement `NativeSpeech` in the Android shell (on-device `SpeechRecognizer`).
-- **Native models.** Implement `NativeLLM` in the Android shell: Gemini Nano through the ML Kit
-  GenAI Prompt API on AICore devices, or LiteRT-LM for others. iOS could use Apple's Foundation
-  Models.
+- **iOS native model.** Implement `NativeLLM` in the iOS shell with Apple's Foundation Models
+  (the Android engines are built; see above).
 
 ## Testing
 
@@ -283,6 +332,16 @@ service / sent to a provider), and the transcript file records it (`where`).
   covers the library field opening the palette on phones and foldables. `local-ai.spec.ts`
   checks that the download size shows before downloading, then interrupts a download, resumes
   it with a Range request, checks OPFS, and deletes.
+- Android native engines: JVM tests in `apps/web/android/app/src/test/java/app/inkstone/ai/`
+  (status and AICore error mapping pinned to ML Kit's constants, prompt building and trimming,
+  stream assembly, resumable-download bookkeeping, the pinned catalog and memory-based
+  recommendation, task options, speech transcript assembly); `apps/web/src/ai/native/bridge.test.ts`
+  (streaming, cancel, error codes, transcriber, live sessions, PCM) and
+  `apps/web/src/lib/native-ai.test.ts` (registration order, engine/model choice, `pickAssistant`
+  preferring native, downloads, summaries/proofreading/image descriptions) against a fake plugin;
+  e2e `native-ai.spec.ts` drives Settings and the assistant with a scripted plugin (size prompt,
+  progress, answer streamed from the phone; summaries through the task API). What needs a real
+  phone is listed in docs/ANDROID.md.
 - **Opt-in real models.** These download the real MiniLM model into the app's worker in Chromium
   and check search by meaning. Requests are relayed through Node.
 
@@ -347,7 +406,12 @@ service / sent to a provider), and the transcript file records it (`where`).
 - WKWebView WebGPU caveat (Apple Developer Forums): https://developer.apple.com/forums/thread/770862
 - Google, LiteRT-LM for JavaScript: https://developers.google.com/edge/litert-lm/js
 - MediaPipe LLM Inference maintenance mode / LiteRT-LM: https://dev.to/charleshartmann/mediapipe-llm-inference-is-maintenance-only-start-on-litert-lm-and-add-this-abi-check-48h2
-- ML Kit GenAI APIs (Gemini Nano on Android): https://developers.google.com/ml-kit/genai
+- ML Kit GenAI APIs (Gemini Nano on Android; device list, quotas, foreground rule): https://developers.google.com/ml-kit/genai
+- Gemini Nano on Android: https://developer.android.com/ai/gemini-nano
+- ML Kit GenAI and LiteRT-LM artifacts and their Kotlin metadata versions: Google Maven (`com.google.mlkit:genai-*`, `com.google.ai.edge.litertlm:litertlm-android`), checked Nov 2026
+- LiteRT-LM model cards (sizes, runtime versions, benchmarks, licences): https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm, https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm, https://huggingface.co/litert-community/Qwen3-1.7B, https://huggingface.co/litert-community/Qwen3-0.6B
+- Razr Fold specifications (Snapdragon 8 Gen 5, 16 GB): https://www.techspot.com/news/111525-motorola-razr-fold-debuts-snapdragon-8-gen-5.html
+- Android `SpeechRecognizer` (on-device recognizer, `EXTRA_AUDIO_SOURCE`, segmented sessions): https://developer.android.com/reference/android/speech/SpeechRecognizer
 - EmbeddingGemma 2 ONNX model card (Apache-2.0, prefixes, text-only loading, MRL): https://huggingface.co/onnx-community/embeddinggemma-2-ONNX
 - Model repositories and licences (Hugging Face API, sizes checked Nov 2026):
   https://huggingface.co/onnx-community/Qwen3-1.7B-ONNX, https://huggingface.co/onnx-community/Qwen3-0.6B-ONNX,
