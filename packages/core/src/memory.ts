@@ -15,8 +15,10 @@ import { boundsOfStrokes, segmentLines } from './gestures.ts';
 import { rectIsEmpty, rectUnion, type Rect } from './geometry.ts';
 import { PEN_INFO, type NoteMeta, type PageInk, type RecognizedLine } from './model.ts';
 import { normalizeText, snippet, tokenize, type SearchHit } from './search.ts';
+import { speechPassages, type RecordingTranscript } from './transcript.ts';
 
-export type ChunkSource = 'meta' | 'text' | 'handwriting' | 'pdf';
+/** `speech`: what was said in a recording (transcript.ts), anchored to the ink written then. */
+export type ChunkSource = 'meta' | 'text' | 'handwriting' | 'pdf' | 'speech';
 
 export interface MemoryChunk {
   /** Stable for a position in a note (`noteId:page:source:n`); the content may change. */
@@ -33,6 +35,10 @@ export interface MemoryChunk {
   strokeIds?: string[];
   /** The text box the passage comes from. */
   textId?: string;
+  /** Speech passages: the recording and where in it (ms from its start) the passage is. */
+  clipId?: string;
+  startMs?: number;
+  endMs?: number;
   /** Hash of what gets embedded; unchanged passages keep their vectors across edits. */
   hash: string;
   updatedAt: number;
@@ -49,6 +55,8 @@ export interface ChunkOptions {
   pdfText?: ReadonlyMap<number, readonly PdfTextItem[]>;
   /** Soft upper bound for a chunk's length (default 600 characters). */
   maxChars?: number;
+  /** Transcripts of the note's recordings: indexed as `speech` passages. */
+  transcripts?: readonly RecordingTranscript[];
 }
 
 /** 32-bit FNV-1a, hex. Only used to notice that a passage changed. */
@@ -225,6 +233,14 @@ export function chunkNote(note: NoteMeta, pages: readonly PageInk[], opts: Chunk
     const pdf = opts.pdfText?.get(i);
     if (pdf?.length) pack(pdfPieces(pdf, maxChars), maxChars).forEach((p, n) => add(i, 'pdf', n, p));
   });
+  if (opts.transcripts?.length) {
+    for (const sp of speechPassages(note, pages, opts.transcripts, Math.min(maxChars, 500))) {
+      const c: MemoryChunk = { id: `${note.id}:${sp.pageIndex}:speech:${sp.clipId}.${sp.n}`, noteId: note.id, pageIndex: sp.pageIndex, source: 'speech', text: sp.text, title, hash: hashText(`${title}\n${sp.text}`), updatedAt: note.updatedAt, clipId: sp.clipId, startMs: sp.startMs, endMs: sp.endMs };
+      if (sp.rect) c.rect = roundRect(sp.rect);
+      if (sp.strokeIds?.length) c.strokeIds = sp.strokeIds;
+      out.push(c);
+    }
+  }
   return out;
 }
 

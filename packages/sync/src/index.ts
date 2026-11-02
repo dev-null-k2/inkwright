@@ -11,6 +11,7 @@ export * from './http.ts';
 export * from './gdrive.ts';
 export * from './webdav.ts';
 export * from './merge.ts';
+export * from './merge-listen.ts';
 export * from './derived.ts';
 export * from './state.ts';
 export * from './engine.ts';
