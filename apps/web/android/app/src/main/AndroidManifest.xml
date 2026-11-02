@@ -34,6 +34,14 @@
         android:theme="@style/AppTheme">
 
         <!--
+          On-device AI: LiteRT-LM runs models on the GPU through the vendor's OpenCL driver, which
+          apps targeting Android 12+ may only load when declared. Optional: phones without it fall
+          back to the CPU (see app/inkstone/ai/LiteRtEngine.kt).
+        -->
+        <uses-native-library android:name="libOpenCL.so" android:required="false" />
+        <uses-native-library android:name="libvndksupport.so" android:required="false" />
+
+        <!--
           Foldables (Razr Fold): the activity is resizeable and handles every configuration change a
           fold/unfold, rotation, display move or dark-mode switch causes, so the WebView (and the
           note being written) is never torn down and reloaded.
