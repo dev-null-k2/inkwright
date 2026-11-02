@@ -111,6 +111,10 @@ export class AccessControlledNoteToolHost implements NoteToolHost {
     if (a !== 'read-write') throw new AccessDeniedError(`The assistant can’t put notes there: that notebook is ${a === 'none' ? 'not available' : 'read-only'} to it (AI policy).`);
   }
 
+  private wrote(tool: string, note: { id: string; title?: string } | null, summary?: string): void {
+    this.o.audit?.({ kind: 'write', actor: this.o.actor, tool, ...(note ? { notes: [{ id: note.id, ...(note.title ? { title: note.title } : {}) }] } : {}), ...(summary ? { summary } : {}) });
+  }
+
   private saw(label: NoteLabel, how: string): void {
     this.o.run?.see(label);
     this.o.audit?.({ kind: 'read', actor: this.o.actor, tool: how, notes: [{ id: label.id, ...(label.title ? { title: label.title } : {}) }] });
@@ -172,27 +176,37 @@ export class AccessControlledNoteToolHost implements NoteToolHost {
 
   async createNote(args: { title: string; text: string; notebookId?: string; tags?: string[] }): Promise<NoteInfo> {
     await this.requireNotebookWritable(args.notebookId, args.tags);
-    return this.inner.createNote(args);
+    const n = await this.inner.createNote(args);
+    this.wrote('create_note', n);
+    return n;
   }
 
   async appendText(noteId: string, text: string, pageIndex?: number) {
-    await this.require(noteId, 'write');
-    return this.inner.appendText(noteId, text, pageIndex);
+    const label = await this.require(noteId, 'write');
+    const r = await this.inner.appendText(noteId, text, pageIndex);
+    this.wrote('append_to_note', label);
+    return r;
   }
 
   async updateNote(id: string, patch: NotePatch): Promise<NoteInfo | null> {
     const label = await this.require(id, 'write');
     if (patch.notebookId !== undefined) await this.requireNotebookWritable(patch.notebookId, patch.tags ?? label.tags);
-    return this.inner.updateNote(id, patch);
+    const r = await this.inner.updateNote(id, patch);
+    this.wrote('update_note', label);
+    return r;
   }
 
   async createNotebook(name: string, opts?: { parentId?: string }): Promise<NotebookInfo> {
     if (opts?.parentId) await this.requireNotebookWritable(opts.parentId);
-    return this.inner.createNotebook(name, opts);
+    const b = await this.inner.createNotebook(name, opts);
+    this.wrote('create_notebook', null, `Created notebook “${name}”`);
+    return b;
   }
 
   async trashNote(id: string): Promise<boolean | void> {
-    await this.require(id, 'write');
-    return this.inner.trashNote(id);
+    const label = await this.require(id, 'write');
+    const r = await this.inner.trashNote(id);
+    this.wrote('trash_note', label);
+    return r;
   }
 }
