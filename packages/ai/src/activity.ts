@@ -45,6 +45,11 @@ export type ActivityOp =
   | (OpBase & { kind: 'notebook_created'; notebookId: string; name: string })
   /** Handwriting on a page was converted to text (the ink is untouched); undo clears that text. */
   | (OpBase & { kind: 'handwriting_recognized'; noteId: string; title: string; pageId: string; text: string })
+  /**
+   * A text box's Markdown was replaced (an accepted compiled-wiki update, docs/COMPILER.md); undo
+   * puts `before` back while the box still holds `after`.
+   */
+  | (OpBase & { kind: 'text_replaced'; noteId: string; title: string; pageId: string; textId: string; before: string; after: string })
   /** A change in another app through a connected MCP server: shown, but only that app can undo it. */
   | (OpBase & { kind: 'external'; server: string; detail?: string });
 
@@ -209,6 +214,11 @@ export interface UndoTarget {
    * says it can't when it is missing.
    */
   clearRecognizedText?(noteId: string, pageId: string, expected: string): Promise<'cleared' | 'changed' | 'missing'>;
+  /**
+   * Sets a text box's Markdown to `next`, but only while it still holds `expected` (so a later
+   * edit by the user is never overwritten). Optional like `clearRecognizedText`.
+   */
+  replaceText?(noteId: string, pageId: string, textId: string, expected: string, next: string): Promise<'replaced' | 'changed' | 'missing'>;
 }
 
 export interface UndoResult {
@@ -268,6 +278,13 @@ export async function undoOp(op: ActivityOp, target: UndoTarget): Promise<UndoRe
       if (r === 'cleared') return { ok: true };
       if (r === 'changed') return { ok: false, message: 'The recognized text was edited since; kept your version.' };
       return { ok: true, message: 'That page no longer exists.' };
+    }
+    case 'text_replaced': {
+      if (!target.replaceText) return { ok: false, message: 'Update Inkstone to undo this.' };
+      const r = await target.replaceText(op.noteId, op.pageId, op.textId, op.after, op.before);
+      if (r === 'replaced') return { ok: true };
+      if (r === 'changed') return { ok: false, message: 'The text was edited since; kept your version.' };
+      return { ok: true, message: 'That text no longer exists.' };
     }
     case 'external':
       return { ok: false, message: 'This change was made in another app; undo it there.' };
@@ -362,6 +379,19 @@ export class VaultUndoTarget implements UndoTarget {
     await this.vault.saveNote({ ...n, updatedAt: Date.now() }, pages, { changedPageIds: [pageId] });
     await this.onChange(noteId);
     return 'cleared';
+  }
+
+  async replaceText(noteId: string, pageId: string, textId: string, expected: string, next: string): Promise<'replaced' | 'changed' | 'missing'> {
+    const n = await this.note(noteId);
+    if (!n || !n.pageIds.includes(pageId)) return 'missing';
+    const page = await this.vault.readPage(noteId, pageId);
+    const box = (page.texts ?? []).find((t) => t.id === textId);
+    if (!box) return 'missing';
+    if (box.text !== expected) return 'changed';
+    const pages = (await this.vault.readPages(n)).map((p) => (p.id === pageId ? { ...p, texts: (p.texts ?? []).map((t) => (t.id === textId ? { ...t, text: next } : t)) } : p));
+    await this.vault.saveNote({ ...n, updatedAt: Date.now() }, pages, { changedPageIds: [pageId] });
+    await this.onChange(noteId);
+    return 'replaced';
   }
 
   async notebookNoteCount(notebookId: string) {

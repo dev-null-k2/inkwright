@@ -30,6 +30,13 @@ reference implementation is `packages/core/src/codec.ts` + `vault.ts`.
   ai/lessons.json                       lessons proposed from coding-agent sessions (see "Code sources")
   code/sources/<sourceId>/source.json   a mounted repository: where it came from, last scan (see "Code sources")
   code/sources/<sourceId>/graph.json    its code graph: symbols with signature hashes, edges
+  notes/<noteId>/assets/provenance.json where each AI-written sentence of the note came from (see "Context compiler")
+  ai/compiler/config.json, state.json   context compiler: sources, settings, compiled pages
+  ai/compiler/proposals/<id>.json       compiled-wiki changes waiting for review (and decided ones)
+  ai/ledger/<conflictId>.json           contradictions the user dismissed or resolved
+  ai/study/<deckId>.json                flashcard decks with FSRS state
+  ai/packs/<id>/pack.md, pack.json      saved context packs (served by the MCP server)
+  ai/evals/memory.json                  the latest "Does my memory help?" report
 ```
 
 Rules
@@ -477,7 +484,8 @@ addedPage?}` → remove that text box (and the page, if it was added and is now 
 `pinned`, `summary` (null = none)) → put back each field that still has the `after` value;
 `notebook_created {notebookId, name}` → delete it if still empty; `handwriting_recognized {noteId,
 pageId, text}` (the MCP server's `transcribe_pages`) → clear the page's recognized text if it is
-still that text; `external {server, detail?}` —
+still that text; `text_replaced {noteId, pageId, textId, before, after}` (an accepted compiled-wiki
+update) → put `before` back if the text box still holds `after`; `external {server, detail?}` —
 a change in a connected app, listed only. The newest 300 runs are kept.
 
 **Runbook runs** (docs/DEVELOPERS.md § 5) are activity runs with `source: "external"`, `label:
@@ -530,3 +538,74 @@ symbols and edges (by path, line, id) so the same code always gives the same fil
 
 Accepted lessons are appended to the `AGENTS.md` note as text; decided ones stay (newest 300) so
 the same lesson is not proposed twice.
+
+## Context compiler
+
+The compiled wiki, provenance, contradiction ledger, study decks and context packs
+(docs/COMPILER.md). Reference: `packages/core/src/compiler/`, `packages/ai/src/compiler/`.
+
+**Compiled pages** are ordinary notes in the notebook "Compiled wiki" (people in "Compiled wiki ›
+People"), tagged `compiled`, with one AI text box (`origin: "ai"`) holding Markdown: `# Title`, one
+bullet per claim, and `Sources: [[Note]] · …`. Users may edit them; lines without provenance are
+kept as "Your notes" when the page is updated.
+
+**Provenance** — `notes/<noteId>/assets/provenance.json` (any note with AI text: compiled pages,
+answers inserted from the assistant, the saved summary):
+
+```jsonc
+{ "formatVersion": 1, "updatedAt": 0,
+  "gens": { "g…": { "by": "On this device · Qwen3 1.7B", "provider": "device", "model": "…",
+                    "prompt": "compiler.page/1", "at": 0 } },
+  "items": {
+    "text:<textBoxId>": { "at": 0, "gen": "g…",
+      "claims": [ { "s": "Latency must stay under 50 ms.", "t": "E",          // E | I | A
+                    "src": ["<noteId>/1/64,80,600,21.6#a1b2c3d4"], "c": 1, "why?": "…" } ],
+      "prev": { "gen": "g…", "claims": [ … ] } },                             // previous generation (undo)
+    "summary": { … }, "page:<pageId>": { … } } }
+```
+
+A claim is one sentence, found again in the text by its normalised wording. `t`: EXTRACTED (quoted),
+INFERRED (synthesised from the cited sources), AMBIGUOUS (sources disagree or support is unclear).
+A source anchor is `<noteId>/<page, 1-based>[/x,y,w,h][@<clipId>:<ms>]#<hash>`: the region in page
+units, optionally a moment in a recording, and the hash of the source sentence (32-bit FNV-1a of
+its normalised text plus its length, base 36) when it was read. When no sentence of the cited note
+has that hash any more, the claim is stale; hash `0` marks a region with no sentence behind it
+(never stale). Sync merges the file per item (the newer `at` wins one both sides changed; a
+deletion on one side of an unchanged item is honoured); generations are unioned.
+
+**Compiler state** — `ai/compiler/config.json`
+`{ version, sources: { notebooks, tags, notes }, people, ai: "device|active|none", notebookId?,
+ledger, threshold, updatedAt }` and `ai/compiler/state.json`
+`{ formatVersion, pages: { "<key>": { key, kind, title, noteId, pageId, textId, fingerprint,
+sourceNotes, at } }, declined?: { "<key>": "<fingerprint>" }, lastCompileAt? }` (whole files;
+the state can always be rebuilt by compiling again). Proposals —
+`ai/compiler/proposals/<id>.json`: `{ id, createdAt, reason, gen, status: "pending|done", runIds?,
+items: [ { id, key, kind, title, action: "create|update|archive", noteId?, fingerprint,
+sourceNotes, sourceTitles, added, removed, kept, next, dropped: [{ text, reason }], gen?, note?,
+index?, decision?: "accepted|rejected", decidedAt? } ] }` (claims as in provenance; one file per
+proposal; the newest 30 decided ones are kept).
+
+**Ledger decisions** — `ai/ledger/<conflictId>.json`: `{ id, status: "dismissed|resolved",
+note?, a, b, at }` where `a`/`b` are the two sentences. The conflict id is derived from both
+sentences' hashes, so a decision holds while they stay the same.
+
+**Study decks** — `ai/study/<deckId>.json` (deck id = the note id, or a new id):
+
+```jsonc
+{ "formatVersion": 1, "id", "title", "noteId?", "notebookId?", "updatedAt",
+  "cards": [ { "id", "q", "a", "src": "<anchor>", "from": "note|highlight|ink|wiki|manual",
+               "origin": "ai|extracted|user", "createdAt", "updatedAt", "suspended?": false,
+               "mem": { "due", "s", "d", "reps", "lapses", "state": 0, "step", "sched", "last?" } } ],
+  "reviews": [ { "card", "at", "rating": 1, "answer?", "score?" } ] }   // latest 500
+```
+
+`mem` is the FSRS-6 card (ts-fsrs) with times in epoch ms: stability `s` (days), difficulty `d`,
+state 0 new / 1 learning / 2 review / 3 relearning. Sync merges decks card by card (a card both
+sides reviewed takes the newer `updatedAt`) and unions reviews.
+
+**Context packs** — `ai/packs/<id>/pack.md` (the cited Markdown) and `pack.json`
+(`format: "inkstone-context-pack/1"`, compiled claims with sources, notes, images as base64). The
+MCP server lists them as `inkstone://packs/{id}`. **Memory eval** — `ai/evals/memory.json`: the
+last report (questions, per-condition results, accuracy, citation accuracy, tokens, McNemar
+comparisons).
+

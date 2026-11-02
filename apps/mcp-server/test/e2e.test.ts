@@ -43,7 +43,7 @@ describe('stdio end-to-end', () => {
     expect(search.inputSchema.required).toEqual(['query']);
     expect(search.annotations?.readOnlyHint).toBe(true);
     const { resourceTemplates } = await client.listResourceTemplates();
-    expect(resourceTemplates.map((t) => t.uriTemplate).sort()).toEqual(['inkstone://notes/{id}', 'inkstone://notes/{id}/pages/{n}.svg']);
+    expect(resourceTemplates.map((t) => t.uriTemplate).sort()).toEqual(['inkstone://notes/{id}', 'inkstone://notes/{id}/pages/{n}.svg', 'inkstone://packs/{id}']);
     const { prompts } = await client.listPrompts();
     expect(prompts.map((p) => p.name).sort()).toEqual(['daily_review', 'summarize_note', 'todos_from_notes']);
   });
