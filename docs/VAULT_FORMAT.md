@@ -755,6 +755,13 @@ files are kept, at most 5 MB. `plugins/<id>/data.json` is the plugin's own stora
 Readers ignore unknown fields and records without `id`/`version`. A plugin whose files are
 missing (half-synced) or whose manifest no longer validates is listed but never run.
 
+`granted` is what the user approved *somewhere*; it is not enough to run a plugin. Each device
+also keeps, outside the vault (browser storage `inkwright.plugins.consent.v1`), the fingerprint
+of the manifest and entry script and the permissions approved **on that device**; a plugin runs
+there only while its files match that fingerprint and `granted` asks for nothing more. A plugin
+installed, updated or granted more by another device, a sync remote or a restored backup waits
+for a review in Settings › Plugins (security review SR-01, docs/PLUGINS.md › Plugins for users).
+
 ## API keys (`api/keys.json`)
 
 Keys for the REST API of `inkwright-mcp --http` (docs/API.md). Only hashes are stored: a key is
@@ -774,6 +781,11 @@ hex SHA-256 of the whole key.
 
 Scopes: `notes:read`, `notes:write`, `routines:run`, `webhooks`, `admin`. Records with a hash that
 is not 64 hex characters are ignored, so a plaintext key can never be accepted.
+
+A backup ZIP never brings `api/keys.json` in (restoring keeps the vault's own copy; security
+review SR-10): a key record from someone else's "backup" would let them in. Make keys again after
+restoring an old backup of your own. Sync does carry it, so anything that can write the vault
+(a sync remote, a paired device) is trusted with it — see docs/SECURITY_REVIEW.md.
 
 ### Sync
 
