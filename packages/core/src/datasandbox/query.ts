@@ -11,7 +11,7 @@ import { describeDataset, type Cell, type Dataset } from './dataset.ts';
  *   (default 3). Every attempt — SQL, error or row count, time — is returned for the log.
  */
 
-export interface QueryResult {
+export interface SqlResult {
   columns: string[];
   rows: Cell[][];
 }
@@ -29,7 +29,7 @@ export interface QueryAttempt {
 export interface RepairOutcome {
   ok: boolean;
   sql?: string;
-  result?: QueryResult;
+  result?: SqlResult;
   attempts: QueryAttempt[];
   error?: string;
 }
@@ -90,7 +90,7 @@ export interface RepairOptions {
   dialect: string;
   /** Asks the model; `messages` alternate user/assistant, starting with the SQL prompt. */
   ask: (messages: { role: 'user' | 'assistant'; content: string }[]) => Promise<string>;
-  run: (sql: string) => Promise<QueryResult>;
+  run: (sql: string) => Promise<SqlResult>;
   maxTries?: number;
   engine?: string;
   clock?: () => number;

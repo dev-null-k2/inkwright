@@ -9,7 +9,7 @@ import {
   inferChart,
   inferType,
   chartTicks,
-  parseCsv,
+  parseDelimited,
   readOnlySql,
   runSqlWithRepair,
   sniffDelimiter,
@@ -20,7 +20,7 @@ import {
 describe('CSV', () => {
   it('parses quotes, doubled quotes, embedded newlines, CRLF and a BOM', () => {
     const text = '﻿name,note\r\n"Smith, J.","said ""hi""\nthen left"\r\nLee,\r\n';
-    expect(parseCsv(text)).toEqual([['name', 'note'], ['Smith, J.', 'said "hi"\nthen left'], ['Lee', '']]);
+    expect(parseDelimited(text)).toEqual([['name', 'note'], ['Smith, J.', 'said "hi"\nthen left'], ['Lee', '']]);
   });
   it('sniffs semicolons and tabs', () => {
     expect(sniffDelimiter('a;b;c\n1;2,5;3\n')).toBe(';');
@@ -40,9 +40,9 @@ describe('CSV', () => {
     const d = datasetFromCsv('x.csv', 'a,b\n"q,1",2\n');
     expect(datasetToCsv(d)).toBe('a,b\n"q,1",2\n');
     expect(tableName('2024.csv')).toBe('t_2024');
-    expect(tableName('select.csv')).toBe('select_data');
+    expect(tableName('select.csv')).toBe('select');
     expect(tableName('a.csv', new Set(['a']))).toBe('a_2');
-    expect(uniqueColumns(['', 'a', 'A'])).toEqual(['column_1', 'a', 'A_2']);
+    expect(uniqueColumns(['', 'a', 'A', 'Region Name'])).toEqual(['column_1', 'a', 'a_2', 'region_name']);
     expect(inferType(['1', '2.5'])).toBe('number');
     expect(inferType(['2024-13-40'])).toBe('text');
   });
@@ -51,7 +51,7 @@ describe('CSV', () => {
 describe('JSON', () => {
   it('reads arrays of objects with nesting, wrapped arrays, arrays of arrays and NDJSON', () => {
     const a = datasetFromJson('people.json', JSON.stringify([{ name: 'Ann', age: 31, address: { city: 'Oslo' }, tags: ['a'] }, { name: 'Bo', age: 25.5, extra: true }]));
-    expect(a.columns).toEqual([{ name: 'name', type: 'text' }, { name: 'age', type: 'number' }, { name: 'address.city', type: 'text' }, { name: 'tags', type: 'text' }, { name: 'extra', type: 'boolean' }]);
+    expect(a.columns).toEqual([{ name: 'name', type: 'text' }, { name: 'age', type: 'number' }, { name: 'address_city', type: 'text' }, { name: 'tags', type: 'text' }, { name: 'extra', type: 'boolean' }]);
     expect(a.rows[0]).toEqual(['Ann', 31, 'Oslo', '["a"]', null]);
     expect(datasetFromJson('w.json', '{"meta":1,"data":[{"x":1},{"x":2}]}').rows).toEqual([[1], [2]]);
     expect(datasetFromJson('m.json', '[["x","y"],[1,2]]').columns.map((c) => c.name)).toEqual(['x', 'y']);
@@ -60,7 +60,7 @@ describe('JSON', () => {
   });
   it('describes a dataset for a prompt', () => {
     const d = datasetFromCsv('s.csv', 'Region Name,amount\nN,1\n');
-    expect(describeDataset(d)).toContain('s("Region Name" TEXT, amount INTEGER) — 1 rows');
+    expect(describeDataset(d)).toContain('s(region_name TEXT, amount INTEGER) — 1 rows');
   });
 });
 

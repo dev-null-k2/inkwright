@@ -43,3 +43,5 @@ export * from './papers/index.ts';
 export * from './datasandbox/index.ts';
 export * from './canvasdag/index.ts';
 export * from './photoink/index.ts';
+export * from './inkanswer/index.ts';
+export * from './readaloud/index.ts';
