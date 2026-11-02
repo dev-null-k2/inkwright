@@ -1,0 +1,134 @@
+/* ==== Fill & sign, opening files, page tools ====================================================
+ * Calm by default: one quiet chip when a PDF with fields opens, a small toolbar only while filling.
+ * Fields sit on the PDF's paper, which stays white in both themes, so their paper/ink colours
+ * follow the page (--field-paper/--field-ink) rather than the chrome; focus uses the jade
+ * stone-eye ("you are here").
+ */
+
+:root {
+  /* Paper and ink of documents (PDF pages, signature previews): white in both themes. */
+  --field-paper: #ffffff;
+  --field-ink: #1b1f24;
+}
+
+.fill-layer {
+  position: absolute;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 6;
+}
+
+.fill-field {
+  position: absolute;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 0.28em;
+  border: 1px solid color-mix(in srgb, var(--iron) 42%, transparent);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--iron) 6%, var(--field-paper));
+  color: var(--field-ink);
+  font-family: Helvetica, Arial, var(--font-ui);
+  line-height: 1.15;
+  pointer-events: auto;
+  outline: none;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.fill-field:hover { border-color: color-mix(in srgb, var(--iron) 70%, transparent); }
+.fill-field:focus-visible, .fill-field:focus { border-color: var(--iron); box-shadow: 0 0 0 2px var(--iron-soft); background: var(--field-paper); }
+textarea.fill-field { resize: none; padding-top: 0.15em; overflow: auto; }
+.fill-field.is-readonly { background: var(--field-paper); border-style: dashed; border-color: var(--line-strong); color: color-mix(in srgb, var(--field-ink) 70%, transparent); }
+.fill-field.is-required { border-left-width: 3px; }
+.fill-field.is-comb { white-space: nowrap; }
+.fill-field.is-toggle { display: grid; place-items: center; padding: 0; color: var(--field-ink); cursor: pointer; }
+.fill-field.is-toggle svg { width: 82%; height: 82%; }
+.fill-field.is-radio { border-radius: 50%; }
+.fill-dot { width: 46%; height: 46%; border-radius: 50%; background: currentColor; }
+.fill-field.is-select, .fill-field.is-list { padding: 0 0.15em; }
+.fill-field.is-sign { display: flex; align-items: center; justify-content: center; gap: 6px; border-style: dashed; color: var(--iron); font-family: var(--font-ui); font-size: var(--t-sm) !important; font-weight: 600; cursor: pointer; }
+
+/* Tap-to-place: covers the canvas while a tool is armed. */
+.fill-catcher { position: absolute; inset: 0; pointer-events: auto; cursor: crosshair; z-index: 7; touch-action: none; }
+
+.fill-bar {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 11;
+  display: flex; align-items: center; gap: 2px; padding: 4px;
+  max-width: calc(100% - 16px); overflow-x: auto; scrollbar-width: none;
+  background: var(--raised); border: 1px solid var(--line); border-radius: var(--r-pill);
+  box-shadow: var(--float-shadow);
+}
+.ed-canvas-wrap:has(.audio-bar) .fill-bar { top: 60px; }
+.fill-tool {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  min-height: 36px; padding: 0 12px; border: 0; border-radius: var(--r-pill);
+  background: transparent; color: var(--ink); font-size: var(--t-sm); font-weight: 560; white-space: nowrap;
+}
+.fill-tool:hover { background: var(--chrome-2); }
+.fill-tool.is-on { background: var(--ink); color: var(--ink-inverse); }
+.fill-tool.is-done { font-weight: 650; }
+.fill-sep { width: 1px; align-self: stretch; margin: 6px 4px; background: var(--line-strong); flex: none; }
+.fill-color { flex: none; margin: 0 3px; }
+@media (max-width: 699px) {
+  .fill-tool span { display: none; }
+  .fill-tool.is-done span { display: inline; }
+  .fill-tool { padding: 0 10px; }
+}
+
+.fill-hint {
+  position: absolute; top: 62px; left: 50%; transform: translateX(-50%); z-index: 11;
+  padding: 6px 14px; border-radius: var(--r-pill); background: var(--ink); color: var(--ink-inverse);
+  font-size: var(--t-sm); box-shadow: var(--float-shadow); white-space: nowrap; pointer-events: none;
+}
+.ed-canvas-wrap:has(.audio-bar) .fill-hint { top: 112px; }
+
+.fill-chip {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 9;
+  display: flex; align-items: center; gap: 10px; padding: 4px 4px 4px 14px;
+  max-width: calc(100% - 16px);
+  background: var(--raised); border: 1px solid var(--line); border-radius: var(--r-pill);
+  box-shadow: var(--float-shadow); font-size: var(--t-sm); color: var(--ink-2);
+}
+.fill-chip > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fill-chip .icon-btn { min-width: 32px; height: 32px; }
+.ed-canvas-wrap:has(.audio-bar) .fill-chip { top: 60px; }
+.fill-missing { color: var(--ochre) !important; font-size: var(--t-sm); }
+
+/* Signatures */
+.sig-pop .pop-section { width: min(360px, 100%); }
+.sig-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow: auto; }
+.sig-list li { display: flex; align-items: center; gap: 6px; }
+.sig-item { flex: 1; display: flex; align-items: center; justify-content: center; height: 64px; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--r-control); background: var(--field-paper); }
+.sig-item:hover { border-color: var(--iron); }
+.sig-preview { max-height: 100%; max-width: 100%; height: 52px; width: auto; }
+.sig-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sig-colors { display: flex; gap: 8px; }
+.sig-color { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--raised); box-shadow: 0 0 0 1px var(--line-strong); padding: 0; }
+.sig-color.is-on { box-shadow: 0 0 0 2px var(--iron); }
+.sig-create { display: flex; flex-direction: column; gap: 12px; }
+.sig-pad { width: 100%; height: 180px; border: 1px solid var(--line-strong); border-radius: var(--r-control); background: var(--field-paper); touch-action: none; cursor: crosshair; }
+.sig-styles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.sig-style { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--r-control); background: var(--field-paper); color: var(--field-ink); text-align: left; overflow: hidden; }
+.sig-style > span:first-child { font-size: 28px; line-height: 1.2; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.sig-style.is-on { border-color: var(--iron); box-shadow: 0 0 0 2px var(--iron-soft); }
+.sig-style-name { font-family: var(--font-ui); font-size: var(--t-xs); color: var(--ink-3); }
+.sig-image { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.sig-image .sig-preview { height: 90px; background: var(--field-paper); border: 1px solid var(--line); border-radius: var(--r-control); padding: 6px; }
+.sig-error { color: var(--seal) !important; font-size: var(--t-sm); margin: 0; }
+
+/* Drop files to open them */
+.drop-hint {
+  position: absolute; inset: 12px; z-index: 40; pointer-events: none;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  border: 2px dashed var(--iron); border-radius: var(--r-panel);
+  background: color-mix(in srgb, var(--iron-soft) 60%, transparent);
+  color: var(--iron); font-weight: 650; font-size: var(--t-lg);
+}
+.library { position: relative; }
+.editor { position: relative; }
+
+/* Pages panel: selecting pages and page tools */
+.page-pick { position: absolute; top: 6px; left: 6px; width: 20px; height: 20px; accent-color: var(--iron); }
+.page-item { position: relative; }
+.page-tools { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px 12px; }
+.page-tools .btn { flex: 1 1 auto; }
+.page-selbar { display: flex; align-items: center; gap: 8px; justify-content: space-between; padding: 8px 12px; border-top: 1px solid var(--line); font-size: var(--t-sm); color: var(--ink-2); }
+.page-tools .add-page { margin: 0; }

@@ -39,11 +39,15 @@ Rules
   ],
   "texts":  [{ "id", "x", "y", "width", "text" /* Markdown */, "fontSize", "color", "font": "sans|serif|mono|hand", "createdAt" }],
   "images": [{ "id", "x", "y", "width", "height", "asset", "rotation", "createdAt" }],
-  "background": { "kind": "pdf|image", "asset": "file.pdf", "pageNumber": 1 },   // optional
+  "background": { "kind": "pdf|image", "asset": "file.pdf", "pageNumber": 1, "rotation": 90 },   // optional
   "paper": { … }, "size": { … },                                               // optional per-page overrides
   "recognizedText": "…", "recognizedAt": 0, "recognizedBy": "mlkit|gemini-2.5-flash|…"   // optional
 }
 ```
+
+`background.rotation` (optional, degrees, a multiple of 90) is a clockwise turn the user added on
+top of the source page's own orientation (a PDF page's `/Rotate`); the page's `size` is already
+swapped to match. Readers that don't know it show the page unturned.
 
 Pens: `fountain | ballpoint | pencil | brush | marker | highlighter | dashed`. Missing pressure /
 tilt / orientation are omitted from the point array (or `-1` when a later field is present).
@@ -58,9 +62,31 @@ tilt / orientation are omitted from the point array (or `-1` when a later field 
   "pageIds": ["…"], "notebookId": "…?", "tags": ["…"],
   "createdAt", "updatedAt", "pinned": false, "color": "#AARRGGBB?",
   "recordings": [{ "id", "asset", "startedAt", "durationMs", "mimeType", "title?" }],
-  "summary": "…?", "trashedAt": 0, "formatVersion": 2
+  "summary": "…?", "trashedAt": 0, "formatVersion": 2,
+  "forms": { "file.pdf": { "applicant.name": "Ada Lovelace", "agree": true, "color": "blue", "langs": ["en", "fr"] } }   // optional
 }
 ```
+
+### PDF form values (`forms`, "Fill & sign")
+
+Values the user typed into the AcroForm fields of an imported PDF. Keys are the PDF's asset name,
+then the field's fully qualified name (`parent.child`, as in the PDF). The PDF asset itself is never
+modified; exporters write the values into a copy. Value by field type:
+
+| Field | Value |
+|---|---|
+| Text, dropdown, single-choice list | string (dropdowns/lists: the option's export value) |
+| Checkbox | `true` / `false` |
+| Radio group (or checkboxes sharing a name with different on-states) | the selected widget's state / export value, or `"Off"` |
+| Multi-select list | string array of export values |
+
+A field with no entry shows the value saved in the PDF. Writers drop empty maps (no `forms` key when
+nothing is filled). Signatures, initials, checkmarks and text placed on a page (flat PDFs) are not
+form values: they are ordinary `strokes`, `texts` and `images` of the page. Signatures typed or
+imported as images are stored as `assets/sig-<id>.png` (transparent PNG); drawn ones are strokes.
+
+The signature *library* (saved signatures and initials for reuse) is not part of the vault: it is
+kept on each device only, encrypted with the app's WebCrypto secret store, and never synced.
 
 Paper styles: `blank ruled_narrow ruled_wide dot_grid square_grid graph_mm isometric cornell music
 planner_day planner_week todo`. Tints: `white ivory cream recycled kraft mint blush slate midnight`.
@@ -75,5 +101,6 @@ Textures: `smooth standard toothy`.
 Sync engines (Google Drive, WebDAV, local folder) mirror this tree file-for-file. Conflicts on
 `*.ink.json` and `note.json` are merged three-way against the last-synced base: strokes/texts/
 images are unioned by id with deletions honoured from either side; scalar metadata takes the most
-recent `updatedAt`. Derived files are regenerated after merge. Sync state lives outside the vault
+recent `updatedAt`. `forms` merges per PDF and per field (filling different fields on two devices
+keeps both; the newer note wins a field both changed). Derived files are regenerated after merge. Sync state lives outside the vault
 (app storage), never inside it.

@@ -185,6 +185,11 @@ export interface PageBackground {
   asset: string;
   /** 1-based page number inside a PDF asset. */
   pageNumber?: number;
+  /**
+   * Extra clockwise rotation (degrees, a multiple of 90) applied on top of the source page's own
+   * orientation (a PDF page's /Rotate). Set by "Rotate page"; the page's `size` is already swapped.
+   */
+  rotation?: number;
 }
 
 /** Content of one page file. */
@@ -234,8 +239,21 @@ export interface NoteMeta {
   summary?: string;
   /** Soft-deleted notes go to Trash and are purged after 30 days. */
   trashedAt?: number;
+  /**
+   * Values typed into the AcroForm fields of imported PDFs ("Fill & sign"), per PDF asset name,
+   * then per fully-qualified field name. The PDF asset itself is never modified; values are
+   * written into a copy on export. See `FormFieldValue`.
+   */
+  forms?: Record<string, Record<string, FormFieldValue>>;
   formatVersion: number;
 }
+
+/**
+ * The value of one PDF form field: text (text fields, single-choice lists and dropdowns), the
+ * selected state name of a radio group (or "Off"), a checkbox's checked state, or the selected
+ * export values of a multi-select list.
+ */
+export type FormFieldValue = string | boolean | string[];
 
 export interface NotebookMeta {
   id: string;

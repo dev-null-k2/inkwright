@@ -45,6 +45,8 @@ export function App() {
           const id = await createNote();
           navigate(id ? { name: 'editor', noteId: id } : { name: 'library' }, { replace: true });
         } else navigate(routeFromHash(location.hash), { replace: true });
+        // Files the system opened Inkstone with (desktop file handler, share target, Android "Open with").
+        void import('./lib/openFiles.ts').then((m) => m.installOpenHandlers());
         if (!v.persistent) useApp.getState().toast({ text: 'This browser blocks storage here, so notes last for this session only. Sign in to sync, or open Inkstone in its own tab.', tone: 'error' });
         await v.buildIndex();
         await v.vault.purgeTrash();

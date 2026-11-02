@@ -109,6 +109,16 @@ First run notes:
 
 **`stylusButton` event** `{ pressed, keyCode }`: `MainActivity.dispatchKeyEvent` forwards `KEYCODE_STYLUS_BUTTON_PRIMARY/SECONDARY/TERTIARY/TAIL` (308–311; AOSP has no other stylus key codes). It sends one `pressed: true` per press and ignores auto-repeat and duplicate downs. It sends one `pressed: false` per release, plus a synthetic release if the window loses focus mid-press. These keys are consumed, so the WebView does not also see them. The editor uses them as the external button (`Editor.tsx` → `engine.setExternalButton`).
 
+**Opening files from other apps** ("Open with Inkstone", "Share to Inkstone"): `AndroidManifest.xml`
+has `VIEW` and `SEND`/`SEND_MULTIPLE` intent filters for PDFs, images, plain text and Markdown. The
+plugin (`InkstoneNativePlugin` → `files/IncomingFiles.kt`) reads the intent that started the
+activity (`load`) or arrived later (`handleOnNewIntent`; the activity is `singleTask`), copies the
+content off the main thread into `cacheDir/incoming/` (the `content://` grant only lasts as long as
+the intent) and hands `{ name, mimeType, path }` to the web layer: the `sharedFiles` event when it is
+listening, otherwise `takeSharedFiles()` returns them. Shared text without a file becomes a `.txt`.
+The web layer (`lib/openFiles.ts`) reads each copy with Capacitor Filesystem, imports it like the
+library's Open file and deletes the copy.
+
 **Refresh rate**: the activity asks for the display mode with the highest refresh rate at the current resolution, and asks again after fold/unfold, which can move it to another panel. This costs some battery while Inkstone is in the foreground. That is the trade for ink that keeps up with the pen.
 
 **Unbuffered input**: on Android 11+ the WebView calls `requestUnbufferedDispatch(SOURCE_CLASS_POINTER)`, so pen samples are handed to Chromium as they arrive instead of once per frame. Set `UNBUFFERED_POINTER_DISPATCH = false` in `MainActivity.kt` to go back to the default.
