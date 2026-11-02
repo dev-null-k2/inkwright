@@ -99,8 +99,11 @@ export async function discoverIssuer(issuer: string, fetchFn: typeof globalThis.
 export function scopesOf(p: JWTPayload): string[] {
   const out = new Set<string>();
   const add = (v: unknown) => {
-    if (typeof v === 'string') for (const s of v.split(/\s+/)) if (s) out.add(s);
-    else if (Array.isArray(v)) for (const s of v) if (typeof s === 'string' && s) out.add(s);
+    if (typeof v === 'string') {
+      for (const s of v.split(/\s+/)) if (s) out.add(s);
+    } else if (Array.isArray(v)) {
+      for (const s of v) if (typeof s === 'string' && s) out.add(s);
+    }
   };
   add(p.scope);
   add((p as Record<string, unknown>).scp);
