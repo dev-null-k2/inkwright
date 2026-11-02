@@ -18,6 +18,8 @@ reference implementation is `packages/core/src/codec.ts` + `vault.ts`.
   ai/memory.json                        assistant memory: instructions, facts, proposals
   ai/routines/<routineId>.json          routines (background agents) and their run state
   ai/activity/<runId>.json              AI activity log: what agents changed, for undo
+  ai/leases/routines.json               which always-on runner runs routines automatically
+  ai/approvals/<id>.json                actions an unattended agent is waiting for your OK on
 ```
 
 Rules
@@ -214,7 +216,34 @@ and wait for the user.
 ```
 
 Times are the device's local time. A routine runs while Inkstone is open; a slot missed while it
-was closed runs once on the next open (`slots` records it so no device repeats it).
+was closed runs once on the next open (`slots` records it so no device repeats it). The always-on
+runner (`inkstone-agent run`, see docs/AGENTS.md) runs the same routines from a computer.
+
+**Routines lease** — `ai/leases/routines.json`, written by an always-on runner while it runs:
+
+```jsonc
+{ "holder": "runner:<host>:<pid>:<random>", "label": "The Inkstone agent on <host>",
+  "kind": "runner", "acquiredAt", "renewedAt", "expiresAt" }
+```
+
+While `expiresAt` is in the future, only the holder acts on automatic triggers (times, dates,
+note saves, recordings); the app and other runners leave them to it ("Run now" always runs where
+it is pressed). The holder renews it every minute (10-minute lifetime) and deletes it when it stops,
+so the app takes over at once — or after expiry if the computer went to sleep. A missing or
+unreadable file means no lease.
+
+**Pending approvals** — `ai/approvals/<id>.json`, actions an unattended agent (a routine run by the
+runner, or through an MCP client that can't ask mid-call) wanted to take but that need a person's
+OK, such as moving a note to Trash:
+
+```jsonc
+{ "id", "tool": "trash_note", "args": { "note_id": "…" }, "title": "Move “…” to Trash",
+  "detail?", "source": "<routine or agent name>", "routineId?", "createdAt",
+  "status": "pending|approved|denied|failed|expired", "decidedAt?", "decidedBy?", "outcome?" }
+```
+
+Approving runs exactly the recorded call (logged as its own Activity run, so it can be undone);
+pending approvals older than seven days read as `expired`.
 
 **Activity** — `ai/activity/<runId>.json`, one run per assistant turn, routine run or external
 agent connection (the MCP server writes these too):
@@ -230,5 +259,7 @@ Op kinds and how undo reverses them: `note_created {noteId, title}` → move to 
 addedPage?}` → remove that text box (and the page, if it was added and is now empty);
 `meta_changed {noteId, before, after}` (fields `title`, `tags`, `notebookId` (null = unfiled),
 `pinned`, `summary` (null = none)) → put back each field that still has the `after` value;
-`notebook_created {notebookId, name}` → delete it if still empty; `external {server, detail?}` —
+`notebook_created {notebookId, name}` → delete it if still empty; `handwriting_recognized {noteId,
+pageId, text}` (the MCP server's `transcribe_pages`) → clear the page's recognized text if it is
+still that text; `external {server, detail?}` —
 a change in a connected app, listed only. The newest 300 runs are kept.
