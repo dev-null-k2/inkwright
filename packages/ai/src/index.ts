@@ -31,3 +31,5 @@ export * from './speech/index.ts';
 export * from './tools/dev.ts';
 export * from './compiler/index.ts';
 export * from './trust/index.ts';
+export * from './recall/redact.ts';
+export * from './journal/index.ts';

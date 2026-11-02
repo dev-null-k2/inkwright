@@ -46,6 +46,11 @@ reference implementation is `packages/core/src/codec.ts` + `vault.ts`.
   ai/usage/<YYYY-MM>/<device>.json      AI usage meter: tokens, cost and savings per day and provider
   ai/audit/<device>/<YYYY-MM>.jsonl     audit trail: signed, hash-chained record of what AI saw and did
   branches/<branchId>.json              a branch of proposed changes: per note its base and head (see "Branches")
+  recall/config.json                    memory timeline settings shared by devices (see "Memory timeline")
+  recall/<YYYY-MM-DD>/<HH>-<device>.jsonl  memory timeline captures: redacted text, one per line
+  recall/erased-<device>.jsonl          what a device erased from the timeline (hides copies sync brings back)
+  ai/journal/config.json                journal that writes itself: style, timeline use, imported calendars
+  ai/journal/calendars/<id>.ics         an imported or subscribed calendar, as its iCalendar file
 ```
 
 Rules
@@ -864,3 +869,68 @@ asset once one is matched.
   "pdf": "01JD….pdf"
 }
 ```
+
+## Memory timeline (`recall/`)
+
+Written only when the memory timeline module is on (docs/MEMORY_TIMELINE.md). Code:
+`packages/core/src/recall/format.ts` and `store.ts`. Everything here is text: screenshots and
+audio are never stored, and every value was redacted before it was written.
+
+**Captures** (`recall/<YYYY-MM-DD>/<HH>-<device>.jsonl`). One JSON object per line. Day and hour
+are the capturing device's local time; `at` is authoritative for ordering. Each file has one
+writer, the device in its name (`[0-9A-Za-z_-]{1,24}`), which only appends, so two devices never
+write the same file. Readers skip malformed lines.
+
+```jsonc
+{ "id": "01JD…", "at": 1730000000000, "kind": "screen",           // or "audio" (with "end")
+  "app": "Terminal", "title": "zsh — make bench", "url": "https://example.com/path",  // origin + path only
+  "text": "$ make bench\nmailto [email]", "redacted": { "email": 1 },  // counts per kind, never values
+  "engine": "tesseract.js 7 · eng", "device": "k3v9x0aq" }
+```
+
+**Settings** (`recall/config.json`), shared by every device; whether a computer captures, and
+pauses, are kept on that device only and never sync.
+
+```jsonc
+{ "formatVersion": 1, "retentionDays": 14, "intervalSec": 20, "excludedApps": ["Slack"],
+  "excludedTitles": ["bank"], "microphone": false, "updatedAt": 1730000000000 }
+```
+
+**Erasure records** (`recall/erased-<device>.jsonl`). Appended by a device when the user erases
+moments (`ids`), a day or everything (`from`/`to`: every capture with `from ≤ at < to`). Readers
+hide every capture a record covers; pruning deletes those lines and drops records older than the
+retention period.
+
+```jsonc
+{ "at": 1730000000000, "ids": ["01JD…"] }
+{ "at": 1730000500000, "from": 1729980000000, "to": 1730000500001 }
+```
+
+Retention: any device running the app deletes captures older than `retentionDays` (whole day
+folders, then lines of the day that straddles the cutoff).
+
+### Sync
+
+- Capture files merge three-way by capture id: a capture in the base and missing on one side was
+  erased there and stays out; otherwise both sides' captures are kept.
+- Sync lets an edit beat a deletion, so a capture file deleted by "erase this day" on one device
+  comes back if its device appended to it meanwhile. The erasure records exist for this: the
+  returned lines are hidden at once and deleted at the next prune (on start, then every six hours).
+- Erasure files merge as a union of their lines. `recall/config.json` follows the default
+  newest-wins rule.
+
+## Journal (`ai/journal/`)
+
+Written only when the journal module is on (docs/MEMORY_TIMELINE.md § The journal that writes
+itself). Code: `apps/web/src/journal/config.ts`.
+
+- `ai/journal/config.json`: `style` (`"ink"` or `"typed"`), `hand` (`"script"` or `"print"`),
+  `includeTimeline`, and `calendars` — `{ id, name, source: "file"|"url", host?, events,
+  updatedAt }` per calendar. A subscribed calendar's address is a secret (it grants read access),
+  so only its `host` is here; the address stays in the encrypted secret store of the device that
+  added it. Newest wins in sync.
+- `ai/journal/calendars/<id>.ics`: the calendar exactly as imported or last fetched (RFC 5545).
+- Drafts are ordinary notes tagged `journal` in the Journal notebook, written with `origin: "ai"`
+  (AI ink or typed text). A draft is the day's daily note (`daily`) when there was none, otherwise
+  a note titled `<YYYY-MM-DD> · journal`. Its sentences' sources are in the note's
+  `provenance.json` under `ink:<first stroke id>` or `text:<box id>`.
