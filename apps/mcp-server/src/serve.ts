@@ -3,6 +3,7 @@
  * A2A agent. Shared by `inkstone-mcp --http` and `inkstone-agent run --http`.
  */
 import { createA2AApp } from './a2a.ts';
+import { createApi } from './api/index.ts';
 import { createAgentAI, type AgentAI } from './agent/ai.ts';
 import type { AuthMode } from './auth.ts';
 import type { CliOptions } from './cli.ts';
@@ -34,7 +35,7 @@ export function authFromOptions(o: CliOptions): { auth: AuthMode; scopes: Scopes
   return { auth: { kind: 'loopback' }, scopes: null };
 }
 
-export async function serveHttp(ctx: ServerContext, o: CliOptions, ai: AgentAI | null, log: Log, extra: { fetch?: typeof fetch } = {}): Promise<{ http: RunningHttpServer; services: ServerServices }> {
+export async function serveHttp(ctx: ServerContext, o: CliOptions, ai: AgentAI | null, log: Log, extra: { fetch?: typeof fetch; eventIntervalMs?: number } = {}): Promise<{ http: RunningHttpServer; services: ServerServices }> {
   if (o.http === undefined) throw new Error('No HTTP port.');
   const { auth, scopes } = authFromOptions(o);
   if (auth.kind === 'oauth' && extra.fetch) auth.settings.fetch = extra.fetch;
@@ -52,9 +53,31 @@ export async function serveHttp(ctx: ServerContext, o: CliOptions, ai: AgentAI |
           },
         }
       : {}),
+    ...(o.api
+      ? {
+          api: async (publicUrl, gate) => {
+            const api = await createApi({
+              ctx,
+              services,
+              gate,
+              publicUrl,
+              oauthScopes: auth.kind === 'oauth' ? { read: scopes!.read, write: scopes!.write, issuer: auth.settings.issuer } : null,
+              corsOrigins: o.corsOrigins,
+              ...(o.rateLimit ? { rateLimit: o.rateLimit } : {}),
+              ...(o.stateDir ? { stateDir: o.stateDir } : {}),
+              embeddings: o.embeddings ?? null,
+              ...(extra.fetch ? { fetch: extra.fetch } : {}),
+              ...(extra.eventIntervalMs ? { eventIntervalMs: extra.eventIntervalMs } : {}),
+              log,
+            });
+            return { handle: (req) => api.router.handle(req), close: () => api.close() };
+          },
+        }
+      : {}),
   });
   const how = auth.kind === 'oauth' ? `OAuth (issuer ${auth.settings.issuer})` : auth.kind === 'token' ? 'bearer token required' : 'no token; loopback clients only';
   log(`MCP (Streamable HTTP, 2026-07-28 + 2025) on ${http.url} — ${how}`);
+  if (o.api) log(`REST API at ${http.baseUrl}/api/v1 — reference at ${http.baseUrl}/api/v1/docs${o.embeddings ? ` (semantic search with ${o.embeddings.model})` : ''}`);
   if (o.a2a) log(`A2A agent card at ${http.baseUrl}/.well-known/agent-card.json, JSON-RPC at ${http.baseUrl}/a2a${ai ? '' : ' (no AI configured: only structured search works)'}`);
   return { http, services };
 }

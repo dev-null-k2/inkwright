@@ -11,6 +11,8 @@ against your folder, with the AI you choose.
 | **A2A agent** (`inkstone-mcp --a2a`) | Inkstone's own agent behind an Agent Card, so other agents can hand it note work | Any A2A v1.0 or v0.3 client or agent framework |
 | **Always-on runner** (`inkstone-agent run`) | Runs your routines on schedule even when the app is closed | You, as a background service |
 
+The same HTTP port also serves a REST API for programs (`/api/v1`, see [API.md](API.md)).
+
 Every change any of them makes shows up in the app under **Settings › AI › Activity**, where it
 can be undone. Moving a note to Trash always waits for a person's OK.
 

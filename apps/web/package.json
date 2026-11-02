@@ -34,6 +34,7 @@
     "@huggingface/transformers": "^4.3.2",
     "@inkstone/ai": "*",
     "@inkstone/core": "*",
+    "@inkstone/plugin-api": "*",
     "@inkstone/sync": "*",
     "@vscode/tree-sitter-wasm": "^0.3.1",
     "chrono-node": "^2.10.3",

@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { applyPlan, planToggle } from '../modules/registry.ts';
 import { Check, FileArchive, FolderOpen, GitCompareArrows, History, RefreshCw, Trash2, Waypoints, X } from 'lucide-react';
 import type { CodeSource } from '@inkstone/core';
 import { pickFiles } from '../platform/files.ts';
@@ -55,8 +56,8 @@ export function DeveloperSection() {
 
   return (
     <>
-      <Group title="Developer tools" note="Notes that know your code: link notes to functions with [[code:path#Name]], see when the code under a note changed, draw verified diagrams, run runbook blocks and keep lessons from coding-agent sessions. Off, none of it loads.">
-        <Switch label="Developer tools" checked={on} onChange={(v) => setDev({ devTools: v })} hint="Code links, drift, diagrams, runbooks and session journals" />
+      <Group title="Code-aware notes" note="Notes that know your code: link notes to functions with [[code:path#Name]], see when the code under a note changed, draw verified diagrams, run runbook blocks and keep lessons from coding-agent sessions. Off, none of it loads.">
+        <Switch label="Code-aware notes" checked={on} onChange={(v) => applyPlan(planToggle('code', v))} hint="Code links, drift, diagrams, runbooks and session journals" />
       </Group>
       {on && (
         <>

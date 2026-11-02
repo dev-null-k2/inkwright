@@ -1,0 +1,13 @@
+{
+  "name": "my-inkstone-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "An Inkstone plugin.",
+  "scripts": {
+    "check": "node check.mjs"
+  },
+  "devDependencies": {
+    "@inkstone/plugin-api": "^1.0.0"
+  }
+}
