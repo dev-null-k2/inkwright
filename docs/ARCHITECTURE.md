@@ -259,6 +259,17 @@ as "what was said" passages. Details in docs/LOCAL_AI.md § Speech to text.
   the layout settles before it is shown.
 - **Daily notes, templates, Obsidian**: `daily.ts`, `templates.ts`, `obsidian.ts` + docs/OBSIDIAN.md.
 
+## Developer module (`packages/core/src/dev/`, `apps/web/src/dev/`, see [DEVELOPERS.md](DEVELOPERS.md))
+
+Optional (Settings › Developer). Repositories become code graphs in the vault (`code/sources/`)
+through deterministic tree-sitter extraction (web-tree-sitter in the page or in Node, the same
+grammars); `[[code:path#Symbol]]` links and ink links carry the signature they were written against
+(`NoteMeta.codeRefs`) so a re-scan flags drift without touching the note; diagrams are a typed IR
+checked by a validator whose repair receipt drives the assistant's `create_diagram` loop and drawn
+as a `diagram` page object; ```http/```sql/```js blocks run with approval (sql.js, a sandboxed
+worker) and are logged in Activity; agent-session transcripts become notes and proposed lessons.
+The MCP server adds read-only code tools, and the `inkstone` CLI scans and checks drift.
+
 ## Platforms
 
 | Platform | How | Native extras |
@@ -279,5 +290,6 @@ as "what was said" passages. Details in docs/LOCAL_AI.md § Speech to text.
 - **A built-in skill:** add `packages/ai/skills/<name>/SKILL.md` and list it in `builtin-skills.ts`.
 - **A routine template:** add it to `ROUTINE_TEMPLATES` in `packages/ai/src/routines.ts`.
 - **A speech engine:** implement `Transcriber` (`packages/ai/src/transcribe.ts`) and return it from `providerTranscriber` in `lib/agent/voice.ts`.
+- **A code language:** add its extension to `languageOf` and an extractor to `EXTRACT` in `packages/core/src/dev/codescan.ts`, its grammar to `apps/web/src/dev/wasm-assets.ts` (and the CLI picks it up from `@vscode/tree-sitter-wasm`), and fixture cases to `packages/core/test/dev/codescan.test.ts`.
 - **A sync target:** implement `Remote` (`list/read/write/delete`) and the engine does the rest.
 - **A storage backend:** implement `VaultFS` and run the shared conformance suite in `packages/sync/test`.
