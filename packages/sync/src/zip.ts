@@ -1,4 +1,4 @@
-import type { VaultFS } from '@inkstone/core';
+import type { VaultFS } from '@inkwright/core';
 import { noteIdOf, regenerateDerived } from './derived.ts';
 import { mergeFileBytes } from './merge.ts';
 import { isJunkName, safePath, toBufferView, utf8Decode, utf8Encode, walkFiles, bytesEqual } from './util.ts';
@@ -215,7 +215,7 @@ export async function readZip(zip: Uint8Array): Promise<ZipEntry[]> {
 // ---- Vault backup -------------------------------------------------------------------------------
 
 export interface ExportZipOptions extends WriteZipOptions {
-  /** Include dot-folders such as `.inkstone/` (app caches). Default false. */
+  /** Include dot-folders such as `.inkwright/` (app caches). Default false. */
   includeHidden?: boolean;
 }
 

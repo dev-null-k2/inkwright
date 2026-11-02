@@ -1,9 +1,9 @@
-import { fingerprintOf, type SignerInfo } from '@inkstone/core';
+import { fingerprintOf, type SignerInfo } from '@inkwright/core';
 import { useSettings } from '../state/settings.ts';
 
 /**
  * This device's authorship signing key: ECDSA P-256 made with WebCrypto as a *non-extractable*
- * key — the private half can sign but can never be read out by any script, including Inkstone's
+ * key — the private half can sign but can never be read out by any script, including Inkwright's
  * own. The CryptoKey objects themselves are kept in IndexedDB (browsers store them opaquely; in
  * the Android app this is the WebView's app-private storage), so the same key signs across
  * sessions. The public key and its fingerprint are shown to the user and put in certificates.
@@ -12,7 +12,7 @@ import { useSettings } from '../state/settings.ts';
  * their public key), but new ones get a new fingerprint.
  */
 
-const DB = 'inkstone-authorship';
+const DB = 'inkwright-authorship';
 const STORE = 'keys';
 const ID = 'device';
 

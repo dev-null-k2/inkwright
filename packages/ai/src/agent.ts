@@ -27,16 +27,16 @@ export interface AgentTool<A = any> extends ToolDef {
 
 /** A tool result with images (e.g. a page rendering for vision models). */
 export interface RichToolResult {
-  kind: 'inkstone.rich-result';
+  kind: 'inkwright.rich-result';
   parts: ContentPart[];
 }
 
 export function richResult(parts: ContentPart[]): RichToolResult {
-  return { kind: 'inkstone.rich-result', parts };
+  return { kind: 'inkwright.rich-result', parts };
 }
 
 export function isRichResult(v: unknown): v is RichToolResult {
-  return !!v && typeof v === 'object' && (v as RichToolResult).kind === 'inkstone.rich-result' && Array.isArray((v as RichToolResult).parts);
+  return !!v && typeof v === 'object' && (v as RichToolResult).kind === 'inkwright.rich-result' && Array.isArray((v as RichToolResult).parts);
 }
 
 export type AgentEvent =

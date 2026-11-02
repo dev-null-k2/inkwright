@@ -15,7 +15,7 @@
  *    p ≥ 0.05 the report says "no significant difference" — including when retrieval looks better
  *    on a handful of questions, because a handful of questions can't show it.
  */
-import { extractClaims, extractDefinitions, gradeAnswer, hashText, parseQuantities, stripMarkdown, type SourceDoc } from '@inkstone/core';
+import { extractClaims, extractDefinitions, gradeAnswer, hashText, parseQuantities, stripMarkdown, type SourceDoc } from '@inkwright/core';
 import type { Usage } from '../types.ts';
 import { COMPILER_PROMPT_IDS, type CompilerAI } from './draft.ts';
 

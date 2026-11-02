@@ -6,8 +6,8 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { BookOpenCheck, Check, FileText, Globe, Loader2, Package, RefreshCw, Square, X } from 'lucide-react';
-import { textItemKey, normalizeSentence, type ProvClaim } from '@inkstone/core';
-import type { ProposalItem, WikiProposal } from '@inkstone/ai';
+import { textItemKey, normalizeSentence, type ProvClaim } from '@inkwright/core';
+import type { ProposalItem, WikiProposal } from '@inkwright/ai';
 import { importText } from '../../lib/actions.ts';
 import { openAgentView } from '../../lib/agent/hub.ts';
 import { useApp } from '../../state/app.ts';

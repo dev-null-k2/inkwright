@@ -1,10 +1,10 @@
 /**
- * The always-on runner (`inkstone-agent run`): runs the user's routines on a computer even when
- * the Inkstone app isn't open, over the vault folder (a synced folder, Google Drive / iCloud /
+ * The always-on runner (`inkwright-agent run`): runs the user's routines on a computer even when
+ * the Inkwright app isn't open, over the vault folder (a synced folder, Google Drive / iCloud /
  * Dropbox copy, or a WebDAV mount).
  *
  * Nothing is reimplemented: routine definitions, triggers, catch-up, run state and the scheduler
- * come from @inkstone/ai (`RoutineStore`, `RoutineScheduler`); each run is the same agent run as in
+ * come from @inkwright/ai (`RoutineStore`, `RoutineScheduler`); each run is the same agent run as in
  * the app (agent/run.ts), logged in the vault's AI activity so the app lists it and can undo it.
  *
  * Coordination with the app (and with a second runner on another computer) uses the routines
@@ -25,8 +25,8 @@ import { watch, type FSWatcher } from 'node:fs';
 import { hostname } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import * as path from 'node:path';
-import { RoutineLeaseHolder, RoutineScheduler, RoutineStore, findDateMentions, type DatedNote, type Routine, type TriggerEvent } from '@inkstone/ai';
-import { VaultLayout, pageText } from '@inkstone/core';
+import { RoutineLeaseHolder, RoutineScheduler, RoutineStore, findDateMentions, type DatedNote, type Routine, type TriggerEvent } from '@inkwright/ai';
+import { VaultLayout, pageText } from '@inkwright/core';
 import type { ServerContext } from '../context.ts';
 import { ApprovalStore, deferringApprover } from '../approvals.ts';
 import type { AgentAI } from '../agent/ai.ts';
@@ -38,7 +38,7 @@ export interface RunnerOptions {
   ai: AgentAI | null;
   /** Unique id for the lease (default: runner:<host>:<pid>:<random>). */
   holder?: string;
-  /** What the app shows (default "The Inkstone agent on <host>"). */
+  /** What the app shows (default "The Inkwright agent on <host>"). */
   label?: string;
   log?: (msg: string) => void;
   clock?: () => number;
@@ -91,7 +91,7 @@ export class RoutineRunner {
     const host = hostname().replace(/\.local$/, '');
     this.lease = new RoutineLeaseHolder(ctx.fs, {
       holder: o.holder ?? `runner:${host}:${process.pid}:${randomBytes(3).toString('hex')}`,
-      label: o.label ?? `The Inkstone agent on ${host}`,
+      label: o.label ?? `The Inkwright agent on ${host}`,
       kind: 'runner',
       clock: this.clock,
       ...(o.leaseTtlMs ? { ttlMs: o.leaseTtlMs } : {}),
@@ -155,7 +155,7 @@ export class RoutineRunner {
     this.running.set(r.id, ac);
     this.log(`Running “${r.name}” — ${ev.reason}`);
     try {
-      const approver = deferringApprover(this.approvals, (a) => this.log(`“${r.name}” wants to: ${a.title}. Waiting for your OK (inkstone-agent approvals).`));
+      const approver = deferringApprover(this.approvals, (a) => this.log(`“${r.name}” wants to: ${a.title}. Waiting for your OK (inkwright-agent approvals).`));
       const res = await runRoutineOnServer(this.o.ctx, this.o.ai, r, ev, approver, { signal: ac.signal });
       // The routine's own changes must not look like the user saving notes.
       await this.absorb(res.run.ops.map((op) => ('noteId' in op ? op.noteId : null)).filter((x): x is string => !!x));

@@ -3,7 +3,7 @@
  * grammars or SQLite are bundled there, so scanning and ```sql blocks say they need the full app.
  * Importing graphs, code links, drift, diagrams, ```http and ```js blocks still work.
  */
-import type { CodeLanguage } from '@inkstone/core';
+import type { CodeLanguage } from '@inkwright/core';
 
 export const WASM_AVAILABLE = false;
 export const TREE_SITTER_RUNTIME: string | null = null;

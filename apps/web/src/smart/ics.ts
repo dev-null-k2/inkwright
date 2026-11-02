@@ -50,7 +50,7 @@ export function buildIcs(e: CalendarEvent, opts: { uid: string; now?: Date }): s
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Inkstone//Notes//EN',
+    'PRODID:-//Inkwright//Notes//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',

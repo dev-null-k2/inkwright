@@ -1,12 +1,12 @@
 /**
  * Tree-sitter for Node: the same runtime (web-tree-sitter) and grammar files
- * (@vscode/tree-sitter-wasm) the app loads in the browser, so `inkstone scan` on a computer and
+ * (@vscode/tree-sitter-wasm) the app loads in the browser, so `inkwright scan` on a computer and
  * "Add code source" in the app produce identical graphs. Both packages stay external in the
  * bundle (scripts/build.mjs): web-tree-sitter finds its runtime .wasm next to its own file.
  */
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
-import type { CodeLanguage, CodeParser, SyntaxNodeLike } from '@inkstone/core';
+import type { CodeLanguage, CodeParser, SyntaxNodeLike } from '@inkwright/core';
 
 const require = createRequire(import.meta.url);
 

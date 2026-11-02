@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PDFDocument } from 'pdf-lib';
-import { NoteDocument, newNote, verifyCertificate, type InkStroke } from '@inkstone/core';
+import { NoteDocument, newNote, verifyCertificate, type InkStroke } from '@inkwright/core';
 import { certificateFromFile, createCertificate, embedInPdf, extractFromPdf } from './certificate.ts';
 import { deviceKey, deviceSigner } from './keys.ts';
 
@@ -51,7 +51,7 @@ describe('certificates in PDFs', () => {
     pdf.addPage();
     const bytes = await pdf.save();
     expect(await extractFromPdf(bytes)).toBeNull();
-    await expect(certificateFromFile({ name: 'plain.pdf', bytes })).rejects.toThrow(/no Inkstone authorship certificate/);
+    await expect(certificateFromFile({ name: 'plain.pdf', bytes })).rejects.toThrow(/no Inkwright authorship certificate/);
   });
 
   it('only the exported pages are certified', async () => {

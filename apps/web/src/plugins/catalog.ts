@@ -3,7 +3,7 @@
  * offline and cannot be changed by a server), built from the repository's examples/plugins
  * folders; installing one goes through the same validation and permission prompt as any plugin.
  */
-import type { PluginSource } from '@inkstone/core';
+import type { PluginSource } from '@inkwright/core';
 import wordCountManifest from '../../../../examples/plugins/word-count/manifest.json?raw';
 import wordCountMain from '../../../../examples/plugins/word-count/main.js?raw';
 import wordCountReadme from '../../../../examples/plugins/word-count/README.md?raw';

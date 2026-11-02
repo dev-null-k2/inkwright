@@ -5,7 +5,7 @@
  * skips a vault with `asOf`), and an open note can be looked at but not changed.
  */
 import { create } from 'zustand';
-import { AsOfFS, VersionHistory, Vault, type VaultFS } from '@inkstone/core';
+import { AsOfFS, VersionHistory, Vault, type VaultFS } from '@inkwright/core';
 import { AppVault } from '../lib/vault.ts';
 import { useApp } from '../state/app.ts';
 

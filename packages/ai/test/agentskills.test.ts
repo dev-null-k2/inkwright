@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MemoryFS } from '@inkstone/core';
+import { MemoryFS } from '@inkwright/core';
 import {
   SKILLS_DIR,
   SkillFormatError,

@@ -16,7 +16,7 @@ import {
   type RepairOutcome,
   type SqlResult,
   type TableObject,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import type { AppVault } from '../lib/vault.ts';
 import { aiForNote } from '../inkactions/ai.ts';
 import { openSqlEngine, type SqlEngine } from './engine.ts';

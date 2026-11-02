@@ -1,0 +1,13 @@
+{
+  "name": "my-inkwright-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "An Inkwright plugin.",
+  "scripts": {
+    "check": "node check.mjs"
+  },
+  "devDependencies": {
+    "@inkwright/plugin-api": "^1.0.0"
+  }
+}

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { IDBFactory, IDBKeyRange } from 'fake-indexeddb';
-import { MemoryFS, Vault, walk } from '@inkstone/core';
+import { MemoryFS, Vault, walk } from '@inkwright/core';
 import { CapacitorFS, FileSystemAccessFS, IndexedDBFS } from '../src/index.ts';
 import { NodeFS } from '../src/node.ts';
 import { vaultFsConformance } from './helpers/conformance.ts';
@@ -22,7 +22,7 @@ vaultFsConformance('IndexedDBFS', () => {
 
 vaultFsConformance('FileSystemAccessFS', () => ({ fs: new FileSystemAccessFS(new FakeDirectoryHandle('vault', clock)) }));
 
-vaultFsConformance('CapacitorFS (atomic rename)', () => ({ fs: new CapacitorFS(new FakeCapacitorFilesystem({ clock }), { directory: 'DATA', root: 'Inkstone' }) }));
+vaultFsConformance('CapacitorFS (atomic rename)', () => ({ fs: new CapacitorFS(new FakeCapacitorFilesystem({ clock }), { directory: 'DATA', root: 'Inkwright' }) }));
 
 vaultFsConformance('CapacitorFS (iOS-like rename, legacy readdir, blob reads)', () => ({
   fs: new CapacitorFS(new FakeCapacitorFilesystem({ clock, renameRefusesOverwrite: true, legacyReaddir: true, blobReads: true }), { directory: 'DOCUMENTS', root: '' }),
@@ -31,7 +31,7 @@ vaultFsConformance('CapacitorFS (iOS-like rename, legacy readdir, blob reads)', 
 vaultFsConformance('CapacitorFS (non-atomic)', () => ({ fs: new CapacitorFS(new FakeCapacitorFilesystem({ clock }), { atomic: false }) }));
 
 vaultFsConformance('NodeFS', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'inkstone-nodefs-'));
+  const dir = await mkdtemp(join(tmpdir(), 'inkwright-nodefs-'));
   return { fs: new NodeFS(dir, { fsync: false }), cleanup: () => rm(dir, { recursive: true, force: true }) };
 });
 
@@ -120,14 +120,14 @@ describe('CapacitorFS specifics', () => {
     await fs.writeBytes('notes/n/assets/a.bin', new Uint8Array([0, 255, 1, 2]));
     const node = cap.nodes.get('DOCUMENTS:Vaults/Main/notes/n/assets/a.bin');
     expect(node).toMatchObject({ type: 'file', data: 'AP8BAg==' });
-    expect([...cap.nodes.keys()].some((k) => k.endsWith('.inkstone-tmp'))).toBe(false);
+    expect([...cap.nodes.keys()].some((k) => k.endsWith('.inkwright-tmp'))).toBe(false);
   });
 
   it('writes atomically through a temp file + rename', async () => {
     const cap = new FakeCapacitorFilesystem();
     const fs = new CapacitorFS(cap);
     await fs.writeText('a.txt', 'one');
-    expect(cap.calls.some((c) => c.startsWith('rename ') && c.includes('.inkstone-tmp -> Inkstone/a.txt'))).toBe(true);
+    expect(cap.calls.some((c) => c.startsWith('rename ') && c.includes('.inkwright-tmp -> Inkwright/a.txt'))).toBe(true);
   });
 
   it('cleans up the temp file when rename keeps failing', async () => {
@@ -137,7 +137,7 @@ describe('CapacitorFS specifics', () => {
     };
     const fs = new CapacitorFS(cap);
     await expect(fs.writeText('a.txt', 'x')).rejects.toThrow('disk full');
-    expect([...cap.nodes.keys()].filter((k) => k.includes('.inkstone-tmp'))).toEqual([]);
+    expect([...cap.nodes.keys()].filter((k) => k.includes('.inkwright-tmp'))).toEqual([]);
   });
 
   it('propagates real errors instead of reporting a missing file', async () => {
@@ -154,7 +154,7 @@ describe('CapacitorFS specifics', () => {
 
 describe('NodeFS specifics', () => {
   it('writes atomically (no temp files left) and keeps the root on deleteDir("")', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'inkstone-nodefs-'));
+    const dir = await mkdtemp(join(tmpdir(), 'inkwright-nodefs-'));
     try {
       const fs = new NodeFS(dir);
       await fs.writeText('notes/n/note.json', '{"a":1}');
@@ -170,11 +170,11 @@ describe('NodeFS specifics', () => {
   });
 
   it('hides leftover temp files and refuses backslash tricks', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'inkstone-nodefs-'));
+    const dir = await mkdtemp(join(tmpdir(), 'inkwright-nodefs-'));
     try {
       const fs = new NodeFS(dir);
       await mkdir(join(dir, 'd'));
-      await writeFile(join(dir, 'd', 'x.json.abcd.inkstone-tmp'), 'partial');
+      await writeFile(join(dir, 'd', 'x.json.abcd.inkwright-tmp'), 'partial');
       await writeFile(join(dir, 'd', 'x.json'), 'ok');
       expect((await fs.list('d')).map((e) => e.name)).toEqual(['x.json']);
       await expect(fs.readText('d\\..\\..\\x')).rejects.toThrow(/Unsafe path/);
@@ -186,8 +186,8 @@ describe('NodeFS specifics', () => {
   });
 
   it('follows symlinked folders inside the vault', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'inkstone-nodefs-'));
-    const other = await mkdtemp(join(tmpdir(), 'inkstone-nodefs-other-'));
+    const dir = await mkdtemp(join(tmpdir(), 'inkwright-nodefs-'));
+    const other = await mkdtemp(join(tmpdir(), 'inkwright-nodefs-other-'));
     try {
       await writeFile(join(other, 'a.txt'), 'linked');
       await symlink(other, join(dir, 'linked'));

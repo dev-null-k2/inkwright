@@ -1,11 +1,11 @@
 # Trust and cost: what AI sees, where it goes, what it costs
 
-Inkstone lets you bring your own AI. That only works if you can answer, for every request:
+Inkwright lets you bring your own AI. That only works if you can answer, for every request:
 **where did it go, what did it carry, what did it cost, and what did the AI change?** This page
 describes the layer that answers those questions, how to configure it, and — with numbers from
 the evals — what it does well and where it falls short.
 
-| You want | Inkstone does | Where |
+| You want | Inkwright does | Where |
 |---|---|---|
 | Cheap and private work to stay on the device, hard work to go to a strong model | Routes each kind of task by rules you set | Settings › AI › Routing & privacy |
 | Some notebooks or tags never to reach a cloud AI, or not to be visible to AI at all | Per-notebook and per-tag rules, enforced for the assistant, routines, the MCP server, A2A and the runner | same, `ai/policy.json` |
@@ -84,7 +84,7 @@ problems are listed at the top of the form and in the server's log.
 | `retention.*Days` | 0 = the store's default | Activity: newest 300 runs; audit: forever; history: the usual thinning. `legalHold` stops all pruning. |
 
 **Managed policy.** A deployment can add an administrator's policy (`--policy` /
-`INKSTONE_POLICY_FILE` on the server, `managed-policy.json` next to the app in the appliance).
+`INKWRIGHT_POLICY_FILE` on the server, `managed-policy.json` next to the app in the appliance).
 `mergeManagedPolicy` takes the stricter of the two for every rule, so users can tighten but never
 loosen it; the form shows where the organisation's rule applies.
 
@@ -105,7 +105,7 @@ without title or snippet, so the cloud model can still tell the user they exist.
 items, the items that match the question and a field summary; tables keep the header, matching
 rows and the ends; logs collapse repeats (`[×212 similar]`) and keep errors with context; prose
 keeps headings, the start, the end and the passages that share words with the question. The
-shortened block ends with `[Inkstone shortened this from ~12,573 to ~520 tokens… call
+shortened block ends with `[Inkwright shortened this from ~12,573 to ~520 tokens… call
 retrieve_original with ref "…"]`; the original goes into a content-addressed store **on this
 device** (IndexedDB in the app, memory on the server — never the vault, which syncs). The guard
 adds a `retrieve_original` tool and answers it itself (with a query: only matching parts), so the
@@ -139,7 +139,7 @@ shortened turn plus the full turn cost more than sending it once (−47% here). 
 left alone. What the benchmark cannot show: how a real model's reasoning changes with shortened
 context, or whether a real model asks for the original when it should — the scripted reader
 always does. Treat these as upper bounds on savings and lower bounds on risk; the live agent evals
-(`INKSTONE_EVAL_PROVIDER`) are the way to check a specific model. The 60–95% headline numbers
+(`INKWRIGHT_EVAL_PROVIDER`) are the way to check a specific model. The 60–95% headline numbers
 that tools in this space quote are real for list/log/table-shaped tool output and misleading for
 summarisation.
 
@@ -159,7 +159,7 @@ The AI usage page shows the month by provider and by day, with what shortening s
 `packages/ai/src/trust/pii.ts`. Recognizers in the style of Microsoft Presidio: a pattern finds a
 candidate, a validator decides — Luhn for cards (and IIN prefixes), mod-97 for IBANs (with
 country lengths), Verhoeff for Aadhaar, SSN range rules, UK NINO prefix rules, entropy and
-character classes for unknown secrets (hex hashes, UUIDs and Inkstone's own ids are excluded),
+character classes for unknown secrets (hex hashes, UUIDs and Inkwright's own ids are excluded),
 known prefixes for keys (Anthropic, OpenAI, GitHub, GitLab, Slack, AWS, Google, Stripe, Hugging
 Face, npm, SendGrid, JWTs, PEM private keys, credentials in URLs, `password=` assignments), street
 addresses (US, German, UK postcodes), and names in recognisable contexts (titles, greetings,
@@ -211,7 +211,7 @@ with this device's non-extractable authorship key; the server with `--audit-key`
 operator controls) or a key per process.
 
 **Verify** in Settings › AI › Audit trail, or offline:
-`inkstone-agent audit --verify export.jsonl [--expect-head <hash>]… [--trusted-key <fingerprint>]…`
+`inkwright-agent audit --verify export.jsonl [--expect-head <hash>]… [--trusted-key <fingerprint>]…`
 (exit code 1 when it fails). Edited, removed, inserted or reordered events break the chain; a
 forged event fails its signature. Limits: whoever holds a device's private key can rewrite that
 device's chain consistently, and cutting events off the end leaves a valid, shorter chain — record
@@ -284,8 +284,8 @@ Storage stays small: page contents are content-addressed blobs shared with versi
 |---|---|
 | Assistant panel, routines (app) | `AccessControlledNoteToolHost` in `prepareAgentRun`; memory passages and Ask sources filtered |
 | MCP tools, resources, prompts, tasks | `PolicyVault` (hidden and local-only notes read as missing; writes to read-only notes refused) |
-| A2A agent, `inkstone-agent` runner | `PolicyVault` + `AccessControlledNoteToolHost` in `prepareServerAgent` |
-| REST | Inkstone has no REST API besides MCP and A2A over HTTP, which are covered above |
+| A2A agent, `inkwright-agent` runner | `PolicyVault` + `AccessControlledNoteToolHost` in `prepareServerAgent` |
+| REST | Inkwright has no REST API besides MCP and A2A over HTTP, which are covered above |
 
 The server treats local-only notes as hidden: an MCP client's model may be in the cloud, and the
 server can't tell.

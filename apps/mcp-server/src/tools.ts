@@ -23,7 +23,7 @@ import {
   type PageInk,
   type PaperStyle,
   type TextBox,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import { notebookPath, readNoteFresh, requireWritable, type ServerContext } from './context.ts';
 import { pageSvg, pageSvgPath } from './render.ts';
 
@@ -43,8 +43,8 @@ export function textResult(text: string): CallToolResult {
 }
 
 const iso = (ms: number | undefined) => (ms ? new Date(ms).toISOString() : undefined);
-export const noteUri = (id: string) => `inkstone://notes/${id}`;
-export const pageUri = (id: string, n: number) => `inkstone://notes/${id}/pages/${n}.svg`;
+export const noteUri = (id: string) => `inkwright://notes/${id}`;
+export const pageUri = (id: string, n: number) => `inkwright://notes/${id}/pages/${n}.svg`;
 
 function notFound(id: string): Error {
   return new Error(`Note not found: ${id}. Use list_notes or search_notes to find note ids.`);
@@ -640,7 +640,7 @@ export async function trashNote(ctx: ServerContext, args: TrashNoteArgs): Promis
       trashed: true,
       id: a.id,
       title: found.note.title,
-      message: 'Moved to the Trash. This is reversible: call restore_note, or restore it from Inkstone’s Trash within 30 days.',
+      message: 'Moved to the Trash. This is reversible: call restore_note, or restore it from Inkwright’s Trash within 30 days.',
     });
   });
 }
@@ -740,7 +740,7 @@ export const TOOLS: ToolDef[] = [
     name: 'list_notes',
     title: 'List notes',
     description:
-      'List notes in the user’s Inkstone handwriting vault, newest first. Returns id, title, updated time, tags, notebook, page count and summary. Filter by notebook (id or name) or tag. Use the id with read_note or get_page_image.',
+      'List notes in the user’s Inkwright handwriting vault, newest first. Returns id, title, updated time, tags, notebook, page count and summary. Filter by notebook (id or name) or tag. Use the id with read_note or get_page_image.',
     inputSchema: listNotesShape,
     write: false,
     annotations: { ...READ, title: 'List notes' },
@@ -808,7 +808,7 @@ export const TOOLS: ToolDef[] = [
     name: 'create_note',
     title: 'Create note',
     description:
-      'Create a new note in the vault. The text (Markdown) is placed as typed text on the first page, flowing onto further pages when long. The note appears in the Inkstone app on every synced device, where the user can write on it by hand.',
+      'Create a new note in the vault. The text (Markdown) is placed as typed text on the first page, flowing onto further pages when long. The note appears in the Inkwright app on every synced device, where the user can write on it by hand.',
     inputSchema: createNoteShape,
     write: true,
     annotations: { title: 'Create note', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
@@ -837,7 +837,7 @@ export const TOOLS: ToolDef[] = [
     name: 'trash_note',
     title: 'Move note to Trash',
     description:
-      'Move a note to the Trash (soft delete). This is reversible: nothing is erased, restore_note brings it back, and the user can restore it from Inkstone’s Trash for 30 days. Confirm with the user before trashing.',
+      'Move a note to the Trash (soft delete). This is reversible: nothing is erased, restore_note brings it back, and the user can restore it from Inkwright’s Trash for 30 days. Confirm with the user before trashing.',
     inputSchema: trashNoteShape,
     write: true,
     annotations: { title: 'Move note to Trash', readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },

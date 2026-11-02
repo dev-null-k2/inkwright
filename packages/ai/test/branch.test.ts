@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BranchStore, MemoryFS, Vault } from '@inkstone/core';
+import { BranchStore, MemoryFS, Vault } from '@inkwright/core';
 import { MemoryNoteToolHost, ProposalStore, ProposingNoteToolHost, applyProposalToBranch } from '../src/index.ts';
 
 describe('applying dry-run proposals to a branch', () => {

@@ -1,4 +1,4 @@
-import { normalizePath, type FsEntry, type VaultFS } from '@inkstone/core';
+import { normalizePath, type FsEntry, type VaultFS } from '@inkwright/core';
 
 /** Shared helpers. Browser-safe: no Node APIs. */
 
@@ -209,7 +209,7 @@ export async function walkFiles(fs: VaultFS, dir = '', skip?: (path: string, ent
 }
 
 /** Suffix used by backends for in-progress atomic writes; never listed. */
-export const TEMP_SUFFIX = '.inkstone-tmp';
+export const TEMP_SUFFIX = '.inkwright-tmp';
 
 /** Junk that backends and sync must never surface (temp files, OS metadata, Chrome swap files). */
 export function isJunkName(name: string): boolean {

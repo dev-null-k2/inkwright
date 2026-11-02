@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decodeNote, decodePage, encodeNote, encodeNotebook, encodePage, newNote, newPage, point, type InkStroke, type NoteMeta, type NotebookMeta, type PageInk, type TextBox } from '@inkstone/core';
+import { decodeNote, decodePage, encodeNote, encodeNotebook, encodePage, newNote, newPage, point, type InkStroke, type NoteMeta, type NotebookMeta, type PageInk, type TextBox } from '@inkwright/core';
 import { isDerivedPath, mergeById, mergeFileBytes, mergeKindOf, mergeNote, mergeNotebook, mergeOrder, mergePage, mergeSet, stableStringify } from '../src/merge.ts';
 
 const enc = new TextEncoder();
@@ -248,7 +248,7 @@ describe('mergeFileBytes', () => {
     expect(mergeKindOf('notes/n/note.json')).toBe('note');
     expect(mergeKindOf('notebooks/b/notebook.json')).toBe('notebook');
     expect(mergeKindOf('notes/n/note.md')).toBeNull();
-    expect(mergeKindOf('inkstone.json')).toBeNull();
+    expect(mergeKindOf('inkwright.json')).toBeNull();
     expect(isDerivedPath('notes/n/pages/p.svg')).toBe(true);
     expect(isDerivedPath('notes/n/note.md')).toBe(true);
     expect(isDerivedPath('notes/n/note.json')).toBe(false);

@@ -3,10 +3,10 @@
  * and triggers (a daily/weekly time, a note with a tag being saved, a recording ending, N days
  * before a date written in a note, or a manual run).
  *
- * Honest by design: routines run while Inkstone is open. On open, the scheduler catches up —
+ * Honest by design: routines run while Inkwright is open. On open, the scheduler catches up —
  * a routine whose time passed while the app was closed runs once (not once per missed slot).
  * Nothing runs when the app is closed, unless the user runs the always-on runner
- * (`inkstone-agent run`, apps/mcp-server) on a computer: it uses this same scheduler over the
+ * (`inkwright-agent run`, apps/mcp-server) on a computer: it uses this same scheduler over the
  * vault folder and holds the routines lease (routine-lease.ts) so the two never both run a trigger.
  *
  * This module is pure scheduling logic with an injected clock and timers, so every rule is
@@ -14,7 +14,7 @@
  * Routines are stored in the vault (`ai/routines/<id>.json`) with their run state, so a run on
  * one device isn't repeated on another once sync has carried the state over.
  */
-import { isSafeId, newId, type VaultFS } from '@inkstone/core';
+import { isSafeId, newId, type VaultFS } from '@inkwright/core';
 
 export type RoutineTrigger =
   /** Every day at local time `HH:MM`. */
@@ -137,7 +137,7 @@ export function dueTimeTriggers(r: Routine, now: number, opts: { graceMs?: numbe
     if (slot <= done || slot < r.createdAt) return;
     const catchUp = now - slot > grace;
     const label = t.kind === 'daily' ? `Daily at ${(t as { time: string }).time}` : `Weekly on ${DAY_NAMES[(t as { day: number }).day % 7]} at ${(t as { time: string }).time}`;
-    out.push({ kind: t.kind, reason: catchUp ? `${label} (missed while Inkstone was closed)` : label, slot, triggerIndex: i, catchUp, slots: [{ triggerIndex: i, slot }] });
+    out.push({ kind: t.kind, reason: catchUp ? `${label} (missed while Inkwright was closed)` : label, slot, triggerIndex: i, catchUp, slots: [{ triggerIndex: i, slot }] });
   });
   if (out.length <= 1) return out;
   // One run covers every time trigger that is due.

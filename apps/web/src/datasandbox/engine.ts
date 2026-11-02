@@ -1,4 +1,4 @@
-import { datasetToCsv, quoteIdent, type Cell, type ColumnType, type Dataset, type SqlResult } from '@inkstone/core';
+import { datasetToCsv, quoteIdent, type Cell, type ColumnType, type Dataset, type SqlResult } from '@inkwright/core';
 import { DUCKDB_BUNDLES, SQLITE_WASM_URL } from './engine-assets.ts';
 
 /**

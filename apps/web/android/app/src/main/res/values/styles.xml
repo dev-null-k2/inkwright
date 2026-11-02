@@ -13,7 +13,7 @@
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
         <!-- Paper colour behind the WebView while it lays out (no white flash on fold/unfold). -->
-        <item name="android:windowBackground">@color/inkstone_splash</item>
+        <item name="android:windowBackground">@color/inkwright_splash</item>
     </style>
 
     <!--
@@ -22,9 +22,9 @@
       @drawable/splash as the window background.
     -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/inkstone_splash</item>
+        <item name="windowSplashScreenBackground">@color/inkwright_splash</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
-        <item name="windowSplashScreenIconBackgroundColor">@color/inkstone_slate</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/inkwright_slate</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
         <item name="android:background">@drawable/splash</item>
     </style>

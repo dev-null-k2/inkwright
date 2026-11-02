@@ -16,8 +16,8 @@ import {
   type PluginSource,
   type PluginsConfig,
   type VaultFS,
-} from '@inkstone/core';
-import { validateManifest, type Permission, type PluginManifest } from '@inkstone/plugin-api';
+} from '@inkwright/core';
+import { validateManifest, type Permission, type PluginManifest } from '@inkwright/plugin-api';
 
 /** A plugin ready to install: its manifest and files (paths relative to the plugin folder). */
 export interface PluginPackage {

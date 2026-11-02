@@ -8,7 +8,7 @@
  *    only from what it can see and asks `retrieve_original` when the facts it needs are missing.
  *    It measures whether shortening keeps (or lets the model recover) the needed information,
  *    and what that costs in tokens, including the extra round trip. It cannot measure how a real
- *    model's reasoning changes with shorter context; set INKSTONE_EVAL_* for live runs of the
+ *    model's reasoning changes with shorter context; set INKWRIGHT_EVAL_* for live runs of the
  *    agent evals.
  * 3. **Prompt injection** — detection precision/recall on attacks and hard negatives, and attack
  *    success rate end to end with a fully obedient scripted model (it does whatever the content

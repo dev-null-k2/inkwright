@@ -3,14 +3,14 @@
  * (`createMcpHandler`, both eras) behind a `fetch` function, reached by
  * - the 2026-07-28 SDK client (`@modelcontextprotocol/client`, negotiating via server/discover),
  * - the 2025-era SDK client (`@modelcontextprotocol/sdk` v1, `initialize` handshake),
- * - the Inkstone app's own connection class (`McpConnection` from @inkstone/ai), which also
+ * - the Inkwright app's own connection class (`McpConnection` from @inkwright/ai), which also
  *   speaks the Tasks extension.
  */
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { Client as LegacyClient } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport as LegacyTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { createMcpHandler, type AuthInfo } from '@modelcontextprotocol/server';
-import { McpConnection, type ElicitHandler } from '@inkstone/ai';
+import { McpConnection, type ElicitHandler } from '@inkwright/ai';
 import { createMcpServer, type ServerServices } from '../src/server.ts';
 
 export const MCP_URL = 'http://localhost/mcp';
@@ -36,7 +36,7 @@ export async function legacyClient(services: ServerServices, info: { name: strin
 
 /** The app's MCP client (tasks-aware) pointed at the in-process server. */
 export async function appConnection(services: ServerServices, onElicit?: ElicitHandler): Promise<McpConnection> {
-  const conn = new McpConnection({ id: 'local', name: 'Inkstone', url: MCP_URL, auth: 'none', enabled: true, tools: {}, addedAt: 0 }, { fetch: mcpFetch(services) as never, clientInfo: { name: 'inkstone-app', version: '1.0.0', title: 'Inkstone' }, ...(onElicit ? { onElicit } : {}) });
+  const conn = new McpConnection({ id: 'local', name: 'Inkwright', url: MCP_URL, auth: 'none', enabled: true, tools: {}, addedAt: 0 }, { fetch: mcpFetch(services) as never, clientInfo: { name: 'inkwright-app', version: '1.0.0', title: 'Inkwright' }, ...(onElicit ? { onElicit } : {}) });
   await conn.connect();
   return conn;
 }

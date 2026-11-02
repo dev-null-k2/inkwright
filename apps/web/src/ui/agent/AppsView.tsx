@@ -5,7 +5,7 @@
  */
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, ExternalLink, LogIn, Plus, RefreshCw, Trash2 } from 'lucide-react';
-import { KNOWN_MCP_SERVERS, defaultToolSettings, isTerminal, type McpAuthMethod, type McpServerConfig } from '@inkstone/ai';
+import { KNOWN_MCP_SERVERS, defaultToolSettings, isTerminal, type McpAuthMethod, type McpServerConfig } from '@inkwright/ai';
 import {
   addServer,
   answerTask,
@@ -163,7 +163,7 @@ function PromptList({ cfg, prompts }: { cfg: McpServerConfig; prompts: NonNullab
 function TasksSection({ tasks }: { tasks: TrackedTask[] }) {
   const toast = useApp((s) => s.toast);
   return (
-    <Section title="Background tasks" note="Long jobs that connected apps run for the assistant. Inkstone checks on them while it’s open.">
+    <Section title="Background tasks" note="Long jobs that connected apps run for the assistant. Inkwright checks on them while it’s open.">
       <ul className="ag-list">
         {[...tasks].reverse().map((t) => {
           const done = isTerminal(t.task.status);
@@ -260,7 +260,7 @@ function AddServer({ onDone }: { onDone: () => void }) {
           <button type="submit" className="btn btn-primary" disabled={busy || !url.trim()}>{busy ? 'Connecting…' : 'Connect'}</button>
         </div>
       </form>
-      <p className="ag-note">The server must allow web apps to connect (CORS). If it doesn’t, Inkstone tells you — that’s a setting only the server’s owner can change.</p>
+      <p className="ag-note">The server must allow web apps to connect (CORS). If it doesn’t, Inkwright tells you — that’s a setting only the server’s owner can change.</p>
     </Section>
   );
 }

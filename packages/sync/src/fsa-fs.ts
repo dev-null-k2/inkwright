@@ -1,4 +1,4 @@
-import type { FsEntry, VaultFS } from '@inkstone/core';
+import type { FsEntry, VaultFS } from '@inkwright/core';
 import { isJunkName, safePath, segments, toBufferView, utf8Decode, utf8Encode } from './util.ts';
 
 /*

@@ -1,6 +1,6 @@
 /**
  * Regenerates src/generated.ts from the API's OpenAPI document (built from the server's route
- * definitions, no server needed). Run: `npm run generate -w @inkstone/sdk`. A test fails when the
+ * definitions, no server needed). Run: `npm run generate -w @inkwright/sdk`. A test fails when the
  * committed file is out of date.
  */
 import { writeFileSync } from 'node:fs';

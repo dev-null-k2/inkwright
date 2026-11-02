@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MemoryFS } from '@inkstone/core';
+import { MemoryFS } from '@inkwright/core';
 import {
   AccessControlledNoteToolHost,
   AuditLog,
@@ -165,9 +165,9 @@ describe('privacy firewall', () => {
   });
 
   it('blocks a call when a blocked kind is present and honours the allow list', async () => {
-    const r = new Redactor({ mode: 'redact', kinds: { card: 'block', email: 'redact' }, allowList: ['press@inkstone.app'] });
+    const r = new Redactor({ mode: 'redact', kinds: { card: 'block', email: 'redact' }, allowList: ['press@inkwright.app'] });
     await expect(r.redact('pay with 4111111111111111')).rejects.toMatchObject({ code: 'policy_blocked', kinds: ['card'] });
-    expect(await r.redact('press@inkstone.app, me@x.io')).toBe('press@inkstone.app, ⟦EMAIL_1⟧');
+    expect(await r.redact('press@inkwright.app, me@x.io')).toBe('press@inkwright.app, ⟦EMAIL_1⟧');
     expect(await new Redactor({ mode: 'off', kinds: { email: 'block' } }).redact('me@x.io')).toBe('me@x.io');
   });
 });

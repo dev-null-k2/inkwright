@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FilePlus2, Sparkles } from 'lucide-react';
-import type { NoteDocument, PageSummariesFile } from '@inkstone/core';
+import type { NoteDocument, PageSummariesFile } from '@inkwright/core';
 import type { AppVault } from '../lib/vault.ts';
 import { useApp } from '../state/app.ts';
 import { onListenFilesChanged, readPageSummaries } from '../lib/listen/transcripts.ts';

@@ -16,7 +16,7 @@ import {
   type PageInk,
   type Reference,
   type TextBox,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import { useApp } from '../state/app.ts';
 import { useSettings } from '../state/settings.ts';
 import { inspectPdf, loadPdfJs } from '../canvas/assets.ts';

@@ -21,7 +21,7 @@ import {
   type ProvClaim,
   type ProvenanceFile,
   type Rect,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import type { InkEngine } from '../../canvas/engine.ts';
 import { useApp } from '../../state/app.ts';
 import { Popover } from '../../ui/primitives.tsx';

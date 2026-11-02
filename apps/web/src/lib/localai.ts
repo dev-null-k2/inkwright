@@ -28,7 +28,7 @@ import {
   type ModelChoice,
   type ModelRef,
   type Provider,
-} from '@inkstone/ai';
+} from '@inkwright/ai';
 import { BUILD_TARGET, isNative, safeStorage } from '../platform/env.ts';
 import { createNativeProvider, nativeLLM, nativeLLMReady, nativeLLMs } from '../platform/native-llm.ts';
 import { initNativeAI } from './native-ai.ts';
@@ -77,7 +77,7 @@ interface LocalState extends LocalPrefs {
   setPrefs: (p: Partial<LocalPrefs>) => void;
 }
 
-const KEY = 'inkstone.localai.v1';
+const KEY = 'inkwright.localai.v1';
 const DEFAULT_PREFS: LocalPrefs = { assistant: 'auto', chatModel: null, embedModel: null, embeddings: 'device', embedProviderModel: '', asrModel: null };
 
 function loadPrefs(): LocalPrefs {

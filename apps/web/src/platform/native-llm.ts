@@ -1,4 +1,4 @@
-import { CallbackProvider, toLocalMessages, withPromptTools, ThinkFilter, stripThinking, type ChatMessage, type ContentPart, type LocalChatMessage, type Provider } from '@inkstone/ai';
+import { CallbackProvider, toLocalMessages, withPromptTools, ThinkFilter, stripThinking, type ChatMessage, type ContentPart, type LocalChatMessage, type Provider } from '@inkwright/ai';
 
 /**
  * Hook for a native on-device model provided by the host app — on Android, Gemini Nano through
@@ -8,13 +8,13 @@ import { CallbackProvider, toLocalMessages, withPromptTools, ThinkFilter, stripT
  *
  * The web app owns everything around the model (prompting, tools, retrieval, citations); the
  * native side only has to implement this interface — typically by adding three methods to
- * `InkstoneNativePlugin` (native.ts) and registering an adapter at startup:
+ * `InkwrightNativePlugin` (native.ts) and registering an adapter at startup:
  *
  * ```ts
  * registerNativeLLM({
  *   id: 'gemini-nano', label: 'Gemini Nano (on this phone)',
- *   availability: () => InkstoneNative.llmAvailability().then((r) => r.state),
- *   generate: (req, onDelta, signal) => … InkstoneNative.llmGenerate(req) + 'llmDelta' listener …,
+ *   availability: () => InkwrightNative.llmAvailability().then((r) => r.state),
+ *   generate: (req, onDelta, signal) => … InkwrightNative.llmGenerate(req) + 'llmDelta' listener …,
  * });
  * ```
  *

@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom';
 import {
   ArrowRight, AudioLines, BookOpen, Bot, Cpu, FilePlus2, FileText, FileUp, Hash, MessageCircleQuestion, Moon, NotebookPen, PenLine, Search, Settings as SettingsIcon, Sparkles, Square, Sun, Type, X,
 } from 'lucide-react';
-import { parseAnswerCitations, parseMemoryLink } from '@inkstone/ai';
-import { matchScore, type RankedChunk } from '@inkstone/core';
+import { parseAnswerCitations, parseMemoryLink } from '@inkwright/ai';
+import { matchScore, type RankedChunk } from '@inkwright/core';
 import { useApp } from '../state/app.ts';
 import { useSettings } from '../state/settings.ts';
 import { getActiveAI } from '../lib/ai.ts';

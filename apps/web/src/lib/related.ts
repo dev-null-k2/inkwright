@@ -1,4 +1,4 @@
-import { KeywordRelatedNotes, dot, type RelatedNotesProvider } from '@inkstone/core';
+import { KeywordRelatedNotes, dot, type RelatedNotesProvider } from '@inkwright/core';
 import { useApp } from '../state/app.ts';
 import { appMemory, type AppMemory } from './memory.ts';
 

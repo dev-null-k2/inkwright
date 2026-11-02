@@ -3,16 +3,16 @@
  * .tar.gz anywhere), scanning it with tree-sitter in the page, importing graphify / generic graph
  * JSON, and keeping the graphs in memory for code links, drift and the agent tools.
  *
- * Everything lands in the vault (`code/sources/<id>/`, @inkstone/core CodeStore) so it syncs to the
- * user's other devices and is readable by the MCP server and the `inkstone` CLI. No server is
+ * Everything lands in the vault (`code/sources/<id>/`, @inkwright/core CodeStore) so it syncs to the
+ * user's other devices and is readable by the MCP server and the `inkwright` CLI. No server is
  * involved: archives are read in the page, folders through the File System Access API.
  */
 import { create } from 'zustand';
 import {
   CodeIndex, CodeStore, driftReport, ignoredPath, importCodeGraph, languageOf, newId, readTarball, scanRepository, stripCommonRoot,
   type CodeGraph, type CodeSource, type CodeSourceKind, type DriftItem, type NoteMeta, type PageInk, type RepoFile,
-} from '@inkstone/core';
-import { readZip } from '@inkstone/sync';
+} from '@inkwright/core';
+import { readZip } from '@inkwright/sync';
 import { activeSession } from '../lib/session.ts';
 import type { AppVault } from '../lib/vault.ts';
 import { useApp } from '../state/app.ts';
@@ -149,7 +149,7 @@ async function walkFolder(dir: DirHandle, prefix = '', out: RepoFile[] = []): Pr
 export async function addFolder(): Promise<CodeSource | null> {
   let dir: DirHandle;
   try {
-    dir = await (window as unknown as { showDirectoryPicker: (o: unknown) => Promise<DirHandle> }).showDirectoryPicker({ id: 'inkstone-code', mode: 'read' });
+    dir = await (window as unknown as { showDirectoryPicker: (o: unknown) => Promise<DirHandle> }).showDirectoryPicker({ id: 'inkwright-code', mode: 'read' });
   } catch {
     return null; // cancelled
   }

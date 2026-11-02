@@ -4,7 +4,7 @@
  * it is logged as its own Activity run and can be undone like any other change.
  */
 import { useEffect, useState } from 'react';
-import { AccessControlledNoteToolHost, RecordingNoteToolHost, RunRecorder, applyProposal, lineDiff, type Proposal } from '@inkstone/ai';
+import { AccessControlledNoteToolHost, RecordingNoteToolHost, RunRecorder, applyProposal, lineDiff, type Proposal } from '@inkwright/ai';
 import { AppNoteToolHost } from '../../lib/ai.ts';
 import { activeSession } from '../../lib/session.ts';
 import { requireHub } from '../../lib/agent/hub.ts';

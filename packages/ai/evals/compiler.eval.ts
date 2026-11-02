@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractSource, newNote, planWiki, stripMarkdown, type ProvTag, type SourceDoc } from '@inkstone/core';
+import { extractSource, newNote, planWiki, stripMarkdown, type ProvTag, type SourceDoc } from '@inkwright/core';
 import { createScriptedProvider, draftPage, pagePrompt, type CompilerAI } from '../src/index.ts';
 import { liveConfig, printReport } from './harness.ts';
 
@@ -14,7 +14,7 @@ import { liveConfig, printReport } from './harness.ts';
  *   - recall of good sentences (≥ 0.85) and tag accuracy among them (≥ 0.85)
  * Some gold labels are deliberately beyond a lexical check (an inference that sounds like a
  * quote; a plausible but unsupported link between two sources), so the numbers are honest about
- * what validation can and can't catch. With INKSTONE_EVAL_PROVIDER/KEY/MODEL set, the same pages
+ * what validation can and can't catch. With INKWRIGHT_EVAL_PROVIDER/KEY/MODEL set, the same pages
  * are drafted by a real model and its validation report is printed.
  */
 type Gold = { text: string; sources: string[]; tag: string; gold: ProvTag | 'drop' };

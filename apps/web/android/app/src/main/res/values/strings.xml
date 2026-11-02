@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Inkstone</string>
-    <string name="title_activity_main">Inkstone</string>
-    <string name="package_name">app.inkstone</string>
-    <string name="custom_url_scheme">app.inkstone</string>
+    <string name="app_name">Inkwright</string>
+    <string name="title_activity_main">Inkwright</string>
+    <string name="package_name">app.inkwright</string>
+    <string name="custom_url_scheme">app.inkwright</string>
 </resources>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { PageInk, StickyObject, TableObject } from '@inkstone/core';
+import type { PageInk, StickyObject, TableObject } from '@inkwright/core';
 import { mergePage } from '../src/index.ts';
 
 /** The fields ink actions add (docs/VAULT_FORMAT.md) merge like the rest of a page. */

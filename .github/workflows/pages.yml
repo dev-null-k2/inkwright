@@ -1,4 +1,4 @@
-# Publishes the web app to GitHub Pages on every push to main. Inkstone needs no server: the page is
+# Publishes the web app to GitHub Pages on every push to main. Inkwright needs no server: the page is
 # static files, notes live on each device (and in the user's own Google Drive / WebDAV / folder),
 # and AI runs on the device or against the user's own provider. See docs/HOSTING.md.
 name: Publish site and web app

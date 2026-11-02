@@ -8,7 +8,7 @@
  */
 import { useEffect } from 'react';
 import { create } from 'zustand';
-import { linkStampCitations, liveTranscriptContext } from '@inkstone/ai';
+import { linkStampCitations, liveTranscriptContext } from '@inkwright/ai';
 import {
   clipAtTime,
   formatStamp,
@@ -24,7 +24,7 @@ import {
   type SpeechWhere,
   type TranscriptFile,
   type TranscriptSegment,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import type { InkEngine } from '../../canvas/engine.ts';
 import { useApp } from '../../state/app.ts';
 import { appMemory } from '../memory.ts';

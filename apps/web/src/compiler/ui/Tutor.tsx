@@ -6,8 +6,8 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { PenLine, Type, X } from 'lucide-react';
-import { gradeTeachBack, tutorQuestions, type TutorQuestion, type TutorVerdict } from '@inkstone/ai';
-import { detectConflicts, extractClaims, parseAnchor, stripMarkdown, unitAnchor, type Conflict, type SourceUnit } from '@inkstone/core';
+import { gradeTeachBack, tutorQuestions, type TutorQuestion, type TutorVerdict } from '@inkwright/ai';
+import { detectConflicts, extractClaims, parseAnchor, stripMarkdown, unitAnchor, type Conflict, type SourceUnit } from '@inkwright/core';
 import { IconButton, cx } from '../../ui/primitives.tsx';
 import { useApp } from '../../state/app.ts';
 import { allDocs, compilerAI, compilerStore, unitById } from '../service.ts';

@@ -4,8 +4,8 @@
  * app's hybrid memory search), and with the compiled wiki too. The report is saved in the vault
  * (`ai/evals/memory.json`) so it can be compared later or on another device.
  */
-import { generateEvalQuestions, runMemoryEval, type EvalCondition, type MemoryEvalReport, type RetrievedPassage } from '@inkstone/ai';
-import { COMPILED_TAG } from '@inkstone/core';
+import { generateEvalQuestions, runMemoryEval, type EvalCondition, type MemoryEvalReport, type RetrievedPassage } from '@inkwright/ai';
+import { COMPILED_TAG } from '@inkwright/core';
 import { getActiveAI } from '../lib/ai.ts';
 import { appMemory } from '../lib/memory.ts';
 import { allDocs, compilerStore } from './service.ts';

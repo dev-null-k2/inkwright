@@ -1,7 +1,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState, type KeyboardEvent, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { Code2, FilePlus2, FileText, Hash } from 'lucide-react';
-import { formatCodeLink, fuzzyScore, linkTrigger, suggestNotes, type CodeSymbol, type LinkTrigger, type NoteMeta } from '@inkstone/core';
+import { formatCodeLink, fuzzyScore, linkTrigger, suggestNotes, type CodeSymbol, type LinkTrigger, type NoteMeta } from '@inkwright/core';
 import { suggestCode } from '../../dev/suggest.ts';
 import { useApp } from '../../state/app.ts';
 import { argbCss } from './color.ts';

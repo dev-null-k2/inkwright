@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Columns2, History, Lock, LockOpen } from 'lucide-react';
-import { VersionHistory, sealedView, type NoteDocument, type NoteMeta, type StrokeLayer } from '@inkstone/core';
+import { VersionHistory, sealedView, type NoteDocument, type NoteMeta, type StrokeLayer } from '@inkwright/core';
 import type { InkEngine, Tool } from '../canvas/engine.ts';
 import { autoSpreads } from '../canvas/layout.ts';
 import type { EditorSession } from '../lib/session.ts';

@@ -31,8 +31,8 @@ import {
   type NoteSearchHit,
   type NoteToolHost,
   type NotebookInfo,
-} from '@inkstone/ai';
-import type { NoteDocument } from '@inkstone/core';
+} from '@inkwright/ai';
+import type { NoteDocument } from '@inkwright/core';
 import { AppNoteToolHost, type ActiveAI } from '../ai.ts';
 import { activeSession } from '../session.ts';
 import type { AppVault } from '../vault.ts';
@@ -197,5 +197,5 @@ export async function prepareAgentRun(o: PrepareOptions): Promise<PreparedRun> {
   }
   if (propose) sections.push(PROPOSAL_NOTICE);
   if (o.context) sections.push(o.context);
-  return { tools: guardAgentTools(tools, policy, run), system: notesAgentSystemPrompt({ appName: 'Inkstone', extra: sections.join('\n\n') }), recorder, proposals: proposing?.made ?? [] };
+  return { tools: guardAgentTools(tools, policy, run), system: notesAgentSystemPrompt({ appName: 'Inkwright', extra: sections.join('\n\n') }), recorder, proposals: proposing?.made ?? [] };
 }

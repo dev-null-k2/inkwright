@@ -2,7 +2,7 @@
 name: extract-todos
 description: Finds action items in notes (checkboxes, "need to", "TODO", things someone must do) and turns them into a clean checklist with due dates. Use when the user asks for their to-dos, tasks, action items or next steps, or wants them collected into one list.
 metadata:
-  author: inkstone
+  author: inkwright
   version: "1.0"
 ---
 

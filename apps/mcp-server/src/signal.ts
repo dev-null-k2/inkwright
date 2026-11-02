@@ -1,6 +1,6 @@
 /**
  * An optional signalling relay for the peer link (docs/COLLABORATION.md, "Signalling"):
- * `inkstone-mcp --http <port> --signal-token <secret>` adds it at `/signal/v1`.
+ * `inkwright-mcp --http <port> --signal-token <secret>` adds it at `/signal/v1`.
  *
  * Devices that want to connect without exchanging QR codes in both directions leave their
  * (sealed) WebRTC offers and answers here and pick up the other side's. The relay is a dumb

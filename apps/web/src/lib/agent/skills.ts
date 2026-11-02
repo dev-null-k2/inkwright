@@ -1,10 +1,10 @@
 /**
  * Importing and exporting Agent Skills in the app: a picked folder, a `.zip`/`.skill` archive, or a
- * link to a SKILL.md. The parsing and validation live in @inkstone/ai; this file only gets bytes
+ * link to a SKILL.md. The parsing and validation live in @inkwright/ai; this file only gets bytes
  * in and out of the browser.
  */
-import { SkillFormatError, skillFromFiles, skillFromMarkdown, skillMdUrl, type SkillBundle } from '@inkstone/ai';
-import { readZip, writeZip } from '@inkstone/sync';
+import { SkillFormatError, skillFromFiles, skillFromMarkdown, skillMdUrl, type SkillBundle } from '@inkwright/ai';
+import { readZip, writeZip } from '@inkwright/sync';
 import { saveFile } from '../../platform/files.ts';
 import { requireHub } from './hub.ts';
 

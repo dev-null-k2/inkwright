@@ -25,8 +25,8 @@ import {
   type AIPolicy,
   type NoteLabel,
   type TrustServices,
-} from '@inkstone/ai';
-import type { NoteMeta } from '@inkstone/core';
+} from '@inkwright/ai';
+import type { NoteMeta } from '@inkwright/core';
 import { deviceKey, shortDeviceId } from '../../authorship/keys.ts';
 import { isArtifact } from '../../platform/env.ts';
 import { useApp } from '../../state/app.ts';

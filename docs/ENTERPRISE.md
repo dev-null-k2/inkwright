@@ -1,6 +1,6 @@
-# Inkstone for organisations: the self-hosted appliance
+# Inkwright for organisations: the self-hosted appliance
 
-Inkstone needs no backend of ours. For an organisation that wants the notes, the agents and the
+Inkwright needs no backend of ours. For an organisation that wants the notes, the agents and the
 AI inside its own network — up to fully air-gapped — `deploy/` has a Docker appliance:
 
 ```
@@ -25,7 +25,7 @@ AI inside its own network — up to fully air-gapped — `deploy/` has a Docker 
 - **web** — the same static app as the public PWA, built with `VITE_MANAGED_POLICY_URL` so it
   loads the administrator's policy; nginx with a strict CSP (`connect-src 'self'`: the app can
   only talk to this origin), no-sniff, no referrer, framing denied.
-- **server** — `inkstone-agent run` (bundled, distroless, non-root, read-only filesystem): the MCP
+- **server** — `inkwright-agent run` (bundled, distroless, non-root, read-only filesystem): the MCP
   server (2026-07-28 and 2025 clients), the A2A agent, and the always-on routine runner over the
   vault volume. `/healthz` for the health check.
 - **webdav** — the vault over WebDAV, so the web and mobile apps sync to the same files the server
@@ -35,7 +35,7 @@ AI inside its own network — up to fully air-gapped — `deploy/` has a Docker 
 ## Deploy
 
 ```sh
-cp deploy/.env.example deploy/.env                      # set INKSTONE_PUBLIC_URL and sign-in
+cp deploy/.env.example deploy/.env                      # set INKWRIGHT_PUBLIC_URL and sign-in
 cp deploy/managed-policy.example.json deploy/managed-policy.json   # your AI policy (below)
 htpasswd -B -c deploy/webdav.htpasswd alice             # WebDAV users for sync
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
@@ -50,15 +50,15 @@ container, internally). Logs go to Docker's json-file driver, rotated (10 MB × 
 
 | Variable | Meaning |
 |---|---|
-| `INKSTONE_PUBLIC_URL` | The https address users and clients use. Required; the OAuth resource is `<url>/mcp`. |
-| `INKSTONE_OAUTH_ISSUER`, `INKSTONE_OAUTH_AUDIENCE`, `INKSTONE_OAUTH_JWKS_URL` | OpenID Connect / OAuth 2.1 (recommended): the server is a resource server that validates JWT access tokens from your issuer (Keycloak, Entra ID, Okta, Auth0, Zitadel…), with `notes:read` / `notes:write` scopes and step-up. See docs/AGENTS.md › OAuth. |
-| `INKSTONE_MCP_TOKEN` | A bearer token instead of OAuth. Without either, the server refuses to listen on the network. |
-| `INKSTONE_AI_PROVIDER`, `_MODEL`, `_BASE_URL`, `INKSTONE_AI_ON_PREMISES=1` | The server's own AI. On-premises AI counts as "this device" for the AI policy and isn't redacted. |
-| `INKSTONE_POLICY_FILE` | The managed AI policy (mounted from `INKSTONE_MANAGED_POLICY`). |
-| `INKSTONE_AUDIT_KEY` | Path to a P-256 private JWK that signs the server's audit trail (mount it as a secret; publish its fingerprint). |
-| `INKSTONE_A2A` | `1` serves the A2A agent. |
+| `INKWRIGHT_PUBLIC_URL` | The https address users and clients use. Required; the OAuth resource is `<url>/mcp`. |
+| `INKWRIGHT_OAUTH_ISSUER`, `INKWRIGHT_OAUTH_AUDIENCE`, `INKWRIGHT_OAUTH_JWKS_URL` | OpenID Connect / OAuth 2.1 (recommended): the server is a resource server that validates JWT access tokens from your issuer (Keycloak, Entra ID, Okta, Auth0, Zitadel…), with `notes:read` / `notes:write` scopes and step-up. See docs/AGENTS.md › OAuth. |
+| `INKWRIGHT_MCP_TOKEN` | A bearer token instead of OAuth. Without either, the server refuses to listen on the network. |
+| `INKWRIGHT_AI_PROVIDER`, `_MODEL`, `_BASE_URL`, `INKWRIGHT_AI_ON_PREMISES=1` | The server's own AI. On-premises AI counts as "this device" for the AI policy and isn't redacted. |
+| `INKWRIGHT_POLICY_FILE` | The managed AI policy (mounted from `INKWRIGHT_MANAGED_POLICY`). |
+| `INKWRIGHT_AUDIT_KEY` | Path to a P-256 private JWK that signs the server's audit trail (mount it as a secret; publish its fingerprint). |
+| `INKWRIGHT_A2A` | `1` serves the A2A agent. |
 
-Every option also exists as a command-line flag and in the JSON config file (`inkstone-mcp --help`).
+Every option also exists as a command-line flag and in the JSON config file (`inkwright-mcp --help`).
 
 ### Managed AI policy
 
@@ -73,7 +73,7 @@ writing, a year of activity and seven years of audit.
 ### Air-gapped operation
 
 - Build the images where the registry is reachable (`docker compose build`), push them to your
-  registry, and set `INKSTONE_IMAGE_PREFIX`; pin by digest.
+  registry, and set `INKWRIGHT_IMAGE_PREFIX`; pin by digest.
 - Models: on a connected machine, `docker run --rm -v ollama:/root/.ollama ollama/ollama pull
   qwen2.5:7b-instruct`, then move the volume (or `ollama` model directory) in. The `ollama`
   container has no route out, so it cannot pull.
@@ -87,7 +87,7 @@ writing, a year of activity and seven years of audit.
 Egress is a decision, not a default. To let the server reach exactly one provider, attach the
 server to an egress network that only reaches an HTTP(S) proxy with an allowlist (e.g. Squid or
 your corporate proxy allowing `api.anthropic.com`), set `HTTPS_PROXY` on the server, and keep
-`INKSTONE_AI_ON_PREMISES` unset so the privacy firewall redacts. Set budgets and routes in the
+`INKWRIGHT_AI_ON_PREMISES` unset so the privacy firewall redacts. Set budgets and routes in the
 managed policy. Users' apps reach providers directly from their devices unless your network
 policy prevents it — the managed policy's routes (`"device"`) keep app AI on devices.
 
@@ -101,7 +101,7 @@ policy prevents it — the managed policy's routes (`"device"`) keep app AI on d
 | API keys of users' own providers | Each device's encrypted secret store; never synced | No |
 | Requests to an AI provider | Only if a route sends them to a cloud provider; after redaction | Only to that provider |
 
-Inkstone has no telemetry. Backups: snapshot the `vault` volume; it is plain files.
+Inkwright has no telemetry. Backups: snapshot the `vault` volume; it is plain files.
 
 ## Retention and legal hold
 
@@ -110,7 +110,7 @@ Set in the managed (or user) policy: `retention.activityDays`, `auditDays`, `his
 (version history), and when the server starts (activity, audit, decided proposals); audit pruning removes whole months and records what it removed, so the remaining
 chain still verifies. While `legalHold` is true nothing is pruned anywhere — not even the default
 caps. Trash: notes in Trash are purged by the app after 30 days; under legal hold, keep backups of
-the `vault` volume, because a user can still empty their Trash (Inkstone does not stop people
+the `vault` volume, because a user can still empty their Trash (Inkwright does not stop people
 deleting their own notes).
 
 ## Audit and compliance exports
@@ -140,7 +140,7 @@ docs/TRUST.md › Audit trail.
 - [ ] TLS in front; HSTS at the terminator; the web port bound to localhost or a private interface.
 - [ ] OAuth with your IdP (short-lived JWTs, `notes:write` granted only to clients that need it), or a long random token kept in a secret store.
 - [ ] A managed policy committed to your config repo and reviewed like code.
-- [ ] `INKSTONE_AUDIT_KEY` from a secret; its public fingerprint recorded; exports verified with `--trusted-key`.
+- [ ] `INKWRIGHT_AUDIT_KEY` from a secret; its public fingerprint recorded; exports verified with `--trusted-key`.
 - [ ] WebDAV users with strong passwords (`htpasswd -B`); one user per person.
 - [ ] Images pinned by digest; SBOM attached to the deployment record; rebuild on advisories.
 - [ ] Containers as shipped: non-root, read-only root filesystems, all capabilities dropped, `no-new-privileges`; don't add `privileged` or host networking.

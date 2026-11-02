@@ -113,7 +113,7 @@ export interface TextPlacement { x: number; y: number; width: number; fontSize: 
 /**
  * Where a typed answer goes for a tap at (x, y): inside the box around it, else on the nearest
  * underline just below, else right where the user tapped. `y` of the result is the text box's
- * top (Inkstone text boxes put the first baseline ~1.02 × font size below the top).
+ * top (Inkwright text boxes put the first baseline ~1.02 × font size below the top).
  */
 export function placeText(g: GrayImage | null, x: number, y: number, pageWidth: number, defaultSize = 14): TextPlacement {
   if (g) {

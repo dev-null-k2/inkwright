@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { encodeApiKeys, encodePluginsConfig, decodeApiKeys, decodePluginsConfig, type ApiKeyRecord, type InstalledPlugin } from '@inkstone/core';
+import { encodeApiKeys, encodePluginsConfig, decodeApiKeys, decodePluginsConfig, type ApiKeyRecord, type InstalledPlugin } from '@inkwright/core';
 import { mergeApiKeys, mergeFileBytes, mergeKindOf, mergePluginsConfig, utf8Decode, utf8Encode } from '../src/index.ts';
 
 const plugin = (id: string, p: Partial<InstalledPlugin> = {}): InstalledPlugin => ({ id, version: '1.0.0', enabled: true, granted: [], source: { kind: 'catalog', catalogId: id }, installedAt: 1, updatedAt: 1, ...p });

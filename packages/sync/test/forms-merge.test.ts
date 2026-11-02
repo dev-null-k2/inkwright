@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { newNote, type NoteMeta } from '@inkstone/core';
+import { newNote, type NoteMeta } from '@inkwright/core';
 import { mergeNote } from '../src/merge.ts';
 
 const note = (extra: Partial<NoteMeta> = {}): NoteMeta => ({ ...newNote({ id: 'N1', title: 'Form', pageId: 'P01', now: 100 }), ...extra });

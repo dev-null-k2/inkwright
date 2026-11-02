@@ -1,10 +1,10 @@
 /**
- * The plugin side of the protocol: builds an `InkstoneAPI` over any message transport. The
+ * The plugin side of the protocol: builds an `InkwrightAPI` over any message transport. The
  * sandbox runtime uses it with `parent.postMessage`; tests and the in-page automation API use it
  * with an in-process channel. The client keeps the handlers a plugin registers (commands, AI
  * tools, importers, exporters) and answers the host's `invoke` messages with them.
  */
-import type { CommandHandler, EventPayloads, ExportHandler, ImportHandler, InkstoneAPI, NoteEvent, ToolHandler } from './api.ts';
+import type { CommandHandler, EventPayloads, ExportHandler, ImportHandler, InkwrightAPI, NoteEvent, ToolHandler } from './api.ts';
 import { PluginApiError, envelope, isProtocolMessage, toWireError, type HostToPlugin, type InvokeTarget, type MethodName, type PluginToHost } from './protocol.ts';
 
 export interface ClientTransport {
@@ -14,7 +14,7 @@ export interface ClientTransport {
 }
 
 export interface PluginClient {
-  api: InkstoneAPI;
+  api: InkwrightAPI;
   /** Stops listening and rejects pending calls. */
   close(): void;
 }
@@ -72,7 +72,7 @@ export function createPluginClient(transport: ClientTransport, opts: { timeoutMs
   };
   const stop = transport.listen((m) => void onMessage(m));
 
-  const api: InkstoneAPI = {
+  const api: InkwrightAPI = {
     app: { info: () => call('app.info') },
     notes: {
       list: (o = {}) => call('notes.list', o),

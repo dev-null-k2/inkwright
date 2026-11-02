@@ -29,7 +29,7 @@ import {
   type ProposalChoice,
   type SourceNote,
   type WikiProposal,
-} from '@inkstone/ai';
+} from '@inkwright/ai';
 import {
   COMPILED_TAG,
   anchorLink,
@@ -46,7 +46,7 @@ import {
   type SourceDoc,
   type SourceUnit,
   type NoteMeta,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import { getActiveAI } from '../lib/ai.ts';
 import { aiCanSee, aiMaySend } from '../lib/trust/state.ts';
 import { initLocalAI, localActiveAI, useLocalAI } from '../lib/localai.ts';
@@ -127,7 +127,7 @@ export function startCompiler(vault: AppVault): void {
     if (c.type === 'reloaded') { docs.clear(); void refreshStoreState(); }
     if (c.type === 'note' || c.type === 'note-deleted' || c.type === 'reloaded') scheduleScan();
   });
-  if (typeof __E2E__ !== 'undefined' && __E2E__) (window as unknown as { __inkstoneCompiler?: unknown }).__inkstoneCompiler = { scanNow, compileNow, store, docs: () => [...docs.values()].map((d) => d.doc) };
+  if (typeof __E2E__ !== 'undefined' && __E2E__) (window as unknown as { __inkwrightCompiler?: unknown }).__inkwrightCompiler = { scanNow, compileNow, store, docs: () => [...docs.values()].map((d) => d.doc) };
   void refreshStoreState().then(() => scheduleScan(1500));
 }
 

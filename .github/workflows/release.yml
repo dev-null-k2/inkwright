@@ -62,7 +62,7 @@ jobs:
 
       - name: Web (single file)
         run: |
-          npm run build:single -w @inkstone/web
+          npm run build:single -w @inkwright/web
           cp apps/web/dist-single/index.html out/Inkwright-${{ steps.v.outputs.version }}.html
 
       - name: Source

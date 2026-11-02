@@ -43,12 +43,12 @@ async function addProvider(page: Page) {
   await page.getByRole('button', { name: 'Back' }).click();
 }
 
-const ink = (page: Page, i = 0): Promise<{ id: string; origin: string | null; color: string; n: number }[]> => page.evaluate((k) => (window as any).__inkstone.doc.page(k).strokes.map((s: any) => ({ id: s.id, origin: s.origin ?? null, color: s.color, n: s.points.length })), i);
-const objects = (page: Page, i = 0) => page.evaluate((k) => (window as any).__inkstone.doc.page(k).objects ?? [], i);
+const ink = (page: Page, i = 0): Promise<{ id: string; origin: string | null; color: string; n: number }[]> => page.evaluate((k) => (window as any).__inkwright.doc.page(k).strokes.map((s: any) => ({ id: s.id, origin: s.origin ?? null, color: s.color, n: s.points.length })), i);
+const objects = (page: Page, i = 0) => page.evaluate((k) => (window as any).__inkwright.doc.page(k).objects ?? [], i);
 
 /** Adds a typed text box through the document (what the text tool produces). */
 const typeBox = (page: Page, text: string, x: number, y: number, width = 150) => page.evaluate(({ text, x, y, width }) => {
-  const d = (window as any).__inkstone.doc;
+  const d = (window as any).__inkwright.doc;
   d.upsertText(0, { id: `t${Math.round(x)}${Math.round(y)}`, x, y, width, text, fontSize: 14, color: '#FF1B1F24', font: 'sans', createdAt: Date.now() });
 }, { text, x, y, width });
 
@@ -59,7 +59,7 @@ async function moreMenu(page: Page, item: string | RegExp) {
 
 /** Screen position (canvas px) of a page point. */
 const toScreen = (page: Page, x: number, y: number) => page.evaluate(({ x, y }) => {
-  const r = (window as any).__inkstone.engine.pageRectToScreen(0, { minX: x, minY: y, maxX: x, maxY: y });
+  const r = (window as any).__inkwright.engine.pageRectToScreen(0, { minX: x, minY: y, maxX: x, maxY: y });
   return [r.x, r.y] as [number, number];
 }, { x, y });
 
@@ -78,7 +78,7 @@ test.describe('AI answers in ink', () => {
     // The question went to the model as text from the selection.
     expect(lastUser(reqs[0])).toContain('What is the capital of France?');
     // Written below the question, not over it.
-    const top = await page.evaluate(() => Math.min(...(window as any).__inkstone.doc.page(0).strokes.flatMap((s: any) => s.points.map((p: any) => p.y))));
+    const top = await page.evaluate(() => Math.min(...(window as any).__inkwright.doc.page(0).strokes.flatMap((s: any) => s.points.map((p: any) => p.y))));
     expect(top).toBeGreaterThan(110);
     await expect(page.getByText('Answered on the page')).toBeVisible();
     await page.keyboard.press(`${await modKey(page)}+z`);
@@ -98,13 +98,13 @@ test.describe('AI answers in ink', () => {
     await typeBox(page, 'Answer to everything?', 80, 100);
     await page.keyboard.press(`${await modKey(page)}+a`);
     await page.getByRole('toolbar', { name: /selected/ }).getByRole('button', { name: 'Answer' }).click();
-    await expect.poll(() => page.evaluate(() => ((window as any).__inkstone.doc.page(0).texts ?? []).map((t: any) => [t.text, t.origin ?? null]))).toContainEqual(['Forty-two.', 'ai']);
+    await expect.poll(() => page.evaluate(() => ((window as any).__inkwright.doc.page(0).texts ?? []).map((t: any) => [t.text, t.origin ?? null]))).toContainEqual(['Forty-two.', 'ai']);
     // The assistant panel's reply offers "Write the answer here" too (typed, per the setting).
     await page.locator('.ai-btn').click();
     await page.locator('.ai-input textarea').fill('What is six times seven?');
     await page.locator('.ai-input textarea').press('Enter');
     await page.getByRole('button', { name: 'Write the answer here' }).click();
-    await expect.poll(() => page.evaluate(() => ((window as any).__inkstone.doc.page(0).texts ?? []).length)).toBe(3);
+    await expect.poll(() => page.evaluate(() => ((window as any).__inkwright.doc.page(0).texts ?? []).length)).toBe(3);
   });
 
   test('the assistant writes on the open page with write_in_ink', async ({ page }) => {
@@ -185,7 +185,7 @@ test.describe('executable diagrams', () => {
     await openApp(page);
     await newNote(page);
     await page.evaluate(() => {
-      const d = (window as any).__inkstone.doc;
+      const d = (window as any).__inkwright.doc;
       const pts = (c: number[][]) => c.flatMap(([x, y], i, a) => (i ? Array.from({ length: 20 }, (_, k) => ({ x: a[i - 1]![0]! + ((x! - a[i - 1]![0]!) * (k + 1)) / 20, y: a[i - 1]![1]! + ((y! - a[i - 1]![1]!) * (k + 1)) / 20, t: k, p: 0.5, tilt: -1, orient: -1 })) : [{ x: x!, y: y!, t: 0, p: 0.5, tilt: -1, orient: -1 }]));
       const s = (id: string, c: number[][], shape?: string) => ({ id, pen: 'ballpoint', color: '#FF000000', size: 2, createdAt: 0, points: pts(c), ...(shape ? { shape } : {}) });
       const strokes = [
@@ -237,7 +237,7 @@ test.describe('data sandbox', () => {
     await dlg.getByRole('button', { name: 'Put on page' }).click();
     await expect.poll(async () => (await objects(page)).length).toBe(2);
     await dlg.getByRole('button', { name: 'Chart on page' }).click();
-    await expect.poll(() => page.evaluate(() => ((window as any).__inkstone.doc.page(0).images ?? []).map((i: any) => i.origin))).toEqual(['solver']);
+    await expect.poll(() => page.evaluate(() => ((window as any).__inkwright.doc.page(0).images ?? []).map((i: any) => i.origin))).toEqual(['solver']);
     await dlg.getByText('Query history').click();
     await expect(dlg.locator('.ia-history li')).toHaveCount(2);
     await page.screenshot({ path: 'test-results/ink-data.png' });
@@ -286,7 +286,7 @@ test.describe('photo to ink', () => {
     await page.keyboard.press('ArrowRight');
     await dlg.getByRole('button', { name: 'Make ink' }).click();
     await expect(dlg).toHaveCount(0, { timeout: 30000 });
-    const p1 = await page.evaluate(() => { const p = (window as any).__inkstone.doc.page(1); return { n: p.strokes.length, origins: [...new Set(p.strokes.map((s: any) => s.origin))], underlay: p.underlay, size: p.size }; });
+    const p1 = await page.evaluate(() => { const p = (window as any).__inkwright.doc.page(1); return { n: p.strokes.length, origins: [...new Set(p.strokes.map((s: any) => s.origin))], underlay: p.underlay, size: p.size }; });
     expect(p1.n).toBeGreaterThan(10);
     expect(p1.origins).toEqual(['import']);
     expect(p1.underlay).toMatchObject({ kind: 'photo' });
@@ -319,7 +319,7 @@ test.describe('reading and read aloud', () => {
     await openApp(page);
     await newNote(page);
     await page.evaluate(() => {
-      const d = (window as any).__inkstone.doc;
+      const d = (window as any).__inkwright.doc;
       const mk = (id: string, y: number) => ({ id, pen: 'fountain', color: '#FF000000', size: 2, createdAt: 0, points: Array.from({ length: 30 }, (_, i) => ({ x: 60 + i * 5, y: y + Math.sin(i) * 4, t: i, p: 0.5, tilt: -1, orient: -1 })) });
       d.commit(0, { label: 'x', strokes: { removed: [], added: [mk('w1', 300), mk('w2', 60)].map((item, index) => ({ index, item })) } });
       d.setRecognizedText(d.page(0).id, 'top line\nbottom line', 'test', [
@@ -330,7 +330,7 @@ test.describe('reading and read aloud', () => {
     await typeBox(page, 'Typed in the middle.', 60, 160, 300);
     // Record which ink is picked out as each piece is read (the search highlight).
     await page.evaluate(() => {
-      const e = (window as any).__inkstone.engine;
+      const e = (window as any).__inkwright.engine;
       const orig = e.focusStrokes.bind(e);
       (window as any).__focus = [];
       e.focusStrokes = (i: number, ids: string[] | null, ms?: number) => { (window as any).__focus.push(ids); return orig(i, ids, ms); };
@@ -393,7 +393,7 @@ test.describe('paper workbench', () => {
     await expect(ta).toHaveValue('As shown in [@lecun2015] and [@knuth1984]');
     await page.keyboard.press('Escape');
     await page.locator('.ed-canvas').click({ position: { x: 600, y: 600 } });
-    await expect.poll(() => page.evaluate(() => ((window as any).__inkstone.doc.page(0).texts ?? []).map((t: any) => t.text))).toEqual(['As shown in [@lecun2015] and [@knuth1984]']);
+    await expect.poll(() => page.evaluate(() => ((window as any).__inkwright.doc.page(0).texts ?? []).map((t: any) => t.text))).toEqual(['As shown in [@lecun2015] and [@knuth1984]']);
     await moreMenu(page, 'Bibliography');
     const bib = page.getByRole('dialog', { name: 'Bibliography' });
     await expect(bib.getByRole('list', { name: 'References' })).toContainText('Knuth, D. E. (1984). The TeXbook. Addison-Wesley.');

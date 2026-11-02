@@ -2,7 +2,7 @@
 name: summarize-note
 description: Summarizes a note faithfully as one or two sentences, a few bullets, or a structured overview, and can save it as the note's library summary. Use when the user asks to summarize, recap, give the gist or TL;DR of a note or set of notes.
 metadata:
-  author: inkstone
+  author: inkwright
   version: "1.0"
 ---
 

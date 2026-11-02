@@ -167,7 +167,7 @@ describe('createPluginClient', () => {
     const host = fakeHost((method, params) => (method === 'notes.get' ? { id: params[0], title: 'T' } : null));
     const { api } = createPluginClient(host.transport);
     await expect(api.notes.get('n1')).resolves.toEqual({ id: 'n1', title: 'T' });
-    expect(host.sent[0]).toMatchObject({ p: 'inkstone-plugin', v: 1, kind: 'call', method: 'notes.get', params: ['n1'] });
+    expect(host.sent[0]).toMatchObject({ p: 'inkwright-plugin', v: 1, kind: 'call', method: 'notes.get', params: ['n1'] });
   });
 
   it('rejects with the host error code', async () => {
@@ -212,8 +212,8 @@ describe('createPluginClient', () => {
   });
 
   it('ignores messages of other protocols or versions', () => {
-    expect(isProtocolMessage({ p: 'inkstone-plugin', v: 1, kind: 'event' })).toBe(true);
-    expect(isProtocolMessage({ p: 'inkstone-plugin', v: 2, kind: 'event' })).toBe(false);
+    expect(isProtocolMessage({ p: 'inkwright-plugin', v: 1, kind: 'event' })).toBe(true);
+    expect(isProtocolMessage({ p: 'inkwright-plugin', v: 2, kind: 'event' })).toBe(false);
     expect(isProtocolMessage({ kind: 'event' })).toBe(false);
     expect(isProtocolMessage('hi')).toBe(false);
   });

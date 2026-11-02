@@ -1,4 +1,4 @@
-import { newId, newPage, PAGE_SIZES, type NoteKind, type NoteMeta, type NotebookMeta, type PageInk, type PageSize, type PaperSpec } from '@inkstone/core';
+import { newId, newPage, PAGE_SIZES, type NoteKind, type NoteMeta, type NotebookMeta, type PageInk, type PageSize, type PaperSpec } from '@inkwright/core';
 import { useApp } from '../state/app.ts';
 import { useSettings } from '../state/settings.ts';
 import { askConfirm, askText } from '../ui/prompts.tsx';
@@ -172,7 +172,7 @@ export async function importFiles(files: File[], notebookId?: string): Promise<s
         const md = await import('./obsidian.ts');
         if (await md.isMarkdownVaultZip(f)) { await md.importMarkdownVault([f]); continue; }
         await importBackup(f);
-      } else app().fail(`${f.name} isn't a PDF, image, text file or Inkstone backup.`);
+      } else app().fail(`${f.name} isn't a PDF, image, text file or Inkwright backup.`);
     } catch (e) {
       console.error(e);
       app().fail(`Couldn't import ${f.name}: ${(e as Error).message}`);
@@ -262,7 +262,7 @@ async function importImages(files: File[], notebookId?: string): Promise<string>
 
 async function importBackup(f: File) {
   const v = app().vault!;
-  const sync = await import('@inkstone/sync');
+  const sync = await import('@inkwright/sync');
   const mode = (await askConfirm('Restore backup', 'Merge the notes in this backup with the notes on this device? Notes with the same id are replaced by the newer copy.', 'Merge backup')) ? 'merge' : null;
   if (!mode) return;
   await (sync as any).importVaultZip(v.fs, await readBytes(f), { mode });

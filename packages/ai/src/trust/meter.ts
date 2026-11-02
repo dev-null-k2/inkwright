@@ -9,7 +9,7 @@
  * privacy › Prices). Calls to models on the device cost nothing. Unknown cloud models are
  * metered in tokens with cost shown as unknown, never guessed.
  */
-import type { VaultFS } from '@inkstone/core';
+import type { VaultFS } from '@inkwright/core';
 import type { AIPolicy, Price } from './policy.ts';
 
 /**

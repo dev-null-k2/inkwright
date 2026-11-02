@@ -1,4 +1,4 @@
-import { newId, type AudioClip } from '@inkstone/core';
+import { newId, type AudioClip } from '@inkwright/core';
 
 /**
  * Records lecture/meeting audio while you write. Every stroke carries its wall-clock time, so

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readZip, writeZip } from '@inkstone/sync';
+import { readZip, writeZip } from '@inkwright/sync';
 import {
   MemoryFS, Vault, emitYaml, exportObsidianVault, imageDimensions, importObsidianVault, markdownBlocks, obsidianFileName, parseYaml,
   splitFrontmatter, vaultFilesOf, type PageInk, type VaultFile,
@@ -135,7 +135,7 @@ describe('Obsidian export', () => {
     const bio = md('School/Biology.md');
     const { data, body } = splitFrontmatter(bio);
     expect(data).toMatchObject({ tags: ['science', 'genetics'], created: '2026-11-01T12:00:00Z', summary: 'All about cells' });
-    expect(typeof data['inkstone-id']).toBe('string');
+    expect(typeof data['inkwright-id']).toBe('string');
     expect(body).toContain('## Page 1');
     expect(body).toContain('See [[Q - answers|Q: answers]] and [[Chem lab#Page 2|lab]]');
     expect(body).toContain('handwritten mitochondria');

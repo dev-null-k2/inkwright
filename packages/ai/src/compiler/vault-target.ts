@@ -18,7 +18,7 @@ import {
   type Vault,
   setItem,
   textItemKey,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import type { CompilerConfig } from './store.ts';
 import { selectSources, type SourceNote, type WikiTarget } from './compile.ts';
 

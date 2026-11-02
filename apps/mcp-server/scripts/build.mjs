@@ -1,8 +1,8 @@
 // Bundles the two command-line tools into self-contained files:
-//   dist/index.js  → inkstone-mcp   (MCP server: stdio or HTTP, optional A2A)
-//   dist/agent.js  → inkstone-agent (always-on runner, service install helpers, approvals)
-//   dist/inkstone.js → inkstone     (mcp / scan / drift for developers and coding agents)
-// `?raw` imports (the built-in SKILL.md files in @inkstone/ai) are inlined as strings.
+//   dist/index.js  → inkwright-mcp   (MCP server: stdio or HTTP, optional A2A)
+//   dist/agent.js  → inkwright-agent (always-on runner, service install helpers, approvals)
+//   dist/inkwright.js → inkwright     (mcp / scan / drift for developers and coding agents)
+// `?raw` imports (the built-in SKILL.md files in @inkwright/ai) are inlined as strings.
 import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,7 +19,7 @@ const raw = {
 };
 
 await build({
-  entryPoints: { index: path.join(root, 'src/index.ts'), agent: path.join(root, 'src/agent-cli.ts'), inkstone: path.join(root, 'src/inkstone-cli.ts') },
+  entryPoints: { index: path.join(root, 'src/index.ts'), agent: path.join(root, 'src/agent-cli.ts'), inkwright: path.join(root, 'src/inkwright-cli.ts') },
   outdir: path.join(root, 'dist'),
   bundle: true,
   platform: 'node',

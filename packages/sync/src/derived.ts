@@ -1,4 +1,4 @@
-import { VaultLayout, decodeNote, decodePage, exportMarkdown, exportPageSvg, isSafeId, newPage, type PageInk, type VaultFS } from '@inkstone/core';
+import { VaultLayout, decodeNote, decodePage, exportMarkdown, exportPageSvg, isSafeId, newPage, type PageInk, type VaultFS } from '@inkwright/core';
 
 /** `notes/<id>/...` → `<id>`. */
 export function noteIdOf(path: string): string | null {

@@ -125,7 +125,7 @@ export async function startHttpServer(services: ServerServices, opts: HttpOption
   let api: { handle(req: Request): Promise<Response>; close?(): Promise<void> } | null = null;
   const signal: SignalRelay | null = opts.signal ? createSignalRelay({ token: opts.signal.token }) : null;
 
-  const mcp: McpHttpHandler = createMcpHandler((rc) => createMcpServer(services, rc), { legacy: 'stateless', maxRequestBodySize: max, onerror: (e) => { if (process.env.INKSTONE_DEBUG) process.stderr.write(`[inkstone-mcp] ${e.message}\n`); } });
+  const mcp: McpHttpHandler = createMcpHandler((rc) => createMcpServer(services, rc), { legacy: 'stateless', maxRequestBodySize: max, onerror: (e) => { if (process.env.INKWRIGHT_DEBUG) process.stderr.write(`[inkwright-mcp] ${e.message}\n`); } });
 
   const handle = async (req: IncomingMessage, res: ServerResponse) => {
     const path = new URL(req.url ?? '/', 'http://localhost').pathname;
@@ -140,7 +140,7 @@ export async function startHttpServer(services: ServerServices, opts: HttpOption
       if (path === '/a2a') {
         const check = await gate.check(new Request(`http://${req.headers.host ?? 'localhost'}${req.url}`, { headers: req.headers as Record<string, string> }), '/a2a');
         if (!check.ok) return sendWebResponse(res, check.response);
-        (req as IncomingMessage & { inkstoneAuth?: unknown }).inkstoneAuth = check.auth;
+        (req as IncomingMessage & { inkwrightAuth?: unknown }).inkwrightAuth = check.auth;
       } else if (gate.mode === 'loopback') {
         const check = await gate.check(new Request(`http://${req.headers.host ?? 'localhost'}${req.url}`, { headers: req.headers as Record<string, string> }), '/a2a');
         if (!check.ok) return sendWebResponse(res, check.response);

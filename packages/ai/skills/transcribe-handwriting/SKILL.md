@@ -2,7 +2,7 @@
 name: transcribe-handwriting
 description: Reads handwriting on a note page and turns it into text, keeping the writer's line breaks or restoring structure as Markdown (headings, lists, checkboxes). Use when the user asks to transcribe, convert, type up or read their handwriting, or when a page has ink that is not recognized yet.
 metadata:
-  author: inkstone
+  author: inkwright
   version: "1.0"
 ---
 

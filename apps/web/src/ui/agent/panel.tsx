@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Loader2, Mic, MoreHorizontal } from 'lucide-react';
-import { isTerminal } from '@inkstone/ai';
+import { isTerminal } from '@inkwright/ai';
 import { useAgent } from '../../lib/agent/hub.ts';
 import { useMcp } from '../../lib/agent/mcp.ts';
 import { startListening, voiceInputAvailable, type Listening } from '../../lib/agent/voice.ts';

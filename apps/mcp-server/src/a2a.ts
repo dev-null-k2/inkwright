@@ -1,5 +1,5 @@
 /**
- * Inkstone's agent as an A2A (Agent2Agent) agent, so other agents can delegate note work to it:
+ * Inkwright's agent as an A2A (Agent2Agent) agent, so other agents can delegate note work to it:
  * the Agent Card at `/.well-known/agent-card.json` and JSON-RPC at `/a2a` (A2A v1.0 —
  * `SendMessage`, `SendStreamingMessage`, `GetTask`, `CancelTask`, … — plus the v0.3 names
  * `message/send`, `message/stream`, `tasks/get`, `tasks/cancel` for older clients, chosen by the
@@ -21,7 +21,7 @@ import { AgentCard as AgentCardJson, Role, TaskState, type AgentCard, type Agent
 import { AgentEvent, DefaultRequestHandler, InMemoryTaskStore, type AgentExecutor, type ExecutionEventBus, type RequestContext, type User } from '@a2a-js/sdk/server';
 import { agentCardHandler, jsonRpcHandler } from '@a2a-js/sdk/server/express';
 import type { AuthInfo } from '@modelcontextprotocol/server';
-import { RoutineStore, type ChatMessage, type ToolRun } from '@inkstone/ai';
+import { RoutineStore, type ChatMessage, type ToolRun } from '@inkwright/ai';
 import { notebookPath, type ServerContext } from './context.ts';
 import type { ApprovalRequest, Approver } from './approvals.ts';
 import type { AgentAI } from './agent/ai.ts';
@@ -39,18 +39,18 @@ export interface A2AConfig {
 }
 
 /** The signed-in caller, as the A2A SDK sees it. */
-export class InkstoneUser implements User {
+export class InkwrightUser implements User {
   constructor(readonly name: string, readonly canWrite: boolean) {}
   get isAuthenticated() { return this.name !== 'local'; }
   get userName() { return this.name; }
 }
 
-/** Builds the user from what the HTTP gate verified (attached to the request as `inkstoneAuth`). */
-export function userFromAuth(auth: AuthInfo | undefined, scopes: Scopes | null, readOnly: boolean): InkstoneUser {
-  if (!auth) return new InkstoneUser('local', !readOnly);
+/** Builds the user from what the HTTP gate verified (attached to the request as `inkwrightAuth`). */
+export function userFromAuth(auth: AuthInfo | undefined, scopes: Scopes | null, readOnly: boolean): InkwrightUser {
+  if (!auth) return new InkwrightUser('local', !readOnly);
   const sub = (auth.extra as { sub?: string } | undefined)?.sub;
   const canWrite = !readOnly && (!scopes || auth.scopes.includes(scopes.write));
-  return new InkstoneUser(`${auth.clientId}:${sub ?? ''}`, canWrite);
+  return new InkwrightUser(`${auth.clientId}:${sub ?? ''}`, canWrite);
 }
 
 // ---- Agent Card ---------------------------------------------------------------------------------
@@ -68,7 +68,7 @@ export function buildAgentCard(c: A2AConfig): AgentCard {
   let read: SecurityRequirement[] = [];
   let write: SecurityRequirement[] = [];
   if (c.auth.kind === 'token') {
-    securitySchemes.bearer = { scheme: { $case: 'httpAuthSecurityScheme', value: { description: 'The token the Inkstone server was started with (--token / INKSTONE_MCP_TOKEN).', scheme: 'Bearer', bearerFormat: '' } } };
+    securitySchemes.bearer = { scheme: { $case: 'httpAuthSecurityScheme', value: { description: 'The token the Inkwright server was started with (--token / INKWRIGHT_MCP_TOKEN).', scheme: 'Bearer', bearerFormat: '' } } };
     read = write = [{ schemes: { bearer: { list: [] } } }];
   } else if (c.auth.kind === 'oauth') {
     const issuer = c.auth.issuer.replace(/\/+$/, '');
@@ -80,13 +80,13 @@ export function buildAgentCard(c: A2AConfig): AgentCard {
   }
   const writable = !c.ctx.readOnly;
   return {
-    name: 'Inkstone notes',
-    description: 'The agent of the user’s Inkstone handwriting notes: searches notes (including recognized handwriting), answers questions from them with citations, creates and appends notes, and runs the user’s routines. Changes are logged in Inkstone and can be undone; moving notes to Trash asks first.',
+    name: 'Inkwright notes',
+    description: 'The agent of the user’s Inkwright handwriting notes: searches notes (including recognized handwriting), answers questions from them with citations, creates and appends notes, and runs the user’s routines. Changes are logged in Inkwright and can be undone; moving notes to Trash asks first.',
     supportedInterfaces: [
       { url, protocolBinding: 'JSONRPC', tenant: '', protocolVersion: '1.0' },
       { url, protocolBinding: 'JSONRPC', tenant: '', protocolVersion: '0.3' },
     ],
-    provider: { organization: 'Inkstone', url: 'https://inkstone.app' },
+    provider: { organization: 'Inkwright', url: 'https://inkwright.app' },
     version: VERSION,
     capabilities: { streaming: true, pushNotifications: false, extensions: [], extendedAgentCard: false },
     securitySchemes,
@@ -95,10 +95,10 @@ export function buildAgentCard(c: A2AConfig): AgentCard {
     defaultOutputModes: [TEXT, JSON_MIME],
     skills: [
       skill('search_notes', 'Search notes', 'Finds notes by words, including handwriting that has been recognized. Send text, or a data part {"skill":"search_notes","query":"…"} for a direct search without the model.', ['notes', 'search', 'handwriting'], ['Find my notes about the beta launch', 'Where did I write Maria’s phone number?'], read),
-      skill('answer_from_notes', 'Answer from notes', 'Answers a question using only what the user wrote, citing the notes it used (data part "citations" with note ids, titles and inkstone:// links).', ['notes', 'question answering', 'citations'], ['What did we decide about pricing?', 'Summarize what I wrote this week'], read),
+      skill('answer_from_notes', 'Answer from notes', 'Answers a question using only what the user wrote, citing the notes it used (data part "citations" with note ids, titles and inkwright:// links).', ['notes', 'question answering', 'citations'], ['What did we decide about pricing?', 'Summarize what I wrote this week'], read),
       ...(writable ? [
-        skill('write_notes', 'Create or append notes', 'Creates a note or adds text to an existing one. The change shows up in Inkstone on all devices and can be undone there.', ['notes', 'write'], ['Save these meeting minutes as a note in Work', 'Add “call the printer” to my Tasks note'], write),
-        skill('run_routine', 'Run a routine', 'Runs one of the user’s Inkstone routines now (by name). Send text, or a data part {"skill":"run_routine","routine":"File my notes"}.', ['routines', 'automation'], ['Run my “File my notes” routine'], write),
+        skill('write_notes', 'Create or append notes', 'Creates a note or adds text to an existing one. The change shows up in Inkwright on all devices and can be undone there.', ['notes', 'write'], ['Save these meeting minutes as a note in Work', 'Add “call the printer” to my Tasks note'], write),
+        skill('run_routine', 'Run a routine', 'Runs one of the user’s Inkwright routines now (by name). Send text, or a data part {"skill":"run_routine","routine":"File my notes"}.', ['routines', 'automation'], ['Run my “File my notes” routine'], write),
       ] : []),
     ],
     signatures: [],
@@ -150,11 +150,11 @@ export function citationsFrom(runs: readonly ToolRun[], answer: string): Citatio
     if (!r.ok || !r.result || typeof r.result !== 'object') continue;
     const res = r.result as Record<string, any>;
     if (r.call.name === 'read_note' && typeof res.id === 'string') {
-      out.set(res.id, { noteId: res.id, title: res.title ?? '', uri: `inkstone://notes/${res.id}` });
+      out.set(res.id, { noteId: res.id, title: res.title ?? '', uri: `inkwright://notes/${res.id}` });
     } else if (r.call.name === 'search_notes' && Array.isArray(res.results)) {
       for (const h of res.results) {
         const title = String(h.title ?? '');
-        if (!out.has(h.note_id) && title && lower.includes(title.toLowerCase())) out.set(h.note_id, { noteId: h.note_id, title, uri: `inkstone://notes/${h.note_id}`, page: (h.page_index ?? 0) + 1 });
+        if (!out.has(h.note_id) && title && lower.includes(title.toLowerCase())) out.set(h.note_id, { noteId: h.note_id, title, uri: `inkwright://notes/${h.note_id}`, page: (h.page_index ?? 0) + 1 });
       }
     }
   }
@@ -173,8 +173,8 @@ interface Session {
 
 const CONTEXT_TURNS = 20;
 
-/** Runs Inkstone's agent for A2A tasks. */
-export class InkstoneExecutor implements AgentExecutor {
+/** Runs Inkwright's agent for A2A tasks. */
+export class InkwrightExecutor implements AgentExecutor {
   private sessions = new Map<string, Session>();
   /** Conversation per A2A context, so follow-up questions have the earlier turns. */
   private transcripts = new Map<string, ChatMessage[]>();
@@ -228,7 +228,7 @@ export class InkstoneExecutor implements AgentExecutor {
 
   private async run(rc: RequestContext, bus: ExecutionEventBus, session: Session) {
     const { ctx } = this.c;
-    const user = rc.context.user instanceof InkstoneUser ? rc.context.user : new InkstoneUser('local', !ctx.readOnly);
+    const user = rc.context.user instanceof InkwrightUser ? rc.context.user : new InkwrightUser('local', !ctx.readOnly);
     const text = textOfMessage(rc.userMessage);
     const data = dataOfMessage(rc.userMessage) ?? {};
     const skillId = typeof data.skill === 'string' ? data.skill : typeof rc.request.metadata?.skill === 'string' ? rc.request.metadata.skill : null;
@@ -245,14 +245,14 @@ export class InkstoneExecutor implements AgentExecutor {
       const rows = [];
       for (const h of hits) {
         const n = await ctx.vault.readNote(h.noteId);
-        rows.push({ noteId: h.noteId, title: h.title, page: h.pageIndex + 1, snippet: h.snippet, notebook: notebookPath(notebooks, n?.notebookId), uri: `inkstone://notes/${h.noteId}` });
+        rows.push({ noteId: h.noteId, title: h.title, page: h.pageIndex + 1, snippet: h.snippet, notebook: notebookPath(notebooks, n?.notebookId), uri: `inkwright://notes/${h.noteId}` });
       }
       const summary = rows.length ? rows.map((r) => `- ${r.title || 'Untitled'} (page ${r.page}): ${r.snippet}`).join('\n') : `No notes match “${query}”.`;
       bus.publish(AgentEvent.artifactUpdate({ taskId: rc.taskId, contextId: rc.contextId, artifact: { artifactId: 'results', name: 'Search results', description: `Notes matching “${query}”`, parts: [textPart(summary), dataPart({ query, results: rows })], metadata: undefined, extensions: [] }, append: false, lastChunk: true, metadata: undefined }));
       return this.status(bus, rc, TaskState.TASK_STATE_COMPLETED, rows.length ? `Found ${rows.length} ${rows.length === 1 ? 'note' : 'notes'}.` : summary);
     }
 
-    if (!this.c.ai) return this.status(bus, rc, TaskState.TASK_STATE_FAILED, 'No AI is set up for the Inkstone agent, so it can only search (data part {"skill":"search_notes"}). Start the server with --ai-provider; see docs/AGENTS.md.');
+    if (!this.c.ai) return this.status(bus, rc, TaskState.TASK_STATE_FAILED, 'No AI is set up for the Inkwright agent, so it can only search (data part {"skill":"search_notes"}). Start the server with --ai-provider; see docs/AGENTS.md.');
 
     if (skillId === 'run_routine') {
       if (!user.canWrite) return this.status(bus, rc, TaskState.TASK_STATE_REJECTED, 'Running routines needs write access.');
@@ -305,11 +305,11 @@ export class InkstoneExecutor implements AgentExecutor {
 
 /**
  * Express app with the agent card and the JSON-RPC endpoint. The HTTP server authenticates the
- * request first and attaches the verified `AuthInfo` as `inkstoneAuth`.
+ * request first and attaches the verified `AuthInfo` as `inkwrightAuth`.
  */
-export function createA2AApp(c: A2AConfig, scopes: Scopes | null): { app: express.Express; card: AgentCard; executor: InkstoneExecutor } {
+export function createA2AApp(c: A2AConfig, scopes: Scopes | null): { app: express.Express; card: AgentCard; executor: InkwrightExecutor } {
   const card = buildAgentCard(c);
-  const executor = new InkstoneExecutor(c);
+  const executor = new InkwrightExecutor(c);
   const handler = new DefaultRequestHandler(card, new InMemoryTaskStore(), executor);
   const app = express();
   app.disable('x-powered-by');
@@ -322,6 +322,6 @@ export function createA2AApp(c: A2AConfig, scopes: Scopes | null): { app: expres
     res.json(agentCardJson(card));
   });
   app.use('/.well-known/agent-card.json', agentCardHandler({ agentCardProvider: handler, legacyCompat: { enabled: true }, cache: { maxAge: 300 } }));
-  app.use('/a2a', jsonRpcHandler({ requestHandler: handler, legacyCompat: { enabled: true }, userBuilder: async (req: ExpressRequest) => userFromAuth((req as ExpressRequest & { inkstoneAuth?: AuthInfo }).inkstoneAuth, scopes, c.ctx.readOnly) }));
+  app.use('/a2a', jsonRpcHandler({ requestHandler: handler, legacyCompat: { enabled: true }, userBuilder: async (req: ExpressRequest) => userFromAuth((req as ExpressRequest & { inkwrightAuth?: AuthInfo }).inkwrightAuth, scopes, c.ctx.readOnly) }));
   return { app, card, executor };
 }

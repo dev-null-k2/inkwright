@@ -16,7 +16,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
-import { newId } from '@inkstone/core';
+import { newId } from '@inkwright/core';
 import { WEBHOOK_EVENTS } from './schemas.ts';
 
 export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
@@ -228,7 +228,7 @@ export class WebhookService {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'user-agent': 'Inkstone-Webhooks/1',
+          'user-agent': 'Inkwright-Webhooks/1',
           'webhook-id': m.msgId,
           'webhook-timestamp': String(m.timestamp),
           'webhook-signature': signWebhook(w.secret, m.msgId, m.timestamp, m.body),

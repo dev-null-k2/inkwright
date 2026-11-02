@@ -1,4 +1,4 @@
-import type { TranscriptSegment } from '@inkstone/core';
+import type { TranscriptSegment } from '@inkwright/core';
 import type { AudioWindow } from './audio.ts';
 
 /**

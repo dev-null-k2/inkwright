@@ -31,7 +31,7 @@ export interface ApiOptions {
   oauthScopes?: { read: string; write: string; issuer: string } | null;
   corsOrigins?: string[];
   rateLimit?: number;
-  /** Where webhook subscriptions and their delivery log live (default: per vault under ~/.config/inkstone/api). */
+  /** Where webhook subscriptions and their delivery log live (default: per vault under ~/.config/inkwright/api). */
   stateDir?: string;
   embeddings?: EmbeddingSettings | null;
   /** Vault scan interval for events (default 5 s). */
@@ -59,7 +59,7 @@ export interface RunningApi {
 /** Default state folder: one per vault, outside the vault (signing secrets must not sync). */
 export function defaultStateDir(vaultRoot: string): string {
   const id = createHash('sha256').update(path.resolve(vaultRoot)).digest('hex').slice(0, 12);
-  return path.join(homedir(), '.config', 'inkstone', 'api', id);
+  return path.join(homedir(), '.config', 'inkwright', 'api', id);
 }
 
 export async function createApi(o: ApiOptions): Promise<RunningApi> {

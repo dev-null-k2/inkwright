@@ -1,5 +1,5 @@
 /**
- * The developer module from outside: the `inkstone` CLI (spawned for real) scans a repository into
+ * The developer module from outside: the `inkwright` CLI (spawned for real) scans a repository into
  * a vault and reports drift; the MCP tools are exercised through the official SDK client.
  */
 import { execFile } from 'node:child_process';
@@ -9,8 +9,8 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { CodeIndex, CodeStore, codeRefStates, newPage, withCodeBaselines, type NoteMeta } from '@inkstone/core';
-import { parseSkillMd, validateSkillFrontmatter } from '@inkstone/ai';
+import { CodeIndex, CodeStore, codeRefStates, newPage, withCodeBaselines, type NoteMeta } from '@inkwright/core';
+import { parseSkillMd, validateSkillFrontmatter } from '@inkwright/ai';
 import { REPO } from '../../../packages/core/test/dev/fixture-repo.ts';
 import { scanFolderIntoVault } from '../src/dev/repo.ts';
 import { createServices } from '../src/server.ts';
@@ -27,10 +27,10 @@ async function writeRepo(dir: string, over: Record<string, string> = {}) {
   }
 }
 
-/** Runs the real CLI entry from source, as `inkstone …`. */
-async function inkstone(...args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
+/** Runs the real CLI entry from source, as `inkwright …`. */
+async function inkwright(...args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
   try {
-    const r = await run('npx', ['tsx', '--import', './apps/mcp-server/scripts/raw-hooks.mjs', 'apps/mcp-server/src/inkstone-cli.ts', ...args], { cwd: repoRoot, timeout: 90_000 });
+    const r = await run('npx', ['tsx', '--import', './apps/mcp-server/scripts/raw-hooks.mjs', 'apps/mcp-server/src/inkwright-cli.ts', ...args], { cwd: repoRoot, timeout: 90_000 });
     return { code: 0, stdout: r.stdout, stderr: r.stderr };
   } catch (e) {
     const x = e as { code: number; stdout: string; stderr: string };
@@ -59,16 +59,16 @@ async function addLinkedNote(): Promise<NoteMeta> {
 }
 
 beforeAll(async () => {
-  repo = await mkdtemp(path.join(tmpdir(), 'inkstone-repo-'));
+  repo = await mkdtemp(path.join(tmpdir(), 'inkwright-repo-'));
   await writeRepo(repo);
 });
 afterAll(async () => { await rm(repo, { recursive: true, force: true }); });
 beforeEach(async () => { fx = await makeFixture(); });
 afterEach(async () => { await fx.cleanup(); });
 
-describe('inkstone CLI', () => {
+describe('inkwright CLI', () => {
   it('scans a repository into the vault and reports drift after the code changes', async () => {
-    const s = await inkstone('scan', repo, '--vault', fx.dir, '--name', 'shop');
+    const s = await inkwright('scan', repo, '--vault', fx.dir, '--name', 'shop');
     expect(s.stderr).toBe('');
     expect(s.code).toBe(0);
     expect(s.stdout).toMatch(/Scanned shop into .*code\/sources\/shop/);
@@ -76,28 +76,28 @@ describe('inkstone CLI', () => {
     expect((await new CodeStore(fx.external.fs).readSource('shop'))!.kind).toBe('cli');
 
     await addLinkedNote();
-    const clean = await inkstone('drift', fx.dir, '--check');
+    const clean = await inkwright('drift', fx.dir, '--check');
     expect(clean.code).toBe(0);
     expect(clean.stdout).toContain('No drift');
 
     await writeFile(path.join(repo, 'src/auth/session.ts'), CHANGED);
-    expect((await inkstone('scan', repo, '--vault', fx.dir, '--name', 'shop')).code).toBe(0);
-    const d = await inkstone('drift', fx.dir, '--check');
+    expect((await inkwright('scan', repo, '--vault', fx.dir, '--name', 'shop')).code).toBe(0);
+    const d = await inkwright('drift', fx.dir, '--check');
     expect(d.code).toBe(1);
     expect(d.stdout).toContain('1 code link drifted');
     expect(d.stdout).toContain('Auth design  (AUTHDOC)');
     expect(d.stdout).toContain('src/auth/session.ts#createSession: signature changed');
     expect(d.stdout).toContain('now: function createSession(userId: string, ttlMs: number, scope: string[]): Session');
-    const j = JSON.parse((await inkstone('drift', fx.dir, '--json')).stdout);
+    const j = JSON.parse((await inkwright('drift', fx.dir, '--json')).stdout);
     expect(j).toEqual([expect.objectContaining({ noteId: 'AUTHDOC', link: 'src/auth/session.ts#createSession', status: 'changed' })]);
     await writeFile(path.join(repo, 'src/auth/session.ts'), REPO['src/auth/session.ts']!);
   }, 240_000);
 
   it('explains usage mistakes with exit code 2', async () => {
-    const r = await inkstone('scan', repo);
+    const r = await inkwright('scan', repo);
     expect(r.code).toBe(2);
     expect(r.stderr).toContain('scan needs a repository folder and --vault');
-    expect((await inkstone('--version')).stdout.trim()).toMatch(/^\d+\.\d+\.\d+/);
+    expect((await inkwright('--version')).stdout.trim()).toMatch(/^\d+\.\d+\.\d+/);
   }, 120_000);
 });
 
@@ -156,11 +156,11 @@ describe('MCP developer tools', () => {
   });
 });
 
-describe('the Agent Skill for coding agents (skills/inkstone-code-notes)', () => {
+describe('the Agent Skill for coding agents (skills/inkwright-code-notes)', () => {
   it('is a valid Agent Skill whose commands and tools exist', async () => {
-    const md = await readFile(path.join(repoRoot, 'skills/inkstone-code-notes/SKILL.md'), 'utf8');
+    const md = await readFile(path.join(repoRoot, 'skills/inkwright-code-notes/SKILL.md'), 'utf8');
     const { frontmatter, body } = parseSkillMd(md);
-    expect(validateSkillFrontmatter(frontmatter, 'inkstone-code-notes')).toMatchObject({ ok: true, errors: [] });
+    expect(validateSkillFrontmatter(frontmatter, 'inkwright-code-notes')).toMatchObject({ ok: true, errors: [] });
     for (const tool of ['code_search', 'code_symbol', 'validate_diagram', 'get_runbook']) expect(body).toContain(tool);
     for (const cmd of ['scan <repo-folder> --vault', 'drift <vault-folder> --check']) expect(body).toContain(cmd);
   });

@@ -1,4 +1,4 @@
-import type { NoteDocument } from '@inkstone/core';
+import type { NoteDocument } from '@inkwright/core';
 import type { InkEngine } from '../canvas/engine.ts';
 import type { AppVault } from '../lib/vault.ts';
 import { registerNoteFileHandler } from '../lib/openFiles.ts';

@@ -7,7 +7,7 @@
  * The single-file preview build swaps this module for `wasm-assets-unavailable.ts` (vite.config.ts):
  * inlining megabytes of grammars into one HTML file is not worth it there.
  */
-import type { CodeLanguage } from '@inkstone/core';
+import type { CodeLanguage } from '@inkwright/core';
 import treeSitterRuntime from 'web-tree-sitter/tree-sitter.wasm?url';
 import typescript from '@vscode/tree-sitter-wasm/wasm/tree-sitter-typescript.wasm?url';
 import tsx from '@vscode/tree-sitter-wasm/wasm/tree-sitter-tsx.wasm?url';

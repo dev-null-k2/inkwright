@@ -8,7 +8,7 @@ import type { Page } from '@playwright/test';
  * it); screenshots go to test-artifacts/android/ (git-ignored).
  */
 const ADB = join(process.env.ANDROID_HOME ?? '/opt/android-sdk', 'platform-tools', 'adb');
-export const ARTIFACTS = process.env.INKSTONE_ANDROID_ARTIFACTS ?? join(import.meta.dirname, '..', 'test-artifacts', 'android');
+export const ARTIFACTS = process.env.INKWRIGHT_ANDROID_ARTIFACTS ?? join(import.meta.dirname, '..', 'test-artifacts', 'android');
 mkdirSync(ARTIFACTS, { recursive: true });
 
 export function adb(...args: string[]): string {

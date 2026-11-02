@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react';
 import { ArrowUpRight } from 'lucide-react';
-import { boundsOfStrokes, liveInkLinks, linkLabel, parseWikiTarget, rectIsEmpty, type NoteDocument, type Rect, type TextBox } from '@inkstone/core';
+import { boundsOfStrokes, liveInkLinks, linkLabel, parseWikiTarget, rectIsEmpty, type NoteDocument, type Rect, type TextBox } from '@inkwright/core';
 import type { InkEngine } from '../../canvas/engine.ts';
 import { textLinkRects } from '../../canvas/render.ts';
 

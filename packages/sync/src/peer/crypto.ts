@@ -131,7 +131,7 @@ export interface SessionKeys {
   sessionId: string;
 }
 
-const INFO = 'inkstone.peer.v1';
+const INFO = 'inkwright.peer.v1';
 
 /**
  * Derives both directions' keys from a handshake. Both devices get the same pair (with send and

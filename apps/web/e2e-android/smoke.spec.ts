@@ -4,7 +4,7 @@ import { line, pen, scribble, strokes, word } from '../e2e/helpers.ts';
 import { calibrate, logcat, screencap, setSystemDarkMode, stylusSwipe, type ScreenMap } from './adb.ts';
 
 /**
- * Smoke test of the real Android app: the Capacitor WebView, the InkstoneNative plugin and the
+ * Smoke test of the real Android app: the Capacitor WebView, the InkwrightNative plugin and the
  * activity's native input paths, on an emulator (or a device). Playwright is attached to the app's
  * WebView over CDP; real stylus MotionEvents come from `adb shell input stylus`.
  *
@@ -12,7 +12,7 @@ import { calibrate, logcat, screencap, setSystemDarkMode, stylusSwipe, type Scre
  */
 const test = base.extend<object, { app: { browser: Browser; page: Page } }>({
   app: [async ({}, use) => {
-    const endpoint = process.env.INKSTONE_CDP ?? 'http://127.0.0.1:9333';
+    const endpoint = process.env.INKWRIGHT_CDP ?? 'http://127.0.0.1:9333';
     // noDefaults: attach to the WebView as it is. Playwright would otherwise set download behaviour
     // and emulation on the default context, which a WebView rejects ("Browser context management
     // is not supported").
@@ -27,11 +27,11 @@ const test = base.extend<object, { app: { browser: Browser; page: Page } }>({
 test.describe.configure({ mode: 'serial' });
 
 const plugin = (page: Page, method: string, arg: object = {}) =>
-  page.evaluate(([m, a]) => (window as any).Capacitor.Plugins.InkstoneNative[m](a), [method, arg] as const);
+  page.evaluate(([m, a]) => (window as any).Capacitor.Plugins.InkwrightNative[m](a), [method, arg] as const);
 
 let screen: ScreenMap;
 
-test('the app starts in the native shell with the InkstoneNative plugin', async ({ app: { page } }) => {
+test('the app starts in the native shell with the InkwrightNative plugin', async ({ app: { page } }) => {
   const env = await page.evaluate(() => ({
     native: (window as any).Capacitor?.isNativePlatform?.(),
     platform: (window as any).Capacitor?.getPlatform?.(),
@@ -55,7 +55,7 @@ test('library loads with the welcome note', async ({ app: { page } }) => {
     await page.evaluate(() => { location.hash = ''; });
   }
   await expect(page.locator('.library')).toBeVisible();
-  await expect(page.locator('.note-title', { hasText: 'Welcome to Inkstone' })).toBeVisible();
+  await expect(page.locator('.note-title', { hasText: 'Welcome to Inkwright' })).toBeVisible();
   setSystemDarkMode(false);
   await page.waitForTimeout(1500);
   screencap('library-light');
@@ -65,7 +65,7 @@ test('create a note and write with synthetic pen events', async ({ app: { page }
   const btn = page.locator('.new-btn');
   if (await btn.isVisible()) await btn.click();
   else await page.locator('.fab').click();
-  await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
   await pen(page, word(120, 160, 160));
   await pen(page, line([120, 240], [420, 242]));
   expect(await strokes(page)).toHaveLength(2);
@@ -103,8 +103,8 @@ test('writing feel popover opens and previews natively', async ({ app: { page } 
   await expect(pop).toBeVisible();
   await expect(pop.getByText('Writing sound', { exact: true })).toBeVisible();
   // The sample stroke the panel plays when a setting changes: on Android it is the native synth
-  // (InkstoneNative.feelPreview), which opens the writing-sound stream.
-  await page.evaluate(() => (window as any).__inkstone.engine.feel.preview());
+  // (InkwrightNative.feelPreview), which opens the writing-sound stream.
+  await page.evaluate(() => (window as any).__inkwright.engine.feel.preview());
   await page.waitForTimeout(800);
   screencap('feel-popover-light');
   await page.keyboard.press('Escape');
@@ -135,7 +135,7 @@ test('importing a PDF makes annotatable pages', async ({ app: { page } }) => {
   for (let i = 0; i < 2; i++) pdf.addPage([612, 792]).drawText(`Slide ${i + 1}`, { x: 72, y: 700, size: 32 });
   const bytes = await pdf.save();
   await page.locator('input[type=file]').first().setInputFiles({ name: 'Lecture slides.pdf', mimeType: 'application/pdf', buffer: Buffer.from(bytes) });
-  await page.waitForFunction(() => (window as any).__inkstone?.doc?.pageCount === 2, null, { timeout: 180_000 });
+  await page.waitForFunction(() => (window as any).__inkwright?.doc?.pageCount === 2, null, { timeout: 180_000 });
   await expect(page.locator('.ed-title-text')).toHaveText('Lecture slides');
   await pen(page, word(120, 200, 160));
   expect(await strokes(page)).toHaveLength(1);
@@ -156,7 +156,7 @@ test('settings open', async ({ app: { page } }) => {
 test('logcat: native feel and ink tip ran, nothing crashed', async () => {
   const log = logcat();
   // The writing-sound stream opened (WritingSoundOutput logs its configuration once per open).
-  expect(log).toMatch(/InkstoneFeel.*Writing sound: \d+ Hz/);
+  expect(log).toMatch(/InkwrightFeel.*Writing sound: \d+ Hz/);
   expect(log).not.toMatch(/Ink tip overlay failed/);
-  expect(log).not.toMatch(/Process: app\.inkstone, PID|ANR in app\.inkstone|Fatal signal.*\(app\.inkstone\)/);
+  expect(log).not.toMatch(/Process: app\.inkwright, PID|ANR in app\.inkwright|Fatal signal.*\(app\.inkwright\)/);
 });

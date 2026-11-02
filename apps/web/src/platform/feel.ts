@@ -1,6 +1,6 @@
-import { GrainScheduler, ScratchSynth, feelOf, volumeToGain, type FeelProfile, type PaperTexture, type PenType } from '@inkstone/core';
+import { GrainScheduler, ScratchSynth, feelOf, volumeToGain, type FeelProfile, type PaperTexture, type PenType } from '@inkwright/core';
 import type { FeelSink, PointerKind } from '../canvas/engine.ts';
-import { InkstoneNative, hasNativePlugin } from './native.ts';
+import { InkwrightNative, hasNativePlugin } from './native.ts';
 
 export interface FeelSettings {
   haptics: boolean;
@@ -16,7 +16,7 @@ const TARGET_INTERVAL = 6;
 /**
  * The paper-feel engine on this device.
  *
- * - Android app, pen strokes: handed to the native engine (InkstoneNative.feelBegin), which reads
+ * - Android app, pen strokes: handed to the native engine (InkwrightNative.feelBegin), which reads
  *   the stylus straight from MotionEvents and renders sound on a low-latency AudioTrack and haptic
  *   grain on the actuator — no WebAudio latency and no per-sample bridge traffic.
  * - Everywhere else (and finger drawing): distance-based haptic grain through the plugin when
@@ -46,7 +46,7 @@ export class PaperFeel implements FeelSink {
     this.settings = settings;
     this.scheduler = new GrainScheduler(feelOf('standard', 'fountain'), undefined, undefined, settings.hapticStrength);
     if (hasNativePlugin) {
-      void InkstoneNative.capabilities().then((c) => { if (this.disposed) return; this.nativeFeel = !!c.nativeFeel; this.syncNativeStream(); }).catch(() => {});
+      void InkwrightNative.capabilities().then((c) => { if (this.disposed) return; this.nativeFeel = !!c.nativeFeel; this.syncNativeStream(); }).catch(() => {});
     }
   }
 
@@ -91,7 +91,7 @@ export class PaperFeel implements FeelSink {
     const want = !this.disposed && this.settings.sound;
     if (want === this.nativePrepared) return;
     this.nativePrepared = want;
-    void InkstoneNative.feelPrepare({ active: want }).catch(() => {});
+    void InkwrightNative.feelPrepare({ active: want }).catch(() => {});
   }
 
   /** Builds the AudioWorklet graph. Safe to call repeatedly; resumes a suspended context. */
@@ -107,7 +107,7 @@ export class PaperFeel implements FeelSink {
         if (!Ctx) return;
         const ctx = new Ctx({ latencyHint: 'interactive' });
         const code = `const Synth = (${ScratchSynth.toString()});
-class InkstoneScratch extends AudioWorkletProcessor {
+class InkwrightScratch extends AudioWorkletProcessor {
   constructor() {
     super();
     this.synth = null;
@@ -128,11 +128,11 @@ class InkstoneScratch extends AudioWorkletProcessor {
     return true;
   }
 }
-registerProcessor('inkstone-scratch', InkstoneScratch);`;
+registerProcessor('inkwright-scratch', InkwrightScratch);`;
         const url = URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
         await ctx.audioWorklet.addModule(url);
         URL.revokeObjectURL(url);
-        const node = new AudioWorkletNode(ctx, 'inkstone-scratch', { numberOfOutputs: 1, outputChannelCount: [1] });
+        const node = new AudioWorkletNode(ctx, 'inkwright-scratch', { numberOfOutputs: 1, outputChannelCount: [1] });
         node.connect(ctx.destination);
         node.port.postMessage({ type: 'init', profile: this.profile, volume: this.gain() });
         this.audio = ctx;
@@ -153,7 +153,7 @@ registerProcessor('inkstone-scratch', InkstoneScratch);`;
     this.nativeStroke = this.nativeFeel && pointer === 'pen';
     if (this.nativeStroke) {
       const { haptics, hapticStrength, sound } = this.settings;
-      void InkstoneNative.feelBegin({ profile: this.profile, sound, soundGain: this.gain(), haptics, hapticStrength, pressure }).catch(() => { this.nativeStroke = false; });
+      void InkwrightNative.feelBegin({ profile: this.profile, sound, soundGain: this.gain(), haptics, hapticStrength, pressure }).catch(() => { this.nativeStroke = false; });
       return;
     }
     this.ensureAudio();
@@ -163,7 +163,7 @@ registerProcessor('inkstone-scratch', InkstoneScratch);`;
   sample(x: number, y: number, t: number, pressure: number) {
     if (this.nativeStroke) return;
     const tick = this.scheduler.onSample(x, y, t, pressure);
-    if (tick && this.settings.haptics && hasNativePlugin) void InkstoneNative.grain({ intensity: tick.intensity }).catch(() => {});
+    if (tick && this.settings.haptics && hasNativePlugin) void InkwrightNative.grain({ intensity: tick.intensity }).catch(() => {});
     if (!this.settings.sound || !this.node) return;
     // Every sample, not just grain ticks, so the sound follows the pen without lag.
     if (t - this.lastTargetT >= TARGET_INTERVAL || Math.abs(pressure - this.lastPressure) > 0.15) {
@@ -180,7 +180,7 @@ registerProcessor('inkstone-scratch', InkstoneScratch);`;
   end() {
     if (this.nativeStroke) {
       this.nativeStroke = false;
-      void InkstoneNative.feelEnd().catch(() => {});
+      void InkwrightNative.feelEnd().catch(() => {});
       return;
     }
     clearTimeout(this.restTimer);
@@ -189,7 +189,7 @@ registerProcessor('inkstone-scratch', InkstoneScratch);`;
 
   confirm() {
     if (!this.settings.haptics) return;
-    if (hasNativePlugin) void InkstoneNative.confirm().catch(() => {});
+    if (hasNativePlugin) void InkwrightNative.confirm().catch(() => {});
     else if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       try { navigator.vibrate(12); } catch { /* ignore */ }
     }
@@ -199,7 +199,7 @@ registerProcessor('inkstone-scratch', InkstoneScratch);`;
   preview(settings: FeelSettings = this.settings) {
     this.update(settings);
     if (this.nativeFeel) {
-      void InkstoneNative.feelPreview({ profile: this.profile, soundGain: this.gain(), haptics: settings.haptics, hapticStrength: settings.hapticStrength }).catch(() => {});
+      void InkwrightNative.feelPreview({ profile: this.profile, soundGain: this.gain(), haptics: settings.haptics, hapticStrength: settings.hapticStrength }).catch(() => {});
       return;
     }
     this.ensureAudio();

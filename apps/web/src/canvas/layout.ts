@@ -1,4 +1,4 @@
-import { isInfinite, pageSizeOf, type NoteMeta, type PageInk } from '@inkstone/core';
+import { isInfinite, pageSizeOf, type NoteMeta, type PageInk } from '@inkwright/core';
 
 /** Where each page sits in document space (page units). */
 export interface PageSlot {

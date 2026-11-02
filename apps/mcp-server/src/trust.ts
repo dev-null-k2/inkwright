@@ -3,7 +3,7 @@
  * file (`ai/policy.json`) with the app:
  *
  * - **Policy.** `PolicySource` reads the vault's policy (re-read when the file changes) and an
- *   optional managed policy file given by the deployment (`--policy`, `INKSTONE_POLICY_FILE`),
+ *   optional managed policy file given by the deployment (`--policy`, `INKWRIGHT_POLICY_FILE`),
  *   which users can tighten but never loosen (`mergeManagedPolicy`).
  * - **Notebook permissions.** `PolicyVault` is the `Vault` every tool, resource, prompt, task, the
  *   A2A agent and the runner read through. Notes the policy hides (`access: none`) and notes kept
@@ -17,7 +17,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { hostname } from 'node:os';
-import { Vault, type NoteMeta, type NotebookMeta, type PageInk, type SaveOptions } from '@inkstone/core';
+import { Vault, type NoteMeta, type NotebookMeta, type PageInk, type SaveOptions } from '@inkwright/core';
 import {
   ActivityStore,
   AuditLog,
@@ -43,7 +43,7 @@ import {
   type ProposedOp,
   type TaskKind,
   type TrustServices,
-} from '@inkstone/ai';
+} from '@inkwright/ai';
 import type { NodeFS } from './nodefs.ts';
 
 // ---- Policy ----------------------------------------------------------------------------------------
@@ -119,8 +119,8 @@ export class PolicyVault extends Vault {
     const l = await this.label(n);
     const p = this.policy();
     const a = accessFor(p, l);
-    if (a === 'none' || isLocalOnly(p, l)) throw new PolicyDeniedError(n.id === '(new)' ? 'Agents can’t put notes in that notebook (Inkstone AI policy).' : `No note with id ${n.id}`);
-    if (a !== 'read-write') throw new PolicyDeniedError(`${n.id === '(new)' ? 'That notebook' : `“${n.title || 'This note'}”`} is read-only for agents (Inkstone AI policy); agents can’t ${what} it.`);
+    if (a === 'none' || isLocalOnly(p, l)) throw new PolicyDeniedError(n.id === '(new)' ? 'Agents can’t put notes in that notebook (Inkwright AI policy).' : `No note with id ${n.id}`);
+    if (a !== 'read-write') throw new PolicyDeniedError(`${n.id === '(new)' ? 'That notebook' : `“${n.title || 'This note'}”`} is read-only for agents (Inkwright AI policy); agents can’t ${what} it.`);
   }
 
   override async listNotes(opts: { includeTrashed?: boolean } = {}): Promise<NoteMeta[]> {
@@ -212,7 +212,7 @@ export function serverDeviceId(root: string): string {
 }
 
 /**
- * Loads the audit signing key: a P-256 private JWK file (`--audit-key`, `INKSTONE_AUDIT_KEY`), so
+ * Loads the audit signing key: a P-256 private JWK file (`--audit-key`, `INKWRIGHT_AUDIT_KEY`), so
  * signatures verify against a key the operator controls and can publish; otherwise a fresh key
  * for this process (still a valid, verifiable chain, but not tied to an identity).
  */
@@ -238,7 +238,7 @@ export function createServerTrust(fs: NodeFS, root: string, policy: () => AIPoli
 
 /** What the server's AI needs to know about itself for routing. */
 export interface ServerAIInfo {
-  provider: import('@inkstone/ai').Provider;
+  provider: import('@inkwright/ai').Provider;
   model: string;
   label: string;
   vision: boolean;

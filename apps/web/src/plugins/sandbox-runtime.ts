@@ -1,14 +1,14 @@
 /**
  * Runs inside a plugin's sandboxed frame (bundled on its own and loaded as the frame's only
  * script). It waits for the host's `boot` message with the plugin's code, loads that code as an
- * ES module from a blob: URL created inside the sandbox, and gives it the `InkstoneAPI` built
+ * ES module from a blob: URL created inside the sandbox, and gives it the `InkwrightAPI` built
  * over postMessage to the parent. Main frames call `activate`; panel frames render one panel.
  *
  * The frame's own Content Security Policy (set by the host, see sandbox.ts) allows only this
  * script and blob: modules, no network, and no other frames; the iframe sandbox gives it an
  * opaque origin, so it has no cookies, storage or access to the app.
  */
-import { PROTOCOL, PROTOCOL_VERSION, createPluginClient, envelope, type PluginModule, type PluginToHost } from '@inkstone/plugin-api';
+import { PROTOCOL, PROTOCOL_VERSION, createPluginClient, envelope, type PluginModule, type PluginToHost } from '@inkwright/plugin-api';
 
 interface Boot {
   p: typeof PROTOCOL;
@@ -64,7 +64,7 @@ addEventListener('message', async (e: MessageEvent) => {
   }
 });
 
-/** The app's palette as CSS variables, so panels look like the rest of Inkstone. */
+/** The app's palette as CSS variables, so panels look like the rest of Inkwright. */
 function applyTheme(theme: Record<string, string>): void {
   const root = document.documentElement;
   for (const [k, v] of Object.entries(theme)) if (/^--[a-z0-9-]+$/.test(k)) root.style.setProperty(k, v);

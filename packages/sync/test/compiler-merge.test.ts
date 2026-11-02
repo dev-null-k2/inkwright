@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decodeDeck, decodeProvenance, emptyProvenance, encodeDeck, encodeProvenance, newCard, reviewCard, setItem, type StudyDeck } from '@inkstone/core';
+import { decodeDeck, decodeProvenance, emptyProvenance, encodeDeck, encodeProvenance, newCard, reviewCard, setItem, type StudyDeck } from '@inkwright/core';
 import { mergeFileBytes, mergeKindOf } from '../src/index.ts';
 
 const enc = (s: string) => new TextEncoder().encode(s);

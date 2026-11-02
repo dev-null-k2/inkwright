@@ -199,7 +199,7 @@ export async function readJson(res: Response, provider: string): Promise<any> {
   try {
     return JSON.parse(t);
   } catch (e) {
-    throw new AIError({ code: 'parse', provider, message: 'The AI provider sent a response Inkstone could not read.', detail: t.slice(0, 300), cause: e });
+    throw new AIError({ code: 'parse', provider, message: 'The AI provider sent a response Inkwright could not read.', detail: t.slice(0, 300), cause: e });
   }
 }
 

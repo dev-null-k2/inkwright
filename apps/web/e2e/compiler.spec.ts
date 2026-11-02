@@ -10,9 +10,9 @@ import { openApp } from './helpers.ts';
 
 /** Writes notes the way sync or another device would, then reloads so the library shows them. */
 async function seed(page: Page, notes: Array<{ title: string; text: string; tags?: string[]; notebook?: string }>) {
-  await page.waitForFunction(() => !!(window as any).__inkstoneHub);
+  await page.waitForFunction(() => !!(window as any).__inkwrightHub);
   await page.evaluate(async (notes) => {
-    const v = (window as any).__inkstoneHub.vault.vault;
+    const v = (window as any).__inkwrightHub.vault.vault;
     const books = new Map<string, string>();
     for (const n of notes) {
       let notebookId: string | undefined;
@@ -31,7 +31,7 @@ async function seed(page: Page, notes: Array<{ title: string; text: string; tags
 
 async function editNoteText(page: Page, title: string, from: string, to: string) {
   await page.evaluate(async ({ title, from, to }) => {
-    const v = (window as any).__inkstoneHub.vault.vault;
+    const v = (window as any).__inkwrightHub.vault.vault;
     const note = (await v.listNotes()).find((n: any) => n.title === title);
     const pages = await v.readPages(note);
     const p = pages[0];
@@ -82,7 +82,7 @@ test('compiled wiki: compile, review, accept, explain, conflict, stale, re-check
 
   // The page exists as a note in the Compiled wiki notebook, without the unticked claim.
   const text = await page.evaluate(async () => {
-    const v = (window as any).__inkstoneHub.vault.vault;
+    const v = (window as any).__inkwrightHub.vault.vault;
     const note = (await v.listNotes()).find((n: any) => n.title === 'Atlas' && n.tags.includes('compiled'));
     const nb = (await v.listNotebooks()).find((b: any) => b.id === note.notebookId);
     return { nb: nb.name, text: (await v.readPages(note))[0].texts[0].text };
@@ -133,7 +133,7 @@ test('compiled wiki: compile, review, accept, explain, conflict, stale, re-check
   await run.getByRole('button', { name: /^Undo: Updated the compiled page/ }).click();
   await expect(run.locator('.ag-op').first()).toContainText('Undone');
   const after = await page.evaluate(async () => {
-    const v = (window as any).__inkstoneHub.vault.vault;
+    const v = (window as any).__inkwrightHub.vault.vault;
     const note = (await v.listNotes()).find((n: any) => n.title === 'Atlas' && n.tags.includes('compiled'));
     return (await v.readPages(note))[0].texts[0].text as string;
   });
@@ -163,7 +163,7 @@ test('study: cards from a note, a calm review with a typed answer, FSRS rating; 
   await page.keyboard.press('1');
   await expect(review).toContainText('Done for now: 2 cards reviewed.');
   const deck = await page.evaluate(async () => {
-    const fs = (window as any).__inkstoneHub.vault.fs;
+    const fs = (window as any).__inkwrightHub.vault.fs;
     const files = await fs.list('ai/study');
     return JSON.parse(await fs.readText(`ai/study/${files[0].name}`));
   });
@@ -174,7 +174,7 @@ test('study: cards from a note, a calm review with a typed answer, FSRS rating; 
   // Context pack from the editor's ••• menu.
   await page.getByRole('button', { name: 'Back' }).click();
   await page.getByRole('button', { name: 'Open Physics', exact: true }).click();
-  await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
   await page.getByRole('button', { name: 'More', exact: true }).first().click();
   await page.getByRole('menuitem', { name: /^Context pack/ }).click();
   const packDialog = page.getByRole('dialog', { name: 'Context pack' });
@@ -184,7 +184,7 @@ test('study: cards from a note, a calm review with a typed answer, FSRS rating; 
   await packDialog.getByRole('button', { name: 'Agent Skill (.zip)' }).click();
   expect((await download).suggestedFilename()).toBe('Physics skill.zip');
   await packDialog.getByRole('button', { name: /Save for agents/ }).click();
-  await expect.poll(() => page.evaluate(async () => (await (window as any).__inkstoneHub.vault.fs.list('ai/packs')).length)).toBe(1);
+  await expect.poll(() => page.evaluate(async () => (await (window as any).__inkwrightHub.vault.fs.list('ai/packs')).length)).toBe(1);
 });
 
 /** An OpenAI-compatible mock that answers by what is asked: compile pages, chat with search, eval answers. */
@@ -263,7 +263,7 @@ test('with an AI: validated model drafts, "Explain this answer" in the assistant
   // Ask in the assistant; Explain separates what the notes support from what they don't.
   await page.getByRole('button', { name: 'Back' }).click();
   await page.getByRole('button', { name: 'Open Requirements', exact: true }).click();
-  await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
   // A quiet badge beside the sentence another note disagrees with; tap shows both sides.
   const badge = page.getByRole('button', { name: 'This disagrees with another note' });
   await expect(badge).toBeVisible({ timeout: 15_000 });

@@ -12,14 +12,14 @@ import {
   type NoteMeta,
   type PageInk,
   type PageSize,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import { BlendMode, LineCapStyle, PDFDocument, StandardFonts, degrees, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import { layoutText } from '../canvas/render.ts';
 import { fillPdfForm } from '../fill/formWriter.ts';
 import { canvasBytes } from './canvasBytes.ts';
 
 /**
- * Drawing Inkstone pages into pdf-lib pages, shared by the note exporter (new PDF) and the
+ * Drawing Inkwright pages into pdf-lib pages, shared by the note exporter (new PDF) and the
  * filled-PDF exporter (original PDF with ink on top). Coordinates: callers give the page's width
  * and height in points with the origin at the bottom left, as the page is displayed.
  */
@@ -54,7 +54,7 @@ export const hexRgb = (hex: string) => {
 };
 
 /**
- * Source PDFs of a note, loaded once per export. Form values filled in Inkstone are written in and
+ * Source PDFs of a note, loaded once per export. Form values filled in Inkwright are written in and
  * the form flattened, so embedding a page as a vector XObject keeps what the fields show.
  */
 export class SourcePdfs {

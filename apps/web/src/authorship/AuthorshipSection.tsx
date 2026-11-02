@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FileUp } from 'lucide-react';
-import { ZERO_COUNTS, addCounts, classifyPage, pageFromEvidence, verifyCertificate, writingRhythm, type AuthorshipCertificate, type InkStroke, type VerifyReport } from '@inkstone/core';
+import { ZERO_COUNTS, addCounts, classifyPage, pageFromEvidence, verifyCertificate, writingRhythm, type AuthorshipCertificate, type InkStroke, type VerifyReport } from '@inkwright/core';
 import { pickFiles } from '../platform/files.ts';
 import { useSettings } from '../state/settings.ts';
 import { Switch, cx } from '../ui/primitives.tsx';
@@ -32,9 +32,9 @@ export function AuthorshipSection() {
             <span className="row-label">Name in certificates</span>
             <input type="text" value={s.authorship.deviceName} placeholder="Optional, e.g. your name" maxLength={80} onChange={(e) => set({ deviceName: e.target.value })} />
           </label>
-          <Switch label="Attach a signed certificate to exported PDFs" hint="Readers can check it in Inkstone, offline" checked={s.authorship.attachToPdf} onChange={(v) => set({ attachToPdf: v })} />
+          <Switch label="Attach a signed certificate to exported PDFs" hint="Readers can check it in Inkwright, offline" checked={s.authorship.attachToPdf} onChange={(v) => set({ attachToPdf: v })} />
         </div>
-        <p className="set-note">Inkstone signs certificates with a key made on this device that can never leave it. Share the fingerprint with whoever checks your work so they know the key is yours. The name is whatever you type; nobody verifies it.</p>
+        <p className="set-note">Inkwright signs certificates with a key made on this device that can never leave it. Share the fingerprint with whoever checks your work so they know the key is yours. The name is whatever you type; nobody verifies it.</p>
       </section>
       <section className="set-group">
         <h2>Verify a certificate</h2>

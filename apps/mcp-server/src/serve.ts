@@ -1,6 +1,6 @@
 /**
  * Wires options to running endpoints: the AI (optional), the auth gate, MCP over HTTP and the
- * A2A agent. Shared by `inkstone-mcp --http` and `inkstone-agent run --http`.
+ * A2A agent. Shared by `inkwright-mcp --http` and `inkwright-agent run --http`.
  */
 import { createA2AApp } from './a2a.ts';
 import { createApi } from './api/index.ts';

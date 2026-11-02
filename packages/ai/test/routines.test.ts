@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MemoryFS } from '@inkstone/core';
+import { MemoryFS } from '@inkwright/core';
 import {
   ROUTINE_TEMPLATES,
   RoutineScheduler,
@@ -75,7 +75,7 @@ describe('time triggers', () => {
     const ev = dueTimeTriggers(r, at(2026, 11, 9, 7, 0));
     expect(ev).toHaveLength(1);
     expect(ev[0]!.catchUp).toBe(true);
-    expect(ev[0]!.reason).toMatch(/missed while Inkstone was closed/);
+    expect(ev[0]!.reason).toMatch(/missed while Inkwright was closed/);
     expect(ev[0]!.slots).toEqual([{ triggerIndex: 0, slot: at(2026, 11, 8, 18) }, { triggerIndex: 1, slot: at(2026, 11, 6, 9) }]);
     expect(dueTimeTriggers({ ...r, enabled: false }, at(2026, 11, 9, 7, 0))).toEqual([]);
   });

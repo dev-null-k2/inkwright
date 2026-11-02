@@ -3,7 +3,7 @@
  * code source is scanned (and each grammar only when its language appears). The same runtime and
  * grammars as the CLI (apps/mcp-server/src/dev/treesitter.ts), so both produce identical graphs.
  */
-import type { CodeLanguage, CodeParser, SyntaxNodeLike } from '@inkstone/core';
+import type { CodeLanguage, CodeParser, SyntaxNodeLike } from '@inkwright/core';
 import { GRAMMARS, TREE_SITTER_RUNTIME } from './wasm-assets.ts';
 
 type TS = typeof import('web-tree-sitter');

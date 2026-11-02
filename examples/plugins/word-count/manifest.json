@@ -1,8 +1,8 @@
 {
-  "id": "app.inkstone.examples.word-count",
+  "id": "app.inkwright.examples.word-count",
   "name": "Word count & reading time",
   "version": "1.0.0",
-  "author": "Inkstone",
+  "author": "Inkwright",
   "description": "A panel with the words, characters and reading time of the open note and your selection (typed text and recognized handwriting). Also a command, an assistant tool and a plain-text exporter.",
   "entry": "main.js",
   "minAppVersion": "1.0.0",

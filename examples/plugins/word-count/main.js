@@ -1,9 +1,9 @@
-// Word count & reading time — an example Inkstone plugin (docs/PLUGINS.md).
+// Word count & reading time — an example Inkwright plugin (docs/PLUGINS.md).
 //
-// Plain JavaScript, one ES module, no build step. The JSDoc types come from @inkstone/plugin-api.
-// Runs in a sandbox: it can only reach notes through `inkstone`, with the permissions in its manifest.
+// Plain JavaScript, one ES module, no build step. The JSDoc types come from @inkwright/plugin-api.
+// Runs in a sandbox: it can only reach notes through `inkwright`, with the permissions in its manifest.
 
-/** @typedef {import('@inkstone/plugin-api').InkstoneAPI} InkstoneAPI */
+/** @typedef {import('@inkwright/plugin-api').InkwrightAPI} InkwrightAPI */
 
 /** Markdown → plain words: drops front matter, link brackets, emphasis and list markers. */
 export function plainText(markdown) {
@@ -29,38 +29,38 @@ export function stats(text, wordsPerMinute = 230) {
 
 const readingTime = (m) => (m < 1 ? 'under a minute' : `${Math.round(m)} min`);
 
-async function wpm(inkstone) {
-  const s = await inkstone.settings.get();
+async function wpm(inkwright) {
+  const s = await inkwright.settings.get();
   return Number(s.wordsPerMinute) || 230;
 }
 
 export default {
-  /** @param {InkstoneAPI} inkstone */
-  activate(inkstone) {
-    inkstone.commands.register('count', async () => {
-      const open = await inkstone.editor.current();
-      if (!open) return inkstone.ui.toast('Open a note first.');
-      const note = await inkstone.notes.get(open.noteId);
-      const s = stats(note.markdown, await wpm(inkstone));
-      await inkstone.ui.toast(`“${note.title}”: ${s.words.toLocaleString()} words · ${readingTime(s.minutes)} to read`, 'success');
+  /** @param {InkwrightAPI} inkwright */
+  activate(inkwright) {
+    inkwright.commands.register('count', async () => {
+      const open = await inkwright.editor.current();
+      if (!open) return inkwright.ui.toast('Open a note first.');
+      const note = await inkwright.notes.get(open.noteId);
+      const s = stats(note.markdown, await wpm(inkwright));
+      await inkwright.ui.toast(`“${note.title}”: ${s.words.toLocaleString()} words · ${readingTime(s.minutes)} to read`, 'success');
     });
 
-    inkstone.ai.registerTool('reading_time', async ({ noteId }) => {
-      const note = await inkstone.notes.get(String(noteId));
-      const s = stats(note.markdown, await wpm(inkstone));
+    inkwright.ai.registerTool('reading_time', async ({ noteId }) => {
+      const note = await inkwright.notes.get(String(noteId));
+      const s = stats(note.markdown, await wpm(inkwright));
       return { title: note.title, words: s.words, characters: s.characters, minutes: Math.round(s.minutes * 10) / 10 };
     });
 
-    inkstone.exporters.register('plain-text', ({ note }) => ({ text: plainText(note.markdown).replace(/\n{3,}/g, '\n\n').trim() + '\n', fileName: note.title }));
+    inkwright.exporters.register('plain-text', ({ note }) => ({ text: plainText(note.markdown).replace(/\n{3,}/g, '\n\n').trim() + '\n', fileName: note.title }));
   },
 
   panels: {
     /**
      * Renders in the panel's own sandboxed frame.
      * @param {HTMLElement} root
-     * @param {InkstoneAPI} inkstone
+     * @param {InkwrightAPI} inkwright
      */
-    async stats(root, inkstone) {
+    async stats(root, inkwright) {
       root.innerHTML = `
         <style>
           .wc { display: grid; gap: 14px; padding: 4px 2px; }
@@ -79,11 +79,11 @@ export default {
 
       let noteId = null;
       const refresh = async () => {
-        const open = await inkstone.editor.current();
+        const open = await inkwright.editor.current();
         if (!open) return set('selection', 'Open a note to count its words.');
         noteId = open.noteId;
-        const note = await inkstone.notes.get(open.noteId);
-        const s = stats(note.markdown, await wpm(inkstone));
+        const note = await inkwright.notes.get(open.noteId);
+        const s = stats(note.markdown, await wpm(inkwright));
         set('words', s.words.toLocaleString());
         set('characters', s.characters.toLocaleString());
         set('time', readingTime(s.minutes));
@@ -95,10 +95,10 @@ export default {
       };
 
       await refresh();
-      showSelection(await inkstone.editor.selection());
-      inkstone.events.on('note.updated', (e) => { if (e.id === noteId) void refresh(); });
-      inkstone.events.on('note.opened', () => void refresh());
-      inkstone.events.on('selection.changed', (e) => showSelection(e.text));
+      showSelection(await inkwright.editor.selection());
+      inkwright.events.on('note.updated', (e) => { if (e.id === noteId) void refresh(); });
+      inkwright.events.on('note.opened', () => void refresh());
+      inkwright.events.on('selection.changed', (e) => showSelection(e.text));
     },
   },
 };

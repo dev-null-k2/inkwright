@@ -4,8 +4,8 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Radio } from 'lucide-react';
-import { argbToCss, outlineToSvgPath, strokeOutline, type InkStroke, type NoteDocument } from '@inkstone/core';
-import type { CollabPermission } from '@inkstone/sync';
+import { argbToCss, outlineToSvgPath, strokeOutline, type InkStroke, type NoteDocument } from '@inkwright/core';
+import type { CollabPermission } from '@inkwright/sync';
 import type { InkEngine } from '../canvas/engine.ts';
 import { useApp } from '../state/app.ts';
 import { Dialog, Segmented } from '../ui/primitives.tsx';

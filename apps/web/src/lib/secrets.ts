@@ -1,4 +1,4 @@
-import { MemorySecretStore, WebCryptoSecretStore, type SecretStore } from '@inkstone/ai';
+import { MemorySecretStore, WebCryptoSecretStore, type SecretStore } from '@inkwright/ai';
 
 /**
  * API keys and passwords: encrypted with a non-extractable AES-GCM key that lives in this

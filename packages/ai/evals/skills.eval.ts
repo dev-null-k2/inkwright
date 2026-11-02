@@ -139,7 +139,7 @@ async function runSkillCase(c: SkillCase, provider: Provider, model: string, mod
 
 describe('skill evals — scripted replies', () => {
   const results: CaseResult[] = [];
-  afterAll(() => printReport(formatTable('Inkstone skill evals — scripted', results)));
+  afterAll(() => printReport(formatTable('Inkwright skill evals — scripted', results)));
   for (const c of SKILL_CASES) {
     it(c.id, async () => {
       const r = await runSkillCase(c, createScriptedProvider([{ text: c.scripted }]), 'scripted', 'scripted');
@@ -153,7 +153,7 @@ const live = liveConfig();
 
 describe.skipIf(!live)(`skill evals — live (${live?.label ?? 'off'})`, () => {
   const results: CaseResult[] = [];
-  afterAll(() => printReport(formatTable(`Inkstone skill evals — live ${live!.label}`, results)));
+  afterAll(() => printReport(formatTable(`Inkwright skill evals — live ${live!.label}`, results)));
   for (const c of SKILL_CASES) {
     it(c.id, async () => {
       const r = await runSkillCase(c, live!.provider, live!.model, 'live');

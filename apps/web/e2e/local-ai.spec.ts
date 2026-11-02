@@ -3,7 +3,7 @@ import { openApp } from './helpers.ts';
 
 /** Picks MiniLM as this device's search model (smallest; same files for every device class). */
 async function useMiniLM(page: Page) {
-  await page.addInitScript(() => localStorage.setItem('inkstone.localai.v1', JSON.stringify({ embedModel: 'minilm-l6', embeddings: 'off' })));
+  await page.addInitScript(() => localStorage.setItem('inkwright.localai.v1', JSON.stringify({ embedModel: 'minilm-l6', embeddings: 'off' })));
 }
 
 /**
@@ -93,7 +93,7 @@ test('model downloads show their size, survive an interruption and resume where 
   // Stored in the private file system, complete.
   const size = await page.evaluate(async () => {
     const root = await navigator.storage.getDirectory();
-    const dir = await (await root.getDirectoryHandle('inkstone-models')).getDirectoryHandle('Xenova__all-MiniLM-L6-v2');
+    const dir = await (await root.getDirectoryHandle('inkwright-models')).getDirectoryHandle('Xenova__all-MiniLM-L6-v2');
     return (await (await dir.getFileHandle('onnx__model_quantized.onnx')).getFile()).size;
   });
   expect(size).toBe(weights.length);
@@ -104,16 +104,16 @@ test('model downloads show their size, survive an interruption and resume where 
 });
 
 /**
- * Opt-in (INKSTONE_REAL_MODELS=1): downloads the real MiniLM model from Hugging Face into the
+ * Opt-in (INKWRIGHT_REAL_MODELS=1): downloads the real MiniLM model from Hugging Face into the
  * browser's OPFS through the app's worker, embeds every note, and checks that search by meaning
  * finds a passage that shares no keyword with the query. Requests are relayed through Node so they
  * use this machine's network configuration.
  */
 test('real on-device embeddings find notes by meaning (opt-in, downloads 24 MB)', async ({ page }) => {
-  test.skip(!process.env.INKSTONE_REAL_MODELS, 'set INKSTONE_REAL_MODELS=1 to download a real model');
+  test.skip(!process.env.INKWRIGHT_REAL_MODELS, 'set INKWRIGHT_REAL_MODELS=1 to download a real model');
   test.setTimeout(240_000);
   await page.route('https://huggingface.co/**', relayToHuggingFace);
-  await page.addInitScript(() => localStorage.setItem('inkstone.localai.v1', JSON.stringify({ embedModel: 'minilm-l6', embeddings: 'device' })));
+  await page.addInitScript(() => localStorage.setItem('inkwright.localai.v1', JSON.stringify({ embedModel: 'minilm-l6', embeddings: 'device' })));
   await openApp(page);
   await openAISettings(page);
   const row = page.locator('.lai-row', { has: page.getByRole('combobox', { name: 'Search model' }) });
@@ -135,18 +135,18 @@ test('real on-device embeddings find notes by meaning (opt-in, downloads 24 MB)'
 });
 
 /**
- * Opt-in (INKSTONE_REAL_MODELS=chat): downloads a real chat model (Granite 4.0 350M, ~0.6 GB) and
+ * Opt-in (INKWRIGHT_REAL_MODELS=chat): downloads a real chat model (Granite 4.0 350M, ~0.6 GB) and
  * answers an Ask question entirely on the device, through the worker, with citations.
  */
 test('real on-device chat answers Ask from the notes (opt-in, downloads ~0.6 GB)', async ({ page }) => {
-  test.skip(process.env.INKSTONE_REAL_MODELS !== 'chat', 'set INKSTONE_REAL_MODELS=chat to download a real chat model');
+  test.skip(process.env.INKWRIGHT_REAL_MODELS !== 'chat', 'set INKWRIGHT_REAL_MODELS=chat to download a real chat model');
   test.setTimeout(900_000);
   await page.route('https://huggingface.co/**', relayToHuggingFace);
-  await page.addInitScript(() => localStorage.setItem('inkstone.localai.v1', JSON.stringify({ chatModel: 'granite-4.0-350m', embedModel: 'minilm-l6', embeddings: 'off' })));
+  await page.addInitScript(() => localStorage.setItem('inkwright.localai.v1', JSON.stringify({ chatModel: 'granite-4.0-350m', embedModel: 'minilm-l6', embeddings: 'off' })));
   await openApp(page);
   await page.keyboard.press('Control+k');
   await page.getByRole('radio', { name: 'Ask' }).click();
-  await page.locator('.pal-input').fill('How does Inkstone save my notes?');
+  await page.locator('.pal-input').fill('How does Inkwright save my notes?');
   await page.locator('.pal-input').press('Enter');
   await page.locator('.lai-offer').getByRole('button', { name: /Download/ }).click();
   // The relay delivers big files in slices; each cut is resumed exactly like a dropped connection.

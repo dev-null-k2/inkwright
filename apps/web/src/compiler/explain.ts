@@ -4,8 +4,8 @@
  * text the user then puts on a page — an answer or a summary — keeps that provenance in the
  * note's provenance file, so "Sources of AI text" can explain it later too.
  */
-import { attributeAnswer, attributedClaims, newId, pageText, textItemKey, type NoteDocument, type Passage, type ProvenanceGen, type TextBox } from '@inkstone/core';
-import { parseMemoryLink } from '@inkstone/ai';
+import { attributeAnswer, attributedClaims, newId, pageText, textItemKey, type NoteDocument, type Passage, type ProvenanceGen, type TextBox } from '@inkwright/core';
+import { parseMemoryLink } from '@inkwright/ai';
 import { allDocs, cachedDoc, recordProvenance } from './service.ts';
 import { openExplain } from './ui/dialogs.tsx';
 

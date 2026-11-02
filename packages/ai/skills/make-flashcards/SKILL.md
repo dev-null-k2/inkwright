@@ -2,7 +2,7 @@
 name: make-flashcards
 description: Turns notes into question-and-answer study flashcards covering the most important facts, definitions and relationships. Use when the user wants flashcards, study cards, revision questions or to quiz themselves before an exam.
 metadata:
-  author: inkstone
+  author: inkwright
   version: "1.0"
 ---
 

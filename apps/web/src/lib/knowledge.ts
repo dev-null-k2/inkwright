@@ -2,7 +2,7 @@ import {
   TemplateStore, dayKey, findDailyNote, findJournal, linkFirstMention, normalizeTitle, parseDayKey, parseWikiTarget,
   renameLinksInPage, resolveWikiTarget, segmentLines, newId, findMentions,
   type InkLink, type Mention, type NoteDocument, type NoteMeta, type NoteTemplate, type PageInk,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import { useApp } from '../state/app.ts';
 import { useKnowledge } from '../state/knowledge.ts';
 import { noteChanged } from './actions.ts';
@@ -13,7 +13,7 @@ export { applyRecognizedLinks, syncDocInlineTags } from './docLinks.ts';
 /**
  * The knowledge-base side of the app: following links, keeping links right when notes are renamed,
  * turning mentions and ink into links, `#tags` from the page, daily notes and templates. The pure
- * rules live in @inkstone/core (links.ts, knowledge.ts, daily.ts, templates.ts); this file applies
+ * rules live in @inkwright/core (links.ts, knowledge.ts, daily.ts, templates.ts); this file applies
  * them to the open note or to notes on disk and keeps the library and indexes up to date.
  */
 

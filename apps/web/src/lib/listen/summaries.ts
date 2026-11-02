@@ -10,7 +10,7 @@ import {
   pageSummaryMessages,
   parseLectureSummary,
   stampLines,
-} from '@inkstone/ai';
+} from '@inkwright/ai';
 import {
   bucketSegmentsByPage,
   newId,
@@ -22,7 +22,7 @@ import {
   type PageSummary,
   type RecordingTranscript,
   type TextBox,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import { getActiveAI, type ActiveAI } from '../ai.ts';
 import type { AppVault } from '../vault.ts';
 import { loadNoteTranscripts, updatePageSummaries, writeTranscript } from './transcripts.ts';

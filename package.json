@@ -1,24 +1,24 @@
 {
-  "name": "inkstone",
+  "name": "inkwright",
   "private": true,
   "version": "1.0.0",
-  "description": "Inkstone — paper-feel handwriting notes for every device, with bring-your-own-AI agents.",
+  "description": "Inkwright — paper-feel handwriting notes for every device, with bring-your-own-AI agents.",
   "type": "module",
   "workspaces": [
     "packages/*",
     "apps/*"
   ],
   "scripts": {
-    "dev": "npm run dev -w @inkstone/web",
-    "build": "npm run build -w @inkstone/web",
+    "dev": "npm run dev -w @inkwright/web",
+    "build": "npm run build -w @inkwright/web",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p apps/web/tsconfig.json --noEmit",
-    "e2e": "npm run build -w @inkstone/web && npm run e2e -w @inkstone/web",
-    "e2e:all": "npm run e2e:all -w @inkstone/web",
-    "e2e:android": "npm run e2e:android -w @inkstone/web",
+    "e2e": "npm run build -w @inkwright/web && npm run e2e -w @inkwright/web",
+    "e2e:all": "npm run e2e:all -w @inkwright/web",
+    "e2e:android": "npm run e2e:android -w @inkwright/web",
     "evals": "vitest run --project evals",
-    "build:preview": "npm run build:single -w @inkstone/web && node apps/web/scripts/artifact.mjs",
+    "build:preview": "npm run build:single -w @inkwright/web && node apps/web/scripts/artifact.mjs",
     "art": "node --experimental-strip-types scripts/brand/readme-art.mjs",
     "audit:deps": "node scripts/audit-deps.mjs",
     "sbom": "npx --yes @cyclonedx/cyclonedx-npm@4.0.0 --omit dev --output-format JSON --spec-version 1.6 --output-file sbom.cdx.json"

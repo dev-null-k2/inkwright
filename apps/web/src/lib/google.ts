@@ -3,7 +3,7 @@ import { useSettings } from '../state/settings.ts';
 
 /**
  * Sign in with Google and get Drive access. Uses Google Identity Services in browsers and the
- * native Google account sheet on Android/iOS. Scope `drive.file` only lets Inkstone see files it
+ * native Google account sheet on Android/iOS. Scope `drive.file` only lets Inkwright see files it
  * created — never the rest of the user's Drive.
  */
 export const GOOGLE_SCOPES = ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/drive.file'];

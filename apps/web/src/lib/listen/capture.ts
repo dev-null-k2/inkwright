@@ -1,4 +1,4 @@
-import { ASR_SAMPLE_RATE, resample } from '@inkstone/ai';
+import { ASR_SAMPLE_RATE, resample } from '@inkwright/ai';
 
 /**
  * Taps a microphone stream for 16 kHz mono PCM, alongside the MediaRecorder that saves the clip.
@@ -14,7 +14,7 @@ export interface PcmCapture {
 }
 
 const WORKLET = `
-class InkstonePcm extends AudioWorkletProcessor {
+class InkwrightPcm extends AudioWorkletProcessor {
   constructor() {
     super(); this.buf = new Float32Array(4096); this.n = 0;
     this.port.onmessage = () => { if (this.n) this.port.postMessage(this.buf.slice(0, this.n)); this.n = 0; this.port.postMessage('done'); };
@@ -28,7 +28,7 @@ class InkstonePcm extends AudioWorkletProcessor {
     return true;
   }
 }
-registerProcessor('inkstone-pcm', InkstonePcm);
+registerProcessor('inkwright-pcm', InkwrightPcm);
 `;
 
 export async function startPcmCapture(stream: MediaStream, onPcm: (samples: Float32Array) => void): Promise<PcmCapture> {
@@ -53,7 +53,7 @@ export async function startPcmCapture(stream: MediaStream, onPcm: (samples: Floa
   if (ctx.audioWorklet && typeof AudioWorkletNode !== 'undefined') {
     url = URL.createObjectURL(new Blob([WORKLET], { type: 'text/javascript' }));
     await ctx.audioWorklet.addModule(url);
-    const w = new AudioWorkletNode(ctx, 'inkstone-pcm', { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1, channelCountMode: 'explicit' });
+    const w = new AudioWorkletNode(ctx, 'inkwright-pcm', { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1, channelCountMode: 'explicit' });
     w.port.onmessage = (e) => { if (e.data instanceof Float32Array) emit(e.data); else flushed?.(); };
     node = w;
   } else {

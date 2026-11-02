@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Rect } from '@inkstone/core';
+import type { Rect } from '@inkwright/core';
 import type { FoundEvent, FoundLink } from './detect.ts';
 
 /**

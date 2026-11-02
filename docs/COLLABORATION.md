@@ -1,6 +1,6 @@
 # Devices and people, writing together
 
-Inkstone can sync your devices with each other and let several people write on one page at the
+Inkwright can sync your devices with each other and let several people write on one page at the
 same time — without a server of ours. This page says exactly what is peer-to-peer, what still
 needs a helper on the network, where it can fail, and what the encryption protects against.
 
@@ -11,7 +11,7 @@ Reference implementation:
 | Encryption, framing, handshake, RPC, the peer `Remote` | `packages/sync/src/peer/` |
 | Live-collaboration CRDT and its bridge to `NoteDocument` | `packages/core/src/collab.ts` |
 | WebRTC, pairing, device sync and live sessions in the app | `apps/web/src/peer/` |
-| Optional signalling relay | `apps/mcp-server/src/signal.ts` (`inkstone-mcp --signal-token`) |
+| Optional signalling relay | `apps/mcp-server/src/signal.ts` (`inkwright-mcp --signal-token`) |
 | Tests | `packages/sync/test/peer.test.ts`, `packages/core/test/collab.test.ts`, `apps/mcp-server/test/signal.test.ts`, `apps/web/e2e/peer.spec.ts` |
 
 Both features are the **Devices & live sharing** module (Settings › Modules) and can be switched
@@ -24,7 +24,7 @@ off; the vault keeps everything they wrote.
   reader: Chrome on Android, ChromeOS and macOS) or paste it, confirm, and show the answer back
   the same way. Both devices then remember each other's public key; *Remove* forgets it.
 - **Sync two devices directly** — *Sync now* next to a paired device. Without a signalling server
-  this is one more exchange of codes; with one (below), it happens by itself while Inkstone is
+  this is one more exchange of codes; with one (below), it happens by itself while Inkwright is
   open on both. The sync is the same engine as Google Drive or WebDAV sync, with the same
   three-way merge of ink and text, conflict copies for images, and the same safety stops (an
   empty or wiped device is never mistaken for "delete everything").
@@ -40,7 +40,7 @@ off; the vault keeps everything they wrote.
 |---|---|---|
 | Finding each other's addresses | ICE with **STUN** (default `stun:stun.l.google.com:19302`, configurable, can be empty) | A STUN server sees the devices' public IP addresses, nothing else. Empty STUN list: same network only. |
 | Exchanging the offer and answer (signalling) | QR codes or pasted text, in both directions | **No.** You are the signalling channel. |
-| … optionally, automatically | A **relay you run**: `inkstone-mcp --http <port> --signal-token <secret>` | Yes, but it only ever holds sealed, unlinkable messages (below). |
+| … optionally, automatically | A **relay you run**: `inkwright-mcp --http <port> --signal-token <secret>` | Yes, but it only ever holds sealed, unlinkable messages (below). |
 | The connection itself | WebRTC data channel (SCTP over DTLS over UDP), device to device | No — unless the network blocks it (next section). |
 | Your notes and strokes | End-to-end encrypted on top of DTLS | Never pass through anything that can read them. |
 
@@ -50,10 +50,10 @@ WebRTC tries, in order: the devices' local addresses (same network), then their 
 learned from STUN (most home routers and many mobile networks allow this "hole punching"). **Some
 networks do not**: symmetric NATs (common on carrier-grade mobile networks and some corporate
 networks), firewalls that block UDP, captive portals. Without a TURN server, two devices on such
-networks **cannot connect at all**; Inkstone then says so ("The devices could not reach each
+networks **cannot connect at all**; Inkwright then says so ("The devices could not reach each
 other…") instead of pretending.
 
-The fix is a **TURN relay**, which forwards the (still encrypted) traffic. Inkstone does not run
+The fix is a **TURN relay**, which forwards the (still encrypted) traffic. Inkwright does not run
 one. To use your own — for example [coturn](https://github.com/coturn/coturn) on a small VPS:
 
 ```
@@ -61,7 +61,7 @@ one. To use your own — for example [coturn](https://github.com/coturn/coturn) 
 listening-port=3478
 fingerprint
 lt-cred-mech
-user=inkstone:<a long random password>
+user=inkwright:<a long random password>
 realm=turn.example.com
 ```
 
@@ -80,11 +80,11 @@ key, a fresh ephemeral key and a nonce — and, for pairing and invites, a one-t
 `ink1:` codes are deflate-compressed base64url JSON and fit a QR code (typically 0.8–1.5 KB);
 offers expire after ten minutes and can be used once.
 
-**Your own relay (optional).** `inkstone-mcp --http 8765 --signal-token "$(openssl rand -hex 16)"`
+**Your own relay (optional).** `inkwright-mcp --http 8765 --signal-token "$(openssl rand -hex 16)"`
 adds `/signal/v1` to the MCP server's HTTP port: a mailbox you `POST` sealed messages to and
 long-poll with `GET ?after=<seq>`. Set the URL and token in Settings › Devices & sharing ›
 Network on every device. Then *Sync now* posts the offer to the other paired device's mailbox and
-waits for its answer; a device with Inkstone open answers paired devices by itself. The relay:
+waits for its answer; a device with Inkwright open answers paired devices by itself. The relay:
 
 - uses its **own token** — it opens a mailbox, never the vault;
 - sees **room names derived from secrets only the two devices hold** (HKDF of their X25519
@@ -101,7 +101,7 @@ descriptions that carried their fingerprints — and those may travel through a 
 server. So every message is encrypted again, with keys only the two devices can compute.
 
 **Keys.** Each device has an **identity key**: X25519, generated with WebCrypto as
-*non-extractable* (scripts — Inkstone's included — can use it but never read it out), stored in
+*non-extractable* (scripts — Inkwright's included — can use it but never read it out), stored in
 IndexedDB. Its fingerprint (SHA-256, first 10 bytes) is shown in Settings. Each connection adds
 an **ephemeral** X25519 key per side.
 
@@ -110,8 +110,8 @@ an **ephemeral** X25519 key per side.
 ```
 ikm  = DH(eI, eR) ‖ DH(eI, sR) ‖ DH(sI, eR) ‖ DH(sI, sR) ‖ psk?
 salt = SHA-256(transcript)        transcript = offer (minus psk) + answer (minus mac), SDP included
-kI→R = HKDF-SHA-256(ikm, salt, "inkstone.peer.v1 initiator->responder")
-kR→I = HKDF-SHA-256(ikm, salt, "inkstone.peer.v1 responder->initiator")
+kI→R = HKDF-SHA-256(ikm, salt, "inkwright.peer.v1 initiator->responder")
+kR→I = HKDF-SHA-256(ikm, salt, "inkwright.peer.v1 responder->initiator")
 sas  = HKDF(…, "sas") → six digits shown on both screens after pairing
 ```
 
@@ -152,7 +152,7 @@ could impersonate that device until it is removed.
 
 ## Live collaboration: why not Yjs, Loro or Automerge
 
-We compared a general-purpose CRDT library with modelling what Inkstone's pages already are.
+We compared a general-purpose CRDT library with modelling what Inkwright's pages already are.
 
 - **Yjs / Loro / Automerge** shine on text with character-level concurrent edits, nested maps and
   lists, and long histories. Using one would mean a second document model next to the vault's
@@ -220,7 +220,7 @@ changed it.
 
 ## Limits
 
-- Both devices must be online and have Inkstone open at the same time (it is peer-to-peer).
+- Both devices must be online and have Inkwright open at the same time (it is peer-to-peer).
   Cloud sync (Drive, WebDAV, a folder) remains the way to sync devices that are never on together.
 - Without TURN, some networks can't connect (above).
 - X25519 in WebCrypto is required: Chrome/Edge 133+, Firefox 130+, Safari 17+ (and the Android

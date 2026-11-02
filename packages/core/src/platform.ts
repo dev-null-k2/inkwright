@@ -130,7 +130,7 @@ export function createApiKey(o: { name: string; scopes: ApiScope[]; now: number;
   return { key, record };
 }
 
-/** True when a string has the shape of an Inkstone API key. */
+/** True when a string has the shape of an Inkwright API key. */
 export const looksLikeApiKey = (s: string) => KEY_RE.test(s);
 
 /** The live record for a presented key, or why it was refused. */

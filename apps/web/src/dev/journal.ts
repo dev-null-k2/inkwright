@@ -8,8 +8,8 @@ import { create } from 'zustand';
 import {
   AGENTS_MD_INTRO, LessonStore, TemplateStore, lessonsToAppend, newId, newPage, parseAgentSession, sessionToMarkdown,
   type LessonProposal, type NoteMeta, type NoteTemplate,
-} from '@inkstone/core';
-import { createLessonTool, runAgent } from '@inkstone/ai';
+} from '@inkwright/core';
+import { createLessonTool, runAgent } from '@inkwright/ai';
 import { importText, noteChanged } from '../lib/actions.ts';
 import { AppNoteToolHost, getActiveAI } from '../lib/ai.ts';
 import { activeSession } from '../lib/session.ts';

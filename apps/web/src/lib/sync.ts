@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { VaultFS } from '@inkstone/core';
+import type { VaultFS } from '@inkwright/core';
 import {
   FileSystemAccessFS,
   FolderRemote,
@@ -13,7 +13,7 @@ import {
   hasLocalChanges,
   type Remote,
   type SyncReport,
-} from '@inkstone/sync';
+} from '@inkwright/sync';
 import { useApp } from '../state/app.ts';
 import { useSettings } from '../state/settings.ts';
 import { getAccessToken } from './google.ts';
@@ -45,7 +45,7 @@ function hashId(s: string): string {
 /** Identity of the remote a target points at; changing it starts a fresh sync state. */
 function remoteIdentity(target: Target): string {
   const s = useSettings.getState().sync;
-  if (target === 'drive') return `drive|${s.account?.email ?? ''}|${s.drive.folderName || 'Inkstone'}`;
+  if (target === 'drive') return `drive|${s.account?.email ?? ''}|${s.drive.folderName || 'Inkwright'}`;
   if (target === 'webdav') return `webdav|${s.webdav.url}|${s.webdav.username}`;
   return `folder|${s.folder.name ?? ''}|${(s.folder as { id?: string }).id ?? ''}`;
 }
@@ -55,13 +55,13 @@ let periodic: ReturnType<typeof setInterval> | null = null;
 
 function stateStorage(): VaultFS | null {
   if (stateFs) return stateFs;
-  try { stateFs = new IndexedDBFS({ dbName: 'inkstone-sync' }); } catch { stateFs = null; }
+  try { stateFs = new IndexedDBFS({ dbName: 'inkwright-sync' }); } catch { stateFs = null; }
   return stateFs;
 }
 
 // ---- Folder handle (desktop "sync to a folder", e.g. Google Drive / iCloud folder on a Mac) -----
 
-const HANDLE_DB = 'inkstone-handles';
+const HANDLE_DB = 'inkwright-handles';
 function idb<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     const open = indexedDB.open(HANDLE_DB, 1);
@@ -79,7 +79,7 @@ function idb<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<
 export const folderSyncSupported = typeof window !== 'undefined' && 'showDirectoryPicker' in window;
 
 export async function chooseSyncFolder(): Promise<string | null> {
-  const handle: FileSystemDirectoryHandle = await (window as any).showDirectoryPicker({ id: 'inkstone-vault', mode: 'readwrite' });
+  const handle: FileSystemDirectoryHandle = await (window as any).showDirectoryPicker({ id: 'inkwright-vault', mode: 'readwrite' });
   await idb('readwrite', (s) => s.put(handle, 'folder'));
   engines.clear();
   // A new id per chosen folder, so a different folder never reuses another folder's sync state.
@@ -105,7 +105,7 @@ async function remoteFor(target: Target): Promise<Remote | null> {
     return new GoogleDriveRemote({
       getAccessToken: () => getAccessToken({ interactive: interactiveRun }),
       refreshAccessToken: () => getAccessToken({ interactive: interactiveRun, forceRefresh: true }),
-      folderName: s.drive.folderName || 'Inkstone',
+      folderName: s.drive.folderName || 'Inkwright',
     });
   }
   if (target === 'webdav') {
@@ -164,7 +164,7 @@ export async function syncNow(opts: { interactive?: boolean; allowMassDelete?: b
   if (app.vault?.asOf != null) return;
   if (app.vault && !app.vault.persistent) {
     // Never sync a temporary in-memory vault: it would look like "everything was deleted".
-    useSync.setState({ status: 'error', message: 'Sync is off because this browser is blocking storage for Inkstone.' });
+    useSync.setState({ status: 'error', message: 'Sync is off because this browser is blocking storage for Inkwright.' });
     return;
   }
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {

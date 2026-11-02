@@ -11,7 +11,7 @@ const SLOW = 90_000;
 
 /**
  * WebKit (Safari on macOS, and every browser on iPhone/iPad, including the Capacitor iOS shell) and
- * Firefox. Opt-in with INKSTONE_ENGINES=all (`npm run e2e:all`, which also installs the engines),
+ * Firefox. Opt-in with INKWRIGHT_ENGINES=all (`npm run e2e:all`, which also installs the engines),
  * so `npm run e2e` keeps needing only Chromium. Windows users run Edge/Chrome (Chromium: the
  * default projects) or Firefox. Touch-first devices run the layout and touch specs, like the
  * Chromium foldable/phone projects.
@@ -49,6 +49,6 @@ export default defineConfig({
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 860 } } },
     { name: 'foldable', use: { viewport: { width: 884, height: 1104 }, deviceScaleFactor: 2.5, isMobile: true, hasTouch: true }, testMatch: /layout|touch/ },
     { name: 'phone', use: { ...devices['Pixel 7'] }, testMatch: /layout|touch/ },
-    ...(process.env.INKSTONE_ENGINES === 'all' ? otherEngines : []),
+    ...(process.env.INKWRIGHT_ENGINES === 'all' ? otherEngines : []),
   ],
 });

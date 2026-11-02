@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { exportMarkdown, type MemoryFS } from '@inkstone/core';
+import { exportMarkdown, type MemoryFS } from '@inkwright/core';
 import {
   MemoryNoteToolHost,
   NOTE_TOOL_NAMES,
@@ -193,7 +193,7 @@ describe('createNoteTools', () => {
     const { host, run } = await setup();
     const out = await run('create_note', { title: 'Saved', text: 'body' });
     const paths = (host.vault.fs as MemoryFS).paths();
-    expect(paths).toEqual(expect.arrayContaining([`notes/${out.note.id}/note.json`, `notes/${out.note.id}/note.md`, 'inkstone.json']));
+    expect(paths).toEqual(expect.arrayContaining([`notes/${out.note.id}/note.json`, `notes/${out.note.id}/note.md`, 'inkwright.json']));
     expect(paths.some((p) => p.endsWith('.ink.json'))).toBe(true);
     // A fresh host over the same vault sees the note.
     const again = await MemoryNoteToolHost.create({ vault: host.vault });

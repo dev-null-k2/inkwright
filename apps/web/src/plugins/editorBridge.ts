@@ -4,7 +4,7 @@
  * The editor publishes itself with `useEditorBridge`; nothing else in the editor is reachable.
  */
 import { useEffect } from 'react';
-import { newId, type NoteDocument, type TextBox } from '@inkstone/core';
+import { newId, type NoteDocument, type TextBox } from '@inkwright/core';
 import type { InkEngine, SelectionInfo } from '../canvas/engine.ts';
 
 interface Bridge {

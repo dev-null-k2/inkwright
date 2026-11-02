@@ -3,8 +3,8 @@ import { line, newNote, openApp, pen, strokes, word, type Pt } from './helpers.t
 
 /** Canvas-relative screen point of a page point. */
 const toScreen = (page: Page, x: number, y: number, pageIndex = 0) =>
-  page.evaluate(({ x, y, pageIndex }) => { const r = (window as any).__inkstone.engine.pageRectToScreen(pageIndex, { minX: x, minY: y, maxX: x, maxY: y }); return [r.x, r.y] as [number, number]; }, { x, y, pageIndex });
-const pageOf = (page: Page, i = 0) => page.evaluate((i) => (window as any).__inkstone.doc.page(i), i);
+  page.evaluate(({ x, y, pageIndex }) => { const r = (window as any).__inkwright.engine.pageRectToScreen(pageIndex, { minX: x, minY: y, maxX: x, maxY: y }); return [r.x, r.y] as [number, number]; }, { x, y, pageIndex });
+const pageOf = (page: Page, i = 0) => page.evaluate((i) => (window as any).__inkwright.doc.page(i), i);
 const more = (page: Page) => page.getByRole('button', { name: 'More', exact: true }).click();
 const menuItem = (page: Page, name: RegExp | string) => page.getByRole('menuitem', { name }).click();
 const flush = (page: Page) => page.keyboard.press('Control+s');
@@ -45,8 +45,8 @@ test('snapping: a moved selection lands on the page margin with a jade guide; Al
   const loop: Pt[] = [[280, 270], [440, 270], [440, 340], [280, 340], [280, 272]];
   await pen(page, loop.flatMap((p, i) => (i ? line(loop[i - 1]!, p, 10).slice(1) : [p])));
   await expect(page.locator('.sel-bar, .selection-bar').first()).toBeVisible();
-  const minX = async () => page.evaluate(() => Math.min(...(window as any).__inkstone.doc.page(0).strokes[0].points.map((p: any) => p.x)));
-  const midY = await page.evaluate(() => { const ys = (window as any).__inkstone.doc.page(0).strokes[0].points.map((p: any) => p.y); return (Math.min(...ys) + Math.max(...ys)) / 2; });
+  const minX = async () => page.evaluate(() => Math.min(...(window as any).__inkwright.doc.page(0).strokes[0].points.map((p: any) => p.x)));
+  const midY = await page.evaluate(() => { const ys = (window as any).__inkwright.doc.page(0).strokes[0].points.map((p: any) => p.y); return (Math.min(...ys) + Math.max(...ys)) / 2; });
   const x0 = await minX();
   // Drag so the left edge comes within ~3 units of the 48-unit margin.
   const [sx, cy] = await toScreen(page, x0 + 20, midY);
@@ -123,7 +123,7 @@ test('tape covers ink; a tap reveals it, and View › Reveal all tape shows ever
   await pen(page, line([200, 300], [450, 300], 30));
   const tape = (await pageOf(page)).objects.find((o: any) => o.type === 'tape');
   expect(tape.width).toBeGreaterThan(5);
-  const revealed = () => page.evaluate((id) => (window as any).__inkstone.engine.isTapeRevealed(id), tape.id);
+  const revealed = () => page.evaluate((id) => (window as any).__inkwright.engine.isTapeRevealed(id), tape.id);
   expect(await revealed()).toBe(false);
   // Back to the pen: a tap on the tape reveals it instead of leaving a dot.
   await page.keyboard.press('p');
@@ -156,20 +156,20 @@ test('calligraphy pen: broad nib with an adjustable angle, stored on the stroke'
 test('two-page view: pages side by side on a wide screen, ink lands on the right-hand page', async ({ page }) => {
   await openApp(page);
   await newNote(page);
-  await page.evaluate(() => { (window as any).__inkstone.doc.addPage(1); });
-  await expect.poll(() => page.evaluate(() => (window as any).__inkstone.engine.spreadsOn)).toBe(true);
+  await page.evaluate(() => { (window as any).__inkwright.doc.addPage(1); });
+  await expect.poll(() => page.evaluate(() => (window as any).__inkwright.engine.spreadsOn)).toBe(true);
   const [rx, ry] = await toScreen(page, 120, 200, 1);
   const [lx] = await toScreen(page, 120, 200, 0);
   expect(rx).toBeGreaterThan(lx + 100);
   await pen(page, word(rx, ry, 100));
   expect(await strokes(page, 1)).toHaveLength(1);
   expect(await strokes(page, 0)).toHaveLength(0);
-  expect(await page.evaluate(() => (window as any).__inkstone.engine.currentPageIndex)).toBe(1);
+  expect(await page.evaluate(() => (window as any).__inkwright.engine.currentPageIndex)).toBe(1);
   // ••• › View › One page.
   await more(page);
   await menuItem(page, /^View/);
   await page.getByRole('radio', { name: 'One page' }).click();
-  await expect.poll(() => page.evaluate(() => (window as any).__inkstone.engine.spreadsOn)).toBe(false);
+  await expect.poll(() => page.evaluate(() => (window as any).__inkwright.engine.spreadsOn)).toBe(false);
 });
 
 test('layers: write on the drawing layer, hide it, and lock it against the eraser', async ({ page }) => {
@@ -218,7 +218,7 @@ test('version history: restore an earlier version, then copy a page back in from
   await menuItem(page, 'Version history');
   await dialog.locator('.history-item', { hasText: 'Before restoring' }).click();
   await dialog.getByRole('button', { name: 'Copy page 1 into the note' }).click();
-  await expect.poll(() => page.evaluate(() => (window as any).__inkstone.doc.pageCount)).toBe(2);
+  await expect.poll(() => page.evaluate(() => (window as any).__inkwright.doc.pageCount)).toBe(2);
   expect(await strokes(page, 1)).toHaveLength(2);
   // Restoring is undoable like any edit.
   await dialog.getByRole('button', { name: 'Close' }).click();
@@ -228,7 +228,7 @@ test('lock a note: encrypted cover in the library, passcode to open, kept out of
   await openApp(page);
   await newNote(page);
   await page.evaluate(() => {
-    const { doc } = (window as any).__inkstone;
+    const { doc } = (window as any).__inkwright;
     doc.upsertText(0, { id: 'secret-text', x: 80, y: 120, width: 300, text: 'zanzibar treasure map', fontSize: 18, color: '#FF1B1F24', font: 'sans', createdAt: Date.now() });
   });
   await pen(page, word(200, 320, 200));
@@ -243,7 +243,7 @@ test('lock a note: encrypted cover in the library, passcode to open, kept out of
   await dialog.getByRole('button', { name: 'Lock note' }).click();
   await expect(page.locator('.toast', { hasText: 'Locked' })).toBeVisible({ timeout: 15000 });
   await expect(page.locator('.ai-btn')).toHaveCount(0);
-  const id = await page.evaluate(() => (window as any).__inkstone.doc.meta.id);
+  const id = await page.evaluate(() => (window as any).__inkwright.doc.meta.id);
   // Search doesn't find it any more.
   await page.getByRole('button', { name: 'Back to library' }).click();
   await expect(page.locator('.note-card .locked-cover')).toHaveCount(1);
@@ -259,12 +259,12 @@ test('lock a note: encrypted cover in the library, passcode to open, kept out of
   await expect(gate.getByRole('alert')).toContainText('doesn’t open');
   await gate.getByLabel('Passcode').fill('tulip-42');
   await gate.getByRole('button', { name: 'Open' }).click();
-  await page.waitForFunction((id) => (window as any).__inkstone?.doc?.meta.id === id && (window as any).__inkstone.doc.page(0).strokes.length === 1, id, { timeout: 20000 });
-  expect(await page.evaluate(() => (window as any).__inkstone.doc.page(0).texts[0].text)).toBe('zanzibar treasure map');
+  await page.waitForFunction((id) => (window as any).__inkwright?.doc?.meta.id === id && (window as any).__inkwright.doc.page(0).strokes.length === 1, id, { timeout: 20000 });
+  expect(await page.evaluate(() => (window as any).__inkwright.doc.page(0).texts[0].text)).toBe('zanzibar treasure map');
   // The files in the vault hold no readable trace of it.
   const leaked = await page.evaluate(async (id) => {
     const dbs = await indexedDB.databases();
-    const name = dbs.map((d) => d.name).find((n) => n && n.includes('inkstone-vault'));
+    const name = dbs.map((d) => d.name).find((n) => n && n.includes('inkwright-vault'));
     if (!name) return 'no-db';
     return await new Promise<string>((resolve) => {
       const req = indexedDB.open(name);

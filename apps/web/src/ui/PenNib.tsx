@@ -1,9 +1,9 @@
-import type { PenType } from '@inkstone/core';
-import { argbToCss } from '@inkstone/core';
+import type { PenType } from '@inkwright/core';
+import { argbToCss } from '@inkwright/core';
 
 /**
  * Pens drawn as the physical instruments they imitate, tip up, inked with their colour. The pen
- * tray is the one place Inkstone spends its visual boldness.
+ * tray is the one place Inkwright spends its visual boldness.
  */
 export function PenNib({ pen, color, size = 1 }: { pen: PenType; color: string; size?: number }) {
   const ink = argbToCss(color);

@@ -4,7 +4,7 @@ import {
   type PageSummariesFile,
   type PageSummary,
   type TranscriptFile,
-} from '@inkstone/core';
+} from '@inkwright/core';
 
 /*
  * Three-way merges for recording transcripts (`assets/<clip>.transcript.json`) and page

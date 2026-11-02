@@ -1,6 +1,6 @@
 /**
  * The app's AI gateway: `getActiveAI()` (lib/ai.ts) hands every caller an AI whose provider is
- * a guarded provider (`createGuardedProvider` in @inkstone/ai). So the assistant panel, routines,
+ * a guarded provider (`createGuardedProvider` in @inkwright/ai). So the assistant panel, routines,
  * Ask, smart ink, handwriting conversion and notes that listen all go through one choke point
  * that routes by the AI policy, redacts before cloud calls, shortens large context, meters cost
  * and writes the audit trail.
@@ -19,7 +19,7 @@ import {
   type Route,
   type RouteTarget,
   type TrustServices,
-} from '@inkstone/ai';
+} from '@inkwright/ai';
 import { useSettings } from '../../state/settings.ts';
 import { CLAUDE_BUILTIN_ID, activeFromConfig, builtinActiveAI, type AICallOptions, type ActiveAI } from '../ai.ts';
 import { readyDeviceAI } from '../localai.ts';

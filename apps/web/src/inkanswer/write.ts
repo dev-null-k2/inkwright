@@ -13,7 +13,7 @@ import {
   type NoteDocument,
   type Rect,
   type TextBox,
-} from '@inkstone/core';
+} from '@inkwright/core';
 
 /**
  * Puts an AI answer on the page — in handwriting (`handwrite()`, origin 'ai') or as a typed text

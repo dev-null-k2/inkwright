@@ -1,4 +1,4 @@
-import { argbToHexOpacity, cellRect, colEdges, formatMathNumber, graphGeometry, mathWidth, rowEdges, type GraphObject, type MathObject, type PageInk, type TableObject } from '@inkstone/core';
+import { argbToHexOpacity, cellRect, colEdges, formatMathNumber, graphGeometry, mathWidth, rowEdges, type GraphObject, type MathObject, type PageInk, type TableObject } from '@inkwright/core';
 import { LineCapStyle, rgb, type PDFDocument, type PDFFont, type PDFPage } from 'pdf-lib';
 import { canvasBytes } from '../lib/canvasBytes.ts';
 import { tableCellFontSize, drawPageObjects } from './render.ts';

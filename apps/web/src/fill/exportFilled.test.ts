@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PDFCheckBox, PDFDocument, PDFDropdown, PDFOptionList, PDFRadioGroup, PDFTextField } from 'pdf-lib';
-import { newNote, newPage, type InkStroke, type NoteMeta, type PageInk } from '@inkstone/core';
+import { newNote, newPage, type InkStroke, type NoteMeta, type PageInk } from '@inkwright/core';
 import { displayToUserMatrix, exportFilledPdf } from './exportFilled.ts';
 import { fillPdfForm } from './formWriter.ts';
 import { pdfToPage, readPdfForm } from './pdfForm.ts';

@@ -4,7 +4,7 @@ import {
   pageSizeOf,
   type NoteMeta,
   type PageInk,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import { renderPageStandalone } from '../canvas/engine.ts';
 import type { AppVault } from './vault.ts';
 import { saveFile } from '../platform/files.ts';
@@ -26,8 +26,8 @@ export async function exportPdf(vault: AppVault, note: NoteMeta, pages: PageInk[
   const { K, SourcePdfs, drawPageItems, drawPaperBackground, drawPdfPageBackground, embedFonts } = await import('./pdfdraw.ts');
   const pdf = await PDFDocument.create();
   pdf.setTitle(note.title);
-  pdf.setCreator('Inkstone');
-  pdf.setProducer('Inkstone');
+  pdf.setCreator('Inkwright');
+  pdf.setProducer('Inkwright');
   pdf.setCreationDate(new Date(note.createdAt));
   pdf.setModificationDate(new Date(note.updatedAt));
   if (note.tags.length) pdf.setKeywords(note.tags);

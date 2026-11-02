@@ -1,12 +1,12 @@
 /**
  * The REST API's resource schemas (zod). They are the single source of truth for three things:
  * request validation, the OpenAPI 3.1 document (`openapi.ts` turns them into JSON Schema 2020-12
- * components) and, through that document, the generated TypeScript SDK (`@inkstone/sdk`).
+ * components) and, through that document, the generated TypeScript SDK (`@inkwright/sdk`).
  *
  * Every schema that appears in the document is registered in `components` with a stable name.
  */
 import { z } from 'zod';
-import { API_SCOPES } from '@inkstone/core';
+import { API_SCOPES } from '@inkwright/core';
 
 /** Named schemas → `#/components/schemas/<id>`. */
 export const components = z.registry<{ id: string; description?: string }>();

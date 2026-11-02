@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Copy, KeyRound, Trash2 } from 'lucide-react';
-import { API_KEYS_FILE, API_SCOPES, createApiKey, decodeApiKeys, emptyApiKeys, encodeApiKeys, revokeApiKey, type ApiKeyRecord, type ApiScope } from '@inkstone/core';
-import { PERMISSIONS, PERMISSION_INFO, type Permission } from '@inkstone/plugin-api';
+import { API_KEYS_FILE, API_SCOPES, createApiKey, decodeApiKeys, emptyApiKeys, encodeApiKeys, revokeApiKey, type ApiKeyRecord, type ApiScope } from '@inkwright/core';
+import { PERMISSIONS, PERMISSION_INFO, type Permission } from '@inkwright/plugin-api';
 import { Switch, cx, relativeTime } from '../ui/primitives.tsx';
 import { askConfirm } from '../ui/prompts.tsx';
 import { useApp } from '../state/app.ts';
@@ -17,11 +17,11 @@ const SCOPE_TEXT: Record<ApiScope, string> = {
 };
 
 const LINKS: [string, string][] = [
-  ['inkstone://new?title=Groceries&text=-%20milk%0A-%20eggs&tags=home', 'A new note with typed text and tags'],
-  ['inkstone://open?note=<note id>&page=2', 'Open a note at a page (or ?title=…)'],
-  ['inkstone://search?q=pricing', 'Search everything'],
-  ['inkstone://capture?url=https://example.com&title=Example&text=a%20quote', 'Save a link with a quote'],
-  ['inkstone://today', 'Today’s daily note'],
+  ['inkwright://new?title=Groceries&text=-%20milk%0A-%20eggs&tags=home', 'A new note with typed text and tags'],
+  ['inkwright://open?note=<note id>&page=2', 'Open a note at a page (or ?title=…)'],
+  ['inkwright://search?q=pricing', 'Search everything'],
+  ['inkwright://capture?url=https://example.com&title=Example&text=a%20quote', 'Save a link with a quote'],
+  ['inkwright://today', 'Today’s daily note'],
 ];
 
 function Group({ title, note, children }: { title: string; note?: React.ReactNode; children: React.ReactNode }) {
@@ -72,7 +72,7 @@ function ApiKeys() {
   };
 
   return (
-    <Group title="API keys" note={<>For the local REST API that <code>inkstone-mcp --http</code> serves next to MCP (docs/API.md). Keys are stored in your vault only as a hash, so they sync to the computer running the server; the key itself is shown once.</>}>
+    <Group title="API keys" note={<>For the local REST API that <code>inkwright-mcp --http</code> serves next to MCP (docs/API.md). Keys are stored in your vault only as a hash, so they sync to the computer running the server; the key itself is shown once.</>}>
       {shown && (
         <div className="dev-key-shown" role="status">
           <p>Copy this key now; it won’t be shown again.</p>
@@ -124,8 +124,8 @@ function AutomationApi() {
   const [hosts, setHosts] = useState(a.hosts.join(', '));
   const set = (p: Partial<typeof a>) => useAutomation.setState(p);
   return (
-    <Group title="Automation API" note={<>Scripts on this page — browser extensions, userscripts, the developer console — get <code>window.inkstone</code>, the plugin API with the permissions ticked here. Off by default; only turn it on for code you trust.</>}>
-      <Switch label="Turn on window.inkstone" hint="Same calls as plugins: notes, editor, events, commands, storage" checked={a.enabled} onChange={(v) => set({ enabled: v })} />
+    <Group title="Automation API" note={<>Scripts on this page — browser extensions, userscripts, the developer console — get <code>window.inkwright</code>, the plugin API with the permissions ticked here. Off by default; only turn it on for code you trust.</>}>
+      <Switch label="Turn on window.inkwright" hint="Same calls as plugins: notes, editor, events, commands, storage" checked={a.enabled} onChange={(v) => set({ enabled: v })} />
       {a.enabled && (
         <>
           {PERMISSIONS.map((p: Permission) => (
@@ -138,7 +138,7 @@ function AutomationApi() {
               <input value={hosts} onChange={(e) => setHosts(e.target.value)} onBlur={() => set({ hosts: hosts.split(',').map((h) => h.trim()).filter(Boolean) })} placeholder="https://hooks.example.com, https://*.example.org" />
             </label>
           )}
-          <div className="code-block"><pre>{`await inkstone.notes.list({ tag: 'work' })\ninkstone.events.on('note.updated', (e) => console.log(e.title))`}</pre></div>
+          <div className="code-block"><pre>{`await inkwright.notes.list({ tag: 'work' })\ninkwright.events.on('note.updated', (e) => console.log(e.title))`}</pre></div>
         </>
       )}
     </Group>
@@ -149,7 +149,7 @@ function Links() {
   const toast = useApp((a) => a.toast);
   const base = `${location.origin}${location.pathname}`;
   return (
-    <Group title="Links from other apps" note={<>The Android app opens <code>inkstone://</code> links; the installed web app also handles <code>web+inkstone://</code>, and any link to <code>{base}?action=new&amp;title=…</code> works in a browser. Links can create, open and search notes; they never delete or share anything.</>}>
+    <Group title="Links from other apps" note={<>The Android app opens <code>inkwright://</code> links; the installed web app also handles <code>web+inkwright://</code>, and any link to <code>{base}?action=new&amp;title=…</code> works in a browser. Links can create, open and search notes; they never delete or share anything.</>}>
       <dl className="dev-links">
         {LINKS.map(([url, what]) => (
           <div key={url}>

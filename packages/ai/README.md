@@ -1,13 +1,13 @@
-# @inkstone/ai
+# @inkwright/ai
 
-Bring-your-own-key AI for Inkstone: one chat API over every major provider, an agent loop that
+Bring-your-own-key AI for Inkwright: one chat API over every major provider, an agent loop that
 works with the user's notes, one-tap skills, and encrypted key storage. Pure TypeScript using
-global `fetch`; runs in the browser, Capacitor and Node. No dependencies besides `@inkstone/core`.
+global `fetch`; runs in the browser, Capacitor and Node. No dependencies besides `@inkwright/core`.
 
 ## Providers
 
 ```ts
-import { createProvider, PROVIDERS } from '@inkstone/ai';
+import { createProvider, PROVIDERS } from '@inkwright/ai';
 
 const ai = createProvider({ providerId: 'anthropic', apiKey });          // settings → Provider
 const r = await ai.chat({ model: 'claude-sonnet-5-5', messages }, (e) => {
@@ -107,8 +107,8 @@ IndexedDB (`IndexedDBSecretBackend`); pass `MemorySecretBackend` in tests. Use
 ```sh
 npx vitest run --project ai       # unit tests: wire formats, errors, retry, abort, agent, tools, skills, secrets
 npx vitest run --project evals    # evals (scripted model, deterministic) with a score table
-INKSTONE_EVAL_PROVIDER=openai INKSTONE_EVAL_KEY=sk-… INKSTONE_EVAL_MODEL=gpt-5-mini \
-  npx vitest run --project evals  # same cases against a real model (optional INKSTONE_EVAL_BASE_URL, INKSTONE_EVAL_MIN_SCORE)
+INKWRIGHT_EVAL_PROVIDER=openai INKWRIGHT_EVAL_KEY=sk-… INKWRIGHT_EVAL_MODEL=gpt-5-mini \
+  npx vitest run --project evals  # same cases against a real model (optional INKWRIGHT_EVAL_BASE_URL, INKWRIGHT_EVAL_MIN_SCORE)
 ```
 
 Eval cases (`evals/cases.ts`) seed a fresh vault, send one request and score the run on the tool

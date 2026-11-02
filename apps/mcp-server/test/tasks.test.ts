@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { ActivityStore, RoutineStore, VaultUndoTarget, createScriptedProvider, newRoutine, undoRun, type McpConnection, type McpTask, type ScriptStep } from '@inkstone/ai';
+import { ActivityStore, RoutineStore, VaultUndoTarget, createScriptedProvider, newRoutine, undoRun, type McpConnection, type McpTask, type ScriptStep } from '@inkwright/ai';
 import type { ServerContext } from '../src/context.ts';
 import { createServices, type ServerServices } from '../src/server.ts';
 import type { AgentAI } from '../src/agent/ai.ts';
@@ -54,7 +54,7 @@ describe('Tasks extension', () => {
     expect((await ctx.vault.readNote('OLDNOTE'))!.summary).toBe('Thoughts on Deep Work');
     await services.activity.flush();
     const runs = await new ActivityStore(ctx.fs).list();
-    expect(runs[0]).toMatchObject({ source: 'external', label: 'Inkstone (via MCP)' });
+    expect(runs[0]).toMatchObject({ source: 'external', label: 'Inkwright (via MCP)' });
     expect(runs[0]!.ops.map((o) => o.kind)).toEqual(['meta_changed']);
   });
 
@@ -82,7 +82,7 @@ describe('Tasks extension', () => {
     ctx.vault.invalidate();
     const page = await ctx.vault.readPage('SKETCH', 'SKETCHP1');
     expect(page.recognizedText).toBe('# Whiteboard\n- arrows everywhere');
-    expect(page.recognizedBy).toBe('inkstone-agent:scripted');
+    expect(page.recognizedBy).toBe('inkwright-agent:scripted');
     await services.activity.flush();
     const [run] = await new ActivityStore(ctx.fs).list();
     expect(run!.ops[0]).toMatchObject({ kind: 'handwriting_recognized', noteId: 'SKETCH', pageId: 'SKETCHP1' });

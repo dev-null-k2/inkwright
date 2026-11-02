@@ -8,7 +8,7 @@
  * Noise control is the point: the threshold, the confidence the model must reach and the cap on
  * how many pairs it sees per scan are what the precision eval holds to its bar.
  */
-import { detectConflicts, extractClaims, stripMarkdown, DEFAULT_CONFLICT_THRESHOLD, type Claim, type Conflict, type SourceDoc } from '@inkstone/core';
+import { detectConflicts, extractClaims, stripMarkdown, DEFAULT_CONFLICT_THRESHOLD, type Claim, type Conflict, type SourceDoc } from '@inkwright/core';
 import { extractJson } from '../json.ts';
 import { COMPILER_PROMPT_IDS, type CompilerAI } from './draft.ts';
 import type { LedgerDecision } from './store.ts';

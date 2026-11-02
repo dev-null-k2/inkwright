@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { PageInk } from '@inkstone/core';
+import type { PageInk } from '@inkwright/core';
 import { mergePage } from '../src/index.ts';
 
 describe('ink links merge', () => {

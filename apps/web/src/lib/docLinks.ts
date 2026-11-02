@@ -1,4 +1,4 @@
-import { inkLinksFromRecognition, newId, pageText, resolveWikiTarget, syncInlineTags, type NoteDocument, type RecognizedLine } from '@inkstone/core';
+import { inkLinksFromRecognition, newId, pageText, resolveWikiTarget, syncInlineTags, type NoteDocument, type RecognizedLine } from '@inkwright/core';
 import { useApp } from '../state/app.ts';
 
 /**

@@ -1,8 +1,8 @@
-# @inkstone/plugin-api
+# @inkwright/plugin-api
 
-Types and rules shared by Inkstone plugins and the app that hosts them:
+Types and rules shared by Inkwright plugins and the app that hosts them:
 
-- `InkstoneAPI` — what `activate(inkstone)` receives (notes, editor, commands, AI tools,
+- `InkwrightAPI` — what `activate(inkwright)` receives (notes, editor, commands, AI tools,
   importers, exporters, events, storage, settings, network, UI, clipboard, messages), and
   `definePlugin` for typed plugin modules;
 - `validateManifest`, `compareVersions` — the `manifest.json` schema;
@@ -12,4 +12,4 @@ Types and rules shared by Inkstone plugins and the app that hosts them:
 - `createPluginClient` — the plugin side of the protocol over any transport.
 
 Writing a plugin: see [docs/PLUGINS.md](../../docs/PLUGINS.md) and
-`examples/create-inkstone-plugin`.
+`examples/create-inkwright-plugin`.

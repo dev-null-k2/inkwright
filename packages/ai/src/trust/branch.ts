@@ -8,7 +8,7 @@
  * changes are already applied, so several proposals stack on one branch. Nothing outside the
  * branch is written except content-addressed page blobs, shared with version history.
  */
-import { Vault, VaultLayout, decodePage, encodePage, type Branch, type BranchStore, type OverlayFS, type PageInk } from '@inkstone/core';
+import { Vault, VaultLayout, decodePage, encodePage, type Branch, type BranchStore, type OverlayFS, type PageInk } from '@inkwright/core';
 import { MemoryNoteToolHost } from '../tools/memory-host.ts';
 import { applyProposal, type Proposal } from './proposals.ts';
 

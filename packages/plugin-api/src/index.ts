@@ -1,7 +1,7 @@
 /**
- * `@inkstone/plugin-api` — everything a plugin author (and the app that hosts plugins) shares:
+ * `@inkwright/plugin-api` — everything a plugin author (and the app that hosts plugins) shares:
  *
- * - `api.ts`: the `InkstoneAPI` plugins call, `definePlugin`, and the payload types;
+ * - `api.ts`: the `InkwrightAPI` plugins call, `definePlugin`, and the payload types;
  * - `manifest.ts`: the manifest.json schema, validation and version comparison;
  * - `permissions.ts`: the permission list, note scopes and the network allowlist;
  * - `protocol.ts`: the versioned postMessage protocol and the method → permission table;

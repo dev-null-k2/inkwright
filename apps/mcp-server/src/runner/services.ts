@@ -1,15 +1,15 @@
 /**
- * Keeps `inkstone-agent run` running in the background on each desktop OS, the native way:
+ * Keeps `inkwright-agent run` running in the background on each desktop OS, the native way:
  *
- * - macOS: a launchd user agent (`~/Library/LaunchAgents/app.inkstone.agent.plist`), started at
- *   login and restarted if it exits; logs to `~/Library/Logs/Inkstone/agent.log`.
- * - Linux: a systemd user unit (`~/.config/systemd/user/inkstone-agent.service`); logs in the
+ * - macOS: a launchd user agent (`~/Library/LaunchAgents/app.inkwright.agent.plist`), started at
+ *   login and restarted if it exits; logs to `~/Library/Logs/Inkwright/agent.log`.
+ * - Linux: a systemd user unit (`~/.config/systemd/user/inkwright-agent.service`); logs in the
  *   journal. `loginctl enable-linger` keeps it running while logged out.
  * - Windows: a Task Scheduler task (XML for `schtasks /Create /XML`), started at logon with
- *   restart on failure and no time limit; logs to `%LOCALAPPDATA%\Inkstone\agent.log`.
+ *   restart on failure and no time limit; logs to `%LOCALAPPDATA%\Inkwright\agent.log`.
  *
  * These are pure functions from a spec to file contents plus the exact commands to load and
- * unload the service, so they are unit-tested and `inkstone-agent install --dry-run` can show
+ * unload the service, so they are unit-tested and `inkwright-agent install --dry-run` can show
  * everything before anything is written. Secrets never go into these files: the AI key and the
  * bearer token belong in the 0600 config file or an environment file.
  */
@@ -41,9 +41,9 @@ export interface ServiceFile {
   logs: string;
 }
 
-export const LAUNCHD_LABEL = 'app.inkstone.agent';
-export const SYSTEMD_UNIT = 'inkstone-agent.service';
-export const WINDOWS_TASK = 'Inkstone agent';
+export const LAUNCHD_LABEL = 'app.inkwright.agent';
+export const SYSTEMD_UNIT = 'inkwright-agent.service';
+export const WINDOWS_TASK = 'Inkwright agent';
 
 export function currentPlatform(p: NodeJS.Platform = process.platform): ServicePlatform {
   return p === 'darwin' ? 'macos' : p === 'win32' ? 'windows' : 'linux';
@@ -52,7 +52,7 @@ export function currentPlatform(p: NodeJS.Platform = process.platform): ServiceP
 const xml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 
 export function launchdPlist(spec: ServiceSpec): ServiceFile {
-  const logDir = path.posix.join(spec.home, 'Library/Logs/Inkstone');
+  const logDir = path.posix.join(spec.home, 'Library/Logs/Inkwright');
   const argv = [spec.node, spec.script, 'run', ...spec.args];
   const content = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -109,7 +109,7 @@ export function systemdQuote(a: string): string {
 export function systemdUnit(spec: ServiceSpec): ServiceFile {
   const exec = [spec.node, spec.script, 'run', ...spec.args].map(systemdQuote).join(' ');
   const content = `[Unit]
-Description=Inkstone agent (runs your routines; MCP and A2A for your notes)
+Description=Inkwright agent (runs your routines; MCP and A2A for your notes)
 After=network-online.target
 Wants=network-online.target
 
@@ -120,7 +120,7 @@ WorkingDirectory=%h
 Restart=on-failure
 RestartSec=30
 # Secrets (AI key, token) can live here instead of the config file: KEY=value lines.
-EnvironmentFile=-%h/.config/inkstone/agent.env
+EnvironmentFile=-%h/.config/inkwright/agent.env
 NoNewPrivileges=true
 
 [Install]
@@ -152,12 +152,12 @@ export function windowsQuote(a: string): string {
 
 export function windowsTaskXml(spec: ServiceSpec): ServiceFile {
   const local = spec.localAppData ?? path.win32.join(spec.home, 'AppData', 'Local');
-  const logFile = path.win32.join(local, 'Inkstone', 'agent.log');
+  const logFile = path.win32.join(local, 'Inkwright', 'agent.log');
   const args = [spec.script, 'run', ...spec.args, '--log-file', logFile].map(windowsQuote).join(' ');
   const text = `<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
-    <Description>Inkstone agent: runs your routines and serves your notes to AI agents while you are signed in.</Description>
+    <Description>Inkwright agent: runs your routines and serves your notes to AI agents while you are signed in.</Description>
     <URI>\\${xml(WINDOWS_TASK)}</URI>
   </RegistrationInfo>
   <Triggers>
@@ -210,7 +210,7 @@ export function windowsTaskXml(spec: ServiceSpec): ServiceFile {
     bytes[2 + i * 2] = c & 0xff;
     bytes[3 + i * 2] = c >> 8;
   }
-  const file = path.win32.join(local, 'Inkstone', 'inkstone-agent-task.xml');
+  const file = path.win32.join(local, 'Inkwright', 'inkwright-agent-task.xml');
   return {
     platform: 'windows',
     path: file,

@@ -27,7 +27,7 @@ export type ChainKind = 's' | 't' | 'i' | 'o';
 
 /**
  * How an item came to be:
- *  - `draw`: written by hand in Inkstone (the ink engine's pen-up);
+ *  - `draw`: written by hand in Inkwright (the ink engine's pen-up);
  *  - `edit`: derived from `from` (moved, resized, recoloured, partly erased, retyped);
  *  - `copy`: pasted or duplicated; `undo` / `redo`: restored by undo or redo;
  *  - `other`: anything else (AI, imports, tools) — the item's `origin` says more.
@@ -79,7 +79,7 @@ export function itemDigest(kind: ChainKind, item: AnyItem): string {
   return toBase64Url(sha256(canonicalJson(itemContent(kind, item))).subarray(0, 16));
 }
 
-const GENESIS = 'inkstone.chain/1:';
+const GENESIS = 'inkwright.chain/1:';
 
 /** Running chain hashes: `heads[i]` is the head after `i` events (heads[0] is the genesis). */
 export function chainHeads(pageId: string, events: readonly ChainEvent[]): string[] {
@@ -206,7 +206,7 @@ export function mergeAuthorship(a: PageAuthorship | undefined, b: PageAuthorship
 
 /** Content counts of a page or note. "Handwritten" only ever counts strokes drawn by hand in the app. */
 export interface ContentCounts {
-  /** Strokes written by hand in Inkstone (root event `draw`, input recorded). */
+  /** Strokes written by hand in Inkwright (root event `draw`, input recorded). */
   handwritten: number;
   /** …of which written with a stylus reporting pressure. */
   penWithPressure: number;
@@ -374,7 +374,7 @@ const round = (v: number, d: number) => Math.round(v * 10 ** d) / 10 ** d;
 
 // ---- Certificates ---------------------------------------------------------------------------------
 
-export const CERTIFICATE_FORMAT = 'inkstone.authorship/1';
+export const CERTIFICATE_FORMAT = 'inkwright.authorship/1';
 
 /** IPTC digital source types (as used by C2PA `c2pa.actions`) for each kind of content. */
 export const SOURCE_TYPES = {
@@ -462,8 +462,8 @@ export function pageFromEvidence(e: PageEvidence): PageInk {
 
 function actionsFor(t: ContentCounts): AuthorshipClaim['actions'] {
   const a: AuthorshipClaim['actions'] = [];
-  if (t.handwritten) a.push({ action: 'c2pa.created', digitalSourceType: SOURCE_TYPES.handwriting, count: t.handwritten, description: 'Handwriting written in Inkstone' });
-  if (t.typedText) a.push({ action: 'c2pa.created', digitalSourceType: SOURCE_TYPES.handwriting, count: t.typedText, description: 'Text typed in Inkstone' });
+  if (t.handwritten) a.push({ action: 'c2pa.created', digitalSourceType: SOURCE_TYPES.handwriting, count: t.handwritten, description: 'Handwriting written in Inkwright' });
+  if (t.typedText) a.push({ action: 'c2pa.created', digitalSourceType: SOURCE_TYPES.handwriting, count: t.typedText, description: 'Text typed in Inkwright' });
   const ai = t.aiInk + t.aiText + t.aiImages;
   if (ai) a.push({ action: 'c2pa.created', digitalSourceType: SOURCE_TYPES.ai, count: ai, description: 'Content made by an AI model' });
   if (t.objects || t.recognizedText) a.push({ action: 'c2pa.created', digitalSourceType: SOURCE_TYPES.solver, count: t.objects + t.recognizedText, description: 'Tables, solved results, graphs and recognized text made by the app' });
@@ -490,7 +490,7 @@ export function buildClaim(note: Pick<NoteMeta, 'id' | 'title'>, pages: readonly
   }
   const ev = { pages: evidence };
   const claim: AuthorshipClaim = {
-    generator: opts.generator ?? 'Inkstone',
+    generator: opts.generator ?? 'Inkwright',
     created: new Date(opts.now ?? Date.now()).toISOString(),
     subject: { noteId: note.id, title: note.title },
     signer,
@@ -563,7 +563,7 @@ export interface VerifyReport {
 /** Parses a certificate from JSON, checking its shape. */
 export function parseCertificate(json: string): AuthorshipCertificate {
   const o = JSON.parse(json);
-  if (!o || o.format !== CERTIFICATE_FORMAT || !o.claim || !o.evidence || typeof o.signature !== 'string') throw new Error('Not an Inkstone authorship certificate');
+  if (!o || o.format !== CERTIFICATE_FORMAT || !o.claim || !o.evidence || typeof o.signature !== 'string') throw new Error('Not an Inkwright authorship certificate');
   return o as AuthorshipCertificate;
 }
 

@@ -1,8 +1,8 @@
 {
-  "id": "app.inkstone.examples.webhook",
+  "id": "app.inkwright.examples.webhook",
   "name": "Send selection to a webhook",
   "version": "1.0.0",
-  "author": "Inkstone",
+  "author": "Inkwright",
   "description": "Sends the selected text (typed or recognized handwriting) with the note's title to a webhook you choose — Zapier, Make, n8n, Slack, Discord or your own server.",
   "entry": "main.js",
   "minAppVersion": "1.0.0",

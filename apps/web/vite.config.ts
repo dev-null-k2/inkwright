@@ -26,7 +26,7 @@ function csp(native: boolean): Plugin {
     "base-uri 'self'",
   ].join('; ');
   return {
-    name: 'inkstone-csp',
+    name: 'inkwright-csp',
     apply: 'build',
     transformIndexHtml: (html) => html.replace('<meta charset="UTF-8" />', `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${policy}" />`),
   };
@@ -35,17 +35,17 @@ function csp(native: boolean): Plugin {
 /** Writes sw.js with the exact list of built files, so the installed app works fully offline. */
 function serviceWorker(): Plugin {
   return {
-    name: 'inkstone-sw',
+    name: 'inkwright-sw',
     apply: 'build',
     generateBundle(_opts, bundle) {
       // The on-device AI runtime (tens of MB of WebAssembly) is cached when first used, not on install.
       const files = Object.keys(bundle).filter((f) => !f.endsWith('.map') && !/ort-wasm|\.wasm$/.test(f));
       const version = Date.now().toString(36);
       const source = `// Generated at build time. Precaches the app so it opens offline; notes live in IndexedDB.
-const CACHE = 'inkstone-${'$'}{version}';
+const CACHE = 'inkwright-${'$'}{version}';
 const FILES = ${'$'}{JSON.stringify(['./', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/icon.svg', ...files])};
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting())); });
-self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k.startsWith('inkstone-') && k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
+self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k.startsWith('inkwright-') && k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   // Web Share Target: files/text shared to the installed app arrive as a POST; keep them in a
@@ -53,7 +53,7 @@ self.addEventListener('fetch', (e) => {
   if (req.method === 'POST' && new URL(req.url).pathname.endsWith('/share-target')) {
     e.respondWith((async () => {
       const form = await req.formData();
-      const cache = await caches.open('inkstone-share');
+      const cache = await caches.open('inkwright-share');
       let i = 0;
       for (const f of form.getAll('files')) {
         if (typeof f === 'string') continue;
@@ -99,9 +99,9 @@ export default defineConfig(({ mode }) => {
     define: {
       __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '1.0.0'),
       __BUILD_TARGET__: JSON.stringify(single ? 'single' : 'web'),
-      // INKSTONE_E2E_HOOK=1 adds the test hook to other builds too: the Android emulator suite
+      // INKWRIGHT_E2E_HOOK=1 adds the test hook to other builds too: the Android emulator suite
       // (e2e-android/) drives a native debug build and reads the document through it.
-      __E2E__: JSON.stringify(e2e || process.env.INKSTONE_E2E_HOOK === '1'),
+      __E2E__: JSON.stringify(e2e || process.env.INKWRIGHT_E2E_HOOK === '1'),
     },
     worker: { format: 'es' },
     build: {

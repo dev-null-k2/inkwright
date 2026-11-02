@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, Copy, FileOutput, FilePlus2, FileUp, RotateCw, Trash2, X } from 'lucide-react';
-import type { NoteDocument } from '@inkstone/core';
+import type { NoteDocument } from '@inkwright/core';
 import { renderPageStandalone } from '../canvas/engine.ts';
 import type { AssetCache } from '../canvas/assets.ts';
 import type { AppVault } from '../lib/vault.ts';

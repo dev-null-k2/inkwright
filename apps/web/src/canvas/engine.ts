@@ -45,7 +45,7 @@ import {
   type Rect,
   type TextBox,
   type Vec2,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import { AssetCache, type AssetLoader } from './assets.ts';
 import { drawPageObjectsFor } from '../smart/render.ts';
 import { PAGE_GAP, Viewport, layoutPages, nearestSlot, rowHeight, slotAt, type DocLayout, type PageSlot } from './layout.ts';

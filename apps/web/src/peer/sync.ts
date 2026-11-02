@@ -7,8 +7,8 @@
  * side flushes its open note first and reloads it afterwards if the other side changed it.
  */
 import { create } from 'zustand';
-import type { NoteMeta, PageInk } from '@inkstone/core';
-import { FolderRemote, FsStateStore, IndexedDBFS, MemoryStateStore, PeerRemote, SyncEngine, SyncSafetyError, hasLocalChanges, servePeerVault, type PeerLink, type SyncReport, type SyncStateStore } from '@inkstone/sync';
+import type { NoteMeta, PageInk } from '@inkwright/core';
+import { FolderRemote, FsStateStore, IndexedDBFS, MemoryStateStore, PeerRemote, SyncEngine, SyncSafetyError, hasLocalChanges, servePeerVault, type PeerLink, type SyncReport, type SyncStateStore } from '@inkwright/sync';
 import { useApp } from '../state/app.ts';
 import { activeSession, type EditorSession } from '../lib/session.ts';
 import { markSynced, pairedByKey } from './identity.ts';
@@ -26,7 +26,7 @@ export const usePeerSync = create<PeerSyncState>(() => ({ status: 'idle', messag
 let stateFs: IndexedDBFS | null = null;
 function stateStore(deviceKey: string): SyncStateStore {
   try {
-    stateFs ??= new IndexedDBFS({ dbName: 'inkstone-peer-sync' });
+    stateFs ??= new IndexedDBFS({ dbName: 'inkwright-peer-sync' });
     // One state per paired device, keyed by its key's hash-free short form.
     return new FsStateStore(stateFs, { prefix: `peer-${deviceKey.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 43)}` });
   } catch {
@@ -98,7 +98,7 @@ export function serveVaultSetup(link: PeerLink): void {
 export async function syncOverLink(c: Connected, opts: { allowMassDelete?: boolean } = {}): Promise<SyncReport> {
   const app = useApp.getState();
   if (!app.vault) throw new Error('No vault is open.');
-  if (!app.vault.persistent) throw new Error('Sync is off because this browser is blocking storage for Inkstone.');
+  if (!app.vault.persistent) throw new Error('Sync is off because this browser is blocking storage for Inkwright.');
   const name = c.peer.name;
   usePeerSync.setState({ status: 'syncing', message: `Syncing with “${name}”…`, device: c.peer.key });
   const open = await holdOpenNote();

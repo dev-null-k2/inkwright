@@ -1,5 +1,5 @@
 // Node module hooks for `?raw` imports (Vite syntax for "this file's text"), used by
-// @inkstone/ai for its built-in SKILL.md files. Registered by raw-hooks.mjs when the server runs
+// @inkwright/ai for its built-in SKILL.md files. Registered by raw-hooks.mjs when the server runs
 // from source with tsx; the published bundle inlines the files at build time instead.
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';

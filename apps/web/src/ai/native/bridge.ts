@@ -1,10 +1,10 @@
-import type { Transcriber, TranscribeOptions } from '@inkstone/ai';
+import type { Transcriber, TranscribeOptions } from '@inkwright/ai';
 import type { NativeLLM, NativeLLMAvailability, NativeLLMRequest } from '../../platform/native-llm.ts';
 import { decodeToPcm16, pcm16ToBase64, SPEECH_SAMPLE_RATE } from './pcm.ts';
 import type { NativeAIPlugin, NativeTask } from './plugin.ts';
 
 /**
- * The web side of the Android on-device AI (Kotlin: app/inkstone/ai/). Turns the plugin's
+ * The web side of the Android on-device AI (Kotlin: app/inkwright/ai/). Turns the plugin's
  * request/response + event protocol into the app's interfaces: `NativeLLM` for chat (streaming
  * through `aiDelta` events, cancellable), `Transcriber` for recordings, a live push-to-talk session,
  * and the ML Kit task APIs. Every function takes the plugin, so tests drive it with a fake.

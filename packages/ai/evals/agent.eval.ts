@@ -7,7 +7,7 @@ const live = liveConfig();
 
 describe('agent evals — scripted model (deterministic)', () => {
   const results: CaseResult[] = [];
-  afterAll(() => printReport(formatTable('Inkstone agent evals — scripted', results)));
+  afterAll(() => printReport(formatTable('Inkwright agent evals — scripted', results)));
 
   for (const c of AGENT_CASES) {
     it(`${c.id}: ${c.description}`, async () => {
@@ -51,15 +51,15 @@ describe('agent evals — scripted model (deterministic)', () => {
   });
 });
 
-describe.skipIf(!live)(`agent evals — live (${live?.label ?? 'set INKSTONE_EVAL_PROVIDER/KEY/MODEL'})`, () => {
+describe.skipIf(!live)(`agent evals — live (${live?.label ?? 'set INKWRIGHT_EVAL_PROVIDER/KEY/MODEL'})`, () => {
   const results: CaseResult[] = [];
-  afterAll(() => printReport(formatTable(`Inkstone agent evals — live ${live!.label}`, results)));
+  afterAll(() => printReport(formatTable(`Inkwright agent evals — live ${live!.label}`, results)));
 
   for (const c of AGENT_CASES) {
     it(c.id, async () => {
       const r = await runCase(c, { name: 'live', provider: live!.provider, model: live!.model });
       results.push(r);
-      // Live models are not deterministic: report scores, fail only below INKSTONE_EVAL_MIN_SCORE.
+      // Live models are not deterministic: report scores, fail only below INKWRIGHT_EVAL_MIN_SCORE.
       expect(r.score).toBeGreaterThanOrEqual(live!.minScore);
     });
   }

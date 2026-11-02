@@ -77,7 +77,7 @@ describe('OAuth 2.1 resource server', () => {
   it('publishes Protected Resource Metadata pointing at the configured issuer (RFC 9728)', async () => {
     const res = await fetch(`${base}/.well-known/oauth-protected-resource/mcp`);
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ resource: mcpResource(), authorization_servers: [idp.issuer], scopes_supported: ['notes:read', 'notes:write'], bearer_methods_supported: ['header'], resource_name: 'Inkstone notes' });
+    expect(await res.json()).toEqual({ resource: mcpResource(), authorization_servers: [idp.issuer], scopes_supported: ['notes:read', 'notes:write'], bearer_methods_supported: ['header'], resource_name: 'Inkwright notes' });
     const root = await (await fetch(`${base}/.well-known/oauth-protected-resource`)).json() as { resource: string };
     expect(root.resource).toBe(new URL(base).origin);
   });

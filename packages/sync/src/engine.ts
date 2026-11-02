@@ -1,4 +1,4 @@
-import { dirname, type VaultFS } from '@inkstone/core';
+import { dirname, type VaultFS } from '@inkwright/core';
 import { noteIdOf, regenerateDerived } from './derived.ts';
 import { isDerivedPath, mergeFileBytes, mergeKindOf } from './merge.ts';
 import { PreconditionFailedError, RemoteError, type Remote, type RemoteEntry, type RemoteFile } from './remote.ts';
@@ -58,7 +58,7 @@ export interface SyncEngineOptions {
   clock?: () => number;
   /** Files transferred in parallel (default 4). */
   concurrency?: number;
-  /** Extra exclusions on top of the defaults (dot-folders such as `.inkstone/`, OS junk, temp files). */
+  /** Extra exclusions on top of the defaults (dot-folders such as `.inkwright/`, OS junk, temp files). */
   ignore?: (path: string) => boolean;
   /** Rewrite note.md / page SVGs after merging a note's sources (default true). */
   regenerateDerived?: boolean;
@@ -77,7 +77,7 @@ export interface SyncRunOptions {
   allowMassDelete?: boolean;
 }
 
-/** Default exclusions: anything under a dot-folder (`.inkstone/`, `.git/`, `.Trash/`), dotfiles, OS junk. */
+/** Default exclusions: anything under a dot-folder (`.inkwright/`, `.git/`, `.Trash/`), dotfiles, OS junk. */
 export function isIgnoredPath(path: string): boolean {
   return path.split('/').some((seg) => seg.startsWith('.') || isJunkName(seg));
 }

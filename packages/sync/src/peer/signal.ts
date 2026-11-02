@@ -10,7 +10,7 @@
  * but it cannot read, forge or redirect them: a forged offer or answer fails to open, and the
  * session keys need the devices' private keys anyway.
  */
-import { fromBase64Url } from '@inkstone/core';
+import { fromBase64Url } from '@inkwright/core';
 import { sleep, throwIfAborted, toBufferView } from '../util.ts';
 import { labelFrom, openWithSecret, sealWithSecret } from './crypto.ts';
 

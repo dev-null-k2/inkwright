@@ -20,7 +20,7 @@ import {
   type RouteTarget,
   type ScopeRule,
   type WriteMode,
-} from '@inkstone/ai';
+} from '@inkwright/ai';
 import { useApp } from '../../state/app.ts';
 import { useSettings } from '../../state/settings.ts';
 import { CLAUDE_BUILTIN_ID, hasBuiltinClaude } from '../../lib/ai.ts';

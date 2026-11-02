@@ -54,7 +54,7 @@ test('keyboard: the library and editor chrome work without a pointer, with visib
   const ring = await newBtn.evaluate((el) => getComputedStyle(el).outlineStyle);
   expect(ring).not.toBe('none');
   await page.keyboard.press('Enter');
-  await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
   // The ••• menu opens from the keyboard, its items are reachable, Escape closes it.
   const more = page.getByRole('button', { name: 'More', exact: true });
   await more.focus();

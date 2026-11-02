@@ -29,7 +29,7 @@ async function formPdf(): Promise<Buffer> {
 /** Client coordinates of a point given in page units on page `i`. */
 async function pagePoint(page: Page, i: number, x: number, y: number): Promise<[number, number]> {
   return page.evaluate(({ i, x, y }) => {
-    const { engine } = (window as any).__inkstone;
+    const { engine } = (window as any).__inkwright;
     const host = document.querySelector('.ed-canvas') as HTMLElement;
     const r = host.getBoundingClientRect();
     const s = engine.pageRectToScreen(i, { minX: x, minY: y, maxX: x + 1, maxY: y + 1 });
@@ -40,7 +40,7 @@ async function pagePoint(page: Page, i: number, x: number, y: number): Promise<[
 async function openForm(page: Page) {
   await openApp(page);
   await page.locator('input[type=file]').first().setInputFiles({ name: 'Membership.pdf', mimeType: 'application/pdf', buffer: await formPdf() });
-  await page.waitForFunction(() => (window as any).__inkstone?.doc?.pageCount === 1, null, { timeout: 20000 });
+  await page.waitForFunction(() => (window as any).__inkwright?.doc?.pageCount === 1, null, { timeout: 20000 });
 }
 
 test('fill a PDF form, sign it and export a filled PDF', async ({ page }) => {
@@ -61,7 +61,7 @@ test('fill a PDF form, sign it and export a filled PDF', async ({ page }) => {
   await page.locator('.fill-field[data-field="agree"]').click();
   await expect(page.locator('.fill-field[data-field="agree"]')).toHaveAttribute('aria-checked', 'true');
   await page.locator('.fill-field[data-field="state"]').selectOption('NJ');
-  await expect.poll(() => page.evaluate(() => Object.values((window as any).__inkstone.doc.meta.forms ?? {})[0]), SLOW).toEqual({ name: 'Ada Lovelace', agree: true, state: 'NJ' });
+  await expect.poll(() => page.evaluate(() => Object.values((window as any).__inkwright.doc.meta.forms ?? {})[0]), SLOW).toEqual({ name: 'Ada Lovelace', agree: true, state: 'NJ' });
 
   // Draw a signature once, then place it on the signature line.
   await page.getByRole('toolbar', { name: 'Fill and sign' }).getByRole('button', { name: 'Sign' }).click();
@@ -74,13 +74,13 @@ test('fill a PDF form, sign it and export a filled PDF', async ({ page }) => {
   await page.mouse.up();
   await page.getByRole('button', { name: 'Save signature' }).click();
   await expect(page.locator('.fill-hint')).toHaveText('Tap where to sign');
-  const before = await page.evaluate(() => (window as any).__inkstone.doc.page(0).strokes.length);
+  const before = await page.evaluate(() => (window as any).__inkwright.doc.page(0).strokes.length);
   // Just above the printed line (PDF y 560pt → page units (792 − 560) × 4/3).
   const [sx, sy] = await pagePoint(page, 0, 150, (792 - 560) * (4 / 3) - 12);
   await page.mouse.click(sx, sy);
-  await expect.poll(() => page.evaluate(() => (window as any).__inkstone.doc.page(0).strokes.length), SLOW).toBeGreaterThan(before);
+  await expect.poll(() => page.evaluate(() => (window as any).__inkwright.doc.page(0).strokes.length), SLOW).toBeGreaterThan(before);
   // It sits on the line: the ink's lowest point is near the line.
-  const bottom = await page.evaluate(() => Math.max(...(window as any).__inkstone.doc.page(0).strokes.flatMap((s: any) => s.points.map((p: any) => p.y))));
+  const bottom = await page.evaluate(() => Math.max(...(window as any).__inkwright.doc.page(0).strokes.flatMap((s: any) => s.points.map((p: any) => p.y))));
   expect(Math.abs(bottom - (792 - 560) * (4 / 3))).toBeLessThan(14);
 
   // The signature is reusable: it's in the library now.
@@ -135,7 +135,7 @@ test('values are kept when the note is opened again, and the canvas shows them',
   await expect.poll(() => inkIn(page, rect), SLOW).toBeGreaterThan(20);
   await page.getByRole('button', { name: 'Back to library' }).click();
   await page.locator('.note-card', { hasText: 'Membership' }).locator('.note-open').click();
-  await page.waitForFunction(() => !!(window as any).__inkstone?.doc);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.doc);
   await page.getByRole('button', { name: 'More', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Fill & sign' }).click();
   await expect(page.locator('.fill-field[data-field="name"]')).toHaveValue('Grace Hopper');
@@ -155,7 +155,7 @@ test('writing with the pen over a field lays down ink (it stays ink without a re
     for (let i = 1; i <= 20; i++) canvas.dispatchEvent(ev('pointermove', r.x + 10 + i * 6, r.y + r.height / 2 + 4 * Math.sin(i)));
     canvas.dispatchEvent(ev('pointerup', r.x + 130, r.y + r.height / 2));
   }, r);
-  await expect.poll(() => page.evaluate(() => (window as any).__inkstone.doc.page(0).strokes.length), SLOW).toBe(1);
+  await expect.poll(() => page.evaluate(() => (window as any).__inkwright.doc.page(0).strokes.length), SLOW).toBe(1);
   await expect(page.locator('.fill-field[data-field="name"]')).not.toBeFocused(SLOW);
 });
 
@@ -166,7 +166,7 @@ test('flat PDF: typed text snaps onto the printed line; a checkmark is real ink'
   p.drawLine({ start: { x: 110, y: 700 }, end: { x: 400, y: 700 }, thickness: 1 });
   await openApp(page);
   await page.locator('input[type=file]').first().setInputFiles({ name: 'Flat.pdf', mimeType: 'application/pdf', buffer: Buffer.from(await pdf.save()) });
-  await page.waitForFunction(() => (window as any).__inkstone?.doc?.pageCount === 1, null, { timeout: 20000 });
+  await page.waitForFunction(() => (window as any).__inkwright?.doc?.pageCount === 1, null, { timeout: 20000 });
   await expect(page.locator('.fill-chip')).toHaveCount(0); // no fields
   await page.getByRole('button', { name: 'More', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Fill & sign' }).click();
@@ -178,7 +178,7 @@ test('flat PDF: typed text snaps onto the printed line; a checkmark is real ink'
   await expect(page.locator('.text-edit textarea')).toBeFocused(SLOW);
   await page.keyboard.type('Ada');
   await page.keyboard.press('Escape');
-  const t = await page.evaluate(() => (window as any).__inkstone.doc.page(0).texts?.[0]);
+  const t = await page.evaluate(() => (window as any).__inkwright.doc.page(0).texts?.[0]);
   expect(t.text).toBe('Ada');
   // Baseline (≈ y + 1.02 × size) just above the line.
   expect(lineY - (t.y + t.fontSize * 1.02)).toBeGreaterThan(0);
@@ -186,14 +186,14 @@ test('flat PDF: typed text snaps onto the printed line; a checkmark is real ink'
   await bar.getByRole('button', { name: 'Check' }).click();
   const [cx, cy] = await pagePoint(page, 0, 500, 500);
   await page.mouse.click(cx, cy);
-  await expect.poll(() => page.evaluate(() => (window as any).__inkstone.doc.page(0).strokes.length), SLOW).toBe(1);
+  await expect.poll(() => page.evaluate(() => (window as any).__inkwright.doc.page(0).strokes.length), SLOW).toBe(1);
 });
 
 test('open text and Markdown files; drop files onto the library and onto a note', async ({ page }) => {
   await openApp(page);
   await page.locator('input[type=file]').first().setInputFiles({ name: 'Groceries.md', mimeType: 'text/markdown', buffer: Buffer.from('# Groceries\n\n- [ ] Rice\n- [ ] Dal\n') });
-  await page.waitForFunction(() => (window as any).__inkstone?.doc?.meta.title === 'Groceries', null, { timeout: 20000 });
-  expect(await page.evaluate(() => (window as any).__inkstone.doc.page(0).texts[0].text)).toContain('- [ ] Rice');
+  await page.waitForFunction(() => (window as any).__inkwright?.doc?.meta.title === 'Groceries', null, { timeout: 20000 });
+  expect(await page.evaluate(() => (window as any).__inkwright.doc.page(0).texts[0].text)).toContain('- [ ] Rice');
   await page.getByRole('button', { name: 'Back to library' }).click();
   await page.evaluate(() => {
     const dt = new DataTransfer();
@@ -201,8 +201,8 @@ test('open text and Markdown files; drop files onto the library and onto a note'
     const lib = document.querySelector('.library')!;
     for (const type of ['dragenter', 'dragover', 'drop']) lib.dispatchEvent(new DragEvent(type, { dataTransfer: dt, bubbles: true, cancelable: true }));
   });
-  await page.waitForFunction(() => (window as any).__inkstone?.doc?.meta.title === 'Dropped', null, { timeout: 20000 });
-  expect(await page.evaluate(() => (window as any).__inkstone.doc.page(0).texts[0].text)).toBe('Dropped words');
+  await page.waitForFunction(() => (window as any).__inkwright?.doc?.meta.title === 'Dropped', null, { timeout: 20000 });
+  expect(await page.evaluate(() => (window as any).__inkwright.doc.page(0).texts[0].text)).toBe('Dropped words');
   // Dropping a PDF onto the open note adds its pages after the current one.
   const pdf = await PDFDocument.create();
   pdf.addPage([612, 792]);
@@ -214,8 +214,8 @@ test('open text and Markdown files; drop files onto the library and onto a note'
     const ed = document.querySelector('.editor')!;
     for (const type of ['dragenter', 'dragover', 'drop']) ed.dispatchEvent(new DragEvent(type, { dataTransfer: dt, bubbles: true, cancelable: true, clientX: 600, clientY: 400 }));
   }, bytes);
-  await page.waitForFunction(() => (window as any).__inkstone.doc.pageCount === 3, null, { timeout: 20000 });
-  expect(await page.evaluate(() => (window as any).__inkstone.doc.pages.map((p: any) => p.background?.kind ?? 'paper'))).toEqual(['paper', 'pdf', 'pdf']);
+  await page.waitForFunction(() => (window as any).__inkwright.doc.pageCount === 3, null, { timeout: 20000 });
+  expect(await page.evaluate(() => (window as any).__inkwright.doc.pages.map((p: any) => p.background?.kind ?? 'paper'))).toEqual(['paper', 'pdf', 'pdf']);
 });
 
 test('pages panel: rotate a PDF page and copy pages to a new note', async ({ page }) => {
@@ -223,18 +223,18 @@ test('pages panel: rotate a PDF page and copy pages to a new note', async ({ pag
   for (let i = 0; i < 3; i++) pdf.addPage([612, 792]).drawText(`Page ${i + 1}`, { x: 72, y: 700, size: 24 });
   await openApp(page);
   await page.locator('input[type=file]').first().setInputFiles({ name: 'Three.pdf', mimeType: 'application/pdf', buffer: Buffer.from(await pdf.save()) });
-  await page.waitForFunction(() => (window as any).__inkstone?.doc?.pageCount === 3, null, { timeout: 20000 });
+  await page.waitForFunction(() => (window as any).__inkwright?.doc?.pageCount === 3, null, { timeout: 20000 });
   await page.getByRole('button', { name: 'More', exact: true }).click();
   await page.getByRole('menuitem', { name: /^Pages/ }).click();
   const panel = page.getByRole('complementary', { name: 'Pages' });
   await panel.getByRole('button', { name: 'Rotate page' }).first().click();
-  const p0 = await page.evaluate(() => { const p = (window as any).__inkstone.doc.page(0); return { w: p.size.width, h: p.size.height, rot: p.background.rotation }; });
+  const p0 = await page.evaluate(() => { const p = (window as any).__inkwright.doc.page(0); return { w: p.size.width, h: p.size.height, rot: p.background.rotation }; });
   expect(p0).toEqual({ w: 1056, h: 816, rot: 90 });
   await panel.getByRole('button', { name: 'Select' }).click();
   await panel.getByRole('button', { name: 'Select page 2' }).click();
   await panel.getByRole('button', { name: 'Select page 3' }).click();
   await panel.getByRole('button', { name: 'Copy to new note' }).click();
   await page.locator('.toast-action', { hasText: 'Open' }).click();
-  await page.waitForFunction(() => (window as any).__inkstone?.doc?.meta.title === 'Three (pages 2–3)', null, { timeout: 20000 });
-  expect(await page.evaluate(() => (window as any).__inkstone.doc.pages.map((p: any) => p.background.pageNumber))).toEqual([2, 3]);
+  await page.waitForFunction(() => (window as any).__inkwright?.doc?.meta.title === 'Three (pages 2–3)', null, { timeout: 20000 });
+  expect(await page.evaluate(() => (window as any).__inkwright.doc.pages.map((p: any) => p.background.pageNumber))).toEqual([2, 3]);
 });

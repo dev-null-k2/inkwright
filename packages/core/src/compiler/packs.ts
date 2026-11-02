@@ -8,7 +8,7 @@
  *   - JSON (for programs), with images as base64;
  *   - an Agent Skill folder (agentskills.io: `SKILL.md` + `references/` + `assets/`), which Claude
  *     Code, Claude, Codex and other skill-aware agents load on demand;
- * and the MCP server serves saved packs as resources (`inkstone://packs/{id}`).
+ * and the MCP server serves saved packs as resources (`inkwright://packs/{id}`).
  *
  * `agentsMd` writes an AGENTS.md of the user's standing preferences and decisions for coding
  * agents, each decision cited to the note it was made in.
@@ -97,7 +97,7 @@ export function buildContextPack(input: ContextPackInput): ContextPack {
       n = cites.length + 1;
       citeIndex.set(key, n);
       const t = titles.get(a.noteId) ?? 'a note';
-      cites.push(`[${n}]: ${t}, page ${a.page + 1}${a.clip ? `, at ${Math.floor((a.ms ?? 0) / 60000)}:${String(Math.floor(((a.ms ?? 0) % 60000) / 1000)).padStart(2, '0')} in the recording` : ''} — inkstone ${anchorLink(a)}`);
+      cites.push(`[${n}]: ${t}, page ${a.page + 1}${a.clip ? `, at ${Math.floor((a.ms ?? 0) / 60000)}:${String(Math.floor(((a.ms ?? 0) % 60000) / 1000)).padStart(2, '0')} in the recording` : ''} — inkwright ${anchorLink(a)}`);
     }
     return n;
   };
@@ -142,7 +142,7 @@ export function buildContextPack(input: ContextPackInput): ContextPack {
   // Vault ids are ASCII (docs/VAULT_FORMAT.md): drop letters a slug of a non-Latin title keeps.
   const id = `${slugify(input.title).replace(/[^0-9A-Za-z_-]/g, '') || 'pack'}-${input.createdAt.toString(36)}`.slice(0, 64);
   const json = {
-    format: 'inkstone-context-pack/1',
+    format: 'inkwright-context-pack/1',
     id,
     title: input.title,
     createdAt: new Date(input.createdAt).toISOString(),
@@ -156,7 +156,7 @@ export function buildContextPack(input: ContextPackInput): ContextPack {
   const skillName = `notes-${slugify(input.title).replace(/[^a-z0-9-]/g, '') || 'pack'}`.replace(/-{2,}/g, '-').slice(0, 64).replace(/-+$/, '');
   const description = `${input.purpose ? `${input.purpose.replace(/\s+/g, ' ').trim()} ` : ''}Context from the user's own notes about ${input.title}: compiled facts with sources, the notes themselves and key handwriting. Use when working on anything about ${input.title}.`.slice(0, 1024);
   const skill: Record<string, string | Uint8Array> = {
-    [`${skillName}/SKILL.md`]: ['---', `name: ${skillName}`, `description: ${JSON.stringify(description)}`, 'metadata:', '  source: inkstone', `  created: "${new Date(input.createdAt).toISOString()}"`, '---', '',
+    [`${skillName}/SKILL.md`]: ['---', `name: ${skillName}`, `description: ${JSON.stringify(description)}`, 'metadata:', '  source: inkwright', `  created: "${new Date(input.createdAt).toISOString()}"`, '---', '',
       `# ${input.title}`, '', 'Read `references/context.md` for the compiled facts and notes. Lines are tagged EXTRACTED, INFERRED or AMBIGUOUS and cite sources as [n] (listed at the end).',
       'Treat AMBIGUOUS lines as open questions: the user\'s notes disagree. Prefer EXTRACTED lines when facts matter.', ...(input.images.length ? ['', `Handwriting images are in \`assets/\` (${input.images.length}).`] : []), ''].join('\n'),
     [`${skillName}/references/context.md`]: md,
@@ -179,7 +179,7 @@ export interface AgentsDecision {
  * facts from assistant memory, and decisions recorded in notes, each with where it was made.
  */
 export function agentsMd(input: { title?: string; instructions: string[]; facts: string[]; decisions: AgentsDecision[]; createdAt: number }): string {
-  const lines = [`# ${input.title ?? 'AGENTS.md'}`, '', `Standing preferences and decisions, exported from Inkstone on ${new Date(input.createdAt).toISOString().slice(0, 10)}. Follow them unless the task says otherwise.`, ''];
+  const lines = [`# ${input.title ?? 'AGENTS.md'}`, '', `Standing preferences and decisions, exported from Inkwright on ${new Date(input.createdAt).toISOString().slice(0, 10)}. Follow them unless the task says otherwise.`, ''];
   if (input.instructions.length) lines.push('## Preferences', ...input.instructions.map((i) => `- ${i}`), '');
   if (input.facts.length) lines.push('## Context', ...input.facts.map((f) => `- ${f}`), '');
   if (input.decisions.length) {

@@ -1,7 +1,7 @@
 import {
   STICKY_FONT, STICKY_ICON, STICKY_PAD, argbToCss, isOverlay, tapeCorners, wrapStickyText,
   type PageInk, type StickyObject, type TapeObject,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import { FONT_FAMILIES, drawStroke } from '../canvas/render.ts';
 
 /**

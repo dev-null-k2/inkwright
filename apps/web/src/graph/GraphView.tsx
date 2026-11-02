@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowUpRight, Maximize, Pause, Play, Search, X } from 'lucide-react';
-import { ForceLayout, buildGraph, fuzzyScore, type GraphData, type Vec3 } from '@inkstone/core';
+import { ForceLayout, buildGraph, fuzzyScore, type GraphData, type Vec3 } from '@inkwright/core';
 import { useApp } from '../state/app.ts';
 import { useKnowledge } from '../state/knowledge.ts';
 import { useSettings } from '../state/settings.ts';
@@ -294,8 +294,8 @@ export default function GraphView() {
       edges: display.edges.length,
       select: (id) => select(id),
     };
-    (window as unknown as { __inkstoneGraph?: GraphTestHook }).__inkstoneGraph = hook;
-    return () => { delete (window as unknown as { __inkstoneGraph?: GraphTestHook }).__inkstoneGraph; };
+    (window as unknown as { __inkwrightGraph?: GraphTestHook }).__inkwrightGraph = hook;
+    return () => { delete (window as unknown as { __inkwrightGraph?: GraphTestHook }).__inkwrightGraph; };
   }, [renderer, display, targets, select]);
 
   // ---- UI --------------------------------------------------------------------------------------

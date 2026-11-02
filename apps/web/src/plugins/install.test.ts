@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MemoryFS, PLUGINS_CONFIG, decodePluginsConfig } from '@inkstone/core';
-import { writeZip } from '@inkstone/sync';
+import { MemoryFS, PLUGINS_CONFIG, decodePluginsConfig } from '@inkwright/core';
+import { writeZip } from '@inkwright/sync';
 import { PluginInstallError, packageFromFiles, packageFromUrl, packageFromZip } from './install.ts';
 import { PluginStore } from './store.ts';
 import { CATALOG } from './catalog.ts';
@@ -23,7 +23,7 @@ describe('plugin packages', () => {
     expect(() => packageFromFiles(new Map([['manifest.json', enc.encode(manifest())]]), src, '1.0.0')).toThrow(/main.js\) is missing/);
     expect(() => packageFromFiles(files(manifest({ permissions: ['root'] })), src, '1.0.0')).toThrow(/Unknown permission/);
     expect(() => packageFromFiles(files('{nope'), src, '1.0.0')).toThrow(/not valid JSON/);
-    expect(() => packageFromFiles(files(manifest({ minAppVersion: '9.0.0' })), src, '1.0.0')).toThrow(/needs Inkstone 9.0.0/);
+    expect(() => packageFromFiles(files(manifest({ minAppVersion: '9.0.0' })), src, '1.0.0')).toThrow(/needs Inkwright 9.0.0/);
   });
 
   it('enforces size limits', () => {
@@ -45,7 +45,7 @@ describe('plugin packages', () => {
   });
 
   it('ships a valid curated list', () => {
-    expect(CATALOG.map((c) => c.id)).toEqual(['app.inkstone.examples.word-count', 'app.inkstone.examples.webhook']);
+    expect(CATALOG.map((c) => c.id)).toEqual(['app.inkwright.examples.word-count', 'app.inkwright.examples.webhook']);
     for (const c of CATALOG) expect(c.load('1.0.0').manifest.version).toBe(c.version);
   });
 });

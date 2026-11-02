@@ -1,9 +1,9 @@
 # Notes that know your code
 
 Design notes, runbooks and architecture sketches go stale the moment the code under them
-changes, and nothing tells you. Inkstone's developer module links notes to the code they
+changes, and nothing tells you. Inkwright's developer module links notes to the code they
 describe, notices when that code changes, and keeps everything in the same plain vault files
-the rest of the app uses — readable by the MCP server, the `inkstone` CLI and coding agents.
+the rest of the app uses — readable by the MCP server, the `inkwright` CLI and coding agents.
 
 It follows what works in 2026's code-knowledge tools (GitNexus, graphify, Archify, Headroom):
 deterministic parsing first, models only where judgement is needed, and everything exposed over
@@ -16,12 +16,12 @@ no marks on the page, no palette actions, no agent tools.
 | Pure logic (graph, extraction, links, drift, diagrams, runbooks, sessions) | `packages/core/src/dev/` |
 | App | `apps/web/src/dev/` (wired in with a few lines in Editor, Settings, App, LinkSuggest, followLink, the page-object renderers and the assistant) |
 | Agent tools (`create_diagram`, `code_search`, `code_symbol`, `drift_report`, `propose_lessons`) | `packages/ai/src/tools/dev.ts` |
-| MCP tools and the `inkstone` CLI | `apps/mcp-server/src/dev/`, `apps/mcp-server/src/inkstone-cli.ts` |
-| Agent Skill for Claude Code / Codex | `skills/inkstone-code-notes/SKILL.md` |
+| MCP tools and the `inkwright` CLI | `apps/mcp-server/src/dev/`, `apps/mcp-server/src/inkwright-cli.ts` |
+| Agent Skill for Claude Code / Codex | `skills/inkwright-code-notes/SKILL.md` |
 
 ## 1. Code sources and the code graph
 
-A **code source** is a repository Inkstone has read. Add one in Settings › Developer:
+A **code source** is a repository Inkwright has read. Add one in Settings › Developer:
 
 - **Add folder** (desktop Chrome, Edge, Brave — the File System Access API). The folder is
   remembered on that device, so **Re-scan** reads it again after the browser re-confirms access.
@@ -29,7 +29,7 @@ A **code source** is a repository Inkstone has read. Add one in Settings › Dev
   ZIP", or its tarball (`https://github.com/<owner>/<repo>/archive/refs/heads/main.tar.gz`),
   downloaded by you. The archive is read in the page; nothing is uploaded. Re-scan by picking a
   newer archive.
-- **`inkstone scan <repo> --vault <vault>`** on a computer (below); the graph syncs to your other devices.
+- **`inkwright scan <repo> --vault <vault>`** on a computer (below); the graph syncs to your other devices.
 - **Import graph JSON**: graphify's `graph.json`, or generic nodes/edges JSON (below).
 
 Scanning parses **TypeScript, TSX, JavaScript, Python, Go, Rust and Java** with
@@ -75,7 +75,7 @@ CLI). `.d.ts` files are skipped. Overloads keep their first declaration.
   Nodes without a `source_file` (concepts, communities) are left out.
 - **GitNexus** documents its graph schema (File, Function, Class, Method… nodes; `CodeRelation`
   edges with `type` CALLS/IMPORTS/DEFINES/EXTENDS/IMPLEMENTS/MEMBER_OF) but no export file, so
-  Inkstone does not claim a GitNexus format. Export a Cypher query's rows as **generic JSON**:
+  Inkwright does not claim a GitNexus format. Export a Cypher query's rows as **generic JSON**:
 
 ```jsonc
 { "nodes": [ { "id": 1, "name": "OrderService", "label": "Class", "filePath": "src/OrderService.java", "startLine": 3, "endLine": 40, "signature": "public class OrderService" } ],
@@ -93,7 +93,7 @@ Write `[[code:path/to/file.ts#Symbol]]` in any text box (or in handwriting that 
 `Symbol` is the qualified name: `createSession`, `SessionStore.put`, `GET /health`; a short name
 works when it is unique in the file. `[[code:path/to/file.ts]]` links a whole file. Typing
 `[[code:` offers symbols from your code sources. Code links are ordinary wiki links to the rest of
-Inkstone (backlinks, Obsidian export, sync), except that they never create notes.
+Inkwright (backlinks, Obsidian export, sync), except that they never create notes.
 
 **Lassoed ink** binds to a symbol like it binds to a note: select it, then ••• › Developer ›
 Link selection to code… (or the palette). The ink stays ink; an ink link with target
@@ -105,7 +105,7 @@ the same card.
 
 ## 3. Drift
 
-When a note first shows a code link that resolves, Inkstone records the symbol's signature and
+When a note first shows a code link that resolves, Inkwright records the symbol's signature and
 hash in the note (`NoteMeta.codeRefs`, keyed `path#Symbol`). After a re-scan:
 
 | Status | Meaning | Shown |
@@ -161,7 +161,7 @@ tries in one conversation it stops accepting diagrams, so invalid IR never lands
 `packages/ai/evals/diagram.eval.ts` runs the loop against a scripted model that makes real
 mistakes (unknown ids, misspelt kinds, a dependency cycle, an invented code symbol fixed through
 `code_search`, broken JSON, and a model that never listens) and checks it converges and that
-nothing invalid is ever placed; with `INKSTONE_EVAL_PROVIDER`/`_KEY`/`_MODEL` it runs against a
+nothing invalid is ever placed; with `INKWRIGHT_EVAL_PROVIDER`/`_KEY`/`_MODEL` it runs against a
 real model too.
 
 ## 5. Runbooks and incident notebooks
@@ -184,7 +184,7 @@ Fenced blocks in typed text get a **Run** (or **Send**) button:
   `await` work) are shown. No eval: the app's Content Security Policy stays intact.
 
 **Shell commands are not runnable.** Running them safely needs the always-on runner
-(`inkstone-agent`) to execute commands on a computer with a per-command approval round-trip
+(`inkwright-agent`) to execute commands on a computer with a per-command approval round-trip
 through the vault; that is not built, so ` ```sh ` blocks are plain text rather than a fake button.
 
 Every run, including declined requests, is recorded in **Settings › AI › Activity** as a
@@ -227,15 +227,15 @@ Added to the server (`apps/mcp-server`), all read-only, so read-only vaults keep
 ## 8. CLI
 
 ```sh
-npm run build -w @inkstone/mcp-server          # → apps/mcp-server/dist/inkstone.js (bin "inkstone")
-node apps/mcp-server/dist/inkstone.js scan ~/code/shop --vault ~/Notes/Inkstone [--name shop] [--max-files 8000] [--json]
-node apps/mcp-server/dist/inkstone.js drift ~/Notes/Inkstone [--json] [--check]
-node apps/mcp-server/dist/inkstone.js mcp --vault ~/Notes/Inkstone      # the MCP server (all inkstone-mcp options)
+npm run build -w @inkwright/mcp-server          # → apps/mcp-server/dist/inkwright.js (bin "inkwright")
+node apps/mcp-server/dist/inkwright.js scan ~/code/shop --vault ~/Notes/Inkwright [--name shop] [--max-files 8000] [--json]
+node apps/mcp-server/dist/inkwright.js drift ~/Notes/Inkwright [--json] [--check]
+node apps/mcp-server/dist/inkwright.js mcp --vault ~/Notes/Inkwright      # the MCP server (all inkwright-mcp options)
 ```
 
 `scan` writes only `code/sources/<id>/` (the id comes from the folder name; re-scans replace
 it). `drift --check` exits 1 when anything drifted — usable in CI to flag docs that need a look
-in the same pull request. `skills/inkstone-code-notes/` is an Agent Skill that teaches Claude
+in the same pull request. `skills/inkwright-code-notes/` is an Agent Skill that teaches Claude
 Code, Codex and other agents to use the CLI and MCP tools this way without the app.
 
 ## Privacy
@@ -254,7 +254,7 @@ approve each. The assistant sees code only through the tools above, and only wit
   `packages/sync/test/coderefs-merge.test.ts`: baselines merge per link.
 - Evals (`npx vitest run --project evals packages/ai/evals/diagram.eval.ts`): the repair loop.
 - MCP and CLI (`npx vitest run --project mcp apps/mcp-server/test/dev.test.ts`): the five tools
-  through the SDK client, `inkstone scan`/`drift` spawned for real, and the Agent Skill validated.
+  through the SDK client, `inkwright scan`/`drift` spawned for real, and the Agent Skill validated.
 - End-to-end (`e2e/dev.spec.ts`): zip import, `[[code:` autocomplete, symbol card, drift after a
   re-scan with a changed signature and Mark reviewed, an http block against a routed endpoint
   (approval, decline, Activity), sql over an attached CSV, js in the sandbox, a diagram refused

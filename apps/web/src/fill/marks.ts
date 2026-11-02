@@ -1,4 +1,4 @@
-import { newId, type InkPoint, type InkStroke } from '@inkstone/core';
+import { newId, type InkPoint, type InkStroke } from '@inkwright/core';
 import type { Box } from './snap.ts';
 
 /**

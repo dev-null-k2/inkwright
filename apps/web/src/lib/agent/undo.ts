@@ -3,7 +3,7 @@
  * in the editor is changed through its NoteDocument (so the change shows at once, autosaves, and
  * can itself be undone with ⌘Z), every other note through the vault (reindexed, library refreshed).
  */
-import { VaultUndoTarget, applyMetaFields, undoOpInRun, undoRun, type ActivityRun, type MetaFields, type UndoResult, type UndoTarget } from '@inkstone/ai';
+import { VaultUndoTarget, applyMetaFields, undoOpInRun, undoRun, type ActivityRun, type MetaFields, type UndoResult, type UndoTarget } from '@inkwright/ai';
 import { activeSession } from '../session.ts';
 import { useApp } from '../../state/app.ts';
 import type { AppVault } from '../vault.ts';

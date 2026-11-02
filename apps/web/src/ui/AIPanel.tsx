@@ -13,8 +13,8 @@ import {
   translate,
   type ChatMessage,
   type ContentPart,
-} from '@inkstone/ai';
-import { newId, pageText, type TextBox } from '@inkstone/core';
+} from '@inkwright/ai';
+import { newId, pageText, type TextBox } from '@inkwright/core';
 import type { InkEngine } from '../canvas/engine.ts';
 import type { EditorSession } from '../lib/session.ts';
 import { getActiveAI, transcribePage, type ActiveAI } from '../lib/ai.ts';
@@ -33,7 +33,7 @@ import type { AgentViewId } from './agent/shared.tsx';
 import { LocalAISetup } from './LocalAISetup.tsx';
 import { linkLiveCitations, liveAskContext, useListen } from '../lib/listen/session.ts';
 import { nativeSummary } from '../lib/native-ai.ts';
-import type { Passage } from '@inkstone/core';
+import type { Passage } from '@inkwright/core';
 import { inkReplyActions } from '../inkanswer/answer.ts';
 import { collectPassages, explainAnswer, genFor, insertAnswer, notePassages, recordSummaryProvenance } from '../compiler/explain.ts';
 
@@ -310,7 +310,7 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
         <div className="ai-setup">
           <LocalAISetup onReady={() => void getActiveAI({ source: 'assistant' }).then(setAi)} />
           <p className="ai-setup-lead">Use any AI with your notes.</p>
-          <p className="muted">Add a key from OpenAI, Anthropic, Google Gemini, OpenRouter, Groq, Mistral, xAI or DeepSeek, or point Inkstone at a local model in Ollama or LM Studio. Keys stay encrypted on this device.</p>
+          <p className="muted">Add a key from OpenAI, Anthropic, Google Gemini, OpenRouter, Groq, Mistral, xAI or DeepSeek, or point Inkwright at a local model in Ollama or LM Studio. Keys stay encrypted on this device.</p>
           <button type="button" className="btn btn-primary" onClick={onOpenSettings}>Connect an AI</button>
         </div>
       )}

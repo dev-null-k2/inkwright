@@ -8,8 +8,8 @@ import {
   type NotebookMeta,
   type PageInk,
   type VaultFS,
-} from '@inkstone/core';
-import { IndexedDBFS, CapacitorFS } from '@inkstone/sync';
+} from '@inkwright/core';
+import { IndexedDBFS, CapacitorFS } from '@inkwright/sync';
 import { Filesystem } from '@capacitor/filesystem';
 import { isNative } from '../platform/env.ts';
 import { AssetCache } from '../canvas/assets.ts';
@@ -59,9 +59,9 @@ export class AppVault {
     let fs: VaultFS;
     let persistent = true;
     try {
-      if (isNative) fs = new CapacitorFS(Filesystem as any, { directory: 'DATA', root: 'Inkstone' });
+      if (isNative) fs = new CapacitorFS(Filesystem as any, { directory: 'DATA', root: 'Inkwright' });
       else {
-        const idb = new IndexedDBFS({ dbName: 'inkstone-vault' });
+        const idb = new IndexedDBFS({ dbName: 'inkwright-vault' });
         await idb.list(''); // probe: throws when IndexedDB is unavailable (some sandboxes)
         fs = idb;
       }

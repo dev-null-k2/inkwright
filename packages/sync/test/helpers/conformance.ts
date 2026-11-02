@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { walk, type VaultFS } from '@inkstone/core';
+import { walk, type VaultFS } from '@inkwright/core';
 
 export interface FsFixture {
   fs: VaultFS;
@@ -30,9 +30,9 @@ export function vaultFsConformance(name: string, make: () => Promise<FsFixture> 
     });
 
     it('round-trips text, including non-ASCII', async () => {
-      await fs.writeText('inkstone.json', '{"app":"Inkstone"}');
+      await fs.writeText('inkwright.json', '{"app":"Inkwright"}');
       await fs.writeText('notes/n1/note.md', 'Grüße — 筆 ✍️\nline 2');
-      expect(await fs.readText('inkstone.json')).toBe('{"app":"Inkstone"}');
+      expect(await fs.readText('inkwright.json')).toBe('{"app":"Inkwright"}');
       expect(await fs.readText('notes/n1/note.md')).toBe('Grüße — 筆 ✍️\nline 2');
     });
 
@@ -65,10 +65,10 @@ export function vaultFsConformance(name: string, make: () => Promise<FsFixture> 
       await fs.writeText('notes/n1/note.json', '{}');
       await fs.writeText('notes/n1/pages/p1.ink.json', '12345');
       await fs.writeText('notes/n2/note.json', '{}');
-      await fs.writeText('inkstone.json', 'm');
+      await fs.writeText('inkwright.json', 'm');
       const root = await fs.list('');
       expect(root.map((e) => [e.name, e.kind])).toEqual([
-        ['inkstone.json', 'file'],
+        ['inkwright.json', 'file'],
         ['notes', 'dir'],
       ]);
       const n1 = await fs.list('notes/n1');
@@ -92,7 +92,7 @@ export function vaultFsConformance(name: string, make: () => Promise<FsFixture> 
     });
 
     it('walks nested trees', async () => {
-      const paths = ['inkstone.json', 'notebooks/b1/notebook.json', 'notes/n1/note.json', 'notes/n1/pages/p1.ink.json', 'notes/n1/assets/img.png'];
+      const paths = ['inkwright.json', 'notebooks/b1/notebook.json', 'notes/n1/note.json', 'notes/n1/pages/p1.ink.json', 'notes/n1/assets/img.png'];
       for (const p of paths) await fs.writeText(p, p);
       expect((await walk(fs)).sort()).toEqual([...paths].sort());
     });

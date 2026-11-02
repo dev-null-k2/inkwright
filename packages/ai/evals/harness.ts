@@ -174,13 +174,13 @@ export interface LiveConfig {
   minScore: number;
 }
 
-/** Live mode when INKSTONE_EVAL_PROVIDER / _KEY / _MODEL are set (BASE_URL optional). */
+/** Live mode when INKWRIGHT_EVAL_PROVIDER / _KEY / _MODEL are set (BASE_URL optional). */
 export function liveConfig(env: Record<string, string | undefined> = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {}): LiveConfig | null {
-  const providerId = env.INKSTONE_EVAL_PROVIDER;
-  const model = env.INKSTONE_EVAL_MODEL;
+  const providerId = env.INKWRIGHT_EVAL_PROVIDER;
+  const model = env.INKWRIGHT_EVAL_MODEL;
   if (!providerId || !model) return null;
-  const provider = createProvider({ providerId, apiKey: env.INKSTONE_EVAL_KEY, baseUrl: env.INKSTONE_EVAL_BASE_URL });
-  return { provider, model, label: `${providerId}/${model}`, minScore: Number(env.INKSTONE_EVAL_MIN_SCORE ?? 0) };
+  const provider = createProvider({ providerId, apiKey: env.INKWRIGHT_EVAL_KEY, baseUrl: env.INKWRIGHT_EVAL_BASE_URL });
+  return { provider, model, label: `${providerId}/${model}`, minScore: Number(env.INKWRIGHT_EVAL_MIN_SCORE ?? 0) };
 }
 
 /** Prints past Vitest's console capture (which hides logs of passing tests by default). */

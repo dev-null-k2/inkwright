@@ -3,12 +3,12 @@
  *
  * Input uses the browser's speech recognition (Web Speech API) when it exists; in the Android app
  * (whose WebView has none) Android's own recognizer, on the phone; otherwise it records audio and
- * hands it to a `Transcriber` (@inkstone/ai) — the configured provider's transcription endpoint,
+ * hands it to a `Transcriber` (@inkwright/ai) — the configured provider's transcription endpoint,
  * or Android's on-device recognizer for recordings. Spoken replies use the system voices
  * (speechSynthesis) and are off by default.
  */
 import { create } from 'zustand';
-import { getProviderInfo, transcriberForProvider, type Transcriber } from '@inkstone/ai';
+import { getProviderInfo, transcriberForProvider, type Transcriber } from '@inkwright/ai';
 import { safeStorage } from '../../platform/env.ts';
 import { useSettings } from '../../state/settings.ts';
 import { getSecret } from '../secrets.ts';
@@ -24,7 +24,7 @@ export interface VoicePrefs {
   input: 'auto' | 'browser' | 'device' | 'provider';
 }
 
-const KEY = 'inkstone.voice.v1';
+const KEY = 'inkwright.voice.v1';
 
 function loadPrefs(): VoicePrefs {
   try {

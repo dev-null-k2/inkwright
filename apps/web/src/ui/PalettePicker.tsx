@@ -6,7 +6,7 @@ import { cx } from './primitives.tsx';
  * the "you are here" accent — so people choose by seeing, not by reading names.
  */
 const PALETTES: { id: Palette; name: string; hint: string; day: [string, string, string]; night: [string, string, string] }[] = [
-  { id: 'duan', name: 'Duan', hint: 'Slate inkstone, jade eye', day: ['#e8e5ea', '#2e2533', '#5e9c7e'], night: ['#1a161c', '#2b2431', '#8cc4a8'] },
+  { id: 'duan', name: 'Duan', hint: 'Slate inkwright, jade eye', day: ['#e8e5ea', '#2e2533', '#5e9c7e'], night: ['#1a161c', '#2b2431', '#8cc4a8'] },
   { id: 'aizome', name: 'Aizome', hint: 'Indigo cloth, sashiko gold', day: ['#e2e6ee', '#1c2641', '#c08a3a'], night: ['#111727', '#222b47', '#e3b86b'] },
   { id: 'celadon', name: 'Celadon', hint: 'Porcelain glaze, iron foot', day: ['#e1e8e2', '#2b3a33', '#b26b48'], night: ['#131a17', '#25332c', '#e1a37f'] },
   { id: 'sumi', name: 'Sumi', hint: 'Black on white, for e-ink', day: ['#ffffff', '#000000', '#000000'], night: ['#000000', '#000000', '#ffffff'] },

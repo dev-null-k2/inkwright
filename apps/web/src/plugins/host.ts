@@ -10,9 +10,9 @@
 import { createElement } from 'react';
 import { create } from 'zustand';
 import { Puzzle } from 'lucide-react';
-import { pageText, type InstalledPlugin, type NoteMeta, type NotebookMeta } from '@inkstone/core';
-import { RecordingNoteToolHost, RunRecorder, type AgentTool } from '@inkstone/ai';
-import { addedPermissions, compareVersions, validateManifest, type ExportOutput, type ImportedNote, type Permission, type PluginManifest } from '@inkstone/plugin-api';
+import { pageText, type InstalledPlugin, type NoteMeta, type NotebookMeta } from '@inkwright/core';
+import { RecordingNoteToolHost, RunRecorder, type AgentTool } from '@inkwright/ai';
+import { addedPermissions, compareVersions, validateManifest, type ExportOutput, type ImportedNote, type Permission, type PluginManifest } from '@inkwright/plugin-api';
 import { useApp } from '../state/app.ts';
 import { APP_VERSION, isNative, nativePlatform } from '../platform/env.ts';
 import { registerPaletteActions } from '../lib/palette.ts';
@@ -95,7 +95,7 @@ export async function reloadPlugins(): Promise<void> {
   for (const record of cfg.plugins) {
     const m = await s.manifest(record.id);
     if ('error' in m) out.push({ record, manifest: null, error: m.error });
-    else if (compareVersions(APP_VERSION, m.manifest.minAppVersion) < 0) out.push({ record, manifest: m.manifest, error: `Needs Inkstone ${m.manifest.minAppVersion} or later.` });
+    else if (compareVersions(APP_VERSION, m.manifest.minAppVersion) < 0) out.push({ record, manifest: m.manifest, error: `Needs Inkwright ${m.manifest.minAppVersion} or later.` });
     else out.push({ record, manifest: m.manifest, error: null });
   }
   usePlugins.setState({ plugins: out });

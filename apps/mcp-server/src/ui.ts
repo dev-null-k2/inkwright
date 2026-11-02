@@ -2,11 +2,11 @@
  * MCP Apps (extension `io.modelcontextprotocol/ui`, SEP-1865; apps spec 2026-01-26): interactive
  * views that Claude, ChatGPT and other hosts render inside the chat, next to a tool result.
  *
- * - `ui://inkstone/note-page.html` — a rendered note page (the ink as SVG) with page turning;
+ * - `ui://inkwright/note-page.html` — a rendered note page (the ink as SVG) with page turning;
  *   attached to `show_note_page`.
- * - `ui://inkstone/search.html` — a search results picker; attached to `search_notes`. Picking a
+ * - `ui://inkwright/search.html` — a search results picker; attached to `search_notes`. Picking a
  *   result previews the page in place and can ask the assistant about it.
- * - `ui://inkstone/approvals.html` — an approval card for actions waiting for the user's OK
+ * - `ui://inkwright/approvals.html` — an approval card for actions waiting for the user's OK
  *   (from routines and other unattended runs); attached to `list_pending_approvals`, its buttons
  *   call `decide_approval`.
  *
@@ -23,12 +23,12 @@ export const UI_MIME = 'text/html;profile=mcp-app';
 /** MCP Apps protocol version the views speak. */
 export const UI_PROTOCOL_VERSION = '2026-01-26';
 
-export const NOTE_PAGE_UI = 'ui://inkstone/note-page.html';
-export const SEARCH_UI = 'ui://inkstone/search.html';
-export const APPROVALS_UI = 'ui://inkstone/approvals.html';
+export const NOTE_PAGE_UI = 'ui://inkwright/note-page.html';
+export const SEARCH_UI = 'ui://inkwright/search.html';
+export const APPROVALS_UI = 'ui://inkwright/approvals.html';
 
 /** Where a tool result carries the page SVG for the view (kept out of the model's context). */
-export const SVG_META_KEY = 'dev.inkstone/pageSvg';
+export const SVG_META_KEY = 'dev.inkwright/pageSvg';
 
 /**
  * Tool `_meta` linking a view: the standard `ui.resourceUri`, plus the deprecated flat key and the
@@ -89,7 +89,7 @@ window.addEventListener('message',e=>{if(e.source!==window.parent)return;const m
  else if(m.id!==undefined&&m.method)send({id:m.id,error:{code:-32601,message:'Method not found'}})});
 let lastH=0;function report(){const h=Math.ceil(document.documentElement.scrollHeight);if(h!==lastH){lastH=h;notify('ui/notifications/size-changed',{height:h})}}
 new ResizeObserver(report).observe(document.documentElement);
-rpc('ui/initialize',{appInfo:{name:'inkstone',version:'1'},appCapabilities:{availableDisplayModes:['inline']},protocolVersion:'${UI_PROTOCOL_VERSION}'}).then(r=>{applyContext(r&&r.hostContext);notify('ui/notifications/initialized',{});report()}).catch(()=>{});
+rpc('ui/initialize',{appInfo:{name:'inkwright',version:'1'},appCapabilities:{availableDisplayModes:['inline']},protocolVersion:'${UI_PROTOCOL_VERSION}'}).then(r=>{applyContext(r&&r.hostContext);notify('ui/notifications/initialized',{});report()}).catch(()=>{});
 function el(tag,attrs,...kids){const n=document.createElement(tag);for(const k in attrs||{}){if(k==='class')n.className=attrs[k];else if(k.startsWith('on'))n.addEventListener(k.slice(2),attrs[k]);else n.setAttribute(k,attrs[k])}for(const c of kids)if(c!=null)n.append(c);return n}
 function svgImg(svg,alt){const img=el('img',{alt:alt||'Note page'});img.src='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(svg)));return img}
 `;
@@ -102,7 +102,7 @@ function page(title: string, body: string, script: string): string {
 const NOTE_PAGE_SCRIPT = `
 const app=document.getElementById('app');let cur=null;
 async function svgFor(r){const meta=r._meta||{};if(meta['${SVG_META_KEY}'])return meta['${SVG_META_KEY}'];const s=r.structuredContent||{};
- try{const rr=await rpc('resources/read',{uri:'inkstone://notes/'+encodeURIComponent(s.noteId)+'/pages/'+s.page+'.svg'});return rr.contents[0].text}catch{return null}}
+ try{const rr=await rpc('resources/read',{uri:'inkwright://notes/'+encodeURIComponent(s.noteId)+'/pages/'+s.page+'.svg'});return rr.contents[0].text}catch{return null}}
 async function onResult(r){const s=r&&r.structuredContent;if(!s||!s.noteId){app.replaceChildren(el('p',{class:'empty'},textOf(r)||'Nothing to show.'));return}
  cur=s;const svg=await svgFor(r);
  const go=async d=>{try{onResult(await callTool('show_note_page',{id:s.noteId,page:s.page+d}))}catch(e){status.textContent=e.message}};

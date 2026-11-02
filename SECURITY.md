@@ -1,6 +1,6 @@
 # Security policy
 
-Inkstone handles people's private notes and gives AI agents access to them, so we treat security
+Inkwright handles people's private notes and gives AI agents access to them, so we treat security
 reports as the most important issues we get. Thank you for helping.
 
 ## Reporting a vulnerability
@@ -17,8 +17,8 @@ reports as the most important issues we get. Thank you for helping.
 
 ## Scope
 
-In scope: the web app and PWA, the Android and iOS shells, `@inkstone/core`, `@inkstone/ai`,
-`@inkstone/sync`, the MCP server / A2A agent / runner (`apps/mcp-server`), the Docker appliance
+In scope: the web app and PWA, the Android and iOS shells, `@inkwright/core`, `@inkwright/ai`,
+`@inkwright/sync`, the MCP server / A2A agent / runner (`apps/mcp-server`), the Docker appliance
 (`deploy/`), and the documented vault format.
 
 Especially interesting:

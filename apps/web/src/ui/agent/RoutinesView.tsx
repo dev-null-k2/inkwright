@@ -1,6 +1,6 @@
 /**
  * Routines: background agents with a prompt, the AI to use, the tools allowed and triggers.
- * The copy is explicit that routines only run while Inkstone is open (and catch up once on open).
+ * The copy is explicit that routines only run while Inkwright is open (and catch up once on open).
  */
 import { useEffect, useState } from 'react';
 import { Pencil, Play, Plus, Square, Trash2, X } from 'lucide-react';
@@ -14,7 +14,7 @@ import {
   validateRoutine,
   type Routine,
   type RoutineTrigger,
-} from '@inkstone/ai';
+} from '@inkwright/ai';
 import { requireHub, useAgent } from '../../lib/agent/hub.ts';
 import { useMcp } from '../../lib/agent/mcp.ts';
 import { cancelRoutine, runRoutineNow } from '../../lib/agent/routines.ts';
@@ -37,8 +37,8 @@ export function RoutinesView() {
   if (editing) return <RoutineEditor initial={editing} onDone={() => setEditing(null)} />;
   return (
     <div className="ag-screen">
-      <p className="ag-lead">Routines are tasks the assistant does for you on a schedule or when something happens. They run while Inkstone is open; if it was closed at the scheduled time, the routine runs once the next time you open Inkstone.</p>
-      {runner && <p className="ag-lead" data-testid="routines-runner">{runner} is running your routines, even when Inkstone is closed. Its changes show up in Activity.</p>}
+      <p className="ag-lead">Routines are tasks the assistant does for you on a schedule or when something happens. They run while Inkwright is open; if it was closed at the scheduled time, the routine runs once the next time you open Inkwright.</p>
+      {runner && <p className="ag-lead" data-testid="routines-runner">{runner} is running your routines, even when Inkwright is closed. Its changes show up in Activity.</p>}
       <Section title="Your routines" action={<button type="button" className="btn btn-sm" onClick={() => setEditing(newRoutine({ name: '', prompt: '', triggers: [{ kind: 'daily', time: '18:00' }] }))}><Plus size={14} /> New routine</button>}>
         {!routines.length && <p className="ag-empty">No routines yet. Start from one below or write your own.</p>}
         <ul className="ag-list">

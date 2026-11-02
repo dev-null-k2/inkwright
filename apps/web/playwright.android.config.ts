@@ -3,7 +3,7 @@ import { defineConfig } from '@playwright/test';
 process.env.PLAYWRIGHT_BROWSERS_PATH ??= '/opt/pw-browsers';
 
 /**
- * Android smoke suite: drives the real Inkstone app (debug APK with the e2e hook) inside an Android
+ * Android smoke suite: drives the real Inkwright app (debug APK with the e2e hook) inside an Android
  * emulator or device. Playwright attaches to the app's WebView over the Chrome DevTools Protocol
  * (adb forwards localabstract:webview_devtools_remote_<pid>; see scripts/android/app.sh cdp).
  * Nothing is launched or served from here: run it through scripts/android/run-smoke.sh, which boots

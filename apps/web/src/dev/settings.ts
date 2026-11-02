@@ -13,7 +13,7 @@ export interface DevSettings {
   httpVars: Record<string, string>;
 }
 
-const KEY = 'inkstone.dev.v1';
+const KEY = 'inkwright.dev.v1';
 
 function isPhone(): boolean {
   try {

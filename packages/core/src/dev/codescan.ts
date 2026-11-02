@@ -965,7 +965,7 @@ export async function scanRepository(
     sourceId: o.sourceId,
     name: o.name,
     scannedAt: o.now ?? Date.now(),
-    generator: o.generator ?? 'inkstone-tree-sitter/1',
+    generator: o.generator ?? 'inkwright-tree-sitter/1',
     files,
     symbols,
     edges,

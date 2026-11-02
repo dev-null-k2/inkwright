@@ -1,5 +1,5 @@
 import { Check, Copy } from 'lucide-react';
-import { formatCodeLink, resolveCodeTarget, type CodeRefState, type CodeSymbol, type CodeTarget } from '@inkstone/core';
+import { formatCodeLink, resolveCodeTarget, type CodeRefState, type CodeSymbol, type CodeTarget } from '@inkwright/core';
 import { useApp } from '../state/app.ts';
 import { cx } from '../ui/primitives.tsx';
 import { useDev } from './store.ts';

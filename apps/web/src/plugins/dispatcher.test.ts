@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Permission } from '@inkstone/plugin-api';
+import type { Permission } from '@inkwright/plugin-api';
 import { dispatch, type BackendNote, type Caller, type HostEnv } from './dispatcher.ts';
 
 function note(id: string, p: Partial<BackendNote> & { markdown?: string } = {}): BackendNote & { markdown: string } {

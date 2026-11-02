@@ -32,7 +32,7 @@ describe('wiki link parsing', () => {
 
 describe('tags', () => {
   it('reads #tags like Obsidian does', () => {
-    expect(parseTags('#idea and #project/inkstone, (#todo) but not # heading, ## h2, [[Note#Page 2]], #2024, http://x.com/#frag or `#code`')).toEqual(['idea', 'project/inkstone', 'todo']);
+    expect(parseTags('#idea and #project/inkwright, (#todo) but not # heading, ## h2, [[Note#Page 2]], #2024, http://x.com/#frag or `#code`')).toEqual(['idea', 'project/inkwright', 'todo']);
     expect(parseTags('#Idea then #idea again')).toEqual(['Idea']);
     expect(parseTags('#y2024 #café')).toEqual(['y2024', 'café']);
   });

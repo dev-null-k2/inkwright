@@ -33,7 +33,7 @@ async function textBox(page: Page, at: [number, number] = [220, 240]) {
   return ta;
 }
 
-const codeRefs = (page: Page) => page.evaluate(() => (window as any).__inkstone.doc.meta.codeRefs ?? null);
+const codeRefs = (page: Page) => page.evaluate(() => (window as any).__inkwright.doc.meta.codeRefs ?? null);
 
 test.describe('developer module', () => {
   test('scans a repository zip, links code with autocomplete, and flags drift after a re-scan', async ({ page }) => {
@@ -73,7 +73,7 @@ test.describe('developer module', () => {
     await page.getByRole('button', { name: 'Open “createSession”' }).click();
     await expect(page.getByRole('dialog', { name: 'Code' }).getByTestId('symbol-card')).toContainText('src/auth.ts:2');
     await page.keyboard.press('Escape');
-    const id = await page.evaluate(() => (window as any).__inkstone.doc.meta.id as string);
+    const id = await page.evaluate(() => (window as any).__inkwright.doc.meta.id as string);
 
     // The code changes: re-scan from the newer archive.
     await page.getByRole('button', { name: 'Back to library' }).click();
@@ -93,14 +93,14 @@ test.describe('developer module', () => {
 
     // On the page: the mark turns amber with a word; old vs new side by side; never auto-edited.
     await page.goto(`/?e2e#note/${id}`);
-    await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+    await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
     await expect(chip).toHaveClass(/is-drift/);
     await expect(chip).toContainText('Changed');
     await chip.click();
     await expect(card).toContainText('Signature changed since this note was written');
     await expect(card.locator('.dev-sig.is-old')).toHaveText('function createSession(userId: string, ttlMs: number): string');
     await expect(card.locator('.dev-sig.is-new')).toHaveText('function createSession(userId: string, ttlMs: number, scope: string[]): string');
-    expect(await page.evaluate(() => (window as any).__inkstone.doc.page(0).texts[0].text)).toBe('Sessions start in [[code:src/auth.ts#createSession]]');
+    expect(await page.evaluate(() => (window as any).__inkwright.doc.page(0).texts[0].text)).toBe('Sessions start in [[code:src/auth.ts#createSession]]');
     await card.getByRole('button', { name: 'Mark reviewed' }).click();
     await expect(chip).not.toHaveClass(/is-drift/);
     await expect.poll(() => codeRefs(page)).toMatchObject({ 'src/auth.ts#createSession': { signature: 'function createSession(userId: string, ttlMs: number, scope: string[]): string', reviewedAt: expect.any(Number) } });
@@ -135,7 +135,7 @@ test.describe('developer module', () => {
     await expect(out.locator('.dev-headers')).toContainText('x-region');
     expect(calls).toBe(1);
 
-    const runs = await page.evaluate(async () => (await (window as any).__inkstoneHub.activity.list()).filter((r: any) => r.label === 'Runbook').map((r: any) => ({ status: r.status, op: r.ops[0]?.summary })));
+    const runs = await page.evaluate(async () => (await (window as any).__inkwrightHub.activity.list()).filter((r: any) => r.label === 'Runbook').map((r: any) => ({ status: r.status, op: r.ops[0]?.summary })));
     expect(runs).toEqual(expect.arrayContaining([
       expect.objectContaining({ status: 'done', op: expect.stringMatching(/^GET https:\/\/status\.example\.test\/health → 200/) }),
       expect.objectContaining({ status: 'cancelled', op: 'Declined GET https://status.example.test/health' }),
@@ -192,12 +192,12 @@ test.describe('developer module', () => {
     await expect(receipt).toContainText('Valid diagram (3 nodes, 2 edges)');
     await place.click();
 
-    const obj = await page.evaluate(() => (window as any).__inkstone.doc.page(0).objects?.[0]);
+    const obj = await page.evaluate(() => (window as any).__inkwright.doc.page(0).objects?.[0]);
     expect(obj).toMatchObject({ type: 'diagram', ir: { title: 'Login' } });
     expect(obj.origin).toBeUndefined(); // the user's own diagram
     // Drawn on the canvas: ink inside the diagram's box.
     await expect.poll(() => page.evaluate(() => {
-      const { doc, engine } = (window as any).__inkstone;
+      const { doc, engine } = (window as any).__inkwright;
       const o = doc.page(0).objects[0];
       const s = engine.pageRectToScreen(0, { minX: o.x, minY: o.y, maxX: o.x + o.width, maxY: o.y + o.height });
       const c = document.querySelector('.ink-base') as HTMLCanvasElement;
@@ -209,7 +209,7 @@ test.describe('developer module', () => {
     })).toBeGreaterThan(150);
     // And it undoes like any edit.
     await page.keyboard.press(`${await modKey(page)}+z`);
-    expect(await page.evaluate(() => (window as any).__inkstone.doc.page(0).objects?.length ?? 0)).toBe(0);
+    expect(await page.evaluate(() => (window as any).__inkwright.doc.page(0).objects?.length ?? 0)).toBe(0);
   });
 
   test('turning the module off removes it from the editor', async ({ page }) => {

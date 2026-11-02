@@ -30,8 +30,8 @@ const TIERS = new Set(['default', 'complex', 'quick', 'inherit']);
 
 const SAMPLE_CODES: Record<string, { code: AIErrorCode; retryable?: boolean; message: string }> = {
   cancelled: { code: 'aborted', message: 'Request cancelled.' },
-  rate_limited: { code: 'rate_limit', retryable: true, message: 'Claude is rate-limiting requests from Inkstone right now. Try again in a little while.' },
-  not_granted: { code: 'permission', message: 'Claude access was not allowed for Inkstone. Allow it from the artifact’s permissions, or add an API key in Settings → AI.' },
+  rate_limited: { code: 'rate_limit', retryable: true, message: 'Claude is rate-limiting requests from Inkwright right now. Try again in a little while.' },
+  not_granted: { code: 'permission', message: 'Claude access was not allowed for Inkwright. Allow it from the artifact’s permissions, or add an API key in Settings → AI.' },
   sampling_disabled: { code: 'permission', message: 'Claude is not available for this account.' },
   not_declared: { code: 'permission', message: 'Claude access is not enabled for this page.' },
   capability_disabled: { code: 'permission', message: 'Claude access is disabled in this view.' },
@@ -85,9 +85,9 @@ export function toSampleInput(messages: ChatMessage[], json = false): { turns: A
 }
 
 /**
- * Claude through the claude.ai artifact `sample` capability — no API key needed when Inkstone
+ * Claude through the claude.ai artifact `sample` capability — no API key needed when Inkwright
  * runs as a claude.ai artifact. `sample` is text-in/text-out, so tool calling uses the prompt
- * protocol (`withPromptTools`) and the Inkstone agent loop keeps control of tools and
+ * protocol (`withPromptTools`) and the Inkwright agent loop keeps control of tools and
  * confirmations. Request `model` may be a tier (`quick`/`default`/`complex`) or a Claude model id.
  */
 export function createClaudeSampleProvider(sample: ClaudeSampleFn, opts: ClaudeSampleProviderOptions = {}): Provider {

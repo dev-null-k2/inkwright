@@ -2,7 +2,7 @@ import type { PluginListenerHandle } from '@capacitor/core';
 import type { NativeLLMAvailability } from '../../platform/native-llm.ts';
 
 /**
- * The on-device AI methods of the Android InkstoneNativePlugin (Kotlin: app/inkstone/ai/AiBridge.kt,
+ * The on-device AI methods of the Android InkwrightNativePlugin (Kotlin: app/inkwright/ai/AiBridge.kt,
  * which documents each one). Kept apart from native.ts's plugin interface so the bridge can be
  * tested against a fake, and so the haptics/recognition interface stays readable.
  */

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { BarChart3, Copy, Play, Sparkles, Table2 } from 'lucide-react';
 import { create } from 'zustand';
-import { inferChart, describeValue, type Dataset, type NoteDocument, type QueryAttempt, type SqlResult } from '@inkstone/core';
+import { inferChart, describeValue, type Dataset, type NoteDocument, type QueryAttempt, type SqlResult } from '@inkwright/core';
 import type { InkEngine } from '../canvas/engine.ts';
 import type { AppVault } from '../lib/vault.ts';
 import { useApp } from '../state/app.ts';

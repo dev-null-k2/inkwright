@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { DEFAULT_PAPER, PAGE_SIZES, TAPE_COLORS, TAPE_DEFAULT_WIDTH, type EraserFilter, type PageSize, type PaperSpec } from '@inkstone/core';
+import { DEFAULT_PAPER, PAGE_SIZES, TAPE_COLORS, TAPE_DEFAULT_WIDTH, type EraserFilter, type PageSize, type PaperSpec } from '@inkwright/core';
 import type { ButtonAction, InputPrefs, PenPreset } from '../canvas/engine.ts';
 import { safeStorage } from '../platform/env.ts';
 
@@ -94,7 +94,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sync: {
     googleClientId: (import.meta.env?.VITE_GOOGLE_CLIENT_ID as string | undefined) ?? '',
     account: null,
-    drive: { enabled: false, folderName: 'Inkstone', lastSync: null },
+    drive: { enabled: false, folderName: 'Inkwright', lastSync: null },
     webdav: { enabled: false, url: '', username: '', lastSync: null },
     folder: { enabled: false, name: null, lastSync: null },
   },
@@ -105,7 +105,7 @@ export const DEFAULT_SETTINGS: Settings = {
   authorship: { deviceName: '', attachToPdf: true },
 };
 
-const KEY = 'inkstone.settings.v1';
+const KEY = 'inkwright.settings.v1';
 
 function load(): Settings {
   const raw = safeStorage.get(KEY);

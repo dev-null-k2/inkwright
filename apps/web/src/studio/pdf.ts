@@ -1,7 +1,7 @@
 import {
   STICKY_FONT, STICKY_ICON, STICKY_PAD, argbToHexOpacity, centerlineSvgPath, isOverlay, outlineToSvgPath, penLook, stickyStrokesOnPage,
   strokeOutline, tapeCorners, wrapStickyText, type PageInk,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import { LineCapStyle, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 
 /** Points per page unit (as in lib/pdfdraw.ts). */

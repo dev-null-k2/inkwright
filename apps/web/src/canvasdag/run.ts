@@ -18,7 +18,7 @@ import {
   type PageObject,
   type StepInput,
   type StickyObject,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import type { AppVault } from '../lib/vault.ts';
 import { readText } from '../smart/read.ts';
 import { aiForNote, askOnce } from '../inkactions/ai.ts';

@@ -1,6 +1,6 @@
 /**
- * Command-line and config-file options shared by `inkstone-mcp` (the MCP/A2A server) and
- * `inkstone-agent` (the always-on runner, which can serve the same endpoints). Precedence:
+ * Command-line and config-file options shared by `inkwright-mcp` (the MCP/A2A server) and
+ * `inkwright-agent` (the always-on runner, which can serve the same endpoints). Precedence:
  * command line, then environment, then the JSON config file (`--config`), then defaults.
  * Secrets (the bearer token, AI keys) are best kept in the environment or the 0600 config file —
  * never in service files or shell history.
@@ -61,14 +61,14 @@ export interface ConfigFile {
 export const DEFAULT_READ_SCOPE = 'notes:read';
 export const DEFAULT_WRITE_SCOPE = 'notes:write';
 
-export const USAGE = `inkstone-mcp — MCP (and A2A) server for an Inkstone notes vault
+export const USAGE = `inkwright-mcp — MCP (and A2A) server for an Inkwright notes vault
 
 Usage:
-  inkstone-mcp --vault <dir> [--read-only]                      stdio (Claude Desktop, Claude Code, Cursor…)
-  inkstone-mcp --vault <dir> --http <port> [auth] [--a2a] [ai]  Streamable HTTP at /mcp (and A2A at /a2a)
+  inkwright-mcp --vault <dir> [--read-only]                      stdio (Claude Desktop, Claude Code, Cursor…)
+  inkwright-mcp --vault <dir> --http <port> [auth] [--a2a] [ai]  Streamable HTTP at /mcp (and A2A at /a2a)
 
 Vault:
-  --vault <dir>            Folder with inkstone.json and notes/ (default $INKSTONE_VAULT; "~" expands).
+  --vault <dir>            Folder with inkwright.json and notes/ (default $INKWRIGHT_VAULT; "~" expands).
   --read-only              Only read tools; never write to the vault.
   --no-watch               Don't watch the folder; re-check file times on every call.
 
@@ -78,11 +78,11 @@ HTTP:
   --public-url <url>       The URL clients use (tunnel / reverse proxy), e.g. https://notes.example.com.
   --a2a                    Also serve the A2A agent: /.well-known/agent-card.json and /a2a (needs an AI).
   --signal-token <secret>  Also relay sealed peer-link offers at /signal/v1 (docs/COLLABORATION.md;
-                           default $INKSTONE_SIGNAL_TOKEN). Its own token: it opens no notes.
+                           default $INKWRIGHT_SIGNAL_TOKEN). Its own token: it opens no notes.
 
 Sign-in (HTTP):
   (none)                   Only loopback clients on this computer.
-  --token <secret>         Require "Authorization: Bearer <secret>" (default $INKSTONE_MCP_TOKEN).
+  --token <secret>         Require "Authorization: Bearer <secret>" (default $INKWRIGHT_MCP_TOKEN).
   --oauth-issuer <url>     OAuth 2.1: accept JWT access tokens from your identity provider.
   --oauth-audience <aud>   Accepted audience (repeat or comma-separate; default: this server's URLs).
   --oauth-jwks-url <url>   Signing keys (default: discovered from the issuer).
@@ -93,15 +93,15 @@ REST API (HTTP mode; see docs/API.md):
   --no-api                 Don't serve the REST API at /api/v1.
   --cors-origin <origin>   Let this browser origin call the API (repeatable; "*" for any).
   --rate-limit <n>         Requests per minute per API key (default 600).
-  --state-dir <dir>        Where webhooks and their delivery log are kept (default ~/.config/inkstone/api/…).
+  --state-dir <dir>        Where webhooks and their delivery log are kept (default ~/.config/inkwright/api/…).
   --embeddings-model <m>   Embedding model for semantic search, e.g. text-embedding-3-small or nomic-embed-text.
   --embeddings-url <url>   OpenAI-compatible base URL (default https://api.openai.com/v1).
   --embeddings-key-env <N> Environment variable with its key (default OPENAI_API_KEY for OpenAI).
 
 API keys:
-  inkstone-mcp keys create --vault <dir> --name <name> --scope notes:read [--scope …] [--expires-days n]
-  inkstone-mcp keys list   --vault <dir>
-  inkstone-mcp keys revoke --vault <dir> <key id>
+  inkwright-mcp keys create --vault <dir> --name <name> --scope notes:read [--scope …] [--expires-days n]
+  inkwright-mcp keys list   --vault <dir>
+  inkwright-mcp keys revoke --vault <dir> <key id>
 
 AI for the server's own agent (A2A, run_routine, summarize/transcribe tasks):
   --ai-provider <id>       openai, anthropic, gemini, ollama, lmstudio, openrouter, groq, mistral, custom, …
@@ -115,19 +115,19 @@ Trust (docs/TRUST.md, docs/ENTERPRISE.md):
   --policy <file>          Managed AI policy (same format as ai/policy.json); users can only tighten it.
   --audit-key <file>       P-256 private key (JWK) that signs the audit trail (default: a key per process).
 
-Every option also reads an environment variable: INKSTONE_VAULT, INKSTONE_HTTP_PORT, INKSTONE_HOST,
-INKSTONE_PUBLIC_URL, INKSTONE_A2A=1, INKSTONE_MCP_TOKEN, INKSTONE_OAUTH_ISSUER, INKSTONE_OAUTH_AUDIENCE,
-INKSTONE_OAUTH_JWKS_URL, INKSTONE_AI_PROVIDER, INKSTONE_AI_MODEL, INKSTONE_AI_BASE_URL,
-INKSTONE_AI_ON_PREMISES=1, INKSTONE_POLICY_FILE, INKSTONE_AUDIT_KEY.
+Every option also reads an environment variable: INKWRIGHT_VAULT, INKWRIGHT_HTTP_PORT, INKWRIGHT_HOST,
+INKWRIGHT_PUBLIC_URL, INKWRIGHT_A2A=1, INKWRIGHT_MCP_TOKEN, INKWRIGHT_OAUTH_ISSUER, INKWRIGHT_OAUTH_AUDIENCE,
+INKWRIGHT_OAUTH_JWKS_URL, INKWRIGHT_AI_PROVIDER, INKWRIGHT_AI_MODEL, INKWRIGHT_AI_BASE_URL,
+INKWRIGHT_AI_ON_PREMISES=1, INKWRIGHT_POLICY_FILE, INKWRIGHT_AUDIT_KEY.
 
   --config <file>          JSON config file with any of the above (see docs/AGENTS.md).
   -h, --help               Show this help.
   -v, --version            Print the version.
 
 Examples:
-  inkstone-mcp --vault "~/Library/CloudStorage/GoogleDrive-me@example.com/My Drive/Inkstone"
-  inkstone-mcp --vault ~/Inkstone --http 8765 --token "$(openssl rand -hex 24)"
-  inkstone-mcp --vault ~/Inkstone --http 8765 --public-url https://notes.example.com \\
+  inkwright-mcp --vault "~/Library/CloudStorage/GoogleDrive-me@example.com/My Drive/Inkwright"
+  inkwright-mcp --vault ~/Inkwright --http 8765 --token "$(openssl rand -hex 24)"
+  inkwright-mcp --vault ~/Inkwright --http 8765 --public-url https://notes.example.com \\
                --oauth-issuer https://auth.example.com/realms/home --a2a --ai-provider anthropic
 `;
 
@@ -203,54 +203,54 @@ function port(v: unknown, what: string): number {
 /** Turns parsed flag values (+ env + config file) into options. */
 export function resolveOptions(values: Record<string, unknown>, env: NodeJS.ProcessEnv): CliOptions {
   const cfg: ConfigFile = values.config ? readConfigFile(String(values.config)) : {};
-  const rawVault = (values.vault as string | undefined) ?? env.INKSTONE_VAULT ?? cfg.vault;
-  const httpRaw = values.http ?? env.INKSTONE_HTTP_PORT ?? cfg.http?.port;
+  const rawVault = (values.vault as string | undefined) ?? env.INKWRIGHT_VAULT ?? cfg.vault;
+  const httpRaw = values.http ?? env.INKWRIGHT_HTTP_PORT ?? cfg.http?.port;
   const http = httpRaw !== undefined ? port(httpRaw, '--http') : undefined;
-  const token = (values.token as string | undefined) ?? env.INKSTONE_MCP_TOKEN ?? cfg.auth?.token ?? undefined;
+  const token = (values.token as string | undefined) ?? env.INKWRIGHT_MCP_TOKEN ?? cfg.auth?.token ?? undefined;
   if (values.token !== undefined && http === undefined) throw new CliError('--token only applies with --http <port>.');
-  const issuer = (values['oauth-issuer'] as string | undefined) ?? env.INKSTONE_OAUTH_ISSUER ?? cfg.auth?.oauth?.issuer;
+  const issuer = (values['oauth-issuer'] as string | undefined) ?? env.INKWRIGHT_OAUTH_ISSUER ?? cfg.auth?.oauth?.issuer;
   if (issuer && http === undefined) throw new CliError('--oauth-issuer only applies with --http <port>.');
   if (issuer && !/^https:\/\//.test(issuer) && !/^http:\/\/(localhost|127\.)/.test(issuer)) throw new CliError('--oauth-issuer must be an https:// URL.');
-  const audience = ((values['oauth-audience'] as string[] | undefined) ?? (env.INKSTONE_OAUTH_AUDIENCE ? [env.INKSTONE_OAUTH_AUDIENCE] : undefined) ?? cfg.auth?.oauth?.audience ?? []).flatMap((a) => a.split(',')).map((a) => a.trim()).filter(Boolean);
-  const provider = (values['ai-provider'] as string | undefined) ?? env.INKSTONE_AI_PROVIDER ?? cfg.ai?.provider;
+  const audience = ((values['oauth-audience'] as string[] | undefined) ?? (env.INKWRIGHT_OAUTH_AUDIENCE ? [env.INKWRIGHT_OAUTH_AUDIENCE] : undefined) ?? cfg.auth?.oauth?.audience ?? []).flatMap((a) => a.split(',')).map((a) => a.trim()).filter(Boolean);
+  const provider = (values['ai-provider'] as string | undefined) ?? env.INKWRIGHT_AI_PROVIDER ?? cfg.ai?.provider;
   const ai: AgentAIConfig | undefined = provider
     ? {
         ...cfg.ai,
         provider,
-        model: (values['ai-model'] as string | undefined) ?? env.INKSTONE_AI_MODEL ?? cfg.ai?.model,
-        baseUrl: (values['ai-base-url'] as string | undefined) ?? env.INKSTONE_AI_BASE_URL ?? cfg.ai?.baseUrl,
+        model: (values['ai-model'] as string | undefined) ?? env.INKWRIGHT_AI_MODEL ?? cfg.ai?.model,
+        baseUrl: (values['ai-base-url'] as string | undefined) ?? env.INKWRIGHT_AI_BASE_URL ?? cfg.ai?.baseUrl,
         apiKeyEnv: (values['ai-key-env'] as string | undefined) ?? cfg.ai?.apiKeyEnv,
-        onPremises: Boolean(values['ai-on-premises'] ?? truthy(env.INKSTONE_AI_ON_PREMISES) ?? cfg.ai?.onPremises ?? false),
+        onPremises: Boolean(values['ai-on-premises'] ?? truthy(env.INKWRIGHT_AI_ON_PREMISES) ?? cfg.ai?.onPremises ?? false),
       }
     : undefined;
-  const publicUrl = (values['public-url'] as string | undefined) ?? env.INKSTONE_PUBLIC_URL ?? cfg.http?.publicUrl;
+  const publicUrl = (values['public-url'] as string | undefined) ?? env.INKWRIGHT_PUBLIC_URL ?? cfg.http?.publicUrl;
   if (publicUrl && !/^https?:\/\/[^/]+/.test(publicUrl)) throw new CliError(`--public-url must be a full URL like https://notes.example.com (got ${publicUrl}).`);
   const rateRaw = values['rate-limit'] ?? cfg.api?.rateLimit;
   const rateLimit = rateRaw === undefined ? undefined : Number(rateRaw);
   if (rateLimit !== undefined && (!Number.isInteger(rateLimit) || rateLimit < 1)) throw new CliError(`Invalid --rate-limit: ${rateRaw}`);
   const corsOrigins = ((values['cors-origin'] as string[] | undefined) ?? cfg.api?.corsOrigins ?? []).flatMap((a) => a.split(',')).map((a) => a.trim().replace(/\/+$/, '')).filter(Boolean);
   for (const c of corsOrigins) if (c !== '*' && !/^https?:\/\/[^/]+$/.test(c)) throw new CliError(`--cors-origin must be an origin like https://app.example.com (got ${c}).`);
-  const embModel = (values['embeddings-model'] as string | undefined) ?? env.INKSTONE_EMBEDDINGS_MODEL ?? cfg.api?.embeddings?.model;
-  const embUrl = (values['embeddings-url'] as string | undefined) ?? env.INKSTONE_EMBEDDINGS_URL ?? cfg.api?.embeddings?.baseUrl ?? 'https://api.openai.com/v1';
+  const embModel = (values['embeddings-model'] as string | undefined) ?? env.INKWRIGHT_EMBEDDINGS_MODEL ?? cfg.api?.embeddings?.model;
+  const embUrl = (values['embeddings-url'] as string | undefined) ?? env.INKWRIGHT_EMBEDDINGS_URL ?? cfg.api?.embeddings?.baseUrl ?? 'https://api.openai.com/v1';
   const embeddings = embModel ? { baseUrl: embUrl, model: embModel, apiKeyEnv: (values['embeddings-key-env'] as string | undefined) ?? cfg.api?.embeddings?.apiKeyEnv ?? (/api\.openai\.com/.test(embUrl) ? 'OPENAI_API_KEY' : undefined) } : undefined;
   const stateDir = (values['state-dir'] as string | undefined) ?? cfg.api?.stateDir;
   return {
     vault: rawVault ? path.resolve(expandHome(rawVault)) : undefined,
     readOnly: Boolean(values['read-only'] ?? cfg.readOnly ?? false),
     http,
-    host: (values.host as string | undefined) ?? env.INKSTONE_HOST ?? cfg.http?.host,
+    host: (values.host as string | undefined) ?? env.INKWRIGHT_HOST ?? cfg.http?.host,
     publicUrl: publicUrl?.replace(/\/+$/, ''),
     token: issuer ? undefined : token || undefined,
     oauth: issuer
       ? {
           issuer,
           ...(audience.length ? { audience } : {}),
-          jwksUrl: (values['oauth-jwks-url'] as string | undefined) ?? env.INKSTONE_OAUTH_JWKS_URL ?? cfg.auth?.oauth?.jwksUrl,
+          jwksUrl: (values['oauth-jwks-url'] as string | undefined) ?? env.INKWRIGHT_OAUTH_JWKS_URL ?? cfg.auth?.oauth?.jwksUrl,
           readScope: (values['oauth-read-scope'] as string | undefined) ?? cfg.auth?.oauth?.readScope ?? DEFAULT_READ_SCOPE,
           writeScope: (values['oauth-write-scope'] as string | undefined) ?? cfg.auth?.oauth?.writeScope ?? DEFAULT_WRITE_SCOPE,
         }
       : undefined,
-    a2a: Boolean(values.a2a ?? truthy(env.INKSTONE_A2A) ?? cfg.http?.a2a ?? false),
+    a2a: Boolean(values.a2a ?? truthy(env.INKWRIGHT_A2A) ?? cfg.http?.a2a ?? false),
     ai,
     api: !values['no-api'] && cfg.api?.enabled !== false,
     corsOrigins,
@@ -260,12 +260,12 @@ export function resolveOptions(values: Record<string, unknown>, env: NodeJS.Proc
     watch: !values['no-watch'],
     config: values.config as string | undefined,
     ...(() => {
-      const policyFile = (values.policy as string | undefined) ?? env.INKSTONE_POLICY_FILE ?? cfg.trust?.policyFile;
-      const auditKey = (values['audit-key'] as string | undefined) ?? env.INKSTONE_AUDIT_KEY ?? cfg.trust?.auditKey;
+      const policyFile = (values.policy as string | undefined) ?? env.INKWRIGHT_POLICY_FILE ?? cfg.trust?.policyFile;
+      const auditKey = (values['audit-key'] as string | undefined) ?? env.INKWRIGHT_AUDIT_KEY ?? cfg.trust?.auditKey;
       return { ...(policyFile ? { policyFile: path.resolve(expandHome(policyFile)) } : {}), ...(auditKey ? { auditKey: path.resolve(expandHome(auditKey)) } : {}) };
     })(),
     ...(() => {
-      const signalToken = (values['signal-token'] as string | undefined) ?? env.INKSTONE_SIGNAL_TOKEN;
+      const signalToken = (values['signal-token'] as string | undefined) ?? env.INKWRIGHT_SIGNAL_TOKEN;
       if (!signalToken) return {};
       if (http === undefined) throw new CliError('--signal-token only applies with --http <port>.');
       if (signalToken.length < 16) throw new CliError('--signal-token must be at least 16 characters (e.g. openssl rand -hex 16).');

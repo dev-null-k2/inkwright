@@ -124,7 +124,7 @@ describe('native speech', () => {
 
   it('cleans up when the microphone is refused', async () => {
     const fake = createFakeNativeAI();
-    fake.speechStart = async () => { throw Object.assign(new Error('Inkstone needs microphone access for voice input.'), { code: 'permission' }); };
+    fake.speechStart = async () => { throw Object.assign(new Error('Inkwright needs microphone access for voice input.'), { code: 'permission' }); };
     await expect(startNativeListening(fake)).rejects.toMatchObject({ code: 'permission' });
     expect(fake.listeners.get('speechPartial')!.size).toBe(0);
   });

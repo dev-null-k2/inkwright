@@ -33,7 +33,7 @@ export interface InkActionPrefs {
 export const DEFAULT_READING: ReadingPrefs = { font: '', size: 20, letterSpacing: 0.06, wordSpacing: 0.16, lineHeight: 1.8, lineFocus: true, tint: 'cream' };
 
 const DEFAULTS: InkActionPrefs = { answerIn: 'ink', answerStyle: 'script', citationStyle: 'apa', reading: DEFAULT_READING, readAloud: { rate: 1, voice: null } };
-const KEY = 'inkstone.inkactions.v1';
+const KEY = 'inkwright.inkactions.v1';
 
 function load(): InkActionPrefs {
   try {

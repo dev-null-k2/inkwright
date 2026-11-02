@@ -21,7 +21,7 @@ import {
   deterministicGen,
   pageConflicts,
   stripMarkdown,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import { extractJson } from '../json.ts';
 import type { ChatRequest, Provider, Usage } from '../types.ts';
 

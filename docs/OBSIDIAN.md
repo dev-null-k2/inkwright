@@ -1,9 +1,9 @@
-# Inkstone ⇄ Obsidian
+# Inkwright ⇄ Obsidian
 
-Inkstone notes can leave as an Obsidian vault and Obsidian vaults can come in as Inkstone notes.
+Inkwright notes can leave as an Obsidian vault and Obsidian vaults can come in as Inkwright notes.
 Settings › Notes, links & Obsidian has the buttons (also in the search palette: "Export for
 Obsidian", "Import an Obsidian vault"). A `.zip` of Markdown files dropped on the library or opened
-with "Open file" is imported the same way (an Inkstone backup zip is still restored as a backup).
+with "Open file" is imported the same way (an Inkwright backup zip is still restored as a backup).
 
 The mapping lives in `packages/core/src/obsidian.ts` (pure, tested in Node:
 `packages/core/test/obsidian.test.ts`); the app renders page pictures and reads/writes zips and
@@ -12,7 +12,7 @@ folders (`apps/web/src/lib/obsidian.ts`).
 ## Export
 
 ```
-Inkstone/                          (zip root; "Export into a folder" writes this folder into the folder you pick)
+Inkwright/                          (zip root; "Export into a folder" writes this folder into the folder you pick)
   <Notebook>/<Sub-notebook>/<Note title>.md
   <Note title>.md                  unfiled notes
   attachments/<Note title> - page 2.png
@@ -20,14 +20,14 @@ Inkstone/                          (zip root; "Export into a folder" writes this
   attachments/<Note title> - recording ….webm
 ```
 
-| Inkstone | Obsidian |
+| Inkwright | Obsidian |
 |---|---|
 | Notebook (nested) | Folder (nested) |
 | Note title | File name. Characters Obsidian refuses (`\ / : * ? " < > \| # ^ [ ]`) are replaced; when the name differs from the title, the title is kept in `aliases`. Names are unique across the vault (" 2", " 3"…) so `[[name]]` is never ambiguous. |
 | Tags (set by hand and `#tags` written in the note) | `tags:` property |
 | Created / edited | `created:` / `updated:` (ISO 8601, UTC) |
 | AI summary | `summary:` |
-| Note id | `inkstone-id:` |
+| Note id | `inkwright-id:` |
 | Properties imported from Markdown earlier (`status`, `aliases`, …) | Written back as they were |
 | Pages | `## Page N` headings when a note has more than one page |
 | Typed text (Markdown) | The text, as written |
@@ -45,7 +45,7 @@ exported (a zip has no empty folders).
 Pick a vault folder (desktop browsers) or a `.zip`. Everything under `.obsidian/`, `.trash/`, dot
 files and `__MACOSX/` is ignored; a zip with a single top folder is treated as that folder.
 
-| Markdown | Inkstone |
+| Markdown | Inkwright |
 |---|---|
 | `Folder/Sub/Note.md` | Note "Note" in notebook "Sub" inside "Folder" (existing notebooks with the same name in the same place are reused) |
 | Files at the top level | Unfiled notes |

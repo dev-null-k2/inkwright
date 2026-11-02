@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { Eraser, Hand, Lasso, Plus, Redo2, Type, Undo2, Wand2, Trash2, Crosshair, Bandage, StickyNote } from 'lucide-react';
-import { DEFAULT_NIB_ANGLE, ERASER_FILTERS, PEN_INFO, PEN_TYPES, TAPE_COLORS, newId, outlineToSvgPath, strokeOutline, type InkPoint, type PenType } from '@inkstone/core';
+import { DEFAULT_NIB_ANGLE, ERASER_FILTERS, PEN_INFO, PEN_TYPES, TAPE_COLORS, newId, outlineToSvgPath, strokeOutline, type InkPoint, type PenType } from '@inkwright/core';
 import { useLongPress } from '../studio/useLongPress.ts';
 import type { PenPreset, Tool } from '../canvas/engine.ts';
 import { PenNib, argbToCss } from './PenNib.tsx';

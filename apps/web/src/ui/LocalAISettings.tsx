@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Check, Cpu, Download, RefreshCw, Server, Trash2, X } from 'lucide-react';
-import { formatBytes, getProviderInfo, runnableModels, type DetectedServer, type ModelChoice } from '@inkstone/ai';
-import { newId } from '@inkstone/core';
+import { formatBytes, getProviderInfo, runnableModels, type DetectedServer, type ModelChoice } from '@inkwright/ai';
+import { newId } from '@inkwright/core';
 import { useApp } from '../state/app.ts';
 import { useSettings } from '../state/settings.ts';
 import { isNative } from '../platform/env.ts';
@@ -32,7 +32,7 @@ export function LocalAISettings() {
         <div className="set-card">
           <NativeAISettings />
           {!supported ? (
-            <p className="set-empty">On-device models aren’t available in this version of Inkstone. Use the installed app or the web app for private, offline AI.</p>
+            <p className="set-empty">On-device models aren’t available in this version of Inkwright. Use the installed app or the web app for private, offline AI.</p>
           ) : (
             <>
               <div className="lai-device">
@@ -66,7 +66,7 @@ export function LocalAISettings() {
             ]} />
           </div>
         )}
-        <p className="set-note">Models are open-licence and download once from Hugging Face. They run inside Inkstone, so your notes never leave this device. {hasProvider ? 'Automatic uses your provider when one is set up, otherwise this device.' : 'Without an AI provider, the assistant and Ask use this device.'}</p>
+        <p className="set-note">Models are open-licence and download once from Hugging Face. They run inside Inkwright, so your notes never leave this device. {hasProvider ? 'Automatic uses your provider when one is set up, otherwise this device.' : 'Without an AI provider, the assistant and Ask use this device.'}</p>
       </section>
       <SemanticSearch />
       {!isNative && supported && <LocalServers />}
@@ -193,7 +193,7 @@ function LocalServers() {
         <div className="lai-row">
           <div className="lai-row-main">
             <span className="prov-name">Ollama, LM Studio, llama.cpp, Foundry Local</span>
-            <span className="muted">Already running models on this computer? Inkstone can use them.</span>
+            <span className="muted">Already running models on this computer? Inkwright can use them.</span>
           </div>
           <div className="prov-acts">
             <button type="button" className="btn btn-sm" disabled={st.scanning} onClick={() => void scanLocalServers().then(() => setScanned(true))}><Server size={14} /> {st.scanning ? 'Looking…' : 'Look for servers'}</button>

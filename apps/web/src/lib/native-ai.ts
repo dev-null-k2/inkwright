@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import type { Transcriber } from '@inkstone/ai';
+import type { Transcriber } from '@inkwright/ai';
 import { safeStorage } from '../platform/env.ts';
-import { hasNativePlugin, InkstoneNative } from '../platform/native.ts';
+import { hasNativePlugin, InkwrightNative } from '../platform/native.ts';
 import { registerNativeLLM, type NativeLLMAvailability } from '../platform/native-llm.ts';
 import { useSettings } from '../state/settings.ts';
 import { createNativeLLM, createNativeTranscriber, runNativeTask, startNativeListening, type NativeListening, type NativeTaskRequest } from '../ai/native/bridge.ts';
@@ -41,7 +41,7 @@ interface NativeAIState extends NativeAIPrefs {
   setPrefs(p: Partial<NativeAIPrefs>): void;
 }
 
-const KEY = 'inkstone.nativeai.v1';
+const KEY = 'inkwright.nativeai.v1';
 
 function loadPrefs(): NativeAIPrefs {
   try {
@@ -73,8 +73,8 @@ const E2E_BUILD = typeof __E2E__ !== 'undefined' && __E2E__;
  * assistant flows can be exercised in a desktop browser.
  */
 let plugin: NativeAIPlugin | null = hasNativePlugin
-  ? (InkstoneNative as unknown as NativeAIPlugin)
-  : E2E_BUILD ? ((globalThis as { __inkstoneFakeNativeAI?: NativeAIPlugin }).__inkstoneFakeNativeAI ?? null) : null;
+  ? (InkwrightNative as unknown as NativeAIPlugin)
+  : E2E_BUILD ? ((globalThis as { __inkwrightFakeNativeAI?: NativeAIPlugin }).__inkwrightFakeNativeAI ?? null) : null;
 
 /** The plugin, or null off Android. */
 export function nativeAIPlugin(): NativeAIPlugin | null {

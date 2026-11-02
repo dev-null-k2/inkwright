@@ -1,5 +1,5 @@
-import { describeDataset } from '@inkstone/core';
-import type { AgentTool } from '@inkstone/ai';
+import { describeDataset } from '@inkwright/core';
+import type { AgentTool } from '@inkwright/ai';
 import { activeSession } from '../lib/session.ts';
 import { useApp } from '../state/app.ts';
 import { aiCanSee } from '../lib/trust/state.ts';

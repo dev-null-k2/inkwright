@@ -26,7 +26,7 @@ describe('protocol versions over Streamable HTTP', () => {
   it('a 2026-07-28 client negotiates the new protocol through server/discover', async () => {
     const c = await modernClient(services);
     expect(c.getNegotiatedProtocolVersion()).toBe('2026-07-28');
-    expect(c.getServerVersion()).toMatchObject({ name: 'inkstone', title: 'Inkstone notes' });
+    expect(c.getServerVersion()).toMatchObject({ name: 'inkwright', title: 'Inkwright notes' });
     const caps = c.getServerCapabilities() as { extensions?: Record<string, unknown> };
     expect(caps.extensions).toHaveProperty('io.modelcontextprotocol/tasks');
     const tools = (await c.listTools()).tools.map((t) => t.name);
@@ -43,7 +43,7 @@ describe('protocol versions over Streamable HTTP', () => {
     expect(res.status).toBe(200);
     const body = await res.json() as { result: { resultType: string; content: Array<{ text: string }>; _meta: Record<string, unknown> } };
     expect(body.result.resultType).toBe('complete');
-    expect(body.result._meta['io.modelcontextprotocol/serverInfo']).toMatchObject({ name: 'inkstone' });
+    expect(body.result._meta['io.modelcontextprotocol/serverInfo']).toMatchObject({ name: 'inkwright' });
     expect(JSON.parse(body.result.content[0]!.text).notebooks.map((n: { name: string }) => n.name)).toContain('Work');
   });
 

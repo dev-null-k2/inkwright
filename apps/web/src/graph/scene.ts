@@ -1,4 +1,4 @@
-import type { ForceLayout, GraphData, GraphEdgeKind, GraphNodeKind } from '@inkstone/core';
+import type { ForceLayout, GraphData, GraphEdgeKind, GraphNodeKind } from '@inkwright/core';
 
 /**
  * What the graph renderers draw, shared by the 3D (three.js) and 2D (canvas) views: nodes with

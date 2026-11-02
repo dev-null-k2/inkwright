@@ -8,7 +8,7 @@
  * Activity log's routine runs, with the previous scan. The first scan is the baseline (no
  * events). Scans run every `intervalMs`, and sooner after a write through this server (`poke`).
  */
-import { ActivityStore } from '@inkstone/ai';
+import { ActivityStore } from '@inkwright/ai';
 import type { ServerContext } from '../context.ts';
 import type { WebhookEvent } from './webhooks.ts';
 

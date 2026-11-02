@@ -12,7 +12,7 @@
  * Codes are `ink1:` + base64url(deflate-raw(JSON)) — small enough for a QR code with a complete
  * (non-trickle) SDP — or `ink0:` + base64url(JSON) where CompressionStream is unavailable.
  */
-import { fromBase64Url, toBase64Url } from '@inkstone/core';
+import { fromBase64Url, toBase64Url } from '@inkwright/core';
 import { utf8Decode, utf8Encode } from '../util.ts';
 import { deriveSessionKeys, generateKeyPair, pairingMac, randomBytes, timingSafeEqual, type KeyPair, type SessionKeys } from './crypto.ts';
 
@@ -100,7 +100,7 @@ export async function decodeCode(code: string): Promise<PeerOffer | PeerAnswer> 
       if (!canCompress()) throw new PairingError('This device cannot read compressed codes.');
       json = await deflate(fromBase64Url(s.slice(5)), 'decompress');
     } else if (s.startsWith('ink0:')) json = fromBase64Url(s.slice(5));
-    else throw new PairingError('That is not an Inkstone connection code.');
+    else throw new PairingError('That is not an Inkwright connection code.');
   } catch (e) {
     if (e instanceof PairingError) throw e;
     throw new PairingError('The code is incomplete or damaged; copy it again.');
@@ -123,8 +123,8 @@ function validDevice(d: unknown): d is DeviceInfo {
 
 function validate(v: unknown): PeerOffer | PeerAnswer {
   const o = v as Omit<PeerOffer, 't'> & Omit<PeerAnswer, 't'> & { t: unknown };
-  if (!o || (o.t !== 'offer' && o.t !== 'answer')) throw new PairingError('That is not an Inkstone connection code.');
-  if (o.v !== PEER_PROTOCOL_VERSION) throw new PairingError('The other device runs a different version of Inkstone; update both.');
+  if (!o || (o.t !== 'offer' && o.t !== 'answer')) throw new PairingError('That is not an Inkwright connection code.');
+  if (o.v !== PEER_PROTOCOL_VERSION) throw new PairingError('The other device runs a different version of Inkwright; update both.');
   if (!validDevice(o.from) || !isStr(o.eph, 64) || fromBase64Url(o.eph).length !== 32 || !isStr(o.nonce, 64) || !isStr(o.sdp)) throw new PairingError('The code is incomplete or damaged; copy it again.');
   if (o.t === 'offer') {
     if (o.purpose !== 'pair' && o.purpose !== 'sync' && o.purpose !== 'collab') throw new PairingError('Unknown kind of connection.');
@@ -148,7 +148,7 @@ export const isOffer = (v: PeerOffer | PeerAnswer): v is PeerOffer => v.t === 'o
 export function transcriptBytes(offer: PeerOffer, answer: Omit<PeerAnswer, 'mac'>): Uint8Array {
   const { psk: _psk, ...o } = offer;
   const { mac: _mac, ...a } = answer as PeerAnswer;
-  return utf8Encode(JSON.stringify(['inkstone.peer.transcript.v1', o, a]));
+  return utf8Encode(JSON.stringify(['inkwright.peer.transcript.v1', o, a]));
 }
 
 export interface StartedOffer {

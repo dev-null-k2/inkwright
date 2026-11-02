@@ -1,20 +1,20 @@
 #!/usr/bin/env node
 /**
- * `inkstone-agent` — the always-on side of Inkstone on a computer:
+ * `inkwright-agent` — the always-on side of Inkwright on a computer:
  *
- *   inkstone-agent run        run routines on schedule over the vault folder (optionally also
- *                             serve MCP and A2A with --http, same options as inkstone-mcp)
- *   inkstone-agent install    write a launchd / systemd / Task Scheduler service for `run`
- *   inkstone-agent uninstall  remove it
- *   inkstone-agent status     who runs routines, last runs, pending approvals
- *   inkstone-agent approvals  list, allow or decline actions waiting for your OK
+ *   inkwright-agent run        run routines on schedule over the vault folder (optionally also
+ *                             serve MCP and A2A with --http, same options as inkwright-mcp)
+ *   inkwright-agent install    write a launchd / systemd / Task Scheduler service for `run`
+ *   inkwright-agent uninstall  remove it
+ *   inkwright-agent status     who runs routines, last runs, pending approvals
+ *   inkwright-agent approvals  list, allow or decline actions waiting for your OK
  */
 import { appendFileSync, chmodSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, userInfo } from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { RoutineStore, describeTrigger, exportAuditJsonl, readRoutineLease, verifyAudit } from '@inkstone/ai';
+import { RoutineStore, describeTrigger, exportAuditJsonl, readRoutineLease, verifyAudit } from '@inkwright/ai';
 import { NodeFS } from './nodefs.ts';
 import { ApprovalStore } from './approvals.ts';
 import { executeApproval } from './agent/run.ts';
@@ -26,26 +26,26 @@ import { currentPlatform, decodeServiceContent, serviceFile, type ServicePlatfor
 import { aiFromOptions, serveHttp } from './serve.ts';
 import { VERSION } from './version.ts';
 
-export const AGENT_USAGE = `inkstone-agent — runs your Inkstone routines on this computer, even when the app is closed
+export const AGENT_USAGE = `inkwright-agent — runs your Inkwright routines on this computer, even when the app is closed
 
 Usage:
-  inkstone-agent run --vault <dir> --ai-provider <id> [--ai-model <m>] [--http <port> [--a2a] …]
-  inkstone-agent install --vault <dir> [--config <file>] [run options] [--platform macos|linux|windows] [--dry-run]
-  inkstone-agent uninstall [--platform …]
-  inkstone-agent status --vault <dir>
-  inkstone-agent approvals --vault <dir> [--allow <id> | --decline <id>]
-  inkstone-agent audit --vault <dir> [--export <file.jsonl>] [--expect-head <hash>]…
-  inkstone-agent audit --verify <file.jsonl> [--expect-head <hash>]… [--trusted-key <fingerprint>]…
+  inkwright-agent run --vault <dir> --ai-provider <id> [--ai-model <m>] [--http <port> [--a2a] …]
+  inkwright-agent install --vault <dir> [--config <file>] [run options] [--platform macos|linux|windows] [--dry-run]
+  inkwright-agent uninstall [--platform …]
+  inkwright-agent status --vault <dir>
+  inkwright-agent approvals --vault <dir> [--allow <id> | --decline <id>]
+  inkwright-agent audit --vault <dir> [--export <file.jsonl>] [--expect-head <hash>]…
+  inkwright-agent audit --verify <file.jsonl> [--expect-head <hash>]… [--trusted-key <fingerprint>]…
 
 run options:
   --vault, --config, --read-only, --ai-provider, --ai-model, --ai-base-url, --ai-key-env,
-  --http, --host, --public-url, --token, --oauth-*, --a2a   (as for inkstone-mcp --help)
+  --http, --host, --public-url, --token, --oauth-*, --a2a   (as for inkwright-mcp --help)
   --tick <seconds>         How often to check time and date triggers (default 60).
   --log-file <path>        Append the log to a file as well as stderr.
 
 The app and the runner never both run a trigger: the runner holds a lease in the vault
 (ai/leases/routines.json) and the app leaves automatic routines to it while it is alive.
-Moving notes to Trash always waits for your OK (inkstone-agent approvals, or the approval
+Moving notes to Trash always waits for your OK (inkwright-agent approvals, or the approval
 card in Claude/ChatGPT via MCP). See docs/AGENTS.md.
 `;
 
@@ -99,7 +99,7 @@ export function parseAgentCli(argv: string[], env: NodeJS.ProcessEnv = process.e
   } catch (e) {
     throw new CliError((e as Error).message);
   }
-  if (command === 'install' && values.token) throw new CliError('Don’t put the token in a service file: put it in the config file (auth.token) or ~/.config/inkstone/agent.env as INKSTONE_MCP_TOKEN.');
+  if (command === 'install' && values.token) throw new CliError('Don’t put the token in a service file: put it in the config file (auth.token) or ~/.config/inkwright/agent.env as INKWRIGHT_MCP_TOKEN.');
   const options = resolveOptions(values, env);
   const tick = values.tick !== undefined ? Number(values.tick) : 60;
   if (!Number.isFinite(tick) || tick < 5) throw new CliError('--tick must be at least 5 seconds.');
@@ -133,7 +133,7 @@ export function parseAgentCli(argv: string[], env: NodeJS.ProcessEnv = process.e
 function makeLog(file?: string) {
   return (msg: string) => {
     const line = `${new Date().toISOString()} ${msg}\n`;
-    process.stderr.write(`[inkstone-agent] ${msg}\n`);
+    process.stderr.write(`[inkwright-agent] ${msg}\n`);
     if (file) {
       try {
         mkdirSync(path.dirname(file), { recursive: true });
@@ -146,7 +146,7 @@ function makeLog(file?: string) {
 }
 
 function needVault(o: CliOptions): string {
-  if (!o.vault) throw new CliError('No vault folder given. Pass --vault <dir> or set INKSTONE_VAULT.');
+  if (!o.vault) throw new CliError('No vault folder given. Pass --vault <dir> or set INKWRIGHT_VAULT.');
   return o.vault;
 }
 
@@ -187,12 +187,12 @@ async function run(c: AgentCommand): Promise<void> {
 function install(c: AgentCommand, uninstall = false): void {
   const script = c.entry ?? (process.argv[1] ? path.resolve(process.argv[1]) : fileURLToPath(import.meta.url));
   if (!uninstall) needVault(c.options);
-  if (!uninstall && /\.ts$/.test(script)) throw new CliError('Install from the built agent (npm run build -w @inkstone/mcp-server, then node apps/mcp-server/dist/agent.js install …) or pass --entry <dist/agent.js>.');
+  if (!uninstall && /\.ts$/.test(script)) throw new CliError('Install from the built agent (npm run build -w @inkwright/mcp-server, then node apps/mcp-server/dist/agent.js install …) or pass --entry <dist/agent.js>.');
   const home = homedir();
   const spec = { node: process.execPath, script, args: c.runArgs, home, ...(c.platform === 'windows' ? { user: `${process.env.USERDOMAIN ?? ''}${process.env.USERDOMAIN ? '\\' : ''}${userInfo().username}`, localAppData: process.env.LOCALAPPDATA } : {}) };
   const f = serviceFile(c.platform, spec);
   if (uninstall) {
-    process.stdout.write(`To stop and remove the Inkstone agent service:\n\n${f.uninstall.map((x) => `  ${x}`).join('\n')}\n`);
+    process.stdout.write(`To stop and remove the Inkwright agent service:\n\n${f.uninstall.map((x) => `  ${x}`).join('\n')}\n`);
     if (!c.dryRun) {
       rmSync(f.path, { force: true });
       process.stdout.write(`\nRemoved ${f.path} (run the commands above to unload it if it is running).\n`);
@@ -212,7 +212,7 @@ function install(c: AgentCommand, uninstall = false): void {
       /* not fatal (e.g. Windows) */
     }
   }
-  process.stdout.write(`Wrote ${f.path}\n\nStart it now (and at every login) with:\n${f.install.map((x) => `  ${x}`).join('\n')}\n\nLogs: ${f.logs}\nRemove it with: inkstone-agent uninstall\n`);
+  process.stdout.write(`Wrote ${f.path}\n\nStart it now (and at every login) with:\n${f.install.map((x) => `  ${x}`).join('\n')}\n\nLogs: ${f.logs}\nRemove it with: inkwright-agent uninstall\n`);
   if (c.platform === 'macos' && /CloudStorage|Mobile Documents/.test(c.options.vault ?? '')) {
     process.stdout.write('\nYour vault is in cloud storage: the first time the agent starts, macOS asks whether node may access it. If you miss that, allow node under System Settings › Privacy & Security › Files and Folders.\n');
   }
@@ -223,15 +223,15 @@ async function status(c: AgentCommand): Promise<void> {
   const lease = await readRoutineLease(fs);
   const now = Date.now();
   const out: string[] = [];
-  out.push(lease && lease.expiresAt > now ? `Routines run on: ${lease.label} (renewed ${Math.round((now - lease.renewedAt) / 1000)} s ago)` : 'Routines run in: the Inkstone app, while it is open (no runner holds the lease).');
+  out.push(lease && lease.expiresAt > now ? `Routines run on: ${lease.label} (renewed ${Math.round((now - lease.renewedAt) / 1000)} s ago)` : 'Routines run in: the Inkwright app, while it is open (no runner holds the lease).');
   const routines = await new RoutineStore(fs).list();
-  out.push('', routines.length ? 'Routines:' : 'No routines yet. Create them in Inkstone › AI › Routines.');
+  out.push('', routines.length ? 'Routines:' : 'No routines yet. Create them in Inkwright › AI › Routines.');
   for (const r of routines) {
     const last = r.state.lastRunAt ? `last ran ${new Date(r.state.lastRunAt).toLocaleString()} (${r.state.lastStatus})` : 'not run yet';
     out.push(`  ${r.enabled ? '●' : '○'} ${r.name} — ${r.triggers.map(describeTrigger).join('; ') || 'only when run by hand'} — ${last}${r.state.lastError ? `: ${r.state.lastError}` : ''}`);
   }
   const pending = await new ApprovalStore(fs).list();
-  out.push('', pending.length ? `${pending.length} action(s) waiting for your OK — see inkstone-agent approvals.` : 'Nothing is waiting for your OK.');
+  out.push('', pending.length ? `${pending.length} action(s) waiting for your OK — see inkwright-agent approvals.` : 'Nothing is waiting for your OK.');
   process.stdout.write(`${out.join('\n')}\n`);
 }
 
@@ -241,8 +241,8 @@ async function approvals(c: AgentCommand): Promise<void> {
   if (id) {
     const ctx = await createContext({ root: vault, watch: false });
     try {
-      const a = await new ApprovalStore(ctx.fs).decide(id, !!c.allow, 'inkstone-agent approvals', (x) => executeApproval(ctx, x));
-      process.stdout.write(a.status === 'approved' ? `Done: ${a.title}. Undo it in Inkstone › Activity if needed.\n` : a.status === 'denied' ? `Declined: ${a.title}.\n` : `Couldn’t do it: ${a.outcome}\n`);
+      const a = await new ApprovalStore(ctx.fs).decide(id, !!c.allow, 'inkwright-agent approvals', (x) => executeApproval(ctx, x));
+      process.stdout.write(a.status === 'approved' ? `Done: ${a.title}. Undo it in Inkwright › Activity if needed.\n` : a.status === 'denied' ? `Declined: ${a.title}.\n` : `Couldn’t do it: ${a.outcome}\n`);
     } finally {
       ctx.close();
     }
@@ -251,11 +251,11 @@ async function approvals(c: AgentCommand): Promise<void> {
   const list = await new ApprovalStore(new NodeFS(vault)).list({ all: c.all });
   if (!list.length) return void process.stdout.write('Nothing is waiting for your OK.\n');
   for (const a of list) process.stdout.write(`${a.id}  ${a.status.padEnd(8)} ${a.title} — asked by ${a.source}, ${new Date(a.createdAt).toLocaleString()}${a.outcome ? ` — ${a.outcome}` : ''}\n`);
-  process.stdout.write('\nAllow one with: inkstone-agent approvals --vault <dir> --allow <id>   (or --decline <id>)\n');
+  process.stdout.write('\nAllow one with: inkwright-agent approvals --vault <dir> --allow <id>   (or --decline <id>)\n');
 }
 
 /**
- * `inkstone-agent audit`: verifies the vault's audit trail (every device's chain), or an exported
+ * `inkwright-agent audit`: verifies the vault's audit trail (every device's chain), or an exported
  * JSONL file with `--verify`, and optionally writes an export. Exit code 1 when it doesn't verify,
  * so it can run in a compliance job. `--expect-head` checks that heads recorded earlier are still
  * there (the record was not cut short); `--trusted-key` pins the signing keys.
@@ -300,9 +300,9 @@ async function main(): Promise<void> {
 
 // Only when run as a program (tests import the parser).
 const invoked = process.argv[1] ? path.resolve(process.argv[1]) : '';
-if (invoked && (invoked === fileURLToPath(import.meta.url) || /(^|[\\/])(agent|agent-cli)\.(js|ts)$/.test(invoked) || /inkstone-agent$/.test(invoked))) {
+if (invoked && (invoked === fileURLToPath(import.meta.url) || /(^|[\\/])(agent|agent-cli)\.(js|ts)$/.test(invoked) || /inkwright-agent$/.test(invoked))) {
   main().catch((e) => {
-    process.stderr.write(`[inkstone-agent] error: ${e instanceof CliError ? e.message : process.env.INKSTONE_DEBUG ? ((e as Error).stack ?? e) : ((e as Error).message ?? e)}\n`);
+    process.stderr.write(`[inkwright-agent] error: ${e instanceof CliError ? e.message : process.env.INKWRIGHT_DEBUG ? ((e as Error).stack ?? e) : ((e as Error).message ?? e)}\n`);
     process.exit(1);
   });
 }

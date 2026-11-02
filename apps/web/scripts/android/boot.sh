@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Boots the Inkstone test AVD headless and waits until Android reports boot completed.
+# Boots the Inkwright test AVD headless and waits until Android reports boot completed.
 #
 #   ./boot.sh             boot (from the quick-boot snapshot when one exists), wait up to 60 min
 #   ./boot.sh --cold      ignore snapshots (cold boot), still saves one on a clean shutdown
@@ -12,7 +12,7 @@
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
 
-COLD=0; WAIT=1; TIMEOUT_MIN="${INKSTONE_BOOT_TIMEOUT_MIN:-60}"
+COLD=0; WAIT=1; TIMEOUT_MIN="${INKWRIGHT_BOOT_TIMEOUT_MIN:-60}"
 for arg in "$@"; do
   case "$arg" in
     --cold) COLD=1 ;;
@@ -104,8 +104,8 @@ fi
 # Optionally save the booted state as the quick-boot snapshot right away (not only on a clean exit).
 # Off by default: saving briefly needs about as much host memory again as the guest RAM, which is
 # what got the emulator OOM-killed on a 6 GB machine shared with builds. With more memory, set
-# INKSTONE_SAVE_SNAPSHOT=1 and later boots take a minute or two instead of four or five.
-if [ "$ELAPSED" -gt 120 ] && [ "${INKSTONE_SAVE_SNAPSHOT:-0}" = 1 ]; then
+# INKWRIGHT_SAVE_SNAPSHOT=1 and later boots take a minute or two instead of four or five.
+if [ "$ELAPSED" -gt 120 ] && [ "${INKWRIGHT_SAVE_SNAPSHOT:-0}" = 1 ]; then
   log "saving quick-boot snapshot"
   "$ADB" emu avd snapshot save default_boot >/dev/null 2>&1 || log "snapshot save failed (boots will be cold)"
 fi

@@ -1,9 +1,9 @@
 /**
  * Diagram page objects on the canvas and in exported PDFs. Both draw the primitives that
- * `layoutDiagram` (@inkstone/core) produces — the same path data the SVG export uses — so screen,
+ * `layoutDiagram` (@inkwright/core) produces — the same path data the SVG export uses — so screen,
  * thumbnails, SVG and PDF show one picture. Layouts are cached per IR object (they are pure).
  */
-import { argbToCss, argbToHexOpacity, layoutDiagram, type DiagramObject, type DiagramScene } from '@inkstone/core';
+import { argbToCss, argbToHexOpacity, layoutDiagram, type DiagramObject, type DiagramScene } from '@inkwright/core';
 import { rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 
 const scenes = new WeakMap<object, DiagramScene>();

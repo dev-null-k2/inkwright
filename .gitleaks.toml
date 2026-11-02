@@ -1,7 +1,7 @@
 # Secret scanning (gitleaks; also read by the Security workflow). The default rules apply; the
 # allowlist only covers test fixtures whose fake keys are assembled at runtime or are public
 # documentation examples, so a real key committed anywhere else is still caught.
-title = "Inkstone"
+title = "Inkwright"
 
 [extend]
 useDefault = true

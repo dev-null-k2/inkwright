@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createScriptedProvider, runAgent } from '@inkstone/ai';
-import { pageText } from '@inkstone/core';
+import { createScriptedProvider, runAgent } from '@inkwright/ai';
+import { pageText } from '@inkwright/core';
 import { AppVault } from '../vault.ts';
 import { EditorSession } from '../session.ts';
 import { useApp } from '../../state/app.ts';
@@ -25,7 +25,7 @@ async function agentRun(v: AppVault, script: Parameters<typeof createScriptedPro
 }
 
 describe('assistant runs in the app: logged and undoable', () => {
-  beforeEach(() => indexedDB.deleteDatabase('inkstone-vault'));
+  beforeEach(() => indexedDB.deleteDatabase('inkwright-vault'));
 
   it('edits to the open note go through its document, and undo uses the document too', async () => {
     const { v, s, noteId } = await setup();

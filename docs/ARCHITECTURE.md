@@ -1,29 +1,29 @@
-# Inkstone architecture
+# Inkwright architecture
 
-Inkstone is a handwriting-first notes app. Writing has to feel like paper. Erasing, selecting and shaping happen with the pen, without menus. Notes stay plain files that any device, sync service or AI agent can use. One TypeScript codebase runs on Android, iOS, macOS, Windows, Linux, ChromeOS and the web. Android adds native code for things only native code can do.
+Inkwright is a handwriting-first notes app. Writing has to feel like paper. Erasing, selecting and shaping happen with the pen, without menus. Notes stay plain files that any device, sync service or AI agent can use. One TypeScript codebase runs on Android, iOS, macOS, Windows, Linux, ChromeOS and the web. Android adds native code for things only native code can do.
 
 ## Principles
 
 1. **Files are the source of truth.** Every note lives in an open, documented vault folder (`docs/VAULT_FORMAT.md`). The search index and thumbnails are caches and get rebuilt from the files. Sync, backup, the Mac and AI agents all work without a proprietary server.
 2. **The pen path stays clear.** Wet ink is drawn on a separate `desynchronized` canvas that the compositor can present without waiting for the page. Saving, recognition, haptics, sound and sync all run beside that path, never on it.
-3. **Pure core, thin platforms.** Every algorithm lives in `@inkstone/core`: scratch-out detection, erasing, lasso, shape recognition, the paper-feel scheduler, the writing-sound synth, undo, the vault format, exporters and search. It is plain TypeScript with unit tests, shared by the app, the sync engine and the MCP server.
+3. **Pure core, thin platforms.** Every algorithm lives in `@inkwright/core`: scratch-out detection, erasing, lasso, shape recognition, the paper-feel scheduler, the writing-sound synth, undo, the vault format, exporters and search. It is plain TypeScript with unit tests, shared by the app, the sync engine and the MCP server.
 4. **Every edit can be undone.** All changes are `PageDiff`s through `NoteDocument`, so scratch-outs, erasing, moving, recolouring, AI edits and conversions all undo exactly, z-order included.
-5. **Bring your own everything.** You choose the AI (any provider, or a local model), the sync target (Google Drive, a folder, WebDAV) and the agent (any MCP client). Inkstone never needs its own backend.
+5. **Bring your own everything.** You choose the AI (any provider, or a local model), the sync target (Google Drive, a folder, WebDAV) and the agent (any MCP client). Inkwright never needs its own backend.
 
 ## Repository
 
 ```
-packages/core     @inkstone/core  model, codec, vault, geometry, gestures, shapes, ink outlines, paper
+packages/core     @inkwright/core  model, codec, vault, geometry, gestures, shapes, ink outlines, paper
                                   templates, NoteDocument (undo), paper feel + writing sound, search, exporters
-packages/ai       @inkstone/ai    providers (OpenAI-compatible family, Anthropic, Gemini, Claude-in-artifact),
+packages/ai       @inkwright/ai    providers (OpenAI-compatible family, Anthropic, Gemini, Claude-in-artifact),
                                   streaming + tool calling, agent loop, note tools, skills, secret store, evals
-packages/sync     @inkstone/sync  storage backends (IndexedDB, File System Access, Capacitor, Node), remotes
+packages/sync     @inkwright/sync  storage backends (IndexedDB, File System Access, Capacitor, Node), remotes
                                   (Google Drive, WebDAV, folder), three-way merge, sync engine, zip backup
-apps/web          @inkstone/web   the app: React UI + canvas ink engine; PWA; Capacitor Android/iOS shells
-apps/mcp-server   @inkstone/mcp-server  MCP server (2026-07-28, stdio + HTTP), REST API, A2A agent and always-on routine runner over a vault folder
-packages/plugin-api @inkstone/plugin-api plugin manifest, permissions, versioned message protocol and client
-packages/sdk      @inkstone/sdk   typed REST client generated from the OpenAPI document
-examples/         example plugins and the plugin template (npm create inkstone-plugin)
+apps/web          @inkwright/web   the app: React UI + canvas ink engine; PWA; Capacitor Android/iOS shells
+apps/mcp-server   @inkwright/mcp-server  MCP server (2026-07-28, stdio + HTTP), REST API, A2A agent and always-on routine runner over a vault folder
+packages/plugin-api @inkwright/plugin-api plugin manifest, permissions, versioned message protocol and client
+packages/sdk      @inkwright/sdk   typed REST client generated from the OpenAPI document
+examples/         example plugins and the plugin template (npm create inkwright-plugin)
 docs/             architecture, vault format, setup, publishing, testing, privacy
 ```
 
@@ -57,7 +57,7 @@ PointerEvent (pen/touch/mouse) ── pointerrawupdate / getCoalescedEvents ─�
 
 `EditorSession` owns an open note. Edits mark pages dirty. A 650 ms debounce (and page hide) writes only the changed page files through `Vault.saveNote`, which also regenerates that page's SVG and the note's Markdown. It then re-indexes search and schedules sync. If a save fails, the dirty marks go back and the save is retried.
 
-Sync (`@inkstone/sync`) compares content hashes with the last-synced state and remote revisions:
+Sync (`@inkwright/sync`) compares content hashes with the last-synced state and remote revisions:
 
 - Each file is pushed, pulled, deleted or merged.
 - Ink and note files merge three-way by item id, so two devices editing offline never lose strokes.
@@ -156,7 +156,7 @@ Strokes record their input device; AI/solver/recognized/imported content carries
 editor's Authorship panel and embedded in exported PDFs; Settings › Authorship verifies PDFs and
 JSON offline. Details and limits: [AUTHORSHIP.md](AUTHORSHIP.md).
 
-## AI (`@inkstone/ai`, `apps/web/src/lib/ai.ts`)
+## AI (`@inkwright/ai`, `apps/web/src/lib/ai.ts`)
 
 - **Providers:** one `Provider` interface over OpenAI-compatible APIs (OpenAI, OpenRouter, Groq, Mistral, xAI, DeepSeek, Together, Fireworks, Perplexity, Cerebras, Azure, Ollama, LM Studio, custom), Anthropic, Gemini, and Claude through the claude.ai `sample` capability. Requests stream, retry and send images. Tool calling is unified across providers, with a prompt-based fallback for models without native tools.
 - **Agent:** `runAgent` runs a multi-step tool loop. `createNoteTools` gives it list, search, read, page image, create, append, update, notebooks and trash. Destructive tools need user confirmation.
@@ -219,7 +219,7 @@ Every agent run — a chat in the panel or a routine — is assembled by `prepar
 
 ### Outside agents (`apps/mcp-server`, see docs/AGENTS.md)
 
-One Node program set over the vault folder, sharing `@inkstone/core` (files) and `@inkstone/ai`
+One Node program set over the vault folder, sharing `@inkwright/core` (files) and `@inkwright/ai`
 (note tools, agent loop, skills, memory, routines, activity) with the app:
 
 - **MCP server** on the official SDK v2 (`@modelcontextprotocol/server`): `serveStdio` and
@@ -240,7 +240,7 @@ One Node program set over the vault folder, sharing `@inkstone/core` (files) and
 - **Approvals** (`approvals.ts`): the app's rule everywhere — undoable note writes just happen,
   moving to Trash waits for a person (an elicitation, an A2A reply, or a pending approval in
   `ai/approvals/` when nobody can be asked).
-- **Runner** (`runner/`): `inkstone-agent run` drives `RoutineScheduler` over the folder, detects
+- **Runner** (`runner/`): `inkwright-agent run` drives `RoutineScheduler` over the folder, detects
   note saves and recordings by scanning, holds the routines lease, and installs as a launchd,
   systemd or Task Scheduler service (`runner/services.ts`).
 - **Voice.** Push-to-talk uses the Web Speech API when present, otherwise the provider's
@@ -289,7 +289,7 @@ grammars); `[[code:path#Symbol]]` links and ink links carry the signature they w
 checked by a validator whose repair receipt drives the assistant's `create_diagram` loop and drawn
 as a `diagram` page object; ```http/```sql/```js blocks run with approval (sql.js, a sandboxed
 worker) and are logged in Activity; agent-session transcripts become notes and proposed lessons.
-The MCP server adds read-only code tools, and the `inkstone` CLI scans and checks drift.
+The MCP server adds read-only code tools, and the `inkwright` CLI scans and checks drift.
 
 ## Context compiler (`packages/core/src/compiler/`, `packages/ai/src/compiler/`, `apps/web/src/compiler/`)
 
@@ -321,22 +321,22 @@ Notes that maintain themselves and can be trusted (details: [COMPILER.md](COMPIL
 - **Plugins**: manifest + one ES module, stored in the vault (`plugins/`), run in
   `sandbox="allow-scripts"` iframes with their own strict CSP (`sandbox.ts`; runtime bundled
   from `sandbox-runtime.ts`). Frames speak the versioned postMessage protocol of
-  `@inkstone/plugin-api`; `dispatcher.ts` checks every call against the `METHODS` table, the
+  `@inkwright/plugin-api`; `dispatcher.ts` checks every call against the `METHODS` table, the
   granted permissions (live), the note scope and the network allowlist. `host.ts` loads plugins,
   activates them on first use, routes contributions (palette, ••• › Plugins, side panels,
   exporters, importers, assistant tools) and events, and installs, updates, revokes and
   uninstalls. Plugin writes go through `AppNoteToolHost` + `RecordingNoteToolHost`, so they are
   live in an open note, undoable and logged in Activity under the plugin's name.
-- **Automation API** (`developer/automation.ts`): `window.inkstone` is the plugin API over an
+- **Automation API** (`developer/automation.ts`): `window.inkwright` is the plugin API over an
   in-process channel to the same dispatcher, with permissions chosen in Settings › Developer.
-- **Links** (`developer/deeplinks.ts`): `inkstone://`, `web+inkstone://` and `?action=` URLs
+- **Links** (`developer/deeplinks.ts`): `inkwright://`, `web+inkwright://` and `?action=` URLs
   (Android intent filter, PWA `protocol_handlers`, the launch URL).
 - **REST API** (`apps/mcp-server/src/api/`): routes declared once with zod (`routes.ts`) →
   router (auth: API keys from `api/keys.json`, the token, OAuth or loopback; scopes; rate
   limits; validation; idempotency; ETags; problem+json) and the OpenAPI 3.1 document
   (`openapi.ts`). Writes reuse the MCP tool handlers and the Activity log. `events.ts` scans the
   vault for changes; `webhooks.ts` delivers them per Standard Webhooks with a persisted retry
-  queue. `@inkstone/sdk` is generated from the document. See docs/API.md.
+  queue. `@inkwright/sdk` is generated from the document. See docs/API.md.
 
 ## Ink that does things (`packages/core/src/{inkanswer,canvasdag,datasandbox,photoink,readaloud,papers}`, `apps/web/src/{inkanswer,canvasdag,datasandbox,photoink,a11y,papers,inkactions}`)
 
@@ -359,7 +359,7 @@ See [COLLABORATION.md](COLLABORATION.md) for the protocol and threat model.
   app (`peer/webrtc.ts`, non-trickle so one code each way is enough), an in-memory pipe in tests.
 - **Device sync**: `PeerRemote` makes the other device's vault a `Remote`, so the ordinary
   `SyncEngine` merges and guards exactly as with Drive or WebDAV; the other side serves its vault
-  through `servePeerVault`. Optional signalling through `inkstone-mcp --signal-token`.
+  through `servePeerVault`. Optional signalling through `inkwright-mcp --signal-token`.
 - **Live sharing**: `CollabReplica` turns `NoteDocument` edits into LWW-register ops with
   fractional positions and applies others' ops as commits with an `author`; the editor streams
   strokes in progress (`engine.liveStroke`) and cursors (`engine.pageAtScreen`).
@@ -372,7 +372,7 @@ See [COLLABORATION.md](COLLABORATION.md) for the protocol and threat model.
 
 | Platform | How | Native extras |
 |---|---|---|
-| Android (Razr Fold, any) | Capacitor app (`apps/web/android`) | `InkstoneNative` plugin: haptic grain via `VibrationEffect` primitives, stylus/Bluetooth pen button keys, ML Kit on-device handwriting recognition, high refresh rate |
+| Android (Razr Fold, any) | Capacitor app (`apps/web/android`) | `InkwrightNative` plugin: haptic grain via `VibrationEffect` primitives, stylus/Bluetooth pen button keys, ML Kit on-device handwriting recognition, high refresh rate |
 | iPhone / iPad | Capacitor iOS project (built on a Mac) | Apple Pencil through Pointer Events |
 | Mac, Windows, Linux, ChromeOS | Installable PWA (works offline) | File System Access folder sync |
 | Any browser | The same build | — |
@@ -392,5 +392,5 @@ See [COLLABORATION.md](COLLABORATION.md) for the protocol and threat model.
 - **A sync target:** implement `Remote` (`list/read/write/delete`) and the engine does the rest.
 - **A storage backend:** implement `VaultFS` and run the shared conformance suite in `packages/sync/test`.
 - **A feature that can be switched off:** declare a module in `apps/web/src/modules/builtin.ts` and gate its entry points with `useModule`/`isModuleOn` (docs/PLUGINS.md).
-- **A plugin API method:** add it to `METHODS` (with its permission) in `packages/plugin-api/src/protocol.ts`, to `InkstoneAPI` and the client, and implement it in `apps/web/src/plugins/dispatcher.ts` with a test.
-- **A REST operation:** add a `defineRoute` in `apps/mcp-server/src/api/routes.ts` with registered schemas; the contract test requires exercising it, and `npm run generate -w @inkstone/sdk` updates the SDK.
+- **A plugin API method:** add it to `METHODS` (with its permission) in `packages/plugin-api/src/protocol.ts`, to `InkwrightAPI` and the client, and implement it in `apps/web/src/plugins/dispatcher.ts` with a test.
+- **A REST operation:** add a `defineRoute` in `apps/mcp-server/src/api/routes.ts` with registered schemas; the contract test requires exercising it, and `npm run generate -w @inkwright/sdk` updates the SDK.

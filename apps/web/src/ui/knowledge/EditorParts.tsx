@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { LayoutTemplate, Link2 } from 'lucide-react';
-import { parseWikiLinks, type NoteDocument } from '@inkstone/core';
+import { parseWikiLinks, type NoteDocument } from '@inkwright/core';
 import type { InkEngine } from '../../canvas/engine.ts';
 import type { EditorSession } from '../../lib/session.ts';
 import { addInkLink, followLink, removeInkLinks, renameNoteKeepingLinks, saveDocAsTemplate } from '../../lib/knowledge.ts';

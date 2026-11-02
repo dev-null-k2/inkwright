@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Code2, Database, GitCompareArrows, Lightbulb, Link2, Workflow } from 'lucide-react';
-import { DRIFTED, formatCodeTarget, isDataAsset, makeDiagramObject, type DiagramIR, type DiagramObject, type NoteDocument } from '@inkstone/core';
+import { DRIFTED, formatCodeTarget, isDataAsset, makeDiagramObject, type DiagramIR, type DiagramObject, type NoteDocument } from '@inkwright/core';
 import type { InkEngine } from '../canvas/engine.ts';
 import { usePaletteActions } from '../lib/palette.ts';
 import type { AppVault } from '../lib/vault.ts';

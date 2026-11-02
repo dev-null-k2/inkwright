@@ -18,7 +18,7 @@
  * is switched on again.
  */
 import { create } from 'zustand';
-import type { AgentTool } from '@inkstone/ai';
+import type { AgentTool } from '@inkwright/ai';
 import { safeStorage } from '../platform/env.ts';
 import { setPaletteActionFilter } from '../lib/palette.ts';
 
@@ -89,7 +89,7 @@ export const listPresets = (): ModulePreset[] => [...presets.values()];
 
 // ---- State ---------------------------------------------------------------------------------------
 
-const KEY = 'inkstone.modules.v1';
+const KEY = 'inkwright.modules.v1';
 
 interface Stored {
   enabled: Record<string, boolean>;

@@ -97,7 +97,7 @@ test.describe('links', () => {
     await noteTitled(page, 'Reading list');
     await back(page);
     await newNote(page);
-    await page.waitForFunction(() => (window as any).__inkstone?.doc?.meta.title !== 'Reading list' && !!document.querySelector('.ed-canvas'));
+    await page.waitForFunction(() => (window as any).__inkwright?.doc?.meta.title !== 'Reading list' && !!document.querySelector('.ed-canvas'));
     await pen(page, word(200, 220, 140));
     await page.keyboard.press('l');
     await pen(page, [[170, 190], [370, 190], [370, 260], [170, 260], [170, 190]]);
@@ -105,7 +105,7 @@ test.describe('links', () => {
     const dialog = page.locator('.dialog', { hasText: 'Link to note' });
     await dialog.locator('input').fill('readi');
     await dialog.locator('input').press('Enter');
-    await expect.poll(() => page.evaluate(() => ((window as any).__inkstone.doc.page(0).links ?? []).map((l: any) => l.target))).toEqual(['Reading list']);
+    await expect.poll(() => page.evaluate(() => ((window as any).__inkwright.doc.page(0).links ?? []).map((l: any) => l.target))).toEqual(['Reading list']);
     const id = await noteId(page);
     await page.getByRole('button', { name: 'Open “Reading list”' }).click();
     await expect(page.locator('.ed-title-text')).toHaveText('Reading list');
@@ -124,7 +124,7 @@ test.describe('daily notes and templates', () => {
     const today = await page.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
     await expect(page.locator('.ed-title-text')).toHaveText(today);
     const first = await noteId(page);
-    expect(await page.evaluate(() => (window as any).__inkstone.doc.meta.daily)).toBe(today);
+    expect(await page.evaluate(() => (window as any).__inkwright.doc.meta.daily)).toBe(today);
     await back(page);
     await expect(page.locator('.nav-item', { hasText: 'Journal' })).toBeVisible();
     await page.keyboard.press('Alt+d');
@@ -159,20 +159,20 @@ test.describe('graph', () => {
     await page.locator('.dialog input').fill('Science');
     await page.getByRole('button', { name: 'Create', exact: true }).click();
     await page.locator('.new-btn').click();
-    await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+    await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
     await rename(page, 'Atoms');
     const ta = await textBox(page);
-    await ta.fill('See [[Welcome to Inkstone]] #physics');
+    await ta.fill('See [[Welcome to Inkwright]] #physics');
     await page.getByRole('button', { name: 'Done' }).click();
     await back(page);
     await page.getByRole('button', { name: 'All notes' }).click();
 
     await page.getByRole('button', { name: 'Graph' }).click();
-    await page.waitForFunction(() => (window as any).__inkstoneGraph?.frames() > 3, null, { timeout: 20000 });
-    const info = await page.evaluate(() => { const g = (window as any).__inkstoneGraph; return { renderer: g.renderer, nodes: g.nodes, edges: g.edges }; });
+    await page.waitForFunction(() => (window as any).__inkwrightGraph?.frames() > 3, null, { timeout: 20000 });
+    const info = await page.evaluate(() => { const g = (window as any).__inkwrightGraph; return { renderer: g.renderer, nodes: g.nodes, edges: g.edges }; });
     expect(info.renderer).toBe('3d');
     const notes = info.nodes.filter((n: any) => n.kind === 'note').map((n: any) => n.label).sort();
-    expect(notes).toEqual(['Atoms', 'Welcome to Inkstone']);
+    expect(notes).toEqual(['Atoms', 'Welcome to Inkwright']);
     expect(info.nodes.some((n: any) => n.kind === 'tag' && n.label === '#physics')).toBe(true);
     expect(info.nodes.some((n: any) => n.kind === 'notebook' && n.label === 'Science')).toBe(true);
     expect(info.edges).toBeGreaterThanOrEqual(3);
@@ -193,23 +193,23 @@ test.describe('graph', () => {
     expect(varied).toBeGreaterThan(3);
 
     // Hover shows the title; selecting puts the card up with an Open button.
-    await page.evaluate(() => (window as any).__inkstoneGraph.select((window as any).__inkstoneGraph.nodes.find((n: any) => n.label === 'Atoms').id));
+    await page.evaluate(() => (window as any).__inkwrightGraph.select((window as any).__inkwrightGraph.nodes.find((n: any) => n.label === 'Atoms').id));
     await expect(page.locator('.graph-card h2')).toHaveText('Atoms');
     await expect(page.locator('.graph-card')).toContainText('1 out');
 
     // Filter by notebook: only the Science note (and its notebook) remain.
     await page.getByRole('combobox', { name: 'Notebook' }).selectOption({ label: 'Science' });
-    await expect.poll(() => page.evaluate(() => (window as any).__inkstoneGraph.nodes.filter((n: any) => n.kind === 'note').map((n: any) => n.label))).toEqual(['Atoms']);
+    await expect.poll(() => page.evaluate(() => (window as any).__inkwrightGraph.nodes.filter((n: any) => n.kind === 'note').map((n: any) => n.label))).toEqual(['Atoms']);
     await page.getByRole('combobox', { name: 'Notebook' }).selectOption({ label: 'All notebooks' });
 
     // Time slider back to the start hides later notes.
     await page.getByRole('slider', { name: 'Show notes created until' }).fill('0');
-    await expect.poll(() => page.evaluate(() => (window as any).__inkstoneGraph.nodes.filter((n: any) => n.kind === 'note' && n.visible).length)).toBe(1);
+    await expect.poll(() => page.evaluate(() => (window as any).__inkwrightGraph.nodes.filter((n: any) => n.kind === 'note' && n.visible).length)).toBe(1);
     await page.getByRole('slider', { name: 'Show notes created until' }).fill('1000');
 
     // Flat view.
     await page.getByRole('radio', { name: '2D' }).click();
-    await page.waitForFunction(() => (window as any).__inkstoneGraph?.renderer === '2d' && (window as any).__inkstoneGraph.frames() > 0);
+    await page.waitForFunction(() => (window as any).__inkwrightGraph?.renderer === '2d' && (window as any).__inkwrightGraph.frames() > 0);
     await page.getByRole('button', { name: 'Back to library' }).click();
     await expect(page.locator('.library')).toBeVisible();
   });
@@ -220,7 +220,7 @@ test.describe('Obsidian', () => {
     await openApp(page);
     await noteTitled(page, 'Plans');
     const ta = await textBox(page);
-    await ta.fill('Next: [[Welcome to Inkstone]] #todo');
+    await ta.fill('Next: [[Welcome to Inkwright]] #todo');
     await page.getByRole('button', { name: 'Done' }).click();
     await page.keyboard.press('p');
     await pen(page, word(200, 400, 120));
@@ -230,18 +230,18 @@ test.describe('Obsidian', () => {
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Export as .zip' }).click();
     const d = await download;
-    expect(d.suggestedFilename()).toMatch(/^Inkstone for Obsidian .*\.zip$/);
+    expect(d.suggestedFilename()).toMatch(/^Inkwright for Obsidian .*\.zip$/);
     const entries = await readZip(new Uint8Array(readFileSync((await d.path())!)));
     const paths = entries.map((e) => e.path);
-    expect(paths).toContain('Inkstone/Plans.md');
-    expect(paths).toContain('Inkstone/Welcome to Inkstone.md');
-    expect(paths).toContain('Inkstone/attachments/Plans - page 1.png');
-    const md = new TextDecoder().decode(entries.find((e) => e.path === 'Inkstone/Plans.md')!.bytes);
+    expect(paths).toContain('Inkwright/Plans.md');
+    expect(paths).toContain('Inkwright/Welcome to Inkwright.md');
+    expect(paths).toContain('Inkwright/attachments/Plans - page 1.png');
+    const md = new TextDecoder().decode(entries.find((e) => e.path === 'Inkwright/Plans.md')!.bytes);
     expect(md).toMatch(/^---\ntags:\n {2}- todo\ncreated: \d{4}-/);
-    expect(md).toContain('inkstone-id: ');
-    expect(md).toContain('Next: [[Welcome to Inkstone]] #todo');
+    expect(md).toContain('inkwright-id: ');
+    expect(md).toContain('Next: [[Welcome to Inkwright]] #todo');
     expect(md).toContain('![[Plans - page 1.png]]');
-    const png = entries.find((e) => e.path === 'Inkstone/attachments/Plans - page 1.png')!.bytes;
+    const png = entries.find((e) => e.path === 'Inkwright/attachments/Plans - page 1.png')!.bytes;
     expect([...png.slice(1, 4)]).toEqual([0x50, 0x4e, 0x47]);
   });
 
@@ -260,10 +260,10 @@ test.describe('Obsidian', () => {
     await expect(page.locator('.note-card')).toHaveCount(2);
     await page.locator('.note-card', { hasText: 'Roadmap' }).locator('.note-open').click();
     await expect.poll(() => texts(page)).toEqual(['# Roadmap\n\n- Ship the [[Spec]]\n- Review [[Inbox]]']);
-    expect(await page.evaluate(() => (window as any).__inkstone.doc.meta.tags)).toEqual(['plan', 'q4']);
+    expect(await page.evaluate(() => (window as any).__inkwright.doc.meta.tags)).toEqual(['plan', 'q4']);
     await page.getByRole('button', { name: 'Open “Inbox”' }).click();
     await expect(page.locator('.ed-title-text')).toHaveText('Inbox');
-    expect(await page.evaluate(() => (window as any).__inkstone.doc.page(0).images.length)).toBe(1);
+    expect(await page.evaluate(() => (window as any).__inkwright.doc.page(0).images.length)).toBe(1);
     expect((await texts(page)).join('\n')).toContain('See also [[Spec|the spec]].');
   });
 });

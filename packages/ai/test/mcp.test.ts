@@ -242,13 +242,13 @@ describe('MCP Tasks extension', () => {
 });
 
 describe('MCP OAuth (PKCE, dynamic registration, refresh)', () => {
-  const redirectUrl = 'https://app.inkstone.test/';
+  const redirectUrl = 'https://app.inkwright.test/';
 
   it('signs in through the authorization server and stores tokens encrypted per issuer', async () => {
     const fake = createFakeMcp({ oauth: true });
     const secrets = new MemorySecretStore();
     let authorizeUrl: URL | null = null;
-    const provider = new McpOAuthProvider({ serverId: 'srv1', secrets, redirectUrl, clientName: 'Inkstone', onRedirect: (u) => { authorizeUrl = u; } });
+    const provider = new McpOAuthProvider({ serverId: 'srv1', secrets, redirectUrl, clientName: 'Inkwright', onRedirect: (u) => { authorizeUrl = u; } });
     const c = new McpConnection(cfg({ auth: 'oauth' }), { fetch: fake.fetch, auth: provider });
     await expect(c.connect()).rejects.toMatchObject({ kind: 'auth' });
     expect(c.status).toBe('needs-auth');
@@ -289,7 +289,7 @@ describe('MCP OAuth (PKCE, dynamic registration, refresh)', () => {
     const fake = createFakeMcp({ oauth: true });
     const secrets = new MemorySecretStore();
     let authorizeUrl: URL | null = null;
-    const provider = new McpOAuthProvider({ serverId: 'srv2', secrets, redirectUrl, clientName: 'Inkstone', onRedirect: (u) => { authorizeUrl = u; } });
+    const provider = new McpOAuthProvider({ serverId: 'srv2', secrets, redirectUrl, clientName: 'Inkwright', onRedirect: (u) => { authorizeUrl = u; } });
     const c = new McpConnection(cfg({ id: 'srv2', auth: 'oauth' }), { fetch: fake.fetch, auth: provider });
     await c.connect().catch(() => {});
     const back = fake.approve(authorizeUrl!);

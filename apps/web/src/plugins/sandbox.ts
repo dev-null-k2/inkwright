@@ -13,7 +13,7 @@
  *
  * Messages are accepted only from this frame's window and only in the versioned protocol.
  */
-import { PROTOCOL, PROTOCOL_VERSION, PluginApiError, envelope, isProtocolMessage, toWireError, type InvokeTarget, type PluginManifest, type PluginToHost, type WireError } from '@inkstone/plugin-api';
+import { PROTOCOL, PROTOCOL_VERSION, PluginApiError, envelope, isProtocolMessage, toWireError, type InvokeTarget, type PluginManifest, type PluginToHost, type WireError } from '@inkwright/plugin-api';
 import runtimeUrl from './sandbox-runtime.ts?worker&url';
 
 export interface FrameOptions {

@@ -40,7 +40,7 @@ async function addCustomProvider(page: Page) {
 
 /** A skill folder on disk, as a user would pick it. */
 function skillFolder(): string {
-  const root = mkdtempSync(join(tmpdir(), 'inkstone-skill-'));
+  const root = mkdtempSync(join(tmpdir(), 'inkwright-skill-'));
   const dir = join(root, 'meeting-minutes');
   mkdirSync(join(dir, 'references'), { recursive: true });
   mkdirSync(join(dir, 'scripts'), { recursive: true });
@@ -74,12 +74,12 @@ test('skills, routines and the activity log: import a skill, run a routine, undo
   await (await chooser).setFiles(skillFolder());
   await expect(page.locator('.ag-skill', { hasText: 'meeting-minutes' })).toBeVisible();
   await page.getByRole('button', { name: 'View meeting-minutes' }).click();
-  await expect(page.locator('.ag-skill', { hasText: 'meeting-minutes' })).toContainText('Inkstone never runs them');
+  await expect(page.locator('.ag-skill', { hasText: 'meeting-minutes' })).toContainText('Inkwright never runs them');
   await page.getByRole('button', { name: 'Assistant', exact: true }).click();
 
   // Routines: write one, run it now.
   await page.getByRole('button', { name: /^Routines/ }).click();
-  await expect(page.getByText('They run while Inkstone is open')).toBeVisible();
+  await expect(page.getByText('They run while Inkwright is open')).toBeVisible();
   await page.getByRole('button', { name: 'New routine' }).click();
   await page.getByPlaceholder('File my notes').fill('Inbox sweep');
   await page.getByPlaceholder(/Every evening/).fill('Collect my open to-dos into a note called Routine inbox.');
@@ -124,7 +124,7 @@ test('assistant panel: header menu opens the assistant screens; chat changes can
   await addCustomProvider(page);
   await page.getByRole('button', { name: 'Back' }).click();
   await page.locator('.note-open').first().click();
-  await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
   await page.locator('.ai-btn').click();
   await page.locator('.ai-input textarea').fill('Make a packing list');
   await page.locator('.ai-input textarea').press('Enter');
@@ -155,18 +155,18 @@ test('assistant panel: header menu opens the assistant screens; chat changes can
   await page.getByRole('button', { name: 'Back to chat' }).click();
 });
 
-test('routines screen says when the always-on runner (inkstone-agent) is running them', async ({ page }) => {
+test('routines screen says when the always-on runner (inkwright-agent) is running them', async ({ page }) => {
   await openApp(page);
-  await page.waitForFunction(() => !!(window as any).__inkstoneHub);
+  await page.waitForFunction(() => !!(window as any).__inkwrightHub);
   const writeLease = (renewedAgoMs: number) => page.evaluate(async (ago) => {
     const t = Date.now() - ago;
-    const lease = { holder: 'runner:studio:1:ab', label: 'The Inkstone agent on Studio', kind: 'runner', acquiredAt: t, renewedAt: t, expiresAt: t + 600_000 };
-    await (window as any).__inkstoneHub.vault.fs.writeText('ai/leases/routines.json', JSON.stringify(lease));
+    const lease = { holder: 'runner:studio:1:ab', label: 'The Inkwright agent on Studio', kind: 'runner', acquiredAt: t, renewedAt: t, expiresAt: t + 600_000 };
+    await (window as any).__inkwrightHub.vault.fs.writeText('ai/leases/routines.json', JSON.stringify(lease));
   }, renewedAgoMs);
   const openRoutines = async () => {
     await page.getByRole('button', { name: 'Assistant', exact: true }).click();
     await page.getByRole('button', { name: /^Routines/ }).click();
-    await expect(page.getByText('They run while Inkstone is open')).toBeVisible();
+    await expect(page.getByText('They run while Inkwright is open')).toBeVisible();
   };
   await page.getByRole('button', { name: 'Settings' }).click();
   await page.getByRole('button', { name: 'AI', exact: true }).click();
@@ -175,7 +175,7 @@ test('routines screen says when the always-on runner (inkstone-agent) is running
   // The runner on a computer holds the routines lease in the synced vault.
   await writeLease(0);
   await openRoutines();
-  await expect(page.getByTestId('routines-runner')).toHaveText('The Inkstone agent on Studio is running your routines, even when Inkstone is closed. Its changes show up in Activity.');
+  await expect(page.getByTestId('routines-runner')).toHaveText('The Inkwright agent on Studio is running your routines, even when Inkwright is closed. Its changes show up in Activity.');
   // A lease that wasn't renewed (the computer is asleep) hands routines back to the app.
   await writeLease(3_600_000);
   await openRoutines();

@@ -3,11 +3,11 @@
  * apps, memory and background routines. Each case runs the real agent loop with the app's tools —
  * note tools, skill tools, the remember tool and MCP tools from an in-process MCP server — and
  * scores tool calls, the resulting state and the reply. The scripted model makes them
- * deterministic; with INKSTONE_EVAL_PROVIDER/KEY/MODEL set the same prompts run against a real
+ * deterministic; with INKWRIGHT_EVAL_PROVIDER/KEY/MODEL set the same prompts run against a real
  * model and are scored the same way.
  */
 import { afterAll, describe, expect, it } from 'vitest';
-import { MemoryFS } from '@inkstone/core';
+import { MemoryFS } from '@inkwright/core';
 import {
   McpConnection,
   MemoryNoteToolHost,
@@ -255,7 +255,7 @@ const live = liveConfig();
 
 describe('assistant evals — skills and approvals (scripted model)', () => {
   const results: CaseResult[] = [];
-  afterAll(() => printReport(formatTable('Inkstone assistant evals — scripted', results)));
+  afterAll(() => printReport(formatTable('Inkwright assistant evals — scripted', results)));
 
   for (const c of CASES) {
     it(`${c.id}: ${c.description}`, async () => {
@@ -279,9 +279,9 @@ describe('assistant evals — skills and approvals (scripted model)', () => {
   });
 });
 
-describe.skipIf(!live)(`assistant evals — live (${live?.label ?? 'set INKSTONE_EVAL_PROVIDER/KEY/MODEL'})`, () => {
+describe.skipIf(!live)(`assistant evals — live (${live?.label ?? 'set INKWRIGHT_EVAL_PROVIDER/KEY/MODEL'})`, () => {
   const results: CaseResult[] = [];
-  afterAll(() => printReport(formatTable(`Inkstone assistant evals — live ${live!.label}`, results)));
+  afterAll(() => printReport(formatTable(`Inkwright assistant evals — live ${live!.label}`, results)));
   for (const c of CASES) {
     it(c.id, async () => {
       const r = await runAssistantCase(c, { name: 'live', provider: live!.provider, model: live!.model });

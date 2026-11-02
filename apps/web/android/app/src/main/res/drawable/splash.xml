@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Launch window before Android 12 (12+ uses the system splash attributes in styles.xml). -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@color/inkstone_splash" />
+    <item android:drawable="@color/inkwright_splash" />
     <item
         android:width="96dp"
         android:height="96dp"

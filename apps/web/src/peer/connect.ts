@@ -26,8 +26,8 @@ import {
   type LinkPurpose,
   type PeerAnswer,
   type PeerOffer,
-} from '@inkstone/sync';
-import { fromBase64Url } from '@inkstone/core';
+} from '@inkwright/sync';
+import { fromBase64Url } from '@inkwright/core';
 import { deviceIdentity, getRelayToken, iceServers, pairedByKey, rememberDevice, usePeer, type PairedDevice } from './identity.ts';
 import { rtcAnswer, rtcFinish, rtcOffer } from './webrtc.ts';
 
@@ -144,7 +144,7 @@ async function latestSeq(box: SealedMailbox): Promise<number> {
 
 export const relayConfigured = () => !!usePeer.getState().network.relayUrl.trim();
 
-/** Connects to a paired device through the relay (it must be running Inkstone with the relay set too). */
+/** Connects to a paired device through the relay (it must be running Inkwright with the relay set too). */
 export async function connectViaRelay(device: PairedDevice, opts: LinkOptions & { signal?: AbortSignal } = {}): Promise<Connected> {
   const client = await relay();
   if (!client) throw new Error('No signalling server is set up.');
@@ -159,7 +159,7 @@ export async function connectViaRelay(device: PairedDevice, opts: LinkOptions & 
     const signal = opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout;
     for (let cursor = after; ;) {
       const m = await inbox.receive(cursor, signal).catch((e) => {
-        throw signal.aborted && !opts.signal?.aborted ? new Error(`“${device.name}” did not answer. Is Inkstone open there, with the same signalling server?`) : e;
+        throw signal.aborted && !opts.signal?.aborted ? new Error(`“${device.name}” did not answer. Is Inkwright open there, with the same signalling server?`) : e;
       });
       cursor = m.seq;
       const v = await decodeCode(m.text).catch(() => null);

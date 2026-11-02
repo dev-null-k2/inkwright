@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ImageUp, Plus, Trash2 } from 'lucide-react';
-import { outlineToSvgPath, strokeOutline, type InkStroke } from '@inkstone/core';
+import { outlineToSvgPath, strokeOutline, type InkStroke } from '@inkwright/core';
 import { drawStroke } from '../canvas/render.ts';
 import { pickFiles } from '../platform/files.ts';
 import { secrets } from '../lib/secrets.ts';

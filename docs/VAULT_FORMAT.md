@@ -1,12 +1,12 @@
-# Inkstone vault format (v2)
+# Inkwright vault format (v2)
 
-Everything a user creates in Inkstone is plain files in a **vault** folder. The app, the sync
+Everything a user creates in Inkwright is plain files in a **vault** folder. The app, the sync
 engine, the MCP server and any third-party tool read and write the same layout. The TypeScript
 reference implementation is `packages/core/src/codec.ts` + `vault.ts`.
 
 ```
 <vault>/
-  inkstone.json                         manifest {app, formatVersion, createdAt}
+  inkwright.json                         manifest {app, formatVersion, createdAt}
   notebooks/<notebookId>/notebook.json  NotebookMeta
   notes/<noteId>/note.json              NoteMeta (pretty JSON)
   notes/<noteId>/note.md                Markdown export — generated, safe to read, never parsed back
@@ -68,7 +68,7 @@ Rules
   "strokes": [
     { "id": "…", "pen": "fountain", "color": "#FF1B1F24", "size": 2.6, "createdAt": 1730000000000,
       "shape": "rectangle",                 // optional, when snapped to a shape
-      "input": "pen",                       // optional: pen | touch | mouse — how it was written in Inkstone
+      "input": "pen",                       // optional: pen | touch | mouse — how it was written in Inkwright
       "origin": "ai",                       // optional: ai | solver | recognized | import — not handwriting
       "nib": 40,                            // optional, calligraphy pen only: nib angle in degrees
       "layer": "drawing",                   // optional: the drawing layer (absent = writing layer)
@@ -309,7 +309,7 @@ Textures: `smooth standard toothy`.
 - **Daily notes** carry `"daily": "YYYY-MM-DD"` (local day) and are titled with that day, in the
   "Journal" notebook. `[[2026-11-02]]` opens (or starts) that day's note.
 - **`properties`** (optional object) holds front-matter properties imported from Markdown that
-  Inkstone has no field for; they are written back on Obsidian export (docs/OBSIDIAN.md).
+  Inkwright has no field for; they are written back on Obsidian export (docs/OBSIDIAN.md).
 - Renaming a note in the app rewrites `[[Old title…]]` links (and ink link targets) in the notes
   that pointed to it. Other writers should do the same or leave links to resolve by `noteId`.
 
@@ -340,22 +340,22 @@ model is in [PRIVACY.md](PRIVACY.md).
   "v": 1,
   "kdf": { "name": "PBKDF2", "hash": "SHA-256", "iterations": 600000, "salt": "<base64url, 16 bytes>" },
   "cipher": "AES-GCM-256",
-  "check": { "v": 1, "iv": "<base64url, 12 bytes>", "data": "<base64url>" },   // AES-GCM("inkstone-lock-check-v1"), AAD "inkstone:check"
+  "check": { "v": 1, "iv": "<base64url, 12 bytes>", "data": "<base64url>" },   // AES-GCM("inkwright-lock-check-v1"), AAD "inkwright:check"
   "meta":  { "v": 1, "iv": "…", "data": "…" },                                 // optional: sealed { summary, forms, properties }
   "lockedAt": 1730000000000 }
 ```
 
 - **Key:** PBKDF2-HMAC-SHA-256 over the passcode (Unicode NFKC) with `salt` and `iterations` →
-  a 256-bit AES-GCM key. A passcode is right when `check` decrypts to `inkstone-lock-check-v1`.
+  a 256-bit AES-GCM key. A passcode is right when `check` decrypts to `inkwright-lock-check-v1`.
 - **Pages:** each `pages/<pageId>.ink.json` is `{ "id", "formatVersion", "strokes": [], "sealed": {…} }`,
   where `sealed` is AES-GCM (random 96-bit IV) of the page file's normal JSON, with associated data
-  `inkstone:page:<pageId>`. Readers that don't know locks see a blank page; the derived SVG and
+  `inkwright:page:<pageId>`. Readers that don't know locks see a blank page; the derived SVG and
   `note.md` are blank too.
-- **Metadata:** `summary`, `forms` and `properties` move into `lock.meta` (AAD `inkstone:meta:<noteId>`).
+- **Metadata:** `summary`, `forms` and `properties` move into `lock.meta` (AAD `inkwright:meta:<noteId>`).
   The title, tags, notebook, dates, page ids and sizes and recording list stay readable, so the
   library can list and sort the note.
 - **Assets:** every file in `assets/` is `"INKSEAL1"` ‖ 12-byte IV ‖ AES-GCM ciphertext, with AAD
-  `inkstone:asset:<file name>`.
+  `inkwright:asset:<file name>`.
 - **History:** snapshots are sealed too (see "Version history").
 - **Writers** that don't hold the key must not write a locked note's pages or assets (the reference
   `Vault` refuses with `NoteLockedError`); metadata-only changes (rename, tags, move, pin, trash) are
@@ -378,10 +378,10 @@ restored. A snapshot identical to the latest one is not written. Reference: `Ver
   "blobs": ["<hash>", …],                // page contents in page order
   "digest": "<hex>",                     // fingerprint of meta + blobs, to skip duplicates
   "meta": { /* NoteMeta at the time, without lock */ }, "pageIds": ["…"],   // plain notes
-  "sealed": { "v": 1, "iv", "data" },    // locked notes instead: { meta, pageIds } encrypted, AAD "inkstone:snapshot:<id>"
+  "sealed": { "v": 1, "iv", "data" },    // locked notes instead: { meta, pageIds } encrypted, AAD "inkwright:snapshot:<id>"
   "device": "Kitchen tablet" }           // optional
 // notes/<noteId>/history/blobs/<hash>.json
-<the page file's JSON>                   // locked notes: a sealed box of it, AAD "inkstone:history:<hash>"
+<the page file's JSON>                   // locked notes: a sealed box of it, AAD "inkwright:history:<hash>"
 ```
 
 `<hash>` is the first 40 hex digits of SHA-256 of the page JSON (of `lockSalt + ":" + JSON` for a
@@ -473,7 +473,7 @@ tokens stay in each device's encrypted secret store and never sync.
 `SKILL.md` with YAML frontmatter (`name` — must equal the folder name, 1–64 chars of `a-z0-9-`,
 no leading/trailing/double hyphens; `description` ≤ 1024 chars; optional `license`,
 `compatibility` ≤ 500 chars, `metadata` (string map), `allowed-tools`) and any bundled files
-(`references/`, `assets/`, `scripts/`). Inkstone never executes scripts. `ai/skills.json` is
+(`references/`, `assets/`, `scripts/`). Inkwright never executes scripts. `ai/skills.json` is
 `{ "disabled": ["skill-name", …] }` (built-in skills can be switched off too; they ship with the
 app and are not written here).
 
@@ -502,14 +502,14 @@ and wait for the user.
              "firedDates": ["<noteId>@YYYY-MM-DD"] } }
 ```
 
-Times are the device's local time. A routine runs while Inkstone is open; a slot missed while it
+Times are the device's local time. A routine runs while Inkwright is open; a slot missed while it
 was closed runs once on the next open (`slots` records it so no device repeats it). The always-on
-runner (`inkstone-agent run`, see docs/AGENTS.md) runs the same routines from a computer.
+runner (`inkwright-agent run`, see docs/AGENTS.md) runs the same routines from a computer.
 
 **Routines lease** — `ai/leases/routines.json`, written by an always-on runner while it runs:
 
 ```jsonc
-{ "holder": "runner:<host>:<pid>:<random>", "label": "The Inkstone agent on <host>",
+{ "holder": "runner:<host>:<pid>:<random>", "label": "The Inkwright agent on <host>",
   "kind": "runner", "acquiredAt", "renewedAt", "expiresAt" }
 ```
 
@@ -613,7 +613,7 @@ user declined a request. They change nothing in the notes, so there is nothing t
 ## Code sources (`code/`)
 
 Repositories the developer module has read (docs/DEVELOPERS.md). Written by the app, the
-`inkstone scan` CLI or any tool; each source is its own folder, synced as whole files. Ids match
+`inkwright scan` CLI or any tool; each source is its own folder, synced as whole files. Ids match
 `^[0-9A-Za-z_-]{1,64}$`. The reference is `CodeStore` in `packages/core/src/dev/codegraph.ts`.
 
 ```jsonc
@@ -624,7 +624,7 @@ Repositories the developer module has read (docs/DEVELOPERS.md). Written by the 
 
 // code/sources/<id>/graph.json (compact JSON)
 { "formatVersion": 1, "sourceId": "shop", "name": "shop", "scannedAt",
-  "generator": "inkstone-tree-sitter/1",            // or "graphify/<version>", "generic-json"
+  "generator": "inkwright-tree-sitter/1",            // or "graphify/<version>", "generic-json"
   "files": [ { "path": "src/auth.ts", "language": "typescript", "hash": "<16 hex>", "size": 812 } ],
   "symbols": [ {
       "id": "src/auth.ts#SessionStore.put",           // path#qualified: exactly what a code link names
@@ -721,8 +721,8 @@ state 0 new / 1 learning / 2 review / 3 relearning. Sync merges decks card by ca
 sides reviewed takes the newer `updatedAt`) and unions reviews.
 
 **Context packs** — `ai/packs/<id>/pack.md` (the cited Markdown) and `pack.json`
-(`format: "inkstone-context-pack/1"`, compiled claims with sources, notes, images as base64). The
-MCP server lists them as `inkstone://packs/{id}`. **Memory eval** — `ai/evals/memory.json`: the
+(`format: "inkwright-context-pack/1"`, compiled claims with sources, notes, images as base64). The
+MCP server lists them as `inkwright://packs/{id}`. **Memory eval** — `ai/evals/memory.json`: the
 last report (questions, per-condition results, accuracy, citation accuracy, tokens, McNemar
 comparisons).
 
@@ -740,11 +740,11 @@ files are kept, at most 5 MB. `plugins/<id>/data.json` is the plugin's own stora
   "formatVersion": 1,
   "plugins": [
     {
-      "id": "app.inkstone.examples.word-count",
+      "id": "app.inkwright.examples.word-count",
       "version": "1.0.0",
       "enabled": true,
       "granted": ["notes:read", "editor:read", "events"],   // a subset of the manifest's permissions
-      "source": { "kind": "catalog", "catalogId": "app.inkstone.examples.word-count" },  // or url | zip | folder
+      "source": { "kind": "catalog", "catalogId": "app.inkwright.examples.word-count" },  // or url | zip | folder
       "installedAt": 1730000000000,
       "updatedAt": 1730000000000                            // bumped on every change to the record
     }
@@ -757,7 +757,7 @@ missing (half-synced) or whose manifest no longer validates is listed but never 
 
 ## API keys (`api/keys.json`)
 
-Keys for the REST API of `inkstone-mcp --http` (docs/API.md). Only hashes are stored: a key is
+Keys for the REST API of `inkwright-mcp --http` (docs/API.md). Only hashes are stored: a key is
 `ink_<id>_<secret>` with a 10-character public id and 32 random bytes (base64url); `hash` is the
 hex SHA-256 of the whole key.
 

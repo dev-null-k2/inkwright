@@ -7,7 +7,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Eraser, PenLine, Type, X } from 'lucide-react';
-import { RATING_LABEL, formatInterval, newId, parseAnchor, previewIntervals, type InkStroke, type StudyCard, type StudyDeck } from '@inkstone/core';
+import { RATING_LABEL, formatInterval, newId, parseAnchor, previewIntervals, type InkStroke, type StudyCard, type StudyDeck } from '@inkwright/core';
 import { IconButton, cx } from '../../ui/primitives.tsx';
 import { useApp } from '../../state/app.ts';
 import { dueNow, gradeCard, readHandwrittenAnswer, refreshDecks, review, useStudy } from '../study.ts';

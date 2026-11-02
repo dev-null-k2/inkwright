@@ -2,7 +2,7 @@
 name: translate-text
 description: Translates a note or passage into another language while keeping its meaning, tone and formatting (line breaks, Markdown, lists, numbers, names, URLs and wiki links) exactly. Use when the user asks to translate notes or text.
 metadata:
-  author: inkstone
+  author: inkwright
   version: "1.0"
 ---
 

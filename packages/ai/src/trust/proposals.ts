@@ -10,7 +10,7 @@
  * `applyProposal`, `lineDiff` — so other features that want "propose, then apply" (the MCP
  * server's external writes, a future compiler) can produce the same files.
  */
-import { isSafeId, newId, type VaultFS } from '@inkstone/core';
+import { isSafeId, newId, type VaultFS } from '@inkwright/core';
 import type { ActivitySource } from '../activity.ts';
 import type { NoteContent, NoteInfo, NoteListItem, NotePatch, NoteSearchHit, NoteToolHost, NotebookInfo } from '../tools/notes.ts';
 
@@ -143,7 +143,7 @@ export class ProposingNoteToolHost implements NoteToolHost {
   async createNote(args: { title: string; text: string; notebookId?: string; tags?: string[] }): Promise<NoteInfo> {
     const p = await this.propose({ summary: `Create note ${q(args.title)}`, noteTitle: args.title, op: { op: 'createNote', args }, before: '', after: `${args.title}\n\n${args.text}` });
     // The model gets a recognisable placeholder id; using it in another write fails clearly.
-    return { id: `proposal-${p.id}`, title: args.title, tags: args.tags ?? [], ...(args.notebookId ? { notebookId: args.notebookId } : {}), pinned: false, createdAt: p.createdAt, updatedAt: p.createdAt, summary: 'Proposed — waiting for the user to approve it in Inkstone.' };
+    return { id: `proposal-${p.id}`, title: args.title, tags: args.tags ?? [], ...(args.notebookId ? { notebookId: args.notebookId } : {}), pinned: false, createdAt: p.createdAt, updatedAt: p.createdAt, summary: 'Proposed — waiting for the user to approve it in Inkwright.' };
   }
 
   async appendText(noteId: string, text: string, pageIndex?: number) {
@@ -157,7 +157,7 @@ export class ProposingNoteToolHost implements NoteToolHost {
     const cur = await this.real(id);
     const after = { ...cur.meta, ...Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) } as NoteInfo;
     await this.propose({ summary: `Change ${q(cur.meta.title)}`, noteId: id, noteTitle: cur.meta.title, op: { op: 'updateNote', noteId: id, patch }, before: metaLines(cur.meta), after: metaLines({ ...after, notebookId: patch.notebookId === null ? undefined : after.notebookId }) });
-    return { ...cur.meta, summary: 'A change was proposed — waiting for the user to approve it in Inkstone.' };
+    return { ...cur.meta, summary: 'A change was proposed — waiting for the user to approve it in Inkwright.' };
   }
 
   async createNotebook(name: string, opts?: { parentId?: string }): Promise<NotebookInfo> {
@@ -180,7 +180,7 @@ export class ProposingNoteToolHost implements NoteToolHost {
 }
 
 /** Tells the model what happened (tool results under dry run). */
-export const PROPOSAL_NOTICE = 'Changes are proposals in this mode: the user reviews and approves them in Inkstone (Settings › AI › Activity). Say that the change is waiting for their approval.';
+export const PROPOSAL_NOTICE = 'Changes are proposals in this mode: the user reviews and approves them in Inkwright (Settings › AI › Activity). Say that the change is waiting for their approval.';
 
 /** Runs a proposal's operation through `host` (the recorded, undoable host) and returns a summary. */
 export async function applyProposal(p: Proposal, host: NoteToolHost): Promise<string> {

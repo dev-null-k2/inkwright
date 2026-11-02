@@ -109,7 +109,7 @@ export type WebDavAuth =
   | { type: 'bearer'; token: string | (() => Promise<string>) };
 
 export interface WebDavRemoteOptions {
-  /** Collection URL of the vault folder, e.g. `https://cloud.example.com/remote.php/dav/files/alice/Inkstone/`. */
+  /** Collection URL of the vault folder, e.g. `https://cloud.example.com/remote.php/dav/files/alice/Inkwright/`. */
   url: string;
   auth?: WebDavAuth;
   /** Extra headers on every request. */

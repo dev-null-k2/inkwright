@@ -1,4 +1,4 @@
-import type { ApiKeyRecord, ApiKeysFile, InstalledPlugin, PluginsConfig } from '@inkstone/core';
+import type { ApiKeyRecord, ApiKeysFile, InstalledPlugin, PluginsConfig } from '@inkwright/core';
 
 /*
  * Three-way merges for the developer platform's vault files (docs/VAULT_FORMAT.md § Plugins,

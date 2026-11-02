@@ -7,9 +7,9 @@ test('first run shows the welcome note and no errors', async ({ page }) => {
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => { if (m.type() === 'error' && !isEngineNoise(m.text())) errors.push(m.text()); });
   await openApp(page);
-  await expect(page.locator('.note-title').first()).toHaveText('Welcome to Inkstone');
+  await expect(page.locator('.note-title').first()).toHaveText('Welcome to Inkwright');
   await page.locator('.note-open').first().click();
-  await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
   await page.getByRole('button', { name: 'Back to library' }).click();
   await expect(page.locator('.library')).toBeVisible();
   expect(errors).toEqual([]);
@@ -48,7 +48,7 @@ test('notebooks: create one and move a note into it', async ({ page }) => {
 test('search finds typed text inside notes', async ({ page }) => {
   await openApp(page);
   await page.locator('.search input').fill('flashcar');
-  await expect(page.locator('.hit-title').first()).toHaveText('Welcome to Inkstone');
+  await expect(page.locator('.hit-title').first()).toHaveText('Welcome to Inkwright');
   await expect(page.locator('.hit-snippet mark').first()).toContainText(/flashcards/i);
   await page.locator('.search input').fill('zzzqqq');
   await expect(page.locator('.lib-h1')).toContainText('Nothing matches');
@@ -60,7 +60,7 @@ test('importing a PDF creates annotatable pages and exports a vector PDF', async
   const bytes = await pdf.save();
   await openApp(page);
   await page.locator('input[type=file]').first().setInputFiles({ name: 'Lecture slides.pdf', mimeType: 'application/pdf', buffer: Buffer.from(bytes) });
-  await page.waitForFunction(() => (window as any).__inkstone?.doc?.pageCount === 3, null, { timeout: 20000 });
+  await page.waitForFunction(() => (window as any).__inkwright?.doc?.pageCount === 3, null, { timeout: 20000 });
   await expect(page.locator('.ed-title-text')).toHaveText('Lecture slides');
   await pen(page, word(200, 220, 160));
   const download = page.waitForEvent('download');
@@ -78,7 +78,7 @@ test('importing a PDF creates annotatable pages and exports a vector PDF', async
 test('markdown export contains typed text', async ({ page }) => {
   await openApp(page);
   await page.locator('.note-open').first().click();
-  await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'More', exact: true }).click();
   await page.getByRole('menuitem', { name: /Export and share/ }).click();
@@ -86,7 +86,7 @@ test('markdown export contains typed text', async ({ page }) => {
   const d = await download;
   const fs = await import('node:fs');
   const md = fs.readFileSync((await d.path())!, 'utf8');
-  expect(md).toContain('# Welcome to Inkstone');
+  expect(md).toContain('# Welcome to Inkwright');
   expect(md).toContain('Scribble back and forth');
 });
 
@@ -96,8 +96,8 @@ test('new note sheet creates an infinite board with chosen paper', async ({ page
   await page.getByRole('radio', { name: 'Infinite canvas' }).click();
   await page.getByRole('radio', { name: 'Dot grid' }).click();
   await page.getByRole('button', { name: 'Create', exact: true }).click();
-  await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
-  const meta = await page.evaluate(() => (window as any).__inkstone.doc.meta);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
+  const meta = await page.evaluate(() => (window as any).__inkwright.doc.meta);
   expect(meta.kind).toBe('board');
   expect(meta.paper.style).toBe('dot_grid');
   await pen(page, word(-100 + 400, 200, 160));

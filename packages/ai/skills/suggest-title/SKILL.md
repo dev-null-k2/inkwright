@@ -2,7 +2,7 @@
 name: suggest-title
 description: Names notes with one short, specific title (2–7 words) in the note's language. Use when the user asks for a title, wants untitled notes named, or when filing notes that are still called "Untitled".
 metadata:
-  author: inkstone
+  author: inkwright
   version: "1.0"
 ---
 

@@ -4,13 +4,13 @@ import { expect, test, type Route } from '@playwright/test';
 import { newNote, openApp } from './helpers';
 
 /**
- * Opt-in (INKSTONE_REAL_MODELS=1 or =asr): the real on-device speech model in the app's worker.
+ * Opt-in (INKWRIGHT_REAL_MODELS=1 or =asr): the real on-device speech model in the app's worker.
  * Downloads Moonshine Tiny (32 MB) into OPFS through Settings › AI, then records a public-domain
  * clip (President Kennedy's 1961 inaugural address) played by Chromium's fake microphone and
  * checks that the live transcript appears, transcribed on this device, with nothing uploaded.
  * Hugging Face requests are relayed through Node so they use this machine's network settings.
  */
-const ENABLED = !!process.env.INKSTONE_REAL_MODELS;
+const ENABLED = !!process.env.INKWRIGHT_REAL_MODELS;
 const WAV = join(process.cwd(), 'test-results', 'listen-jfk.wav');
 
 test.use({
@@ -47,15 +47,15 @@ test.beforeAll(async () => {
 });
 
 test('real on-device live transcript (opt-in, downloads 32 MB)', async ({ page }) => {
-  test.skip(!ENABLED, 'set INKSTONE_REAL_MODELS=1 to download a real speech model');
+  test.skip(!ENABLED, 'set INKWRIGHT_REAL_MODELS=1 to download a real speech model');
   test.setTimeout(300_000);
   const uploads: string[] = [];
   page.on('request', (r) => { if (/audio\/transcriptions|generateContent/.test(r.url())) uploads.push(r.url()); });
   await page.route('https://huggingface.co/**', relay);
   await page.addInitScript(() => {
-    localStorage.setItem('inkstone.localai.v1', JSON.stringify({ asrModel: 'moonshine-tiny', embeddings: 'off' }));
-    localStorage.setItem('inkstone.speech.v1', JSON.stringify({ engine: 'device', autoSummary: false, language: 'en-US' }));
-    (window as any).__inkstoneSpeechTuning = { minWindowMs: 4000, maxWindowMs: 14_000, pauseMs: 500 };
+    localStorage.setItem('inkwright.localai.v1', JSON.stringify({ asrModel: 'moonshine-tiny', embeddings: 'off' }));
+    localStorage.setItem('inkwright.speech.v1', JSON.stringify({ engine: 'device', autoSummary: false, language: 'en-US' }));
+    (window as any).__inkwrightSpeechTuning = { minWindowMs: 4000, maxWindowMs: 14_000, pauseMs: 500 };
   });
   await openApp(page);
   await page.getByRole('button', { name: 'Settings' }).click();

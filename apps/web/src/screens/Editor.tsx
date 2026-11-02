@@ -4,7 +4,7 @@ import {
   AudioLines, Mic, MoreHorizontal, Pause, Play, Sparkles, Square, Tag, Trash2, Maximize2, FilePlus2, Copy, Scan, Search,
   Signature, FileUp, Captions, MicVocal, Fingerprint,
 } from 'lucide-react';
-import { newId, NoteLockedError, PAGE_SIZE_PRESETS, pagePaper, pageSizeOf, type ImageItem, type InkStroke, type TextBox } from '@inkstone/core';
+import { newId, NoteLockedError, PAGE_SIZE_PRESETS, pagePaper, pageSizeOf, type ImageItem, type InkStroke, type TextBox } from '@inkwright/core';
 import { InkEngine, type SelectionInfo, type Tool, type ToolState } from '../canvas/engine.ts';
 import { inspectPdf } from '../canvas/assets.ts';
 import { EditorSession } from '../lib/session.ts';
@@ -13,7 +13,7 @@ import { Recorder, audioExt, formatDuration } from '../lib/audio.ts';
 import { imageSize, setTags, trashNote, duplicateNote } from '../lib/actions.ts';
 import { PaperFeel } from '../platform/feel.ts';
 import { NativeInkTip } from '../platform/inktip.ts';
-import { InkstoneNative, hasNativePlugin } from '../platform/native.ts';
+import { InkwrightNative, hasNativePlugin } from '../platform/native.ts';
 import { pickFiles } from '../platform/files.ts';
 import { isArtifact, isIOS, isMac, modKey, safeStorage } from '../platform/env.ts';
 import { useApp } from '../state/app.ts';
@@ -136,7 +136,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   // ---- Engine ----------------------------------------------------------------------------------
   useEffect(() => {
     if (!session || !host.current || !vault) return;
-    const vpKey = `inkstone.vp.${session.doc.meta.id}`;
+    const vpKey = `inkwright.vp.${session.doc.meta.id}`;
     let initialViewport: { zoom: number; panX: number; panY: number } | undefined;
     try { const raw = safeStorage.get(vpKey); if (raw && initialPage == null) initialViewport = JSON.parse(raw); } catch { /* ignore */ }
     const e = new InkEngine(host.current, session.doc, {
@@ -174,7 +174,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
     };
     setEngine(e);
     // Test hook (only with ?e2e in the URL): lets end-to-end tests inspect document state.
-    if (E2E_BUILD) (window as any).__inkstone = { doc: session.doc, engine: e };
+    if (E2E_BUILD) (window as any).__inkwright = { doc: session.doc, engine: e };
     if (initialPage != null) requestAnimationFrame(() => e.scrollToPage(initialPage));
     return () => { e.destroy(); setEngine(null); void inkTip.prepare(false); };
   }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -197,7 +197,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   useEffect(() => {
     if (!engine || !hasNativePlugin) return;
     let handle: { remove: () => void } | null = null;
-    void InkstoneNative.addListener('stylusButton', (ev) => { engine.setExternalButton(ev.pressed); setLatched(engine.buttonLatched); }).then((h) => (handle = h));
+    void InkwrightNative.addListener('stylusButton', (ev) => { engine.setExternalButton(ev.pressed); setLatched(engine.buttonLatched); }).then((h) => (handle = h));
     return () => handle?.remove();
   }, [engine]);
 

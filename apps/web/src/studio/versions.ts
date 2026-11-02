@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
-import { VersionHistory, type NoteMeta, type PageInk, type SnapshotReason } from '@inkstone/core';
+import { VersionHistory, type NoteMeta, type PageInk, type SnapshotReason } from '@inkwright/core';
 import type { EditorSession } from '../lib/session.ts';
 import type { AppVault } from '../lib/vault.ts';
 import { useSettings } from '../state/settings.ts';
-import { historyPruneOptions } from '@inkstone/ai';
+import { historyPruneOptions } from '@inkwright/ai';
 // Retention and legal hold for version history come from the AI policy (docs/TRUST.md).
 import { currentPolicy } from '../lib/trust/state.ts';
 

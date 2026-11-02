@@ -16,17 +16,17 @@ const take = (open, close) => {
   }
   return out;
 };
-const title = take('<title>', '</title>')[0] ?? '<title>Inkstone</title>';
+const title = take('<title>', '</title>')[0] ?? '<title>Inkwright</title>';
 const styles = take('<style', '</style>');
 const scripts = take('<script', '</script>');
 const page = [
   title,
-  '<meta name="description" content="Inkstone — handwriting notes that feel like paper, with your own AI.">',
+  '<meta name="description" content="Inkwright — handwriting notes that feel like paper, with your own AI.">',
   ...styles,
   '<div id="root"></div>',
   // Literal U+FFFD (used by some libraries in strings/regexes) becomes its JS escape so the page
   // passes the publisher's encoding check; inside JS strings and regexes the meaning is identical.
   ...scripts.map((s) => s.replace(' crossorigin', '').replaceAll('\uFFFD', '\\uFFFD')),
 ].join('\n');
-writeFileSync(new URL('../dist-single/inkstone.html', import.meta.url), page);
+writeFileSync(new URL('../dist-single/inkwright.html', import.meta.url), page);
 console.log(`artifact page: ${(page.length / 1048576).toFixed(2)} MB, ${styles.length} style, ${scripts.length} script blocks`);

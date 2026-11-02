@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { NoteLockedError, VersionHistory, type InkStroke } from '@inkstone/core';
+import { NoteLockedError, VersionHistory, type InkStroke } from '@inkwright/core';
 import { AppVault } from '../lib/vault.ts';
 import { EditorSession } from '../lib/session.ts';
 import { useApp } from '../state/app.ts';
@@ -9,7 +9,7 @@ const stroke = (id: string, y: number): InkStroke => ({ id, pen: 'fountain', col
 const until = async (f: () => Promise<boolean>) => { for (let i = 0; i < 50 && !(await f()); i++) await new Promise((r) => setTimeout(r, 10)); };
 
 describe('version history in the editor', () => {
-  beforeEach(() => indexedDB.deleteDatabase('inkstone-vault'));
+  beforeEach(() => indexedDB.deleteDatabase('inkwright-vault'));
 
   it('snapshots on open, while editing and before an assistant edit, never twice for the same state', async () => {
     const v = await AppVault.open();

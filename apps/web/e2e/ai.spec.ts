@@ -51,7 +51,7 @@ test('bring-your-own AI: the assistant creates a note through a tool call', asyn
   await addCustomProvider(page);
   await page.getByRole('button', { name: 'Back' }).click();
   await page.locator('.note-open').first().click();
-  await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
   await page.locator('.ai-btn').click();
   await page.locator('.ai-input textarea').fill('Make a grocery list with milk and eggs');
   await page.locator('.ai-input textarea').press('Enter');
@@ -65,24 +65,24 @@ test('bring-your-own AI: the assistant creates a note through a tool call', asyn
 });
 
 test('quick action: summarize and save the summary to the note', async ({ page }) => {
-  await mockLLM(page, [{ text: '- Inkstone saves notes as plain files\n- Any AI can be connected' }]);
+  await mockLLM(page, [{ text: '- Inkwright saves notes as plain files\n- Any AI can be connected' }]);
   await openApp(page);
   await addCustomProvider(page);
   await page.getByRole('button', { name: 'Back' }).click();
   await page.locator('.note-open').first().click();
-  await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
   await page.locator('.ai-btn').click();
   await page.getByRole('button', { name: 'Summarize' }).click();
   await expect(page.locator('.ai-msg.is-assistant').last()).toContainText('plain files');
   await page.getByRole('button', { name: 'Save as note summary' }).click();
-  const summary = await page.evaluate(() => (window as any).__inkstone.doc.meta.summary);
+  const summary = await page.evaluate(() => (window as any).__inkwright.doc.meta.summary);
   expect(summary).toContain('plain files');
 });
 
 test('without any AI the panel explains how to connect one', async ({ page }) => {
   await openApp(page);
   await page.locator('.note-open').first().click();
-  await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
   await page.locator('.ai-btn').click();
   await expect(page.locator('.ai-setup')).toContainText('Use any AI with your notes');
 });
@@ -93,7 +93,7 @@ test('provider errors are shown in plain language', async ({ page }) => {
   await addCustomProvider(page);
   await page.getByRole('button', { name: 'Back' }).click();
   await page.locator('.note-open').first().click();
-  await page.waitForFunction(() => !!(window as any).__inkstone?.engine);
+  await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
   await page.locator('.ai-btn').click();
   await page.locator('.ai-input textarea').fill('hello');
   await page.locator('.ai-input textarea').press('Enter');

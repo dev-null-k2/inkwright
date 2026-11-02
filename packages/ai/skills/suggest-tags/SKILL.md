@@ -2,7 +2,7 @@
 name: suggest-tags
 description: Suggests 1–5 short topical tags for a note, reusing tags the user already has so the library stays consistent. Use when the user asks to tag, label or categorize notes, or when filing unfiled notes.
 metadata:
-  author: inkstone
+  author: inkwright
   version: "1.0"
 ---
 

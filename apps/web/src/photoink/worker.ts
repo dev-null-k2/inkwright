@@ -3,7 +3,7 @@
  * Photo to ink off the main thread: thresholding, thinning and tracing a phone photo takes a few
  * hundred milliseconds to a couple of seconds, which must never stall the pen.
  */
-import { photoToInk, type Quad, type Rgba } from '@inkstone/core';
+import { photoToInk, type Quad, type Rgba } from '@inkwright/core';
 
 export interface PhotoJob { image: Rgba; quad: Quad; pageWidth: number; now: number }
 

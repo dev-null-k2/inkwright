@@ -16,7 +16,7 @@ import {
   type Provider,
   type TaskKind,
   type TrustRun,
-} from '@inkstone/ai';
+} from '@inkwright/ai';
 import {
   contentBounds,
   newId,
@@ -28,7 +28,7 @@ import {
   type NoteMeta,
   type PageInk,
   type TextBox,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import { claudeRuntime } from '../platform/env.ts';
 import { useApp } from '../state/app.ts';
 import { useSettings, type AIProviderConfig } from '../state/settings.ts';
@@ -162,7 +162,7 @@ export class AppNoteToolHost implements NoteToolHost {
 
   private async pagesOf(n: NoteMeta): Promise<PageInk[]> {
     // Locked notes stay away from the assistant, even while open.
-    if (n.lock) throw new Error('This note is locked. Inkstone keeps locked notes away from the assistant.');
+    if (n.lock) throw new Error('This note is locked. Inkwright keeps locked notes away from the assistant.');
     if (this.open && this.open.meta.id === n.id) return [...this.open.pages];
     return this.vault.vault.readPages(n);
   }

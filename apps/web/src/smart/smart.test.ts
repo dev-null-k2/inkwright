@@ -107,14 +107,14 @@ describe('dates, links and tasks in handwriting', () => {
 });
 
 describe('calendar files', () => {
-  const ev = { title: 'Signals midterm, room 3; bring calculator', start: new Date(Date.UTC(2026, 10, 14, 15)), end: new Date(Date.UTC(2026, 10, 14, 16)), allDay: false, description: 'From Inkstone' };
+  const ev = { title: 'Signals midterm, room 3; bring calculator', start: new Date(Date.UTC(2026, 10, 14, 15)), end: new Date(Date.UTC(2026, 10, 14, 16)), allDay: false, description: 'From Inkwright' };
   it('writes a valid iCalendar event (CRLF, escaped, UTC times)', () => {
-    const ics = buildIcs(ev, { uid: 'abc@inkstone', now: new Date(Date.UTC(2026, 10, 1)) });
+    const ics = buildIcs(ev, { uid: 'abc@inkwright', now: new Date(Date.UTC(2026, 10, 1)) });
     expect(ics.startsWith('BEGIN:VCALENDAR\r\nVERSION:2.0\r\n')).toBe(true);
     expect(ics).toContain('DTSTART:20261114T150000Z\r\n');
     expect(ics).toContain('DTEND:20261114T160000Z\r\n');
     expect(ics).toContain('SUMMARY:Signals midterm\\, room 3\\; bring calculator\r\n');
-    expect(ics).toContain('UID:abc@inkstone');
+    expect(ics).toContain('UID:abc@inkwright');
     expect(ics.endsWith('END:VCALENDAR\r\n')).toBe(true);
     expect(ics.split('\r\n').every((l) => new TextEncoder().encode(l).length <= 75)).toBe(true);
   });

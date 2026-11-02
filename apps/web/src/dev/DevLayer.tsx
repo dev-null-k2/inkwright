@@ -3,7 +3,7 @@ import { Code2, Loader2, Play, X } from 'lucide-react';
 import {
   boundsOfStrokes, codeRefKey, isCodeTarget, liveInkLinks, parseCodeTarget, parseRunbookBlocks, parseWikiTarget, rectIsEmpty,
   resultToMarkdown, type CodeRefState, type NoteDocument, type Rect, type RunbookBlock, type TextBox,
-} from '@inkstone/core';
+} from '@inkwright/core';
 import type { InkEngine } from '../canvas/engine.ts';
 import { layoutText, textLinkRects } from '../canvas/render.ts';
 import type { AppVault } from '../lib/vault.ts';

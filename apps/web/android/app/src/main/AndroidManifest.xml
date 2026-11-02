@@ -36,7 +36,7 @@
         <!--
           On-device AI: LiteRT-LM runs models on the GPU through the vendor's OpenCL driver, which
           apps targeting Android 12+ may only load when declared. Optional: phones without it fall
-          back to the CPU (see app/inkstone/ai/LiteRtEngine.kt).
+          back to the CPU (see app/inkwright/ai/LiteRtEngine.kt).
         -->
         <uses-native-library android:name="libOpenCL.so" android:required="false" />
         <uses-native-library android:name="libvndksupport.so" android:required="false" />
@@ -62,8 +62,8 @@
             </intent-filter>
 
             <!--
-              "Open with Inkstone" and "Share to Inkstone" for PDFs, images and text. The plugin
-              (InkstoneNativePlugin → files/IncomingFiles.kt) copies the content into the app's
+              "Open with Inkwright" and "Share to Inkwright" for PDFs, images and text. The plugin
+              (InkwrightNativePlugin → files/IncomingFiles.kt) copies the content into the app's
               cache and hands it to the web layer, which imports it like the library's Open file.
             -->
             <intent-filter>
@@ -77,8 +77,8 @@
                 <data android:mimeType="text/markdown" />
             </intent-filter>
             <!--
-              Deep links (docs/API.md § Links): inkstone://new?title=…&text=…, inkstone://open?note=…,
-              inkstone://search?q=…, inkstone://capture?url=… — for Shortcuts-style automation
+              Deep links (docs/API.md § Links): inkwright://new?title=…&text=…, inkwright://open?note=…,
+              inkwright://search?q=…, inkwright://capture?url=… — for Shortcuts-style automation
               (Tasker, launchers, other apps). Capacitor's App plugin passes them to the web layer
               as appUrlOpen (developer/deeplinks.ts).
             -->
@@ -86,7 +86,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="inkstone" />
+                <data android:scheme="inkwright" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />

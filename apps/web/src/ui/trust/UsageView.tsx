@@ -5,7 +5,7 @@
  * says so and points to the benchmark, which also lists where shortening doesn't help.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { totalsOf, type UsageRow } from '@inkstone/ai';
+import { totalsOf, type UsageRow } from '@inkwright/ai';
 import { trustServices, useTrust } from '../../lib/trust/state.ts';
 import { Segmented } from '../primitives.tsx';
 import { Section } from '../agent/shared.tsx';

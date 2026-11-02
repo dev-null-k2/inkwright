@@ -5,7 +5,7 @@
  * and puts every candidate into its one session description, so a single offer and a single
  * answer — a QR code each way, or two pasted codes — are all two devices need to exchange.
  */
-import type { PeerTransport } from '@inkstone/sync';
+import type { PeerTransport } from '@inkwright/sync';
 
 /** How long to wait for ICE candidates before sending what we have. */
 const GATHER_MS = 3000;
@@ -61,7 +61,7 @@ export interface RtcSide {
 /** The starting side: a data channel and a complete offer. */
 export async function rtcOffer(iceServers: RTCIceServer[]): Promise<RtcSide & { channel: RTCDataChannel; transport: PeerTransport }> {
   const pc = new RTCPeerConnection({ iceServers });
-  const channel = pc.createDataChannel('inkstone', { ordered: true });
+  const channel = pc.createDataChannel('inkwright', { ordered: true });
   const transport = channelTransport(channel, pc);
   await pc.setLocalDescription(await pc.createOffer());
   await waitForGathering(pc);

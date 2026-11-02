@@ -10,7 +10,7 @@
  *    problem listed); 7. `Idempotency-Key`; 8. the handler, ETags and `If-None-Match`;
  * 9. errors as RFC 9457 problem details.
  */
-import { looksLikeApiKey, type ApiScope } from '@inkstone/core';
+import { looksLikeApiKey, type ApiScope } from '@inkwright/core';
 import type { AuthGate } from '../auth.ts';
 import { API_PREFIX, ApiError, etagMatches, parseEtags, problemBody, zodErrors, type ApiRequest, type ApiResult, type HttpMethod, type Principal, type RouteDef } from './core.ts';
 import { IdempotencyStore, RateLimiter } from './limits.ts';
@@ -95,16 +95,16 @@ export function createApiRouter(o: ApiRouterOptions): ApiRouter {
     const bearer = m?.[1]?.trim();
     if (bearer && looksLikeApiKey(bearer)) {
       const v = await o.keys.verify(bearer);
-      if (!v.ok) throw new ApiError('unauthorized', v.reason === 'revoked' ? 'This API key was revoked.' : v.reason === 'expired' ? 'This API key has expired.' : 'Unknown API key.', { headers: { 'www-authenticate': 'Bearer realm="inkstone", error="invalid_token"' } });
+      if (!v.ok) throw new ApiError('unauthorized', v.reason === 'revoked' ? 'This API key was revoked.' : v.reason === 'expired' ? 'This API key has expired.' : 'Unknown API key.', { headers: { 'www-authenticate': 'Bearer realm="inkwright", error="invalid_token"' } });
       return { id: `key:${v.record.id}`, label: `${v.record.name} (API)`, scopes: new Set(v.record.scopes) };
     }
     if (o.gate.mode === 'loopback') {
-      if (bearer) throw new ApiError('unauthorized', 'Unknown API key.', { headers: { 'www-authenticate': 'Bearer realm="inkstone", error="invalid_token"' } });
+      if (bearer) throw new ApiError('unauthorized', 'Unknown API key.', { headers: { 'www-authenticate': 'Bearer realm="inkwright", error="invalid_token"' } });
       const check = await o.gate.check(req, '/mcp');
       if (!check.ok) throw new ApiError('forbidden', 'Without an API key, only programs on this computer may call the API (the Host and Origin must be loopback).');
       return { id: 'loopback', label: 'This computer (API)', scopes: new Set(ALL_SCOPES) };
     }
-    if (!bearer) throw new ApiError('unauthorized', 'Send an API key as "Authorization: Bearer ink_…".', { headers: { 'www-authenticate': 'Bearer realm="inkstone"' } });
+    if (!bearer) throw new ApiError('unauthorized', 'Send an API key as "Authorization: Bearer ink_…".', { headers: { 'www-authenticate': 'Bearer realm="inkwright"' } });
     const check = await o.gate.check(req, '/mcp');
     if (!check.ok) {
       const challenge = check.response.headers.get('www-authenticate');
@@ -161,7 +161,7 @@ export function createApiRouter(o: ApiRouterOptions): ApiRouter {
     try {
       if (req.method === 'GET' && sub === '/openapi.json') return new Response(JSON.stringify(openapi(), null, 1), { headers: { 'content-type': 'application/json', 'cache-control': 'no-cache', ...corsHeaders(req) } });
       if (req.method === 'GET' && (sub === '/docs' || sub === '/docs/')) return new Response(docsPage(`${API_PREFIX}/openapi.json`), { headers: { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src data:", 'x-content-type-options': 'nosniff' } });
-      if (req.method === 'GET' && sub === '/') return new Response(JSON.stringify({ name: 'Inkstone API', version: 'v1', openapi: `${baseUrl}/openapi.json`, docs: `${baseUrl}/docs` }), { headers: { 'content-type': 'application/json', ...corsHeaders(req) } });
+      if (req.method === 'GET' && sub === '/') return new Response(JSON.stringify({ name: 'Inkwright API', version: 'v1', openapi: `${baseUrl}/openapi.json`, docs: `${baseUrl}/docs` }), { headers: { 'content-type': 'application/json', ...corsHeaders(req) } });
 
       const matches = compiled.map((c) => ({ c, m: c.re.exec(sub) })).filter((x) => x.m);
       if (!matches.length) throw new ApiError('not_found', `No API operation at ${url.pathname}. See ${baseUrl}/docs.`);
@@ -174,7 +174,7 @@ export function createApiRouter(o: ApiRouterOptions): ApiRouter {
       const rlHeaders = limiter.headers(rl);
       if (!rl.allowed) throw new ApiError('rate_limited', `Too many requests: at most ${rl.limit} a minute. Retry in ${rl.resetSec} s.`, { headers: { ...rlHeaders, 'retry-after': String(rl.resetSec) } });
       if (route.scope && !principal.scopes.has(route.scope)) {
-        throw new ApiError('insufficient_scope', `This operation needs the "${route.scope}" scope; this key has ${[...principal.scopes].map((s) => `"${s}"`).join(', ') || 'none'}.`, { headers: { ...rlHeaders, 'www-authenticate': `Bearer realm="inkstone", error="insufficient_scope", scope="${route.scope}"` } });
+        throw new ApiError('insufficient_scope', `This operation needs the "${route.scope}" scope; this key has ${[...principal.scopes].map((s) => `"${s}"`).join(', ') || 'none'}.`, { headers: { ...rlHeaders, 'www-authenticate': `Bearer realm="inkwright", error="insufficient_scope", scope="${route.scope}"` } });
       }
 
       const rawParams = Object.fromEntries(names.map((n, i) => [n, decodeURIComponent(hit.m![i + 1]!)]));

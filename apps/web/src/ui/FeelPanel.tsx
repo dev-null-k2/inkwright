@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Play } from 'lucide-react';
-import type { PaperTexture } from '@inkstone/core';
+import type { PaperTexture } from '@inkwright/core';
 import { PaperFeel } from '../platform/feel.ts';
 import { hasNativePlugin } from '../platform/native.ts';
 import { useSettings } from '../state/settings.ts';
