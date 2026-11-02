@@ -22,11 +22,15 @@ test('show my notes as of a date: the library and a note read the past, read-onl
   await page.clock.install({ time: new Date('2026-10-01T09:00:00') });
   await openApp(page);
   await newNote(page);
-  await pen(page, word(200, 220, 200));
+  // Name it first, so the nine o'clock snapshot already carries the title (a rename is saved on
+  // its own schedule; under load it can land after the closing snapshot).
   await page.locator('.ed-title').click();
   await page.getByLabel('Title').fill('Diary');
   await page.getByRole('button', { name: 'Rename' }).click();
+  await expect(page.locator('.ed-title')).toContainText('Diary');
+  await pen(page, word(200, 220, 200));
   await backToLibrary(page); // the closing snapshot: one line, at nine
+  await expect(page.getByRole('button', { name: 'Open Diary' })).toBeVisible();
 
   await page.clock.fastForward('03:00:00');
   await openNote(page, 'Diary');
