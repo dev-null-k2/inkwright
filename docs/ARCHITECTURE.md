@@ -259,6 +259,25 @@ as "what was said" passages. Details in docs/LOCAL_AI.md § Speech to text.
   the layout settles before it is shown.
 - **Daily notes, templates, Obsidian**: `daily.ts`, `templates.ts`, `obsidian.ts` + docs/OBSIDIAN.md.
 
+## Context compiler (`packages/core/src/compiler/`, `packages/ai/src/compiler/`, `apps/web/src/compiler/`)
+
+Notes that maintain themselves and can be trusted (details: [COMPILER.md](COMPILER.md)).
+
+- **Deterministic first.** Notes become located sentences (typed text, recognized handwriting
+  lines, PDF text, transcript segments) with content hashes; rules find headings, links, tags,
+  dates, people, projects, definitions, action items and atomic claims with units.
+- **Model at the edges.** Topic pages are drafted by the compiler's AI (on-device by default) and
+  every sentence is validated against what it cites; the rest is built by rules. Changes arrive as
+  proposals, accepted per claim, logged in AI activity (`text_replaced` undoes updates).
+- **Provenance everywhere** AI text appears: compiled pages, assistant answers (attributed to what
+  the model read), summaries, inserted answers, solved maths — Explain shows sources with pictures
+  and the model, provider, prompt id and time. Staleness is a hash lookup.
+- **Ledger** in the background: claims compared deterministically, grey-zone pairs to an on-device
+  model only; badges in the editor, a Conflicts screen.
+- **Study** with FSRS-6 (ts-fsrs), handwritten answers, a teach-back tutor; **context packs**
+  (Markdown, JSON, Agent Skill, MCP resource) and AGENTS.md; **people** with consent; a built-in
+  memory eval in Settings › AI.
+
 ## Platforms
 
 | Platform | How | Native extras |

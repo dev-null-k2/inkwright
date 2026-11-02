@@ -88,6 +88,18 @@ export class AppUndoTarget implements UndoTarget {
     return 'cleared';
   }
 
+  /** A compiled-wiki page update (docs/COMPILER.md): put the old text back if untouched since. */
+  async replaceText(noteId: string, pageId: string, textId: string, expected: string, next: string): Promise<'replaced' | 'changed' | 'missing'> {
+    const d = this.open(noteId);
+    if (!d) return this.vaultTarget.replaceText(noteId, pageId, textId, expected, next);
+    const i = d.indexOfPage(pageId);
+    const box = i < 0 ? undefined : (d.page(i).texts ?? []).find((t) => t.id === textId);
+    if (!box) return 'missing';
+    if (box.text !== expected) return 'changed';
+    d.upsertText(i, { ...box, text: next }, 'Undo compiled wiki update');
+    return 'replaced';
+  }
+
   notebookNoteCount(id: string) { return this.vaultTarget.notebookNoteCount(id); }
 
   async deleteNotebook(id: string) {

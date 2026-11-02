@@ -32,6 +32,7 @@ import type { AppVault } from '../vault.ts';
 import { requireHub } from './hub.ts';
 import { appMemory } from '../memory.ts';
 import { mcpAgentTools, useMcp } from './mcp.ts';
+import { compilerAgentTools } from '../../compiler/service.ts';
 
 /** Notes an agent changed recently: their saves are not "the user saved a note" (routine triggers). */
 const agentTouched = new Map<string, number>();
@@ -104,6 +105,12 @@ export async function prepareAgentRun(o: PrepareOptions): Promise<PreparedRun> {
   // Semantic memory over everything written (search_memory), cited to exact places.
   const searchMemory = appMemory();
   if (searchMemory) tools.push(...createMemoryTools(searchMemory));
+  // The context compiler: compile_wiki (proposals only), list_conflicts, list_followups.
+  const compilerTools = compilerAgentTools();
+  if (compilerTools.length) {
+    tools.push(...compilerTools);
+    sections.push('compile_wiki only proposes changes to the compiled wiki (the user reviews them); list_conflicts shows where notes disagree; list_followups lists action items and follow-ups.');
+  }
 
   const memory = await hub.memory.load().catch(() => []);
   const mem = memoryPromptSection(memory);

@@ -92,6 +92,16 @@ The emulator still runs when there is no `/dev/kvm`: QEMU emulates the x86_64 CP
 | Unit | `npx vitest run --project mcp apps/mcp-server/test/studio.test.ts` | agent writes snapshot first; locked notes are blank to agents and refuse writes |
 | End-to-end | `cd apps/web && PW_PORT=4189 npx playwright test e2e/studio.spec.ts --project desktop` | long-press eraser filters, snapping with guides and Alt, sticky notes (write, type, fold, undo), tape and study mode, calligraphy nib angle, two-page view input mapping, layers, version history restore and copy-in, locking (cover, passcode gate, search, no plaintext in IndexedDB) |
 
+### Context compiler
+
+| Layer | Command | What it covers |
+|---|---|---|
+| Unit | `npx vitest run --project core packages/core/test/compiler.test.ts` | sentence splitting, extraction with anchors (typed, handwriting, speech), entities/dates/actions by rule, quantities and conflicts, provenance (locate, staleness, merge), planning and incremental work, validation of model drafts, diffs and per-claim choices, people consent, FSRS scheduling and deck merge, rule-made cards and grading, packs and AGENTS.md, answer attribution |
+| Unit | `npx vitest run --project ai packages/ai/test/compiler.test.ts` | compile → proposal → apply → provenance → undo (`text_replaced`) over a vault, user lines kept, rejections remembered, silent re-anchoring, archiving, ledger decisions and model adjudication, model cards and teach-back grading, McNemar and the memory eval, agent tools |
+| Unit | `npx vitest run --project sync packages/sync/test/compiler-merge.test.ts`, `--project mcp apps/mcp-server/test/packs.test.ts`, `--project web apps/web/src/compiler` | provenance and deck merges; packs as MCP resources; passages from tool results |
+| Evals | `npx vitest run --project evals packages/core/evals/compiler.eval.ts packages/ai/evals/compiler.eval.ts` | contradiction precision/recall (58 labelled pairs) and noise floor (40 everyday notes), staleness, anchors; drafts against a noisy scripted model (provenance precision, pass-through, recall, tag accuracy); live model with `INKSTONE_EVAL_*` |
+| End-to-end | `cd apps/web && PW_PORT=4192 npx playwright test e2e/compiler.spec.ts --project desktop` | compile → review → accept → Explain with thumbnails → conflicts → stale → re-check → undo; study review with a typed answer and FSRS ratings; context pack (skill zip, save for MCP); model drafts with dropped sentences; memory eval; Explain this answer; conflict badge in the editor |
+
 ## Testing on a device
 
 The pen-on-glass feel, haptics, Bluetooth pen buttons and real latency can only be judged on hardware. On the Razr Fold:
