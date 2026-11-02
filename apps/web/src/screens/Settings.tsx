@@ -20,6 +20,7 @@ import { chooseSyncFolder, folderSyncSupported, resetSyncEngines, syncNow, useSy
 import { saveFile, pickFiles } from '../platform/files.ts';
 import { importFiles } from '../lib/actions.ts';
 import { BrandMark } from '../ui/Brand.tsx';
+import { AgentSettings } from '../ui/agent/AgentSettings.tsx';
 
 const SECTIONS = [
   { id: 'writing', label: 'Writing feel', icon: <Vibrate size={17} /> },
@@ -205,6 +206,7 @@ function AISection() {
       <Group title="Safety">
         <Switch label="Ask before the assistant deletes or moves notes" checked={s.ai.confirmDestructive} onChange={(v) => s.update((x) => ({ ai: { ...x.ai, confirmDestructive: v } }))} />
       </Group>
+      <AgentSettings />
     </>
   );
 }
