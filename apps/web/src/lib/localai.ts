@@ -33,6 +33,7 @@ import { createNativeProvider, nativeLLM, nativeLLMReady } from '../platform/nat
 import { useSettings } from '../state/settings.ts';
 import { opfsAvailable, removeStored, storedStatus } from '../ai/model-files.ts';
 import { getSecret } from './secrets.ts';
+import { spawnLocalWorker } from '../ai/spawn.ts';
 
 /**
  * The app side of on-device AI: what this device can run, which models the person chose, what is
@@ -126,7 +127,7 @@ let worker: Worker | null = null;
 export function localEngine(): LocalEngine {
   if (client) return client;
   if (!localAISupported()) throw new Error('On-device AI is not available in this build.');
-  worker = new Worker(new URL('../ai/local-worker.ts', import.meta.url), { type: 'module', name: 'inkstone-ai' });
+  worker = spawnLocalWorker();
   const c = new LocalEngineClient(worker);
   worker.addEventListener('error', (e) => {
     console.warn('On-device AI worker stopped', e);
