@@ -59,8 +59,8 @@ export const HIGHLIGHT_PALETTE = ['#FFFFD54A', '#FF9BE58A', '#FF8FD3F5', '#FFF7A
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
-  feel: { haptics: true, hapticStrength: 0.8, sound: true, soundVolume: 0.45 },
-  input: { fingerAction: 'scroll', buttonAction: 'eraser', scratchToErase: true, holdToShape: true, tapGestures: true, pressureCurve: 1 },
+  feel: { haptics: true, hapticStrength: 0.8, sound: true, soundVolume: 0.5 },
+  input: { fingerAction: 'scroll', buttonAction: 'eraser', scratchToErase: true, holdToShape: true, tapGestures: true, pressureCurve: 1, instantInk: true },
   tray: DEFAULT_TRAY,
   activePresetId: 'fountain-black',
   highlighterId: 'highlighter-yellow',

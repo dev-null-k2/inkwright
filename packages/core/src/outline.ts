@@ -38,12 +38,13 @@ const easeInQuad = (t: number) => t * t;
 
 /** perfect-freehand options per pen. `size` is the nominal tip diameter in page units. */
 export function outlineOptions(pen: PenType, size: number, hasPressure: boolean, last: boolean): StrokeOptions {
-  const base: StrokeOptions = { size, last, simulatePressure: !hasPressure, smoothing: 0.55, streamline: 0.32 };
+  // Low streamline: the ink keeps up with the nib (smoothing still evens the outline).
+  const base: StrokeOptions = { size, last, simulatePressure: !hasPressure, smoothing: 0.55, streamline: 0.12 };
   switch (pen) {
     case 'fountain':
       return { ...base, thinning: 0.62, easing: easeOutSine, start: { taper: size * 1.5, cap: true }, end: { taper: size * 2.5, cap: true } };
     case 'ballpoint':
-      return { ...base, thinning: 0.18, smoothing: 0.5, streamline: 0.28, start: { cap: true }, end: { cap: true } };
+      return { ...base, thinning: 0.18, smoothing: 0.5, streamline: 0.1, start: { cap: true }, end: { cap: true } };
     case 'pencil':
       return { ...base, thinning: 0.4, smoothing: 0.5, easing: easeOutSine, start: { taper: size, cap: true }, end: { taper: size * 1.5, cap: true } };
     case 'brush':
@@ -51,10 +52,24 @@ export function outlineOptions(pen: PenType, size: number, hasPressure: boolean,
     case 'marker':
       return { ...base, thinning: 0, simulatePressure: false, start: { cap: true }, end: { cap: true } };
     case 'highlighter':
-      return { ...base, thinning: 0, simulatePressure: false, smoothing: 0.7, streamline: 0.4, start: { cap: false }, end: { cap: false } };
+      return { ...base, thinning: 0, simulatePressure: false, smoothing: 0.7, streamline: 0.2, start: { cap: false }, end: { cap: false } };
     case 'dashed':
       return { ...base, thinning: 0, simulatePressure: false };
   }
+}
+
+/**
+ * Width (page units) a pen actually draws at a given pressure, mirroring perfect-freehand's
+ * radius: size × easing(0.5 − thinning × (0.5 − pressure)) when the pen thins, size / 2 otherwise.
+ * Used to size anything drawn to match live ink (the native instant ink tip).
+ */
+export function nominalWidth(pen: PenType, size: number, pressure = 0.5): number {
+  const o = outlineOptions(pen, size, pressure >= 0, false);
+  const p = pressure >= 0 ? Math.min(1, Math.max(0, pressure)) : 0.5;
+  const thinning = o.thinning ?? 0.5;
+  const easing = o.easing ?? ((t: number) => t);
+  const r = thinning ? size * easing(0.5 - thinning * (0.5 - p)) : size / 2;
+  return 2 * Math.max(0.01, r);
 }
 
 function toFreehand(points: ReadonlyArray<InkPoint>, pen?: PenType): number[][] {

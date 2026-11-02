@@ -15,6 +15,7 @@ import {
   rectExpand,
   rectHeight,
   rectIntersects,
+  rectWidth,
   rectUnion,
   segmentDistance,
   simplify,
@@ -29,39 +30,48 @@ import { PEN_INFO, type InkPoint, type InkStroke } from './model.ts';
 export interface ScratchOutOptions {
   minPoints: number;
   minDiagonal: number;
-  /** Path length ÷ bounding diagonal: a scribble covers its area many times over. */
-  minLengthToDiagonal: number;
+  /** Path length ÷ longest side: a scribble goes over the same area again and again. */
+  minLengthToSide: number;
+  /** Direction changes along the scribble's main or cross axis. */
   minReversals: number;
   reversalHysteresisFraction: number;
   /** Fraction of the scribble that must lie on existing ink. */
   minScratchOverInk: number;
-  /** Fraction of a target stroke that must lie inside the scribble's hull. */
+  /** A quick back-forth-back (only two reversals) counts when this much of it lies on ink. */
+  minOverInkForShortScribble: number;
+  /** Fraction of a target stroke that must lie inside the scribble's area. */
   minTargetCoverage: number;
+  /** How far from the pen line still counts as "on" ink, in page units at 100% zoom. */
   overInkTolerance: number;
 }
 
 export const DEFAULT_SCRATCH: ScratchOutOptions = {
   minPoints: 8,
-  minDiagonal: 10,
-  minLengthToDiagonal: 2.6,
+  minDiagonal: 8,
+  minLengthToSide: 1.6,
   minReversals: 3,
-  reversalHysteresisFraction: 0.22,
-  minScratchOverInk: 0.35,
-  minTargetCoverage: 0.5,
-  overInkTolerance: 6,
+  reversalHysteresisFraction: 0.2,
+  minScratchOverInk: 0.5,
+  minOverInkForShortScribble: 0.6,
+  minTargetCoverage: 0.4,
+  overInkTolerance: 5,
 };
 
 export interface ScratchResult {
   isScratch: boolean;
   targetIds: Set<string>;
   reason: string;
+  /** Fraction of the scribble lying on ink and its zig-zag count, for tuning. */
+  onInk?: number;
+  reversals?: number;
 }
 
 /**
  * Recognizes the gesture of scribbling back and forth over ink to delete it, like crossing
  * something out on paper. A candidate is a scratch-out when it (1) is a dense zig-zag along either
  * axis, (2) mostly lies on existing ink and (3) mostly covers at least one stroke. Rules 2 and 3
- * make false positives in normal writing ("m", "w", shading next to text) practically impossible.
+ * keep normal writing ("m", "w", shading a box, brackets next to text) from erasing anything.
+ * Measured by packages/core/evals/scratch.eval.ts.
  */
 export function detectScratchOut(candidate: InkStroke, existing: InkStroke[], options: Partial<ScratchOutOptions> = {}): ScratchResult {
   const o = { ...DEFAULT_SCRATCH, ...options };
@@ -72,46 +82,74 @@ export function detectScratchOut(candidate: InkStroke, existing: InkStroke[], op
   const bounds = boundsOf(pts);
   const diag = rectDiagonal(bounds);
   if (diag < o.minDiagonal) return no('too small');
-  if (pathLength(pts) / diag < o.minLengthToDiagonal) return no('not dense enough');
-  if (!isZigZag(pts, o)) return no('not a zig-zag');
+  const side = Math.max(rectWidth(bounds), rectHeight(bounds));
+  if (pathLength(pts) / side < o.minLengthToSide) return no('not dense enough');
+  const reversals = zigZagReversals(pts, o);
+  if (reversals < Math.min(2, o.minReversals)) return no('not a zig-zag');
 
   const pad = candidate.size / 2 + o.overInkTolerance;
   const region = rectExpand(bounds, pad);
   const nearby = existing.filter((s) => s.id !== candidate.id && s.points.length > 0 && rectIntersects(rectExpand(boundsOf(s.points), s.size / 2), region));
   if (nearby.length === 0) return no('no ink underneath');
 
-  const step = Math.max(1, Math.floor(pts.length / 64));
+  const step = Math.max(1, Math.floor(pts.length / 96));
   let overInk = 0, sampled = 0;
   for (let i = 0; i < pts.length; i += step) {
     sampled++;
     const p = pts[i]!;
     if (nearby.some((s) => distanceToPolyline(p.x, p.y, s.points) <= s.size / 2 + pad)) overInk++;
   }
-  if (overInk / sampled < o.minScratchOverInk) return no('scribble mostly off ink');
+  const onInk = overInk / sampled;
+  if (onInk < o.minScratchOverInk) return { ...no('scribble mostly off ink'), onInk, reversals };
+  if (reversals < o.minReversals && onInk < o.minOverInkForShortScribble) return { ...no('not a zig-zag'), onInk, reversals };
 
-  const hull = inflate(convexHull(pts), pad);
+  const hull = inflate(convexHull(pts), candidate.size / 2 + Math.min(o.overInkTolerance, 3));
   const box = rectExpand(bounds, pad);
-  const targets = new Set(nearby.filter((s) => coverage(s, hull, box) >= o.minTargetCoverage).map((s) => s.id));
-  if (targets.size === 0) return no('nothing mostly covered');
-  return { isScratch: true, targetIds: targets, reason: 'scratch-out' };
+  const targets = new Set(nearby.filter((s) => coverage(s, hull, box) >= o.minTargetCoverage && !encloses(s, pts)).map((s) => s.id));
+  if (targets.size === 0) return { ...no('nothing mostly covered'), onInk, reversals };
+  return { isScratch: true, targetIds: targets, reason: 'scratch-out', onInk, reversals };
 }
 
-function isZigZag(pts: InkPoint[], o: ScratchOutOptions): boolean {
+/** Most direction changes along the principal axis or across it. */
+function zigZagReversals(pts: InkPoint[], o: ScratchOutOptions): number {
   const s = simplify(pts, 0.8);
   const angle = principalAxisAngle(s);
+  let best = 0;
   for (const axis of [angle, angle + Math.PI / 2]) {
     const proj = projectOnAxis(s, axis);
     let lo = Infinity, hi = -Infinity;
     for (const v of proj) { if (v < lo) lo = v; if (v > hi) hi = v; }
     const range = hi - lo;
     if (range <= 0) continue;
-    if (countReversals(proj, range * o.reversalHysteresisFraction) >= o.minReversals) return true;
+    best = Math.max(best, countReversals(proj, Math.max(range * o.reversalHysteresisFraction, 2)));
   }
-  return false;
+  return best;
+}
+
+/**
+ * Shading inside a shape you drew: the shape is closed and holds nearly all of the scribble.
+ * Scratching a shape out overshoots it, so much of the scribble lands outside.
+ */
+function encloses(target: InkStroke, scribble: InkPoint[]): boolean {
+  const t = target.points;
+  if (t.length < 8) return false;
+  const tb = boundsOf(t);
+  const first = t[0]!, last = t[t.length - 1]!;
+  if (Math.hypot(first.x - last.x, first.y - last.y) > Math.max(6, rectDiagonal(tb) * 0.15)) return false;
+  const step = Math.max(1, Math.floor(scribble.length / 48));
+  let inside = 0, n = 0;
+  for (let i = 0; i < scribble.length; i += step) { n++; if (pointInPolygon(scribble[i]!.x, scribble[i]!.y, t)) inside++; }
+  return inside / n >= 0.8;
 }
 
 function coverage(stroke: InkStroke, hull: Vec2[], box: Rect): number {
   if (stroke.points.length === 0) return 0;
+  const sb = boundsOf(stroke.points);
+  // Dots and tiny marks (i-dots, full stops, accents): judged by their centre.
+  if (stroke.points.length <= 3 || rectDiagonal(sb) < stroke.size * 2 + 2) {
+    const c = rectCenter(sb);
+    return rectContains(box, c.x, c.y) && pointInPolygon(c.x, c.y, hull) ? 1 : 0;
+  }
   let inside = 0;
   for (const p of stroke.points) if (rectContains(box, p.x, p.y) && pointInPolygon(p.x, p.y, hull)) inside++;
   return inside / stroke.points.length;

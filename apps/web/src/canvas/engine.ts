@@ -12,6 +12,7 @@ import {
   centerlineSvgPath,
   translateStroke,
   argbToCss,
+  nominalWidth,
   penLook,
   type AddResult,
   type ImageItem,
@@ -65,11 +66,28 @@ export interface InputPrefs {
   tapGestures: boolean;
   /** Pressure response exponent: <1 softer pen, >1 firmer. */
   pressureCurve: number;
+  /** Android: draw the newest part of each pen stroke natively, straight to the screen. */
+  instantInk: boolean;
   highlighter: PenPreset;
 }
 
+/**
+ * Native "instant ink tip" (Android app): while a pen stroke is down, native draws the newest few
+ * milliseconds of it on a front-buffered overlay, directly from the stylus, so the ink keeps up
+ * with the nib even though the WebView presents a frame or two later. Only for opaque pens: the
+ * tip overlaps the web ink for a moment.
+ */
+export interface InkTipSink {
+  begin(opts: { color: string; widthPx: number }): void;
+  /** Stroke over. Cancelled (discarded, or snapped to a shape): clear at once; otherwise the tip lingers until the web ink is on screen. */
+  end(cancelled?: boolean): void;
+}
+
+export type PointerKind = 'pen' | 'touch' | 'mouse';
+
 export interface FeelSink {
-  begin(kind: PenType | 'eraser'): void;
+  /** A stroke or erase starts: pen kind, input device and pen-down pressure (0..1, <0 unknown). */
+  begin(kind: PenType | 'eraser', pointer?: PointerKind, pressure?: number): void;
   sample(x: number, y: number, t: number, pressure: number): void;
   end(): void;
   confirm(): void;
@@ -105,7 +123,7 @@ interface Selection {
 
 type Gesture =
   | { kind: 'none' }
-  | { kind: 'stroke'; pointerId: number; pageIndex: number; slot: PageSlot; points: InkPoint[]; predicted: InkPoint[]; t0: number; wall: number; preset: PenPreset; shape: InkStroke | null; holdX: number; holdY: number; holdTimer: number }
+  | { kind: 'stroke'; pointerId: number; pageIndex: number; slot: PageSlot; points: InkPoint[]; predicted: InkPoint[]; t0: number; wall: number; preset: PenPreset; shape: InkStroke | null; holdX: number; holdY: number; holdTimer: number; lastTs: number; pen: boolean; raw: boolean }
   | { kind: 'erase'; pointerId: number; pageIndex: number; slot: PageSlot; before: PageInk; working: PageInk; last: Vec2 | null; precise: boolean; t0: number }
   | { kind: 'lasso'; pointerId: number; pageIndex: number; slot: PageSlot; points: Vec2[] }
   | { kind: 'move'; pointerId: number; startX: number; startY: number; dx: number; dy: number; scale: number; mode: 'move' | 'scale'; anchor: Vec2; startDist: number }
@@ -161,6 +179,7 @@ export class InkEngine {
   tool: ToolState;
   prefs: InputPrefs;
   feel: FeelSink | null = null;
+  inkTip: InkTipSink | null = null;
   callbacks: EngineCallbacks = {};
 
   constructor(
@@ -443,6 +462,7 @@ export class InkEngine {
     if (this.needsWet) {
       this.needsWet = false;
       this.renderWet();
+      this.lastWetAt = performance.now();
     }
   }
 
@@ -802,6 +822,9 @@ export class InkEngine {
     };
     on('pointerdown', this.onDown, { passive: false });
     on('pointermove', this.onMove, { passive: false });
+    // Raw pen samples as the OS delivers them (Chromium/Android WebView with unbuffered dispatch):
+    // ink and sound follow the nib without waiting for the next frame's coalesced pointermove.
+    if (typeof window !== 'undefined' && 'onpointerrawupdate' in window) on('pointerrawupdate', this.onRawUpdate, { passive: true });
     on('pointerup', this.onUp);
     on('pointercancel', this.onCancel);
     on('pointerleave', this.onLeave);
@@ -970,7 +993,7 @@ export class InkEngine {
     if (resolved.tool === 'eraser') {
       const page = this.doc.page(slot.index);
       this.gesture = { kind: 'erase', pointerId: e.pointerId, pageIndex: slot.index, slot, before: page, working: page, last: null, precise: resolved.precise, t0: e.timeStamp };
-      this.feel?.begin('eraser');
+      this.feel?.begin('eraser', pointerKind(e), this.pressure(e));
       this.eraseTo(pp, e.timeStamp);
       this.showEraserCursor(p.x, p.y);
       return;
@@ -985,13 +1008,17 @@ export class InkEngine {
     const first: InkPoint = { x: pp.x, y: pp.y, t: 0, p: this.pressure(e), tilt, orient };
     this.gesture = {
       kind: 'stroke', pointerId: e.pointerId, pageIndex: slot.index, slot, points: [first], predicted: [], t0: e.timeStamp, wall: Date.now(), preset: resolved.preset,
-      shape: null, holdX: p.x, holdY: p.y, holdTimer: 0,
+      shape: null, holdX: p.x, holdY: p.y, holdTimer: 0, lastTs: e.timeStamp, pen: e.pointerType === 'pen', raw: false,
     };
     this.armHold();
-    this.feel?.begin(resolved.preset.pen);
+    this.feel?.begin(resolved.preset.pen, pointerKind(e), first.p);
+    if (e.pointerType === 'pen' && this.prefs.instantInk && this.inkTip && INSTANT_INK_PENS.has(resolved.preset.pen)) {
+      // A touch thinner than the live line so the tip hides under the web ink once it catches up.
+      const w = nominalWidth(resolved.preset.pen, resolved.preset.size, first.p) * 0.9;
+      this.inkTip.begin({ color: resolved.preset.color, widthPx: w * this.viewport.zoom });
+    }
     this.feel?.sample(pp.x, pp.y, 0, first.p);
-    this.needsWet = true;
-    this.schedule();
+    this.renderWetSoon();
   }
 
   private onMove(e: PointerEvent) {
@@ -1026,31 +1053,21 @@ export class InkEngine {
     switch (g.kind) {
       case 'stroke': {
         if (g.shape) return;
-        for (const ce of samples) {
-          const q = this.local(ce);
-          const pp = this.pagePoint(g.slot, q.x, q.y);
-          const last = g.points[g.points.length - 1]!;
-          if (pp.x === last.x && pp.y === last.y) continue;
-          const { tilt, orient } = this.tilt(ce);
-          const t = Math.max(last.t, Math.round(ce.timeStamp - g.t0));
-          const pt: InkPoint = { x: pp.x, y: pp.y, t, p: this.pressure(ce), tilt, orient };
-          g.points.push(pt);
-          this.feel?.sample(pp.x, pp.y, t, pt.p);
-        }
+        // With raw updates flowing, they already delivered these samples one by one.
+        if (!g.raw) this.appendSamples(g, samples);
         // Prediction hides the remaining pipeline latency; it is redrawn every frame.
         const pred = typeof e.getPredictedEvents === 'function' ? e.getPredictedEvents() : [];
-        g.predicted = pred.slice(0, 2).map((pe) => {
+        g.predicted = pred.length ? pred.slice(0, 2).map((pe) => {
           const q = this.local(pe);
           const pp = this.pagePoint(g.slot, q.x, q.y);
           const last = g.points[g.points.length - 1]!;
           return { x: pp.x, y: pp.y, t: last.t + 8, p: last.p, tilt: last.tilt, orient: last.orient };
-        });
+        }) : extrapolate(g.points, 10, 10 / this.viewport.zoom);
         if (Math.hypot(p.x - g.holdX, p.y - g.holdY) > 4) {
           g.holdX = p.x; g.holdY = p.y;
           this.armHold();
         }
-        this.needsWet = true;
-        this.schedule();
+        this.renderWetSoon();
         return;
       }
       case 'erase':
@@ -1098,6 +1115,59 @@ export class InkEngine {
       case 'tap':
         if (Math.hypot(p.x - g.x, p.y - g.y) > 10) this.gesture = { kind: 'none' };
         return;
+    }
+  }
+
+  private onRawUpdate(e: PointerEvent) {
+    const g = this.gesture;
+    if (g.kind !== 'stroke' || g.pointerId !== e.pointerId || g.shape || !g.pen) return;
+    g.raw = true;
+    const events = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [];
+    if (this.appendSamples(g, events.length ? events : [e])) {
+      g.predicted = [];
+      this.renderWetSoon();
+    }
+  }
+
+  /** Appends pen samples in order, skipping repeats of the same position. */
+  private appendSamples(g: Extract<Gesture, { kind: 'stroke' }>, samples: PointerEvent[]): boolean {
+    let added = false;
+    for (const ce of samples) {
+      if (ce.timeStamp < g.lastTs) continue;
+      g.lastTs = ce.timeStamp;
+      const q = this.local(ce);
+      const pp = this.pagePoint(g.slot, q.x, q.y);
+      const last = g.points[g.points.length - 1]!;
+      if (pp.x === last.x && pp.y === last.y) continue;
+      const { tilt, orient } = this.tilt(ce);
+      const t = Math.max(last.t, Math.round(ce.timeStamp - g.t0));
+      const pt: InkPoint = { x: pp.x, y: pp.y, t, p: this.pressure(ce), tilt, orient };
+      g.points.push(pt);
+      this.feel?.sample(pp.x, pp.y, t, pt.p);
+      added = true;
+    }
+    return added;
+  }
+
+  private lastWetAt = 0;
+  private wetCost = 0;
+
+  /**
+   * Draws wet ink right away (the wet canvas is desynchronized, so it reaches the screen without
+   * waiting for the next frame), throttled by how long a draw takes so long strokes never starve
+   * the input thread. Otherwise falls back to the next animation frame.
+   */
+  private renderWetSoon() {
+    const now = performance.now();
+    if (now - this.lastWetAt >= Math.max(3, this.wetCost * 1.5)) {
+      this.needsWet = false;
+      this.renderWet();
+      const done = performance.now();
+      this.wetCost = this.wetCost * 0.7 + (done - now) * 0.3;
+      this.lastWetAt = done;
+    } else {
+      this.needsWet = true;
+      this.schedule();
     }
   }
 
@@ -1152,7 +1222,7 @@ export class InkEngine {
 
   private cancelGesture() {
     const g = this.gesture;
-    if (g.kind === 'stroke') { clearTimeout(g.holdTimer); this.feel?.end(); }
+    if (g.kind === 'stroke') { clearTimeout(g.holdTimer); this.feel?.end(); this.inkTip?.end(true); }
     if (g.kind === 'erase') { this.doc.clearPreview(g.pageIndex); this.feel?.end(); }
     if (g.kind === 'lasso') this.lassoSvg.innerHTML = '';
     if (g.kind === 'move') this.invalidate();
@@ -1229,6 +1299,7 @@ export class InkEngine {
       if (!shape) return;
       g.shape = shapeToStroke({ id: 'wet', pen: g.preset.pen, color: g.preset.color, size: g.preset.size, points: g.points, createdAt: g.wall }, shape);
       g.predicted = [];
+      this.inkTip?.end(true);
       this.feel?.confirm();
       this.needsWet = true;
       this.schedule();
@@ -1238,6 +1309,7 @@ export class InkEngine {
   private finishStroke(g: Extract<Gesture, { kind: 'stroke' }>) {
     clearTimeout(g.holdTimer);
     this.feel?.end();
+    if (!g.shape) this.inkTip?.end(false);
     this.gesture = { kind: 'none' };
     const stroke: InkStroke = g.shape
       ? { ...g.shape, id: newId() }
@@ -1256,7 +1328,8 @@ export class InkEngine {
     }
     const prevKey = this.sceneKey();
     const beforeStrokes = this.doc.page(g.pageIndex).strokes;
-    const res = this.doc.addStroke(g.pageIndex, stroke, this.prefs.scratchToErase && !g.shape ? {} : false);
+    // Tolerance is in screen terms: zoomed in, handwriting is smaller on the page, and so is the slack.
+    const res = this.doc.addStroke(g.pageIndex, stroke, this.prefs.scratchToErase && !g.shape ? { overInkTolerance: Math.max(1.5, 5 / this.viewport.zoom) } : false);
     if (res.kind === 'added') this.appendToBuffer(g.pageIndex, stroke, prevKey);
     else if (res.kind === 'scratched') {
       const remaining = new Set(this.doc.page(g.pageIndex).strokes);
@@ -1478,6 +1551,34 @@ export class InkEngine {
     const v = this.viewport;
     this.callbacks.onViewportSaved?.({ zoom: v.zoom, panX: v.panX, panY: v.panY });
   }
+}
+
+/**
+ * Pens the native ink tip can stand in for: fully opaque with an even enough width. Pencil
+ * (see-through grain), marker (95 % opacity: an opaque tip would read as a darker band),
+ * highlighter, dashed and brush (width swings with pressure) are left to the web layer.
+ */
+const INSTANT_INK_PENS = new Set<PenType>(['fountain', 'ballpoint']);
+
+function pointerKind(e: PointerEvent): PointerKind {
+  return e.pointerType === 'pen' ? 'pen' : e.pointerType === 'touch' ? 'touch' : 'mouse';
+}
+
+/**
+ * Where the pen will be [ms] from now, from its recent velocity — for browsers without
+ * getPredictedEvents. Capped so a sudden stop never draws a visible hook.
+ */
+export function extrapolate(points: InkPoint[], ms: number, maxDist: number): InkPoint[] {
+  const n = points.length;
+  if (n < 3) return [];
+  const a = points[n - 3]!, b = points[n - 1]!;
+  const dt = b.t - a.t;
+  if (dt <= 0 || dt > 60) return [];
+  let dx = ((b.x - a.x) / dt) * ms, dy = ((b.y - a.y) / dt) * ms;
+  const d = Math.hypot(dx, dy);
+  if (d < 0.2) return [];
+  if (d > maxDist) { dx *= maxDist / d; dy *= maxDist / d; }
+  return [{ ...b, x: b.x + dx, y: b.y + dy, t: b.t + ms }];
 }
 
 function el(tag: string, cls: string) {

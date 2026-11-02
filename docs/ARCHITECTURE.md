@@ -27,10 +27,12 @@ docs/             architecture, vault format, setup, publishing, testing, privac
 ## The ink engine (`apps/web/src/canvas/engine.ts`)
 
 ```
-PointerEvent (pen/touch/mouse) ── getCoalescedEvents ──► stroke points (page units, pressure, tilt)
-        │                         getPredictedEvents ──► prediction (drawn, never stored)
-        ├─► wet canvas (desynchronized 2D context): perfect-freehand outline of the live stroke
-        ├─► PaperFeel: GrainScheduler → native haptic ticks · ScratchSynth in an AudioWorklet
+PointerEvent (pen/touch/mouse) ── pointerrawupdate / getCoalescedEvents ──► stroke points (page units, pressure, tilt)
+        │                         getPredictedEvents (or velocity extrapolation) ──► prediction (drawn, never stored)
+        ├─► wet canvas (desynchronized 2D context): perfect-freehand outline, drawn in the input handler
+        ├─► PaperFeel: Android pen → native engine (MotionEvents → ScratchSynth on a low-latency AudioTrack + grain)
+        │              elsewhere → GrainScheduler → haptic ticks · ScratchSynth in an AudioWorklet, updated per sample
+        ├─► Android pen, opaque ink → instant ink tip: native front-buffered overlay draws the newest ~40 ms
         └─► on lift: NoteDocument.addStroke (scratch-out check) → base canvas redraw → autosave
 ```
 
