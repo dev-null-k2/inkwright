@@ -117,6 +117,16 @@ export function Popover({ anchor, open, onClose, children, className, placement 
     window.addEventListener('keydown', key);
     return () => { clearTimeout(id); window.removeEventListener('pointerdown', down, true); window.removeEventListener('keydown', key); };
   }, [open, anchor, onClose]);
+  // Keyboard users land back where they were: when the popover closes with focus inside it (or
+  // lost to the page), focus returns to the control that opened it.
+  useEffect(() => {
+    if (!open) return;
+    const el = ref;
+    return () => {
+      const a = document.activeElement;
+      if (anchor?.isConnected && (!a || a === document.body || el.current?.contains(a))) anchor.focus({ preventScroll: true });
+    };
+  }, [open, anchor]);
   if (!open) return null;
   return createPortal(
     <>
@@ -157,8 +167,24 @@ export function Dialog({ open, title, children, onClose, actions, wide }: { open
 }
 
 export function Menu({ items, onClose }: { items: ({ label: string; icon?: ReactNode; onClick: () => void; danger?: boolean; hint?: string; disabled?: boolean } | 'sep')[]; onClose: () => void }) {
+  // WAI-ARIA menu pattern: focus starts on the first item; arrows, Home and End move between items.
+  const ref = useRef<HTMLDivElement>(null);
+  // After the popover has placed itself (it is invisible, so unfocusable, until then).
+  useEffect(() => {
+    const id = requestAnimationFrame(() => ref.current?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')?.focus({ preventScroll: true }));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const all = [...(ref.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? [])];
+    if (!all.length) return;
+    const i = all.indexOf(document.activeElement as HTMLButtonElement);
+    const to = e.key === 'ArrowDown' ? (i + 1) % all.length : e.key === 'ArrowUp' ? (i - 1 + all.length) % all.length : e.key === 'Home' ? 0 : e.key === 'End' ? all.length - 1 : -1;
+    if (to < 0) return;
+    e.preventDefault();
+    all[to]!.focus();
+  };
   return (
-    <div className="menu" role="menu">
+    <div className="menu" role="menu" ref={ref} onKeyDown={onKeyDown}>
       {items.map((it, i) =>
         it === 'sep' ? <div key={i} className="menu-sep" role="separator" /> : (
           <button key={i} type="button" role="menuitem" disabled={it.disabled} className={cx('menu-item', it.danger && 'is-danger')} onClick={() => { onClose(); it.onClick(); }}>

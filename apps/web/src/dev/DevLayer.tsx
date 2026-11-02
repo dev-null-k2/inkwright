@@ -94,7 +94,7 @@ export function DevLayer({ doc, engine, host, vault, version, states, editingTex
   };
 
   return (
-    <div className="dev-layer" aria-label="Code links and runbook blocks">
+    <div className="dev-layer" role="group" aria-label="Code links and runbook blocks">
       {links.map((l) => {
         const s = engine.pageRectToScreen(l.pageIndex, l.rect);
         if (!visible(s)) return null;

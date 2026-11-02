@@ -357,7 +357,7 @@ export function SmartLayer({ doc, engine, vault, host, tool, apiRef }: SmartLaye
   const menuObj = mathMenu ? (doc.page(mathMenu.pageIndex).objects?.find((o) => o.id === mathMenu.id) as MathObject | undefined) : undefined;
 
   return (
-    <div className="smart-layer" aria-label="Smart ink">
+    <div className="smart-layer" role="group" aria-label="Smart ink">
       {/* Tables: a grip beside each; tapping it opens the table's handles. */}
       {tables.map(({ o: t, pageIndex }) => {
         const s = scr(pageIndex, { minX: t.x, minY: t.y, maxX: colEdges(t).at(-1)!, maxY: rowEdges(t).at(-1)! });
