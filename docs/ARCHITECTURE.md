@@ -91,7 +91,12 @@ Every agent run — a chat in the panel or a routine — is assembled by `prepar
   unless the server marks the tool read-only). The SDK has no runtime for the Tasks extension yet,
   so `taskAwareFetch` turns a `resultType: "task"` reply into a normal result carrying the task,
   which the app then polls (`tasks/get`), answers (`tasks/update`) or cancels (`tasks/cancel`).
-  Browser CORS failures are diagnosed with a no-cors probe and explained.
+  Browser CORS failures are diagnosed with a no-cors probe and explained. The OAuth redirect is
+  the app's own address; the sign-in popup hands the result back over `BroadcastChannel`.
+  Client registration uses Dynamic Client Registration by default; a hosted build can use a
+  Client ID Metadata Document instead by setting `VITE_MCP_CLIENT_METADATA_URL` to the https URL
+  of a JSON document whose `client_id` is that same URL, with `redirect_uris` = the app's URL,
+  `grant_types` `["authorization_code","refresh_token"]` and `token_endpoint_auth_method` `"none"`.
 - **Routines.** `RoutineScheduler` (pure, fake-clock tested) decides when routines run: daily and
   weekly times with one catch-up run after the app was closed, a tagged note being saved by the
   user (debounced; agent saves are ignored), a recording ending, or N days before a date written
