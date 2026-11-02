@@ -48,6 +48,7 @@ import {
   type NoteMeta,
 } from '@inkstone/core';
 import { getActiveAI } from '../lib/ai.ts';
+import { aiCanSee, aiMaySend } from '../lib/trust/state.ts';
 import { initLocalAI, localActiveAI, useLocalAI } from '../lib/localai.ts';
 import { nativeEngineReady } from '../lib/native-ai.ts';
 import { appMemory } from '../lib/memory.ts';
@@ -293,8 +294,11 @@ export async function compileNow(reason = 'Compile now', opts: { only?: Readonly
   useCompiler.setState({ compiling: { done: 0, total: 0, title: '' }, error: null });
   try {
     const ai = await compilerAI(config);
+    // The AI policy (docs/TRUST.md) applies here too: notebooks hidden from AI are never compiled,
+    // and local-only notes are compiled only by a model on this device.
+    const allowed = (id: string) => (ai && ai.where !== 'device' ? aiMaySend(id) : aiCanSee(id));
     const r = await compileWiki({
-      store: s, sources: await compileSources(config), ai, reason, signal: abort.signal, ...opts,
+      store: s, sources: (await compileSources(config)).filter((n) => allowed(n.meta.id)), ai, reason, signal: abort.signal, ...opts,
       onProgress: (done, total, title) => useCompiler.setState({ compiling: { done, total, title } }),
       currentClaims: async (p) => {
         const n = await v.vault.readNote(p.noteId);
@@ -384,12 +388,13 @@ const toolHost: CompilerToolHost = {
   async conflicts(limit) {
     await scanNow();
     const titles = new Map((await compilerVault().listNotes()).map((n) => [n.id, n.title]));
-    return useCompiler.getState().conflicts.slice(0, limit).map((c) => {
+    // Tool results go to whatever model runs the assistant: only notes that may leave the device.
+    return useCompiler.getState().conflicts.filter((c) => aiMaySend(c.a.noteId) && aiMaySend(c.b.noteId)).slice(0, limit).map((c) => {
       const ua = unitById(c.a.unitId);
       return { a: c.a.text, aNote: titles.get(c.a.noteId) ?? '', b: c.b.text, bNote: titles.get(c.b.noteId) ?? '', reason: c.reason, confidence: c.confidence, ...(ua ? { link: anchorLink({ noteId: ua.noteId, page: ua.pageIndex, ...(ua.rect ? { rect: ua.rect } : {}), h: ua.hash }) } : {}) };
     });
   },
-  followUps,
+  followUps: async (since) => (await followUps(since)).filter((f) => aiMaySend(f.noteId)),
 };
 
 /** The compiler's agent tools, once the compiler has started (else none). */
