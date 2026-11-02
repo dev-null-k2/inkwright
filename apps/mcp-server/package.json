@@ -5,7 +5,8 @@
   "type": "module",
   "bin": {
     "inkstone-mcp": "dist/index.js",
-    "inkstone-agent": "dist/agent.js"
+    "inkstone-agent": "dist/agent.js",
+    "inkstone": "dist/inkstone.js"
   },
   "files": [
     "dist",

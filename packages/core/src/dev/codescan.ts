@@ -26,6 +26,8 @@ export interface SyntaxNodeLike {
   readonly parent: SyntaxNodeLike | null;
   readonly previousNamedSibling: SyntaxNodeLike | null;
   childForFieldName(name: string): SyntaxNodeLike | null;
+  /** web-tree-sitter: the tree a root node belongs to; deleted after extraction to free wasm memory. */
+  readonly tree?: { delete?(): void };
 }
 
 /** Parses one file. Returns null when the language's grammar is unavailable. */
@@ -949,6 +951,8 @@ export async function scanRepository(
       facts.push(extractFile(f.path, language, text, root));
     } catch (e) {
       warnings.push(`${f.path}: ${(e as Error).message}`);
+    } finally {
+      root.tree?.delete?.();
     }
   }
   o.onProgress?.({ done: code.length, total: code.length });

@@ -1,6 +1,7 @@
 // Bundles the two command-line tools into self-contained files:
 //   dist/index.js  → inkstone-mcp   (MCP server: stdio or HTTP, optional A2A)
 //   dist/agent.js  → inkstone-agent (always-on runner, service install helpers, approvals)
+//   dist/inkstone.js → inkstone     (mcp / scan / drift for developers and coding agents)
 // `?raw` imports (the built-in SKILL.md files in @inkstone/ai) are inlined as strings.
 import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
@@ -18,7 +19,7 @@ const raw = {
 };
 
 await build({
-  entryPoints: { index: path.join(root, 'src/index.ts'), agent: path.join(root, 'src/agent-cli.ts') },
+  entryPoints: { index: path.join(root, 'src/index.ts'), agent: path.join(root, 'src/agent-cli.ts'), inkstone: path.join(root, 'src/inkstone-cli.ts') },
   outdir: path.join(root, 'dist'),
   bundle: true,
   platform: 'node',
@@ -26,7 +27,8 @@ await build({
   format: 'esm',
   splitting: true,
   chunkNames: 'chunks/[name]-[hash]',
-  external: ['@resvg/resvg-js'],
+  // Tree-sitter loads its runtime and grammar .wasm files from its packages at run time.
+  external: ['@resvg/resvg-js', 'web-tree-sitter', '@vscode/tree-sitter-wasm'],
   plugins: [raw],
   banner: { js: "import { createRequire as __inkCreateRequire } from 'node:module'; const require = __inkCreateRequire(import.meta.url);" },
   logLevel: 'info',
