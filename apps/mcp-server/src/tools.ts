@@ -322,6 +322,8 @@ export async function searchNotes(ctx: ServerContext, args: SearchNotesArgs): Pr
   const out = [];
   for (const h of hits) {
     const n = await ctx.vault.readNote(h.noteId);
+    // Missing here means deleted since indexing, or hidden from agents by the AI policy.
+    if (!n) continue;
     out.push({
       id: h.noteId,
       title: h.title,

@@ -9,17 +9,18 @@
  *   inkstone-agent status     who runs routines, last runs, pending approvals
  *   inkstone-agent approvals  list, allow or decline actions waiting for your OK
  */
-import { appendFileSync, chmodSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, userInfo } from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { RoutineStore, describeTrigger, readRoutineLease } from '@inkstone/ai';
+import { RoutineStore, describeTrigger, exportAuditJsonl, readRoutineLease, verifyAudit } from '@inkstone/ai';
 import { NodeFS } from './nodefs.ts';
 import { ApprovalStore } from './approvals.ts';
 import { executeApproval } from './agent/run.ts';
 import { CliError, SHARED_OPTIONS, expandHome, resolveOptions, type CliOptions } from './cli.ts';
 import { createContext } from './context.ts';
+import { logPolicy, trustedAI } from './trust.ts';
 import { RoutineRunner } from './runner/runner.ts';
 import { currentPlatform, decodeServiceContent, serviceFile, type ServicePlatform } from './runner/services.ts';
 import { aiFromOptions, serveHttp } from './serve.ts';
@@ -33,6 +34,8 @@ Usage:
   inkstone-agent uninstall [--platform …]
   inkstone-agent status --vault <dir>
   inkstone-agent approvals --vault <dir> [--allow <id> | --decline <id>]
+  inkstone-agent audit --vault <dir> [--export <file.jsonl>] [--expect-head <hash>]…
+  inkstone-agent audit --verify <file.jsonl> [--expect-head <hash>]… [--trusted-key <fingerprint>]…
 
 run options:
   --vault, --config, --read-only, --ai-provider, --ai-model, --ai-base-url, --ai-key-env,
@@ -56,10 +59,14 @@ const AGENT_OPTIONS = {
   allow: { type: 'string' },
   decline: { type: 'string' },
   all: { type: 'boolean', default: false },
+  export: { type: 'string' },
+  verify: { type: 'string' },
+  'expect-head': { type: 'string', multiple: true },
+  'trusted-key': { type: 'string', multiple: true },
 } as const;
 
 export interface AgentCommand {
-  command: 'run' | 'install' | 'uninstall' | 'status' | 'approvals' | 'help' | 'version';
+  command: 'run' | 'install' | 'uninstall' | 'status' | 'approvals' | 'audit' | 'help' | 'version';
   options: CliOptions;
   tickMs: number;
   logFile?: string;
@@ -69,17 +76,22 @@ export interface AgentCommand {
   allow?: string;
   decline?: string;
   all: boolean;
+  /** audit: write the export here; verify this file instead of the vault; heads/keys to expect. */
+  exportFile?: string;
+  verifyFile?: string;
+  expectHeads: string[];
+  trustedKeys: string[];
   /** The flags to pass to `run` from a service (install). */
   runArgs: string[];
 }
 
 /** Flags that configure `run` and are copied into service files by `install`. */
-const RUN_FLAGS = new Set(['vault', 'config', 'read-only', 'http', 'host', 'public-url', 'oauth-issuer', 'oauth-audience', 'oauth-jwks-url', 'oauth-read-scope', 'oauth-write-scope', 'a2a', 'ai-provider', 'ai-model', 'ai-base-url', 'ai-key-env', 'tick', 'no-watch']);
+const RUN_FLAGS = new Set(['vault', 'config', 'read-only', 'http', 'host', 'public-url', 'oauth-issuer', 'oauth-audience', 'oauth-jwks-url', 'oauth-read-scope', 'oauth-write-scope', 'a2a', 'ai-provider', 'ai-model', 'ai-base-url', 'ai-key-env', 'ai-on-premises', 'policy', 'audit-key', 'tick', 'no-watch']);
 
 export function parseAgentCli(argv: string[], env: NodeJS.ProcessEnv = process.env): AgentCommand {
   const [first, ...rest] = argv;
   const command = (!first || first.startsWith('-') ? (argv.includes('-v') || argv.includes('--version') ? 'version' : 'help') : first) as AgentCommand['command'];
-  if (!['run', 'install', 'uninstall', 'status', 'approvals', 'help', 'version'].includes(command)) throw new CliError(`Unknown command: ${first}`);
+  if (!['run', 'install', 'uninstall', 'status', 'approvals', 'audit', 'help', 'version'].includes(command)) throw new CliError(`Unknown command: ${first}`);
   let values: Record<string, unknown>;
   let tokens: Array<{ kind: string; name?: string; rawName?: string; value?: string }>;
   try {
@@ -95,7 +107,7 @@ export function parseAgentCli(argv: string[], env: NodeJS.ProcessEnv = process.e
   for (const t of tokens) {
     if (t.kind !== 'option' || !t.name || !RUN_FLAGS.has(t.name)) continue;
     runArgs.push(`--${t.name}`);
-    if (t.value !== undefined) runArgs.push(t.name === 'vault' || t.name === 'config' ? path.resolve(expandHome(t.value)) : t.value);
+    if (t.value !== undefined) runArgs.push(['vault', 'config', 'policy', 'audit-key'].includes(t.name) ? path.resolve(expandHome(t.value)) : t.value);
   }
   const platform = (values.platform as string | undefined) ?? currentPlatform();
   if (!['macos', 'linux', 'windows'].includes(platform)) throw new CliError('--platform is macos, linux or windows.');
@@ -110,6 +122,10 @@ export function parseAgentCli(argv: string[], env: NodeJS.ProcessEnv = process.e
     ...(values.allow ? { allow: String(values.allow) } : {}),
     ...(values.decline ? { decline: String(values.decline) } : {}),
     all: Boolean(values.all),
+    ...(values.export ? { exportFile: path.resolve(expandHome(String(values.export))) } : {}),
+    ...(values.verify ? { verifyFile: path.resolve(expandHome(String(values.verify))) } : {}),
+    expectHeads: (values['expect-head'] as string[] | undefined) ?? [],
+    trustedKeys: (values['trusted-key'] as string[] | undefined) ?? [],
     runArgs,
   };
 }
@@ -136,8 +152,10 @@ function needVault(o: CliOptions): string {
 
 async function run(c: AgentCommand): Promise<void> {
   const log = makeLog(c.logFile);
-  const ctx = await createContext({ root: needVault(c.options), readOnly: c.options.readOnly, watch: c.options.watch });
-  const ai = aiFromOptions(c.options, log);
+  const ctx = await createContext({ root: needVault(c.options), readOnly: c.options.readOnly, watch: c.options.watch, ...(c.options.policyFile ? { managedPolicyFile: c.options.policyFile } : {}), ...(c.options.auditKey ? { auditKeyFile: c.options.auditKey } : {}) });
+  logPolicy(ctx, log);
+  // The runner's AI goes through the trust layer (routing, privacy firewall, meter, audit).
+  const ai = trustedAI(aiFromOptions(c.options, log), ctx.trust);
   if (!ai) log('No AI configured: routines will be logged as failed until you add --ai-provider (see docs/AGENTS.md).');
   const runner = new RoutineRunner({ ctx, ai, log, tickMs: c.tickMs, watch: c.options.watch });
   let http: Awaited<ReturnType<typeof serveHttp>> | null = null;
@@ -155,6 +173,7 @@ async function run(c: AgentCommand): Promise<void> {
       await http.services.activity.flush();
       await http.http.close();
     }
+    await Promise.all([ctx.trust.audit.flush(), ctx.trust.usage.flush()]).catch(() => {});
     ctx.close();
     process.exit(0);
   };
@@ -234,6 +253,27 @@ async function approvals(c: AgentCommand): Promise<void> {
   process.stdout.write('\nAllow one with: inkstone-agent approvals --vault <dir> --allow <id>   (or --decline <id>)\n');
 }
 
+/**
+ * `inkstone-agent audit`: verifies the vault's audit trail (every device's chain), or an exported
+ * JSONL file with `--verify`, and optionally writes an export. Exit code 1 when it doesn't verify,
+ * so it can run in a compliance job. `--expect-head` checks that heads recorded earlier are still
+ * there (the record was not cut short); `--trusted-key` pins the signing keys.
+ */
+export async function audit(c: AgentCommand, out: (s: string) => void = (s) => process.stdout.write(s)): Promise<boolean> {
+  let text: string;
+  if (c.verifyFile) text = readFileSync(c.verifyFile, 'utf8');
+  else text = await exportAuditJsonl(new NodeFS(needVault(c.options)));
+  if (c.exportFile) {
+    writeFileSync(c.exportFile, text);
+    out(`Wrote ${c.exportFile}\n`);
+  }
+  const r = await verifyAudit(text, { expectHeads: c.expectHeads, ...(c.trustedKeys.length ? { trustedKeys: c.trustedKeys.map((k) => k.replace(/\s/g, '').toLowerCase()) } : {}) });
+  for (const ch of r.chains) out(`${ch.dev}: ${ch.events} events, ${ch.signed} signed${ch.startsAfterPruning ? ', older events removed by retention' : ''}; head ${ch.head ?? '(none)'}\n`);
+  if (!r.chains.length) out('No audit events yet.\n');
+  out(r.ok ? 'OK: every chain is intact and every signature verifies.\n' : `NOT OK:\n${r.problems.map((p) => `  - ${p}`).join('\n')}\n`);
+  return r.ok;
+}
+
 async function main(): Promise<void> {
   let c: AgentCommand;
   try {
@@ -253,6 +293,7 @@ async function main(): Promise<void> {
     case 'uninstall': return install(c, true);
     case 'status': return status(c);
     case 'approvals': return approvals(c);
+    case 'audit': if (!(await audit(c))) process.exit(1); return;
   }
 }
 

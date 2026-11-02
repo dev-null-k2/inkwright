@@ -187,15 +187,27 @@ export class UsageStore {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private writing: Promise<void> = Promise.resolve();
   private listeners = new Set<() => void>();
+  private closed = false;
 
   constructor(private fs: VaultFS, readonly device: string, private policy: () => AIPolicy | null, private flushMs = 1500) {}
 
   record(e: UsageEvent): void {
+    if (this.closed) return;
     this.pending.push(e);
     if (!this.timer) {
       this.timer = setTimeout(() => void this.flush(), this.flushMs);
       (this.timer as { unref?: () => void }).unref?.();
     }
+  }
+
+  /**
+   * Stops writing: pending entries are dropped and later ones ignored. Call `flush()` first to
+   * keep them (shutdown does); tests close without flushing so nothing writes after cleanup.
+   */
+  close(): void {
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
+    this.closed = true;
   }
 
   onChange(l: () => void): () => void {
@@ -208,7 +220,7 @@ export class UsageStore {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     const batch = this.pending.splice(0);
-    if (!batch.length) return this.writing;
+    if (!batch.length || this.closed) return this.writing;
     this.writing = this.writing.then(async () => {
       const byMonth = new Map<string, UsageEvent[]>();
       for (const e of batch) byMonth.set(monthOf(e.at), [...(byMonth.get(monthOf(e.at)) ?? []), e]);

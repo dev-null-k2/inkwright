@@ -122,15 +122,27 @@ export class AuditLog {
   private writing: Promise<void> = Promise.resolve();
   private keyDeclared = false;
   private listeners = new Set<() => void>();
+  private closed = false;
 
   constructor(private fs: VaultFS, readonly dev: string, private signer: AuditSigner | null = null, private clock: () => number = Date.now, private flushMs = 800) {}
 
   record(entry: AuditEntry): void {
+    if (this.closed) return;
     this.queue.push({ ...entry, at: this.clock() });
     if (!this.timer) {
       this.timer = setTimeout(() => void this.flush(), this.flushMs);
       (this.timer as { unref?: () => void }).unref?.();
     }
+  }
+
+  /**
+   * Stops writing: pending entries are dropped and later ones ignored. Call `flush()` first to
+   * keep them (shutdown does); tests close without flushing so nothing writes after cleanup.
+   */
+  close(): void {
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
+    this.closed = true;
   }
 
   onChange(l: () => void): () => void {
@@ -143,7 +155,7 @@ export class AuditLog {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     const batch = this.queue.splice(0);
-    if (!batch.length) return this.writing;
+    if (!batch.length || this.closed) return this.writing;
     this.writing = this.writing.then(() => this.append(batch)).catch((e) => console.warn('audit: write failed', e));
     return this.writing;
   }
