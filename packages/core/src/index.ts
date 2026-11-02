@@ -35,6 +35,7 @@ export * from './layers.ts';
 export * from './snap.ts';
 export * from './lock.ts';
 export * from './history.ts';
+export * from './collab.ts';
 export * from './platform.ts';
 export * from './compiler/index.ts';
 export * from './handwrite.ts';

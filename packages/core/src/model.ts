@@ -75,6 +75,19 @@ export interface InkStroke {
   nib?: number;
   /** The page layer the stroke is on (see `PageLayers`); absent = the writing layer. */
   layer?: StrokeLayer;
+  /**
+   * Set when someone else wrote it in a live session (docs/COLLABORATION.md): never counted as
+   * this vault owner's handwriting. Stamped by the receiving device, not taken from the sender.
+   */
+  author?: ItemAuthor;
+}
+
+/** A live collaborator who wrote or changed an item (see `InkStroke.author`). */
+export interface ItemAuthor {
+  /** Stable id of the collaborator's device key (short fingerprint). */
+  id: string;
+  /** The name they gave; shown, never trusted. */
+  name: string;
 }
 
 /**
@@ -214,6 +227,8 @@ export interface TextBox {
   createdAt: number;
   /** Set when the text was not typed by the user (AI answer, recognized handwriting…). */
   origin?: ContentOrigin;
+  /** Typed by a live collaborator (see `InkStroke.author`). */
+  author?: ItemAuthor;
 }
 
 /** An image placed on a page; the bytes live in the note's assets folder. */

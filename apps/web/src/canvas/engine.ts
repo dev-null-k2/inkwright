@@ -432,6 +432,23 @@ export class InkEngine {
     return { x: a.x, y: a.y, w: b.x - a.x, h: b.y - a.y };
   }
 
+  /**
+   * The stroke being written right now (page units), or null. Live collaboration reads it a few
+   * times a second to stream ink before pen-up; nothing on the pen path depends on it.
+   */
+  get liveStroke(): { pageIndex: number; points: readonly InkPoint[]; pen: PenType; color: string; size: number } | null {
+    const g = this.gesture;
+    return g.kind === 'stroke' ? { pageIndex: g.pageIndex, points: g.points, pen: g.preset.pen, color: g.preset.color, size: g.preset.size } : null;
+  }
+
+  /** The page under a screen point (CSS px relative to the canvas) and the point in page units. */
+  pageAtScreen(sx: number, sy: number): { pageIndex: number; x: number; y: number } | null {
+    const d = this.viewport.toDoc(sx, sy);
+    const slot = slotAt(this.layout, d.x, d.y);
+    if (!slot) return null;
+    return { pageIndex: slot.index, x: d.x - (slot.infinite ? 0 : slot.x), y: d.y - (slot.infinite ? 0 : slot.y) };
+  }
+
   get zoom() { return this.viewport.zoom; }
 
   hasSelection() { return !!this.selection; }
