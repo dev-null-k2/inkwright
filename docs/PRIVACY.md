@@ -15,6 +15,9 @@ Inkstone is a note-taking app. Your notes stay under your control.
 
 - When you ask the assistant something, Inkstone sends the request and the note content it needs (text, or page images for handwriting) directly from your device to that provider. That provider's own privacy policy applies.
 - API keys are encrypted on your device and are never synced or sent anywhere except to the provider they belong to.
+- **Connected apps:** if you connect an app such as Notion or Linear (through the Model Context Protocol), the assistant sends that app the requests it makes on your behalf, straight from your device. Sign-ins and tokens are encrypted on your device and never synced. By default the assistant asks before anything that changes things in a connected app.
+- **Memory, skills, routines and the activity log** are stored with your notes (in the `ai` folder of your vault) and sync wherever your notes sync. Nothing is remembered about you unless you write it or accept a suggestion.
+- **Routines** run only while Inkstone is open on one of your devices, with the AI you chose.
 
 **On-device handwriting recognition** (Android) runs entirely on the phone. Google's language model is downloaded once, and your handwriting never leaves the device.
 
@@ -24,7 +27,7 @@ Inkstone is a note-taking app. Your notes stay under your control.
 
 **Proof of authorship:** each page keeps a history of edits (what changed and when, as content fingerprints) so you can sign a certificate of your handwriting. The signing key is made on your device and cannot be exported. Certificates contain the signed handwriting, its timing and your key's fingerprint; they leave your device only when you share them or export a PDF with one attached (Settings › Authorship can turn that off).
 
-**Microphone:** used only while you record an audio note. Recordings are saved with the note.
+**Microphone:** used only while you record an audio note, or while you hold the microphone button to talk to the assistant. Recordings are saved with the note. Speech for the assistant is turned into text by your browser's speech recognition (which may use the browser maker's servers) or, where that is not available, by your AI provider; it is not stored.
 
 **Deleting data:** delete notes in the app. Trash empties after 30 days, or right away with "Delete forever". Uninstall the app or clear site data to remove everything stored on the device. Synced copies stay in your Drive or server until you delete them there.
 

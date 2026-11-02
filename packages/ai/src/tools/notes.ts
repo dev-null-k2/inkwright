@@ -72,7 +72,8 @@ export interface NoteToolHost {
   /** A rendering of one page for vision models. */
   getPageImage?(noteId: string, pageIndex: number): Promise<{ mediaType: string; base64: string } | null>;
   createNote(args: { title: string; text: string; notebookId?: string; tags?: string[] }): Promise<NoteInfo>;
-  appendText(noteId: string, text: string, pageIndex?: number): Promise<{ noteId: string; pageIndex: number }>;
+  /** Hosts should also return the new text box's `textId` and its `pageId` so the change can be undone. */
+  appendText(noteId: string, text: string, pageIndex?: number): Promise<{ noteId: string; pageIndex: number; pageId?: string; textId?: string; addedPage?: boolean }>;
   updateNote(id: string, patch: NotePatch): Promise<NoteInfo | null>;
   listNotebooks(): Promise<NotebookInfo[]>;
   createNotebook(name: string, opts?: { parentId?: string }): Promise<NotebookInfo>;

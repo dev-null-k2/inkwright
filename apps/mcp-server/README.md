@@ -31,6 +31,10 @@ Prompts: `summarize_note`, `daily_review`, `todos_from_notes`.
 
 `--read-only` removes every write tool, and the server then never writes to the vault.
 
+Every change an agent makes through the write tools is logged in the vault's AI activity
+(`ai/activity/<run>.json`, one run per connection). The Inkstone app lists it under
+Settings › AI › Activity, where each change can be undone.
+
 ## Build
 
 From the repository root:
