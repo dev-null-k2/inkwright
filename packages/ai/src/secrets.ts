@@ -1,8 +1,12 @@
 /**
  * API-key storage. Keys never leave the device: `WebCryptoSecretStore` encrypts each secret with
- * AES-GCM under a non-extractable key that lives in IndexedDB, so the raw key material can't be
- * read by page scripts or copied out of a storage dump — only used for encrypt/decrypt in this
- * origin. Native apps can implement SecretStore over the platform keychain instead.
+ * AES-GCM under a non-extractable key that lives in IndexedDB, so page scripts (and anything that
+ * reads the vault or settings) can only use it to encrypt and decrypt in this origin, never read
+ * it out. It is not protection against a copy of the browser profile: IndexedDB stores the key's
+ * bytes on disk next to the ciphertexts, so whoever copies both files has the secrets. That is why
+ * the Android app allows no cloud backup (security review SR-03) and why the threat model treats
+ * a copied profile as a compromised device. Native apps can implement SecretStore over the
+ * platform keychain instead.
  */
 export interface SecretStore {
   get(name: string): Promise<string | null>;
