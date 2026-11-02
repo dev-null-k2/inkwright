@@ -30,6 +30,13 @@ directory `apps/web/dist`. Any custom domain works.
 **Any web server or S3 bucket.** Upload `apps/web/dist` as is. Serve `index.html` for `/`, and make
 sure `.webmanifest` is served as `application/manifest+json` and `sw.js` is not cached for long.
 
+**Engines.** `dist/engines/` holds about 108 MB of WebAssembly (DuckDB, the on-device AI runtime,
+code parsers) that the app downloads only when someone first uses those features, checks against
+the checksums built into the app, and keeps for offline use (docs/PERFORMANCE.md). Visitors who
+never use them never fetch them. Hosts that cap the size of a single file (Cloudflare Pages: 25 MiB)
+reject the larger ones; build with `INKWRIGHT_ENGINE_SOURCE=cdn npm run build` there, and the app
+fetches the same files, verified the same way, from jsDelivr instead of your site.
+
 ## Google sign-in on your domain
 
 Google Drive sync needs an OAuth client that lists your site as an authorized JavaScript origin

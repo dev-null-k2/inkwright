@@ -40,6 +40,7 @@ import { Accessibility } from 'lucide-react';
 import { InkActionsSettings, ReadingSettings } from '../inkactions/Settings.tsx';
 import { MonitorSmartphone } from 'lucide-react';
 import { DevicesSection } from '../peer/DevicesSection.tsx';
+import { EngineDownloads } from '../engines/EngineUI.tsx';
 
 const SECTIONS = [
   { id: 'writing', label: 'Writing feel', icon: <Vibrate size={17} /> },
@@ -539,6 +540,7 @@ function AboutSection() {
         <p>{notes.length} notes · {vault?.persistent ? 'stored on this device' : 'this session only (storage blocked)'}{usage ? ` · ${usage}` : ''}</p>
         <p className="muted small">Everything is plain files in an open format (docs/VAULT_FORMAT.md). No account is required and nothing is sent anywhere unless you turn on sync or use AI.</p>
       </Group>
+      <EngineDownloads />
       <Group title="Reset">
         <button type="button" className="btn btn-danger-ghost" onClick={async () => { if (await askConfirm('Reset settings?', 'Pens, gestures, feel and AI choices go back to defaults. Your notes and saved keys are not touched.', 'Reset', true)) s.update(() => ({ ...DEFAULT_SETTINGS, ai: s.ai, sync: s.sync })); }}>Reset settings to defaults</button>
       </Group>
