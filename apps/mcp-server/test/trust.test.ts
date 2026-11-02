@@ -169,6 +169,22 @@ describe('AI policy on the server', () => {
   });
 });
 
+describe('retention on the server', () => {
+  it('drops activity older than the policy allows, and nothing under legal hold', async () => {
+    const { ActivityStore } = await import('@inkstone/ai');
+    const { applyServerRetention } = await import('../src/trust.ts');
+    const store = new ActivityStore(ctx.fs);
+    const old = Date.now() - 90 * 86_400_000;
+    await store.save({ id: 'OLDRUN', source: 'external', label: 'x', startedAt: old, endedAt: old, status: 'done', ops: [] });
+    await store.save({ id: 'NEWRUN', source: 'external', label: 'x', startedAt: Date.now(), status: 'done', ops: [] });
+    await writePolicy({ retention: { activityDays: 30, legalHold: true } });
+    expect((await applyServerRetention(ctx)).activity).toBe(0);
+    await writePolicy({ retention: { activityDays: 30 } });
+    expect((await applyServerRetention(ctx)).activity).toBe(1);
+    expect((await store.list()).map((r) => r.id)).toEqual(['NEWRUN']);
+  });
+});
+
 describe('security review: MCP and HTTP surface', () => {
   const HOSTILE_IDS = ['../../etc/passwd', '..', '.', 'a/b', 'a\\b', '%2e%2e%2fetc', 'LAUNCH/../GROCERIES', 'x'.repeat(65), '', 'LAUNCH\u0000', 'C:\\Windows', '/etc/passwd', ' LAUNCH'];
 

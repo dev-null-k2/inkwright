@@ -2,7 +2,7 @@
 import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import { CliError, USAGE, parseCli } from './cli.ts';
 import { createContext } from './context.ts';
-import { logPolicy, trustedAI } from './trust.ts';
+import { applyServerRetention, logPolicy, trustedAI } from './trust.ts';
 import { aiFromOptions, serveHttp } from './serve.ts';
 import { createMcpServer, createServices } from './server.ts';
 import { VERSION } from './version.ts';
@@ -37,6 +37,7 @@ async function main(): Promise<void> {
   const ctx = await createContext({ root: opts.vault, readOnly: opts.readOnly, watch: opts.watch, ...(opts.policyFile ? { managedPolicyFile: opts.policyFile } : {}), ...(opts.auditKey ? { auditKeyFile: opts.auditKey } : {}) });
   if (ctx.createdVault) log(`No inkstone.json found; initialized a new vault at ${ctx.root}`);
   logPolicy(ctx, log);
+  if (!ctx.readOnly) void applyServerRetention(ctx).catch((e) => log(`Retention: ${(e as Error).message}`));
   // The server's AI goes through the trust layer (routing, privacy firewall, meter, audit).
   const ai = trustedAI(aiFromOptions(opts, log), ctx.trust);
   let shuttingDown = false;
