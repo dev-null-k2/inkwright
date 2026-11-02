@@ -1,0 +1,26 @@
+name: Bug report
+description: Something doesn't work the way it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations: { required: true }
+  - type: input
+    id: device
+    attributes:
+      label: Device and pen
+      placeholder: e.g. Razr Fold + Moto Pen Ultra, Android 16 / iPad Pro + Pencil Pro / Chrome on Windows
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Settings → About
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots, recordings or logs
+      description: Never paste API keys. Settings → About → Copy diagnostics leaves them out.
