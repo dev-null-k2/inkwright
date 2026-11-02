@@ -17,7 +17,8 @@ Inkstone is a note-taking app. Your notes stay under your control.
 - API keys are encrypted on your device and are never synced or sent anywhere except to the provider they belong to.
 - **Connected apps:** if you connect an app such as Notion or Linear (through the Model Context Protocol), the assistant sends that app the requests it makes on your behalf, straight from your device. Sign-ins and tokens are encrypted on your device and never synced. By default the assistant asks before anything that changes things in a connected app.
 - **Memory, skills, routines and the activity log** are stored with your notes (in the `ai` folder of your vault) and sync wherever your notes sync. Nothing is remembered about you unless you write it or accept a suggestion.
-- **Routines** run only while Inkstone is open on one of your devices, with the AI you chose.
+- **Routines** run while Inkstone is open on one of your devices, with the AI you chose — or, if you install the optional always-on runner on your own computer, from that computer with the AI you configure for it.
+- **Outside agents** (the optional Inkstone MCP server, A2A agent and runner) run on your computer over your notes folder. They talk only to the agents you connect and the AI provider you configure; sign-in is a token you set or your own identity provider. Nothing goes through a service of ours.
 
 **On-device handwriting recognition** (Android) runs entirely on the phone. Google's language model is downloaded once, and your handwriting never leaves the device.
 
