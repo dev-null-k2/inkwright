@@ -5,7 +5,7 @@ import { jsonResponse, mockFetch } from './helpers.ts';
 describe('provider registry', () => {
   it('has complete metadata for every provider', () => {
     const ids = PROVIDERS.map((p) => p.id);
-    expect(ids).toEqual(['openai', 'anthropic', 'gemini', 'openrouter', 'groq', 'mistral', 'xai', 'deepseek', 'together', 'fireworks', 'perplexity', 'cerebras', 'azure-openai', 'ollama', 'lmstudio', 'custom']);
+    expect(ids).toEqual(['openai', 'anthropic', 'gemini', 'openrouter', 'groq', 'mistral', 'xai', 'deepseek', 'together', 'fireworks', 'perplexity', 'cerebras', 'azure-openai', 'ollama', 'lmstudio', 'llamacpp', 'foundry-local', 'custom']);
     expect(new Set(ids).size).toBe(ids.length);
     for (const p of PROVIDERS) {
       expect(p.label).toBeTruthy();

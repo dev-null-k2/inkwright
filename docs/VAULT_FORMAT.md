@@ -46,13 +46,21 @@ Rules
   "images": [{ "id", "x", "y", "width", "height", "asset", "rotation", "createdAt" }],
   "background": { "kind": "pdf|image", "asset": "file.pdf", "pageNumber": 1, "rotation": 90 },   // optional
   "paper": { … }, "size": { … },                                               // optional per-page overrides
-  "recognizedText": "…", "recognizedAt": 0, "recognizedBy": "mlkit|gemini-2.5-flash|…"   // optional
+  "recognizedText": "…", "recognizedAt": 0, "recognizedBy": "mlkit|gemini-2.5-flash|…",  // optional
+  "recognizedLines": [                                                         // optional
+    { "text": "fourier transform", "strokeIds": ["…"], "bounds": { "minX", "minY", "maxX", "maxY" } }
+  ]
 }
 ```
 
 `background.rotation` (optional, degrees, a multiple of 90) is a clockwise turn the user added on
 top of the source page's own orientation (a PDF page's `/Rotate`); the page's `size` is already
 swapped to match. Readers that don't know it show the page unturned.
+
+`recognizedLines` anchors each recognized line to the strokes it came from (written by line-by-line
+recognizers such as ML Kit). Search results and AI citations use it to point at the exact
+handwriting. It always describes the current `recognizedText`; writers that replace the text
+without line anchors drop it. Readers that don't know it ignore it.
 
 Pens: `fountain | ballpoint | pencil | brush | marker | highlighter | dashed`. Missing pressure /
 tilt / orientation are omitted from the point array (or `-1` when a later field is present).

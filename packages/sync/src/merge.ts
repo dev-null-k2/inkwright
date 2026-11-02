@@ -243,7 +243,7 @@ export interface MergeOptions {
   prefer?: Side;
 }
 
-const PAGE_SPECIAL = new Set(['id', 'strokes', 'texts', 'images', 'recognizedText', 'recognizedAt', 'recognizedBy', 'formatVersion']);
+const PAGE_SPECIAL = new Set(['id', 'strokes', 'texts', 'images', 'recognizedText', 'recognizedAt', 'recognizedBy', 'recognizedLines', 'formatVersion']);
 
 export function mergePage(base: PageInk | null, local: PageInk, remote: PageInk, opts: MergeOptions = {}): PageInk {
   const eq = new Eq();
@@ -278,6 +278,7 @@ export function mergePage(base: PageInk | null, local: PageInk, remote: PageInk,
   if (rec.recognizedText !== undefined) out.recognizedText = rec.recognizedText;
   if (rec.recognizedAt !== undefined) out.recognizedAt = rec.recognizedAt;
   if (rec.recognizedBy !== undefined) out.recognizedBy = rec.recognizedBy;
+  if (rec.recognizedLines !== undefined) out.recognizedLines = rec.recognizedLines;
 
   out.formatVersion = Math.max(local.formatVersion ?? 1, remote.formatVersion ?? 1);
   return out as unknown as PageInk;
