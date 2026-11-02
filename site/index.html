@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inkwright — the notebook that writes back</title>
+<meta name="description" content="A handwriting notebook that feels like paper, thinks with any AI, and answers in ink. Local-first, open source, no server.">
+<meta property="og:title" content="Inkwright — the notebook that writes back">
+<meta property="og:description" content="Handwriting that feels like paper, an agent that answers in ink, and your notes as plain files. Open source, local-first, no server.">
+<meta property="og:image" content="media/social.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#e8e5ea" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1a161c" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="app/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Brygada+1918:ital,wght@0,400..700;1,400..700&family=Hanken+Grotesk:wght@400..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --desk: #e8e5ea; --paper: #fffdf7; --rule: rgba(53, 107, 83, 0.12); --margin: rgba(179, 65, 47, 0.28);
+    --ink: #2b2330; --ink-2: #5f5666; --ink-3: #746a7b; --line: rgba(43, 35, 48, 0.12);
+    --iron: #356b53; --eye: #5e9c7e; --seal: #b3412f; --stone: #2e2533; --stone-ink: #f6f3f7;
+    --shadow: 0 1px 2px rgba(43, 30, 50, 0.08), 0 24px 48px -28px rgba(43, 30, 50, 0.45);
+    --title: 'Brygada 1918', 'Iowan Old Style', Georgia, serif;
+    --ui: 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --desk: #1a161c; --paper: #f4f0e6; --ink: #eee8f0; --ink-2: #b9b0bf; --ink-3: #958c9b; --line: rgba(238, 232, 240, 0.12);
+      --iron: #8cc4a8; --eye: #8cc4a8; --stone: #0f0c10; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 24px 48px -28px rgba(0,0,0,.8);
+      color-scheme: dark;
+    }
+    .hero-art .light { display: none } .hero-art .dark { display: block }
+  }
+  * { box-sizing: border-box }
+  html { -webkit-text-size-adjust: 100% }
+  body { margin: 0; background: var(--desk); color: var(--ink); font: 17px/1.6 var(--ui); }
+  a { color: var(--iron); text-underline-offset: 3px }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--iron); outline-offset: 3px; border-radius: 6px }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px }
+  nav { display: flex; align-items: center; justify-content: space-between; padding: 22px 0 }
+  .brand { display: flex; align-items: center; gap: 10px; font: 600 20px var(--title); color: var(--ink); text-decoration: none }
+  .eye { width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle, var(--stone) 0 34%, var(--eye) 36% 100%); box-shadow: 0 0 0 3px color-mix(in srgb, var(--eye) 22%, transparent) }
+  nav .links { display: flex; gap: 22px; font-size: 15px }
+  nav .links a { color: var(--ink-2); text-decoration: none }
+  nav .links a:hover { color: var(--ink) }
+
+  .hero { display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; align-items: center; padding: 40px 0 72px }
+  .hero-art img { width: 100%; max-width: 520px; display: block }
+  .hero-art .dark { display: none }
+  .hero h1 { font: 500 clamp(30px, 4.4vw, 46px)/1.12 var(--title); letter-spacing: -0.01em; margin: 24px 0 16px }
+  .hero p.lead { color: var(--ink-2); font-size: 19px; margin: 0 0 28px; max-width: 34em }
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 999px; font: 600 15px var(--ui); text-decoration: none; border: 1px solid var(--line); color: var(--ink); background: transparent }
+  .btn.primary { background: var(--stone); color: var(--stone-ink); border-color: transparent }
+  .btn:hover { transform: translateY(-1px) }
+  .facts { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 22px; color: var(--ink-3); font-size: 14px }
+  .facts span::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--eye); margin-right: 8px; vertical-align: middle }
+
+  /* A sheet of ruled paper holding a real screenshot */
+  .sheet { background: var(--paper); border-radius: 4px; box-shadow: var(--shadow); padding: 14px; transform: rotate(0.6deg) }
+  .sheet img { width: 100%; display: block; border-radius: 2px }
+
+  section { padding: 72px 0 }
+  .label { font: 500 13px var(--mono); color: var(--iron); letter-spacing: 0.02em }
+  h2 { font: 500 clamp(26px, 3.2vw, 36px)/1.15 var(--title); margin: 8px 0 14px; max-width: 22em }
+  .sub { color: var(--ink-2); max-width: 40em; margin: 0 0 36px }
+
+  .pillars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px }
+  .pillar { background: color-mix(in srgb, var(--paper) 55%, var(--desk)); border: 1px solid var(--line); border-radius: 14px; padding: 22px 22px 20px }
+  @media (prefers-color-scheme: dark) { .pillar { background: rgba(255,255,255,0.03) } }
+  .pillar h3 { font: 600 19px var(--title); margin: 0 0 8px }
+  .pillar p { margin: 0; color: var(--ink-2); font-size: 15.5px }
+  .pillar code { font: 13px var(--mono) }
+
+  .split { display: grid; grid-template-columns: 1fr 1.15fr; gap: 48px; align-items: center }
+  .split.rev { grid-template-columns: 1.15fr 1fr }
+  .split ul { padding: 0; margin: 0; list-style: none }
+  .split li { padding: 10px 0; border-top: 1px solid var(--line); color: var(--ink-2) }
+  .split li b { color: var(--ink); font-weight: 600 }
+
+  table.numbers { width: 100%; border-collapse: collapse; font-size: 15.5px }
+  .numbers th, .numbers td { text-align: left; padding: 12px 10px; border-top: 1px solid var(--line); vertical-align: top }
+  .numbers th { font: 500 13px var(--mono); color: var(--ink-3); border-top: 0 }
+  .numbers td:first-child { font-weight: 600; white-space: nowrap }
+  .numbers .weak td:nth-child(2) { color: var(--seal) }
+  @media (prefers-color-scheme: dark) { .numbers .weak td:nth-child(2) { color: #e07a66 } }
+
+  pre { background: var(--stone); color: var(--stone-ink); border-radius: 12px; padding: 18px 20px; overflow-x: auto; font: 13.5px/1.6 var(--mono); margin: 0 }
+  pre .c { color: #9c93a2 }
+
+  .palettes { display: flex; gap: 10px; margin-top: 18px }
+  .chip { width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line) }
+
+  footer { padding: 48px 0 64px; color: var(--ink-3); font-size: 14px; border-top: 1px solid var(--line) }
+  footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px }
+
+  @media (max-width: 860px) {
+    .hero, .split, .split.rev { grid-template-columns: 1fr; gap: 32px }
+    .pillars { grid-template-columns: 1fr }
+    nav .links a:not(.gh) { display: none }
+    .sheet { transform: none }
+    .numbers td:first-child { white-space: normal }
+  }
+  @media (prefers-reduced-motion: reduce) { .btn:hover { transform: none } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav aria-label="Main">
+    <a class="brand" href="./"><span class="eye" aria-hidden="true"></span>Inkwright</a>
+    <div class="links">
+      <a href="#write">Write</a><a href="#think">Think</a><a href="#trust">Trust</a><a href="#build">Build</a>
+      <a class="gh" href="https://github.com/karthikkasukurti/inkwright">GitHub</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div>
+      <div class="hero-art" role="img" aria-label="inkwright, the notebook that writes back, written by hand">
+        <img class="light" src="media/hero-light.svg" alt="">
+        <img class="dark" src="media/hero-dark.svg" alt="">
+      </div>
+      <h1>Handwriting that feels like paper. An agent that answers in ink.</h1>
+      <p class="lead">Write with a pen on a phone, tablet or laptop. Inkwright reads your handwriting, connects it to everything you've written, checks it against itself and writes back on the page. Your notes stay as plain files on your own devices.</p>
+      <div class="ctas">
+        <a class="btn primary" href="app/">Open the app</a>
+        <a class="btn" href="https://github.com/karthikkasukurti/inkwright/releases/latest">Android APK</a>
+        <a class="btn" href="https://github.com/karthikkasukurti/inkwright">Star on GitHub</a>
+      </div>
+      <div class="facts"><span>Open source, Apache-2.0</span><span>No server of ours</span><span>Any AI, or on-device</span></div>
+    </div>
+    <div class="sheet"><img src="media/screens/lecture.png" alt="A handwritten lecture page with a sketched square wave and its Fourier approximation" width="1280" height="860"></div>
+  </header>
+</div>
+
+<section id="write"><div class="wrap split">
+  <div>
+    <div class="label">write</div>
+    <h2>Ink under the nib before the next frame.</h2>
+    <p class="sub">Strokes are drawn from raw pen events with prediction. On Android a native ink tip paints the newest milliseconds straight to the screen.</p>
+    <ul>
+      <li><b>Scribble to erase.</b> It caught 99.6 % of 250 test scribbles and erased none of 330 normal strokes.</li>
+      <li><b>Paper you can hear and feel.</b> Nib sound that follows speed and pressure, and haptic grain on Android.</li>
+      <li><b>Every page.</b> Ruled, dot, Cornell, music and planner paper, and any PDF to fill in and sign.</li>
+      <li><b>Studio tools.</b> Calligraphy nib, tape, sticky notes, layers, spreads and locked notes.</li>
+    </ul>
+  </div>
+  <div class="sheet"><img src="media/screens/notebook.png" alt="A notebook of handwritten pages with marbled covers" loading="lazy" width="1280" height="860"></div>
+</div></section>
+
+<section id="think"><div class="wrap">
+  <div class="label">think</div>
+  <h2>An AI that works on the page, not in a sidebar.</h2>
+  <p class="sub">Use OpenAI, Claude, Gemini, OpenRouter, Ollama or any compatible server, or the on-device models that run on your phone's or laptop's GPU and send nothing anywhere.</p>
+  <div class="pillars">
+    <div class="pillar"><h3>Answers in ink</h3><p>Lasso a question and the answer is written beside it in handwriting, in a colour that is never mistaken for yours. One undo removes it.</p></div>
+    <div class="pillar"><h3>Sketch it, run it</h3><p>Draw boxes and arrows and press Run. Each box becomes a step: fetch, filter, sum, chart, or ask the AI. Results land beside each box.</p></div>
+    <div class="pillar"><h3>A wiki that cites</h3><p>Your notes are compiled into linked pages. Each sentence is tagged extracted, inferred or ambiguous and points to the exact spot on the page it came from.</p></div>
+    <div class="pillar"><h3>A linter for your thinking</h3><p>It notices when Tuesday's note says "under 50 ms" and Friday's says "averages 110 ms", and shows you both.</p></div>
+    <div class="pillar"><h3>Notes that listen</h3><p>Lectures are transcribed on the device. Tap any stroke to hear what was being said while you wrote it.</p></div>
+    <div class="pillar"><h3>Study</h3><p>FSRS flashcards from any note, and a teach-it-back tutor that quizzes you and finds the gaps.</p></div>
+  </div>
+</div></section>
+
+<section id="trust"><div class="wrap split rev">
+  <div class="sheet"><img src="media/screens/review-dark.png" alt="A design review page with typed decisions, red handwritten margin notes and a hand-drawn diagram" loading="lazy" width="1280" height="860"></div>
+  <div>
+    <div class="label">trust</div>
+    <h2>Every AI call passes one checkpoint.</h2>
+    <ul>
+      <li><b>Routing by policy.</b> Mark a notebook hidden, read-only or "never leaves this device".</li>
+      <li><b>Privacy firewall.</b> Emails, phone numbers, cards and keys are replaced before the model sees them, then put back in the answer.</li>
+      <li><b>About 80 % fewer tokens</b> from shortening context reversibly, with spend shown in dollars.</li>
+      <li><b>Signed audit trail</b> that you can verify offline. Agents can run in dry-run mode, proposing changes for you to approve.</li>
+      <li><b>For teams:</b> an air-gapped Docker appliance, a managed policy file, an SBOM and retention with legal hold.</li>
+    </ul>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="label">measured, not claimed</div>
+  <h2>Numbers from evals in the repository, including the weak ones.</h2>
+  <table class="numbers">
+    <thead><tr><th>what</th><th>result</th></tr></thead>
+    <tbody>
+      <tr><td>Scribble-to-erase</td><td>99.6 % caught · 0 of 330 normal strokes erased</td></tr>
+      <tr><td>Contradiction linter</td><td>precision 1.00 · recall 0.92 · 0 false alarms in 40 everyday notes</td></tr>
+      <tr><td>Personal-data firewall</td><td>precision 100 % · recall 98.2 %</td></tr>
+      <tr><td>Context budgeter</td><td>80 % of tokens saved across tasks; "summarise everything" costs 47 % more</td></tr>
+      <tr class="weak"><td>Injection detector</td><td>weak on held-out attacks: 29 % detected. Deletes always ask, dry run blocks writes, and local-only notes never reach the cloud.</td></tr>
+      <tr><td>Tests</td><td>1,300+ unit tests and evals · 140+ end-to-end on Chromium, Safari's engine and Firefox · zero serious accessibility violations</td></tr>
+    </tbody>
+  </table>
+</div></section>
+
+<section id="build"><div class="wrap split">
+  <div>
+    <div class="label">build</div>
+    <h2>Your notebook is a server for your other tools.</h2>
+    <p class="sub">MCP (spec 2026-07-28), A2A, a REST API with OpenAPI 3.1, signed webhooks, a typed SDK, a CLI and an Agent Skill. Notes can link to functions in your code and are flagged when the code drifts.</p>
+    <div class="palettes" aria-label="Palettes: Duan, Aizome, Celadon, Sumi">
+      <span class="chip" style="background:#2b2330" title="Duan"></span><span class="chip" style="background:#1f3a93" title="Aizome"></span><span class="chip" style="background:#2e6b57" title="Celadon"></span><span class="chip" style="background:#151316" title="Sumi"></span>
+    </div>
+  </div>
+<pre><span class="c"># Give Claude Code your notebook</span>
+claude mcp add inkwright -- node apps/mcp-server/dist/index.js \
+  --vault ~/Notes --read-only
+
+<span class="c"># Or call it like any web API</span>
+curl -H "Authorization: Bearer $KEY" \
+  "localhost:8765/api/v1/search?q=latency&amp;mode=hybrid"
+
+<span class="c"># Fail CI when docs drift from code</span>
+npx inkwright drift ~/Notes --check</pre>
+</div></section>
+
+<footer><div class="wrap">
+  <span>Inkwright · Apache-2.0 · built by <a href="https://github.com/karthikkasukurti">Karthik Kasukurti</a></span>
+  <span><a href="https://github.com/karthikkasukurti/inkwright">Source</a> · <a href="https://github.com/karthikkasukurti/inkwright/blob/main/docs/PRIVACY.md">Privacy</a> · <a href="https://github.com/karthikkasukurti/inkwright/blob/main/SECURITY.md">Security</a></span>
+</div></footer>
+</body>
+</html>

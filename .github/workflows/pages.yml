@@ -1,7 +1,7 @@
 # Publishes the web app to GitHub Pages on every push to main. Inkstone needs no server: the page is
 # static files, notes live on each device (and in the user's own Google Drive / WebDAV / folder),
 # and AI runs on the device or against the user's own provider. See docs/HOSTING.md.
-name: Publish web app
+name: Publish site and web app
 on:
   push:
     branches: [main]
@@ -20,8 +20,14 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm run build
+      # The landing page at the root, the app under /app/, README art and screenshots under /media/.
+      - run: |
+          mkdir -p _site
+          cp -r site/. _site/
+          cp -r docs/media _site/media
+          cp -r apps/web/dist _site/app
       - uses: actions/upload-pages-artifact@v3
-        with: { path: apps/web/dist }
+        with: { path: _site }
   deploy:
     needs: build
     runs-on: ubuntu-latest
