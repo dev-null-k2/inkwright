@@ -41,6 +41,7 @@ import { cancelListening, finishListening, focusInkMoment, installSaidLinks, sta
 import { useSpeechPrefs } from '../lib/listen/engines.ts';
 import { placeDictatedText, startDictation } from '../lib/listen/dictation.ts';
 import { currentLayer, useStudio } from '../studio/EditorStudio.tsx';
+import { useCompilerEditor } from '../compiler/ui/EditorParts.tsx';
 import { LockGate } from '../studio/LockDialogs.tsx';
 import { isModuleOn, useModules } from '../modules/registry.ts';
 import { useEditorBridge } from '../plugins/editorBridge.ts';
@@ -483,6 +484,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   // Plugins: what they may know about the editor, their menu items, exporters and panels.
   useEditorBridge(doc, engine, sel);
   const plugins = useEditorPlugins({ noteId, anchor: btn.more.current, onPanelOpen: () => setPanel(null) });
+  const compiler = useCompilerEditor({ doc, engine, host: host.current, view });
   // [[Wiki links]]: open the note with that title (at its page), or create it (like Obsidian).
   const openWikiLink = (title: string) => kb.follow(title);
 
@@ -556,6 +558,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
             <SmartLayer doc={doc} engine={engine} vault={vault} host={host.current} tool={tool} view={view} apiRef={smartApi} />
           )}
           {studio.parts}
+          {on('compiler') && compiler.parts}
           {dropping && <div className="drop-hint" aria-live="polite"><FileUp size={22} /> Drop to add to this note</div>}
           {latched && <div className="latch-pill" role="status">{settings.input.buttonAction === 'lasso' ? 'Lasso' : settings.input.buttonAction === 'highlighter' ? 'Highlighter' : 'Eraser'} on — press the pen button to switch back</div>}
           {clips.length > 0 && (
@@ -669,6 +672,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
           { label: 'Writing sound & feel', icon: <AudioLines size={16} />, hint: settings.feel.sound ? `${Math.round(settings.feel.soundVolume * 100)}%` : 'Off', onClick: () => setTimeout(() => setMenu('feel'), 0) },
           { label: 'Insert', icon: <ImageIcon size={16} />, onClick: () => setTimeout(() => setMenu('insert'), 0) },
           ...(on('studio') ? studio.menuItems : []),
+          ...(on('compiler') ? compiler.menuItems : []),
           ...plugins.menuItems,
           ...(narrow && !isArtifact ? [{ label: recording != null ? 'Stop recording' : 'Record audio', icon: <Mic size={16} />, onClick: () => void toggleRecording() }] : []),
           { label: 'Export and share', icon: <Download size={16} />, onClick: () => setTimeout(() => setMenu('export'), 0) },

@@ -622,6 +622,41 @@ export const ROUTINE_TEMPLATES: readonly RoutineTemplate[] = [
       ].join('\n'),
     }, now),
   },
+  {
+    id: 'compile-wiki',
+    name: 'Compile my wiki',
+    blurb: 'Every night, re-compiles the pages whose sources changed; you review the changes in Compiled wiki.',
+    build: (now) => newRoutine({
+      name: 'Compile my wiki',
+      template: 'compile-wiki',
+      triggers: [{ kind: 'daily', time: '02:40' }],
+      tools: { notes: 'read', skills: false, mcpServers: [] },
+      prompt: [
+        'Keep my compiled wiki up to date.',
+        '1. Call compile_wiki with reason "Nightly". It only drafts changes; I review them.',
+        '2. Call list_conflicts and mention any new disagreement between my notes in one line each.',
+        'If compile_wiki is not available here, say that the compiled wiki is compiled in the app and stop.',
+        'Reply with what changed (pages proposed, conflicts) in two or three lines.',
+      ].join('\n'),
+    }, now),
+  },
+  {
+    id: 'meeting-followups',
+    name: 'Follow-ups from today\'s meetings',
+    blurb: 'Every evening, collects action items and follow-ups from today\'s meeting notes into one note.',
+    build: (now) => newRoutine({
+      name: 'Follow-ups from today\'s meetings',
+      template: 'meeting-followups',
+      triggers: [{ kind: 'daily', time: '17:40' }, { kind: 'recording-ended' }],
+      prompt: [
+        'Collect the follow-ups from my meetings today.',
+        '1. Call list_followups (since the start of today). If it is not available, search_notes for today\'s meeting notes and read them.',
+        '2. Keep open items only. Group them by person; write each as "- [ ] <task> (<person or owner>, due <date> if given) — from [Note title](link)".',
+        '3. Append them to my note titled "Follow-ups" (create it if it doesn\'t exist) under a heading with today\'s date. Skip items already listed there.',
+        'Reply with how many follow-ups you added and for whom.',
+      ].join('\n'),
+    }, now),
+  },
 ];
 
 /** Context the agent gets about why and when a routine is running. */

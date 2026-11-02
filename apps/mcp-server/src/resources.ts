@@ -1,4 +1,5 @@
 import type { ListResourcesResult, ReadResourceResult } from '@modelcontextprotocol/server';
+import { CompilerStore } from '@inkstone/ai';
 import { requireId, readNoteFresh, type ServerContext } from './context.ts';
 import { pageSvg } from './render.ts';
 import { noteMarkdown, noteUri, pageUri } from './tools.ts';
@@ -43,4 +44,25 @@ export async function listNoteResources(ctx: ServerContext, limit = 1000): Promi
       description: n.summary || `${n.pageIds.length} page${n.pageIds.length === 1 ? '' : 's'}, updated ${new Date(n.updatedAt).toISOString()}`,
     })),
   };
+}
+
+// ---- Context packs (docs/COMPILER.md) ------------------------------------------------------------
+
+/** Saved context packs: `ai/packs/<id>/pack.md` (Markdown) and `pack.json`. */
+export const PACK_TEMPLATE = 'inkstone://packs/{id}';
+export const packUri = (id: string) => `inkstone://packs/${encodeURIComponent(id)}`;
+
+/** Every context pack the user saved in the app, newest first. */
+export async function listPackResources(ctx: ServerContext): Promise<ListResourcesResult> {
+  const packs = await new CompilerStore(ctx.fs).packs();
+  return { resources: packs.map((p) => ({ uri: packUri(p.id), name: p.title, mimeType: 'text/markdown', description: `Context pack from the user's notes (compiled facts with sources, notes, handwriting)${p.createdAt ? `, made ${p.createdAt.slice(0, 10)}` : ''}.` })) };
+}
+
+/** `inkstone://packs/{id}` → the pack's Markdown (cited), plus its JSON. */
+export async function readPackResource(ctx: ServerContext, id: string | string[] | undefined): Promise<ReadResourceResult> {
+  const packId = requireId(decodeURIComponent(one(id)), 'pack id');
+  const md = await ctx.fs.readText(`ai/packs/${packId}/pack.md`);
+  if (md == null) throw new Error(`No context pack "${packId}". List resources to see saved packs.`);
+  const json = await ctx.fs.readText(`ai/packs/${packId}/pack.json`);
+  return { contents: [{ uri: packUri(packId), mimeType: 'text/markdown', text: md }, ...(json ? [{ uri: `${packUri(packId)}/pack.json`, mimeType: 'application/json', text: json }] : [])] };
 }

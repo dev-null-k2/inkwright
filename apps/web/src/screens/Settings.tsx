@@ -32,6 +32,7 @@ import { ModulesSettings } from '../modules/ModulesSettings.tsx';
 import { PluginsSettings } from '../plugins/PluginsSettings.tsx';
 import { DeveloperSettings } from '../developer/DeveloperSettings.tsx';
 import { contributionOn, isModuleOn, useModules } from '../modules/registry.ts';
+import { MemoryEvalSection } from '../compiler/ui/MemoryEvalSection.tsx';
 
 const SECTIONS = [
   { id: 'writing', label: 'Writing feel', icon: <Vibrate size={17} /> },
@@ -239,6 +240,7 @@ function AISection() {
         <Switch label="Ask before the assistant deletes or moves notes" checked={s.ai.confirmDestructive} onChange={(v) => s.update((x) => ({ ai: { ...x.ai, confirmDestructive: v } }))} />
       </Group>
       {isModuleOn('assistant') && <AgentSettings />}
+      {isModuleOn('compiler') && <MemoryEvalSection />}
     </>
   );
 }

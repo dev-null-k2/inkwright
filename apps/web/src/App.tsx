@@ -12,6 +12,7 @@ import { BrandMark } from './ui/Brand.tsx';
 import { Palette } from './ui/Palette.tsx';
 import { attachMemory } from './lib/memory.ts';
 import { isNative } from './platform/env.ts';
+import { CompilerDialogs } from './compiler/ui/dialogs.tsx';
 import { AgentDialogs } from './ui/agent/shared.tsx';
 import { useKnowledgeShortcuts } from './ui/knowledge/shortcuts.ts';
 import { isModuleOn, startModules, useModule } from './modules/registry.ts';
@@ -31,6 +32,7 @@ export function App() {
   const graphOn = useModule('graph');
   const searchOn = useModule('search');
   const assistantOn = useModule('assistant');
+  const compilerOn = useModule('compiler');
   useKnowledgeShortcuts();
 
   useEffect(() => {
@@ -126,6 +128,7 @@ export function App() {
       {searchOn && <Palette />}
       <Prompts />
       {assistantOn && <AgentDialogs />}
+      {compilerOn && <CompilerDialogs />}
       <Toasts />
     </>
   );

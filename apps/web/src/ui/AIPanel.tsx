@@ -33,6 +33,8 @@ import type { AgentViewId } from './agent/shared.tsx';
 import { LocalAISetup } from './LocalAISetup.tsx';
 import { linkLiveCitations, liveAskContext, useListen } from '../lib/listen/session.ts';
 import { nativeSummary } from '../lib/native-ai.ts';
+import type { Passage } from '@inkstone/core';
+import { collectPassages, explainAnswer, genFor, insertAnswer, notePassages, recordSummaryProvenance } from '../compiler/explain.ts';
 
 export type AIRequest = { kind: 'selection'; pageIndex: number; strokeIds: string[]; textIds: string[]; at: number };
 
@@ -165,7 +167,8 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
         const id = push({ role: 'assistant', text: '…' });
         const s = (await nativeSummary(a, fullText, 'bullets', (so) => patch(id, { text: so }), signal))
           ?? await runSkill(summarizeNote, a.provider, a.model, { title: doc.meta.title, text: fullText, style: 'bullets' }, { signal, onText: (_d, so) => patch(id, { text: so }) });
-        patch(id, { text: s, actions: [{ label: 'Save as note summary', run: () => { doc.updateMeta((m) => ({ ...m, summary: s })); toast({ text: 'Summary saved — it appears in the library and is given to agents' }); } }, { label: 'Insert on page', run: () => insertText(`## Summary\n${s}`) }] });
+        const gen = genFor(a, 'skill.summarize/1');
+        patch(id, { text: s, actions: [{ label: 'Save as note summary', run: () => { doc.updateMeta((m) => ({ ...m, summary: s })); void recordSummaryProvenance(doc, s, gen); toast({ text: 'Summary saved — it appears in the library and is given to agents' }); } }, { label: 'Insert on page', run: () => void insertAnswer(doc, engine.currentPageIndex, `## Summary\n${s}`, notePassages(doc), gen) }, { label: 'Explain', run: () => void explainAnswer('Summary', s, notePassages(doc), gen) }] });
       } else if (kind === 'todos') {
         push({ role: 'user', text: 'Pull out the to-dos' });
         const id = push({ role: 'assistant', text: 'Looking for tasks…' });
@@ -218,6 +221,7 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
     let replyId: string | null = null;
     let reply = '';
     const toolItems = new Map<string, string>();
+    const read: Passage[] = []; // what the model read this turn ("Explain this answer")
     try {
       // Note tools (logged for undo), skills, memory and connected apps — shared with routines.
       // While recording, the live transcript so far (with times to cite) joins the note context.
@@ -248,6 +252,7 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
             const q = (e.call.arguments as any)?.query ?? (e.call.arguments as any)?.title ?? '';
             toolItems.set(e.call.id, push({ role: 'tool', text: toolLabel(e.call.name), tool: { name: e.call.name, detail: q ? String(q) : undefined } }));
           } else if (e.type === 'tool_result') {
+            collectPassages(e.call.name, e.result, read);
             const id = toolItems.get(e.call.id);
             if (id) patch(id, { tool: { name: e.call.name, ok: true, detail: (e.call.arguments as any)?.query ?? (e.call.arguments as any)?.title } });
           } else if (e.type === 'tool_error') {
@@ -258,6 +263,10 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
       });
       history.current = res.messages.filter((m) => m.role !== 'system');
       if (!res.text && !replyId) push({ role: 'assistant', text: 'Done.' });
+      if (replyId && res.text) {
+        const gen = genFor(a);
+        patch(replyId, { actions: [{ label: 'Explain', run: () => void explainAnswer('Answer', res.text, read, gen) }, { label: 'Insert on page', run: () => void insertAnswer(doc, engine.currentPageIndex, res.text, read, gen).then(() => toast({ text: 'Added to the page', action: { label: 'Undo', run: () => engine.undo() } })) }] });
+      }
       const run = await prep.recorder.finish('done', { reply: res.text });
       if (run.ops.length) {
         const n = run.ops.length;

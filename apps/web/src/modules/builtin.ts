@@ -88,6 +88,28 @@ export const BUILTIN_MODULES: ModuleDefinition[] = [
     },
   },
   {
+    id: 'compiler',
+    name: 'Compiled wiki & study',
+    description: 'Compiles your notes into a reviewed wiki with sources, flags contradictions between notes, collects meeting follow-ups and turns notes into flashcards.',
+    defaultEnabled: true,
+    dependencies: ['assistant'],
+    contributes: {
+      menuItems: ['Sources of AI text', 'Study this note', 'Teach me back', 'Context pack'],
+      panels: ['Compiled wiki', 'Conflicts', 'Study', 'Memory eval (Settings › AI)'],
+      aiTools: ['compile_wiki', 'list_conflicts', 'list_followups'],
+      routineTemplates: ['compile-wiki', 'meeting-followups'],
+      background: ['Extraction and contradiction checks after notes change'],
+    },
+    whenOff: 'The compiled wiki, decks and provenance stay in the vault; nothing is recompiled until it is on again.',
+    async activate() {
+      const vault = useApp.getState().vault;
+      if (!vault) return;
+      const { startCompiler, stopCompiler } = await import('../compiler/service.ts');
+      startCompiler(vault);
+      return () => stopCompiler();
+    },
+  },
+  {
     id: 'local-ai',
     name: 'On-device AI',
     description: 'Run AI models on this device: handwriting, speech and meaning-based search without sending anything away.',
