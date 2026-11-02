@@ -14,7 +14,7 @@ import { appMemory, useMemoryStatus } from '../lib/memory.ts';
 import { closePalette, findActions, openPalette, registerPaletteActions, usePalette, type PaletteAction, type PaletteMode } from '../lib/palette.ts';
 import { createNote, importFiles } from '../lib/actions.ts';
 import { pickFiles } from '../platform/files.ts';
-import { isMac, modKey } from '../platform/env.ts';
+import { isIOS, isMac, modKey } from '../platform/env.ts';
 import { LocalAISetup } from './LocalAISetup.tsx';
 import { Segmented, cx, relativeTime } from './primitives.tsx';
 
@@ -72,7 +72,7 @@ export function Palette() {
   // Ctrl/⌘-K anywhere toggles the palette; citation links in any rendered text open their place.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const mod = isMac ? e.metaKey : e.ctrlKey;
+      const mod = isMac || isIOS ? e.metaKey : e.ctrlKey; // ⌘ on iPad/iPhone keyboards too
       if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         e.stopPropagation();
