@@ -75,7 +75,7 @@ test('model downloads show their size, survive an interruption and resume where 
   await useMiniLM(page);
   await openApp(page);
   await openAISettings(page);
-  const row = page.locator('.lai-row', { hasText: 'Search by meaning' }).first();
+  const row = page.locator('.lai-row', { hasText: 'Search model' });
   await expect(row.locator('select')).toHaveValue('minilm-l6');
   // The size is shown before anything is downloaded.
   await row.getByRole('button', { name: 'Download · 24 MB' }).click();
@@ -110,7 +110,7 @@ test('real on-device embeddings find notes by meaning (opt-in, downloads 24 MB)'
   await page.addInitScript(() => localStorage.setItem('inkstone.localai.v1', JSON.stringify({ embedModel: 'minilm-l6', embeddings: 'device' })));
   await openApp(page);
   await openAISettings(page);
-  const row = page.locator('.lai-row', { hasText: 'Search by meaning' }).first();
+  const row = page.locator('.lai-row', { hasText: 'Search model' });
   await row.getByRole('button', { name: /Download/ }).click();
   await expect(row).toContainText('On this device', { timeout: 180_000 });
   await expect(page.locator('.lai-row', { hasText: 'passages ready' })).toContainText(/(\d+) of \1 passages ready/, { timeout: 120_000 });
@@ -141,7 +141,7 @@ test('real on-device chat answers Ask from the notes (opt-in, downloads ~0.6 GB)
   for (let i = 0; i < 40 && !(await foot.isVisible()); i++) {
     const resume = page.locator('.lai-offer').getByRole('button', { name: /Resume download/ });
     await expect(resume.or(foot)).toBeVisible({ timeout: 120_000 });
-    if (await resume.isVisible()) await resume.click();
+    if (await resume.isVisible()) { console.log(`resuming (${await resume.innerText()})`); await resume.click(); }
   }
   await expect(page.locator('.pal-foot')).toContainText('Answered by On this device · Granite 4.0 350M', { timeout: 600_000 });
   await expect(page.locator('.pal-sources li').first()).toBeVisible();

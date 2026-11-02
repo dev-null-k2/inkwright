@@ -47,7 +47,7 @@ export function LocalAISetup({ onReady, compact }: { onReady?: () => void; compa
             {partial > 0 ? `Resume download (${formatBytes(Math.max(0, chat.variant.bytes - partial))} left)` : `Download ${formatBytes(total)}`}
           </button>
           {dl?.error && <p className="lai-error" role="alert">{dl.error}</p>}
-          <p className="muted small">One-time download · {chat.spec.licence} licence · you can remove it any time in Settings › AI.</p>
+          <p className="muted small">One-time download{embedMissing && embed ? ` (assistant ${formatBytes(chat.variant.bytes)}, search ${formatBytes(embed.variant.bytes)})` : ''} · {chat.spec.licence} licence · remove it any time in Settings › AI.</p>
         </div>
       )}
     </div>

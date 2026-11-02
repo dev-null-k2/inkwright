@@ -36,12 +36,12 @@ export function LocalAISettings() {
               <div className="lai-device">
                 <Cpu size={18} aria-hidden />
                 <div>
-                  <p>{hw!.webgpu ? `Graphics acceleration on${hw!.shaderF16 ? ' (half precision)' : ''}` : 'Processor only (no graphics acceleration for web apps here)'}{hw!.memoryGB ? ` · ${hw!.memoryGB}${hw!.memoryGB >= 8 ? '+' : ''} GB memory` : ''}</p>
+                  <p>{hw!.webgpu ? `Graphics chip (WebGPU${hw!.shaderF16 ? ', half precision' : ''})` : 'Processor'}{hw!.memoryGB ? ` · ${hw!.memoryGB}${hw!.memoryGB >= 8 ? '+' : ''} GB memory` : ''}</p>
                   <p className="muted">{st.rec?.why}</p>
                 </div>
               </div>
-              <ModelPicker role="chat" title="Assistant" current={chatChoice()} recommendedId={st.rec?.chat?.spec.id} onChange={(id) => st.setPrefs({ chatModel: id })} />
-              <ModelPicker role="embed" title="Search by meaning" current={embedChoice()} recommendedId={st.rec?.embed.spec.id} onChange={(id) => st.setPrefs({ embedModel: id })} />
+              <ModelPicker role="chat" title="Assistant model" current={chatChoice()} recommendedId={st.rec?.chat?.spec.id} onChange={(id) => st.setPrefs({ chatModel: id })} />
+              <ModelPicker role="embed" title="Search model" current={embedChoice()} recommendedId={st.rec?.embed.spec.id} onChange={(id) => st.setPrefs({ embedModel: id })} />
             </>
           )}
           {st.chrome !== 'unavailable' && (
