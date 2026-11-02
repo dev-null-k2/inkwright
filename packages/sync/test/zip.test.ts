@@ -140,6 +140,28 @@ describe('vault backup', () => {
     expect(await fs.readText(`notes/${other.id}/note.json`)).not.toBeNull();
   });
 
+  // Security review SR-10: a "backup" someone sends could carry api/keys.json with the hash of a
+  // key they hold (admin scope), opening every server that serves this vault to them.
+  it('never takes API key records from an archive, and keeps this vault\'s own', async () => {
+    const { fs } = await sampleVault();
+    const mine = '{"formatVersion":1,"keys":[{"id":"mine000000","hash":"' + 'a'.repeat(64) + '","scopes":["notes:read"]}]}\n';
+    const theirs = '{"formatVersion":1,"keys":[{"id":"evil000000","hash":"' + 'b'.repeat(64) + '","scopes":["admin"]}]}\n';
+    const evil = await writeZip([{ path: 'api/keys.json', bytes: enc.encode(theirs) }, { path: 'notes/x/hello.txt', bytes: enc.encode('hi') }]);
+
+    const fresh = new MemoryFS(clock);
+    const merged = await importVaultZip(fresh, evil, { mode: 'merge' });
+    expect(await fresh.readText('api/keys.json')).toBeNull();
+    expect(merged.skipped).toEqual(['api/keys.json']);
+    expect(merged.written).toEqual(['notes/x/hello.txt']);
+
+    await fs.writeText('api/keys.json', mine);
+    await importVaultZip(fs, evil, { mode: 'merge' });
+    expect(await fs.readText('api/keys.json')).toBe(mine);
+    await importVaultZip(fs, evil, { mode: 'replace' });
+    expect(await fs.readText('api/keys.json')).toBe(mine);
+    expect(await fs.readText('notes/x/hello.txt')).toBe('hi');
+  });
+
   it('validates the archive before touching the vault', async () => {
     const { fs } = await sampleVault();
     const before = await contents(fs);
