@@ -104,7 +104,7 @@ describe('team file', () => {
     expect(sharedWithTeam({ notebooks: ['work'], tags: [] }, { notebookId: 'P', tags: [] }, nbs)).toBe(true);
     expect(sharedWithTeam({ notebooks: ['Work/Projects'], tags: [] }, { notebookId: 'P', tags: [] }, nbs)).toBe(true);
     expect(sharedWithTeam({ notebooks: ['Projects'], tags: [] }, { notebookId: 'W', tags: [] }, nbs)).toBe(false);
-    expect(sharedWithTeam({ notebooks: [], tags: ['launch'] }, { notebookId: null, tags: ['Launch'] }, nbs)).toBe(true);
+    expect(sharedWithTeam({ notebooks: [], tags: ['launch'] }, { notebookId: undefined, tags: ['Launch'] }, nbs)).toBe(true);
   });
 
   it('merges by relevance within each source, mine first on ties', () => {

@@ -10,6 +10,7 @@ import { DriftDialog } from './dialogs.tsx';
 import { newIncidentNote, pickAndImportSessions } from './DevGlobal.tsx';
 import { acceptLesson, dismissLesson, useLessons } from './journal.ts';
 import { useDevSettings } from './settings.ts';
+import { ShellSettings } from './shell/ShellSettings.tsx';
 import { addFolder, canOpenFolder, canScan, importArchive, importGraphFile, removeSource, rescan, useDev } from './store.ts';
 
 function Group({ title, children, note }: { title: string; children: ReactNode; note?: ReactNode }) {
@@ -83,7 +84,7 @@ export function DeveloperSection() {
               <button type="button" className="btn btn-sm" onClick={() => setDrift(true)}><GitCompareArrows size={14} /> Code drift</button>
             </div>
           </Group>
-          <Group title="Agent sessions" note="Claude Code (~/.claude/projects/…/*.jsonl), Codex CLI (~/.codex/sessions/…/rollout-*.jsonl) and Gemini CLI (~/.gemini/tmp/…/chats/*.json) transcripts become readable notes in a Sessions notebook. In a session note, ••• › Developer › Find lessons asks your AI for lessons; you decide which go into the AGENTS.md note.">
+          <Group title="Agent sessions" note="Claude Code (~/.claude/projects/…/*.jsonl), Codex CLI (~/.codex/sessions/…/rollout-*.jsonl), Gemini CLI (~/.gemini/tmp/…/chats/*.json) and OpenClaw / pi (~/.openclaw/agents/…/sessions/*.jsonl, ~/.pi/agent/sessions/…/*.jsonl) transcripts become readable notes in a Sessions notebook. In a session note, ••• › Developer › Find lessons asks your AI for lessons; you decide which go into the AGENTS.md note.">
             <div className="dev-source-actions">
               <button type="button" className="btn btn-sm" onClick={() => void pickAndImportSessions()}><History size={14} /> Import sessions</button>
               <button type="button" className="btn btn-sm" onClick={() => void newIncidentNote()}>New incident note</button>
@@ -103,6 +104,7 @@ export function DeveloperSection() {
               </ul>
             )}
           </Group>
+          <ShellSettings />
         </>
       )}
       <DriftDialog open={drift} onClose={() => setDrift(false)} />

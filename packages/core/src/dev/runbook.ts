@@ -1,13 +1,14 @@
 /**
  * Runbooks and incident notebooks: fenced code blocks in a note's typed text that can be run from
- * the page — ```http (a request), ```sql (a query over CSV/JSON files attached to the note) and
- * ```js (a computation in a sandboxed worker). This file is the pure part: finding blocks,
+ * the page — ```http (a request), ```sql (a query over CSV/JSON files attached to the note),
+ * ```js (a computation in a sandboxed worker) and ```sh (a shell command, run only by an
+ * always-on runner on a computer after a signed per-run approval: shellrun.ts). This file is the pure part: finding blocks,
  * parsing requests, reading CSV, shaping results. Running them is the app's job
  * (apps/web/src/dev/runbook.ts), always with the user watching and recorded in Activity.
  */
 import type { PageInk } from '../model.ts';
 
-export const RUNBOOK_LANGS = ['http', 'sql', 'js'] as const;
+export const RUNBOOK_LANGS = ['http', 'sql', 'js', 'sh'] as const;
 export type RunbookLang = (typeof RUNBOOK_LANGS)[number];
 
 export interface RunbookBlock {
@@ -20,10 +21,16 @@ export interface RunbookBlock {
   line: number;
   /** Optional name after the language: ```http health-check */
   name?: string;
+  /** Shell blocks: the fence's dialect and `cwd=<dir>` from the info string (```sh cwd=~/code/shop restart). */
+  shell?: { dialect: ShellDialect; cwd?: string };
 }
 
+export type ShellDialect = 'sh' | 'bash' | 'zsh' | 'pwsh';
+
 const FENCE = /^([ \t]*)(`{3,}|~{3,})[ \t]*([A-Za-z]+)?[ \t]*([^\n`]*)$/;
-const ALIASES: Record<string, RunbookLang> = { http: 'http', rest: 'http', sql: 'sql', js: 'js', javascript: 'js' };
+const ALIASES: Record<string, RunbookLang> = { http: 'http', rest: 'http', sql: 'sql', js: 'js', javascript: 'js', sh: 'sh', shell: 'sh', bash: 'sh', zsh: 'sh', console: 'sh', powershell: 'sh', pwsh: 'sh' };
+const DIALECTS: Record<string, ShellDialect> = { sh: 'sh', shell: 'sh', console: 'sh', bash: 'bash', zsh: 'zsh', powershell: 'pwsh', pwsh: 'pwsh' };
+const CWD_OPT = /(?:^|\s)cwd=("([^"]+)"|\S+)/;
 
 /** Every runnable fenced block in a piece of Markdown, in order. Unclosed fences run to the end. */
 export function parseRunbookBlocks(text: string): RunbookBlock[] {
@@ -44,8 +51,15 @@ export function parseRunbookBlocks(text: string): RunbookBlock[] {
     if (lang) {
       const code = lines.slice(i + 1, j).join('\n');
       const end = j < lines.length ? starts[j]! + lines[j]!.length : text.length;
-      const name = m[4]?.trim();
-      out.push({ lang, code, start: starts[i]!, end, line: i, ...(name ? { name } : {}) });
+      let info = m[4]?.trim() ?? '';
+      let shell: RunbookBlock['shell'];
+      if (lang === 'sh') {
+        // ```bash cwd=~/code/shop restart → dialect bash, working folder, name "restart".
+        const c = CWD_OPT.exec(info);
+        if (c) info = info.replace(c[0], ' ').trim();
+        shell = { dialect: DIALECTS[tag] ?? 'sh', ...(c ? { cwd: c[2] ?? c[1]! } : {}) };
+      }
+      out.push({ lang, code, start: starts[i]!, end, line: i, ...(info ? { name: info } : {}), ...(shell ? { shell } : {}) });
     }
     i = j;
   }

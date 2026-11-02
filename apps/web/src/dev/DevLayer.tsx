@@ -11,6 +11,7 @@ import { useApp } from '../state/app.ts';
 import { Popover, cx } from '../ui/primitives.tsx';
 import { markReviewed } from './codeRefs.ts';
 import { runBlock, type RunOutput } from './runbook.ts';
+import { isModuleOn } from '../modules/registry.ts';
 import { SymbolCard, driftWord } from './SymbolCard.tsx';
 
 interface PlacedLink { key: string; refKey: string; pageIndex: number; rect: Rect; ink: boolean }
@@ -63,7 +64,8 @@ export function DevLayer({ doc, engine, host, vault, version, states, editingTex
             if (t) links.push({ key: `${tb.id}:${i}`, refKey: codeRefKey(t), pageIndex, rect: x.rect, ink: false });
           });
         }
-        const found = parseRunbookBlocks(tb.text);
+        // Shell blocks get a Run button only while their module is on (they run on a computer).
+        const found = parseRunbookBlocks(tb.text).filter((b) => b.lang !== 'sh' || isModuleOn('runbook-shell'));
         if (!found.length) continue;
         const lines = tb.text.split('\n');
         const heightUpTo = (n: number) => (n <= 0 ? 0 : layoutText(ctx, { ...tb, text: lines.slice(0, n).join('\n') }).height);
@@ -170,6 +172,12 @@ function RunOutputCard({ out, style, onClose, onCopy }: { out: RunOutput; style:
           {out.sql.more > 0 && <p className="muted small">…and {out.sql.more} more rows</p>}
           {!out.sql.rows.length && <p className="muted small">No rows. Tables: {out.sql.tables.join(', ')}</p>}
         </div>
+      )}
+      {out.shell && (
+        <>
+          <p className="muted small">On {out.shell.runner}{out.shell.result.cwd ? ` in ${out.shell.result.cwd}` : ''}{out.shell.result.exitCode != null ? ` · exit ${out.shell.result.exitCode}` : ''}{out.shell.result.shortened ? ' · shortened (the full output stays on that computer)' : ''}</p>
+          {out.shell.result.output && <pre className="dev-body" tabIndex={0}>{out.shell.result.output}</pre>}
+        </>
       )}
       {out.js && (out.js.logs.length > 0 || out.js.value !== undefined) && (
         <pre className="dev-body" tabIndex={0}>{[...out.js.logs, ...(out.js.value !== undefined ? [`→ ${out.js.value}`] : [])].join('\n')}</pre>

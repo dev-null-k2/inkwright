@@ -8,8 +8,10 @@
  * - ```js — the block runs as its own Web Worker script with the network and storage APIs removed
  *   and a time limit; console output and the returned value come back.
  *
- * Shell commands are deliberately not runnable here (docs/DEVELOPERS.md › Runbooks). Every run —
- * declined requests included — is recorded in Settings › AI › Activity.
+ * - ```sh (bash, zsh, pwsh) — never in the page: on a computer, by the always-on runner, after
+ *   this device signs an approval of that exact command (dev/shell/run.ts; the "Runbook shell
+ *   blocks" module). Every run — declined requests included — is recorded in Settings › AI ›
+ *   Activity, and the runner records it in the signed audit trail.
  */
 import {
   dataTableFrom, isDataAsset, maskHeader, parseHttpBlock, shapeBody,
@@ -30,6 +32,8 @@ export interface RunOutput {
   http?: HttpResult;
   sql?: QueryResult & { tables: string[] };
   js?: { logs: string[]; value?: string };
+  /** A shell block's result from the computer that ran it. */
+  shell?: { runner: string; result: import('@inkwright/core').ShellRunResult };
 }
 
 export const HTTP_TIMEOUT_MS = 20_000;
@@ -51,6 +55,7 @@ export async function runBlock(block: RunbookBlock, ctx: RunContext): Promise<Ru
   try {
     if (block.lang === 'http') ({ out, summary } = await runHttp(block, started));
     else if (block.lang === 'sql') ({ out, summary } = await runSql(block, ctx, started));
+    else if (block.lang === 'sh') ({ out, summary } = await runShell(block, ctx, started));
     else ({ out, summary } = await runJs(block, started));
   } catch (e) {
     out = { lang: block.lang, ok: false, ms: Math.round(performance.now() - started), error: (e as Error).message };
@@ -60,7 +65,7 @@ export async function runBlock(block: RunbookBlock, ctx: RunContext): Promise<Ru
   return out;
 }
 
-const label = (l: RunbookLang) => (l === 'http' ? 'HTTP request' : l === 'sql' ? 'SQL query' : 'JavaScript');
+const label = (l: RunbookLang) => (l === 'http' ? 'HTTP request' : l === 'sql' ? 'SQL query' : l === 'sh' ? 'Shell command' : 'JavaScript');
 
 async function record(block: RunbookBlock, ctx: RunContext, out: RunOutput | null, summary: string) {
   const hub = agentHub();
@@ -69,6 +74,24 @@ async function record(block: RunbookBlock, ctx: RunContext, out: RunOutput | nul
   // A run changes nothing in the notes; it is listed (like a connected app's action), not undoable.
   rec.record({ kind: 'external', tool: `run_${block.lang}`, server: 'Runbook', summary, detail: block.code.slice(0, 300) });
   await rec.finish(out?.ok === false ? 'error' : out ? 'done' : 'cancelled', out?.error ? { error: out.error } : {});
+}
+
+// ---- Shell (on a computer, through the runner) -------------------------------------------------
+
+async function runShell(block: RunbookBlock, ctx: RunContext, started: number): Promise<{ out: RunOutput | null; summary: string }> {
+  const { isModuleOn } = await import('../modules/registry.ts');
+  if (!isModuleOn('runbook-shell')) throw new Error('Shell blocks are switched off (Settings › Modules › Runbook shell blocks).');
+  const { runShellBlock } = await import('./shell/run.ts');
+  const { scheduleSync } = await import('../lib/sync.ts');
+  const r = await runShellBlock(block, { fs: ctx.vault.fs, noteId: ctx.noteId, noteTitle: ctx.noteTitle, sync: () => scheduleSync() });
+  if (!r) return { out: null, summary: `Declined: ${block.code.split('\n')[0]!.slice(0, 80)}` };
+  const res = r.result;
+  const ok = res.status === 'done';
+  const why = res.status === 'refused' ? `Refused by ${r.runner.label}: ${res.reason}` : res.status === 'timeout' ? `Stopped after ${r.runner.timeoutSeconds} s` : res.reason;
+  return {
+    out: { lang: 'sh', ok, ms: Math.round(performance.now() - started), ...(why && !ok ? { error: why } : {}), shell: { runner: r.runner.label, result: res } },
+    summary: `${res.status === 'refused' ? 'Refused' : `Ran (exit ${res.exitCode ?? res.signal ?? '?'})`} on ${r.runner.label}: ${block.code.split('\n')[0]!.slice(0, 80)}`,
+  };
 }
 
 // ---- HTTP --------------------------------------------------------------------------------------
