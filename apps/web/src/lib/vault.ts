@@ -51,7 +51,9 @@ export class AppVault {
     const app = new AppVault(fs, persistent);
     await app.vault.init();
     if ((await app.vault.listNotes({ includeTrashed: true })).length === 0) await seedWelcome(app.vault);
-    try { await navigator.storage?.persist?.(); } catch { /* best effort */ }
+    // Best effort and never awaited: Firefox asks the user first (a permission prompt) and keeps
+    // the promise pending until they answer, which left the app on its start screen.
+    try { void navigator.storage?.persist?.()?.catch(() => {}); } catch { /* best effort */ }
     return app;
   }
 
