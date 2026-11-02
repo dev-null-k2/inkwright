@@ -10,5 +10,9 @@
   "dependencies": {
     "perfect-freehand": "^1.2.3"
   },
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@vscode/tree-sitter-wasm": "^0.3.1",
+    "web-tree-sitter": "^0.25.10"
+  }
 }
