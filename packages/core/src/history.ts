@@ -216,10 +216,17 @@ export class VersionHistory {
    * Applies the retention rules (`retainSnapshots`) and deletes page blobs no snapshot uses.
    * Returns how many snapshots were removed.
    */
-  async prune(noteId: string, now = this.clock()): Promise<number> {
+  async prune(noteId: string, now = this.clock(), opts: { hold?: boolean; maxAgeDays?: number } = {}): Promise<number> {
     requireSafeId(noteId);
+    // Legal hold (AI policy retention): nothing is deleted while it is on.
+    if (opts.hold) return 0;
     const all = await this.manifests(noteId);
     const keep = retainSnapshots(all, now);
+    // A shorter retention period from the policy: older snapshots go too (the newest always stays).
+    if (opts.maxAgeDays && opts.maxAgeDays > 0) {
+      const newest = all.reduce<SnapshotManifest | null>((a, m) => (!a || m.takenAt > a.takenAt ? m : a), null);
+      for (const m of all) if (m !== newest && m.takenAt < now - opts.maxAgeDays * 86_400_000) keep.delete(m.id);
+    }
     let removed = 0;
     for (const m of all) {
       if (keep.has(m.id)) continue;

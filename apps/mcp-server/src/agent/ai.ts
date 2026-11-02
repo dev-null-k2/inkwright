@@ -6,7 +6,7 @@
  * local Ollama / LM Studio. Keys come from environment variables (or the 0600 config file), never
  * from command-line arguments, so they don't show up in `ps` or service files.
  */
-import { createProvider, getProviderInfo, guessModelCapabilities, type FetchLike, type Provider } from '@inkstone/ai';
+import { createProvider, getProviderInfo, guessModelCapabilities, isLoopbackUrl, type FetchLike, type Provider, type TrustRun } from '@inkstone/ai';
 
 export interface AgentAIConfig {
   /** Provider id from @inkstone/ai's registry: openai, anthropic, gemini, ollama, custom, … */
@@ -19,6 +19,12 @@ export interface AgentAIConfig {
   apiKeyEnv?: string;
   /** Override the vision guess (page images, handwriting transcription). */
   vision?: boolean;
+  /**
+   * The AI runs inside this deployment (an Ollama container on the internal network, a company
+   * inference server): it counts as "this device" for the AI policy and is not redacted.
+   * Endpoints on localhost count anyway.
+   */
+  onPremises?: boolean;
 }
 
 export interface AgentAI {
@@ -27,6 +33,14 @@ export interface AgentAI {
   /** "Anthropic (Claude) · claude-sonnet-4-5" */
   label: string;
   vision: boolean;
+  /** Inside the deployment (see `AgentAIConfig.onPremises`). */
+  local?: boolean;
+  /** Budget and usage key: the provider id. */
+  budgetKey?: string;
+  /** A copy with its own trust run (notes seen, injection taint) for one agent run (trust.ts). */
+  forRun?: (actor: { source: string; label?: string }) => AgentAI;
+  /** The trust run behind this AI, when it is guarded. */
+  trust?: TrustRun;
 }
 
 /** The environment variable each provider's key is usually in. */
@@ -67,5 +81,6 @@ export function createAgentAI(cfg: AgentAIConfig, env: NodeJS.ProcessEnv = proce
   if (!model) throw new Error(`Choose a model for ${info.label} with --ai-model.`);
   const provider = createProvider({ providerId: info.id, apiKey, baseUrl: cfg.baseUrl, fetch, appName: 'Inkstone agent' });
   const vision = cfg.vision ?? (info.capabilities.vision && guessModelCapabilities(model).vision);
-  return { provider, model, label: `${info.label} · ${model}`, vision };
+  const local = !!cfg.onPremises || isLoopbackUrl(cfg.baseUrl || info.defaultBaseUrl);
+  return { provider, model, label: `${info.label} · ${model}`, vision, local, budgetKey: info.id };
 }

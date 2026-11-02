@@ -34,6 +34,10 @@ reference implementation is `packages/core/src/codec.ts` + `vault.ts`.
   ai/study/<deckId>.json                flashcard decks with FSRS state
   ai/packs/<id>/pack.md, pack.json      saved context packs (served by the MCP server)
   ai/evals/memory.json                  the latest "Does my memory help?" report
+  ai/policy.json                        AI policy: routing, notebook/tag permissions, budgets, privacy, retention
+  ai/proposals/<id>.json                changes agents proposed (dry run), waiting for approval
+  ai/usage/<YYYY-MM>/<device>.json      AI usage meter: tokens, cost and savings per day and provider
+  ai/audit/<device>/<YYYY-MM>.jsonl     audit trail: signed, hash-chained record of what AI saw and did
 ```
 
 Rules
@@ -468,7 +472,60 @@ addedPage?}` → remove that text box (and the page, if it was added and is now 
 pageId, text}` (the MCP server's `transcribe_pages`) → clear the page's recognized text if it is
 still that text; `text_replaced {noteId, pageId, textId, before, after}` (an accepted compiled-wiki
 update) → put `before` back if the text box still holds `after`; `external {server, detail?}` —
-a change in a connected app, listed only. The newest 300 runs are kept.
+a change in a connected app, listed only. The newest 300 runs are kept (and fewer days when the
+AI policy's `retention.activityDays` says so; none are removed under legal hold).
+
+**AI policy** — `ai/policy.json`, written by Settings › AI › Routing & privacy (or by hand). Only
+fields that differ from the defaults are present; every field is optional and readers fill in the
+defaults. The full schema and defaults are in docs/TRUST.md › The policy file:
+
+```jsonc
+{ "version": 1,
+  "routes": { "background|chat|heavy|vision": "auto|device|off|provider:<provider config id>" },
+  "notebooks": { "<notebookId>": { "access?": "none|read|read-write", "localOnly?": true } },
+  "tags": { "<tag, lower case, no #>": { "access?": "…", "localOnly?": true } },
+  "budgets": { "<provider config id or provider id>": { "monthlyUsd": 20, "onExceed": "device|block" } },
+  "privacy": { "mode": "redact|off", "kinds": { "<email|phone|card|iban|gov_id|secret|address|name|ip>": "redact|block|allow" }, "allowList?": [] },
+  "compression": { "enabled", "minTokens", "deviceSummaries" },
+  "injection": { "spotlight", "confirmWritesAfterSuspicious", "confirmWritesAfterAnyRead?" },
+  "tools": { "deny": ["<tool name or * pattern>"], "allowOnly?": [] },
+  "agentWrites": { "assistant|routine|external": "apply|propose" },
+  "retention": { "activityDays", "auditDays", "historyDays", "legalHold" },
+  "prices": { "<model pattern>": { "input", "output", "cachedInput?" } } }
+```
+
+A field with a mistake is reported and keeps its default (so a typo never weakens protection).
+Sync treats it as a whole file like the rest of `ai/`.
+
+**Proposals** — `ai/proposals/<id>.json`, a change an agent proposed under dry run:
+
+```jsonc
+{ "id", "createdAt", "source": "assistant|routine|external", "label", "noteId?", "noteTitle?",
+  "summary", "before", "after",
+  "op": { "op": "createNote", "args": { "title", "text", "notebookId?", "tags?" } }
+      | { "op": "appendText", "noteId", "text", "pageIndex?" } | { "op": "updateNote", "noteId", "patch" }
+      | { "op": "createNotebook", "name", "parentId?" } | { "op": "trashNote", "noteId" },
+  "status": "pending|applied|rejected|failed", "decidedAt?", "outcome?" }
+```
+
+Approving applies `op` through the same recorded host as a live agent (so it lands in Activity).
+Decided proposals are removed after 30 days.
+
+**Usage** — `ai/usage/<YYYY-MM>/<device>.json`, one file per device and month (so devices never
+write the same file): `{ "version": 1, "device", "month", "rows": [ { "day": "YYYY-MM-DD",
+"provider", "label", "model", "local", "calls", "inputTokens", "outputTokens",
+"uncompressedInputTokens", "costUsd": number|null, "savedUsd": number|null, "redactions",
+"blocked" } ] }`. Budgets sum every device's rows for the month.
+
+**Audit trail** — `ai/audit/<device>/<YYYY-MM>.jsonl`, one JSON object per line, append-only, one
+hash chain per device (`<device>` is the short authorship-key fingerprint in the app, `srv-<hash>`
+for a server). Each event: `{ "v": 1, "seq", "at", "dev", "prev", "kind", …fields, "hash",
+"sig?" }` where `hash` is SHA-256 (hex) of the canonical JSON (sorted keys, no whitespace) of the
+event without `hash` and `sig`, `prev` is the previous event's hash (`genesis:<dev>` for the
+first), and `sig` is an ES256 signature (base64url) over the 32 hash bytes by the key declared in
+the latest `key` event (`data.publicJwk`; each month file starts with one). Kinds and fields are
+listed in docs/TRUST.md › Audit trail. Retention removes whole months and then records a
+`retention` event whose `data.prunedHead` is the hash the remaining chain starts after.
 
 ## Context compiler
 

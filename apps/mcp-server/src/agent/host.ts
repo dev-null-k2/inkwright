@@ -55,7 +55,13 @@ export class VaultNoteToolHost implements NoteToolHost {
   async searchNotes(query: string, opts: { limit?: number } = {}): Promise<NoteSearchHit[]> {
     await this.ctx.refresh();
     const index = await this.ctx.searchIndex();
-    return index.search(query, { limit: opts.limit ?? 8 }).map((h) => ({ noteId: h.noteId, title: h.title, pageIndex: h.pageIndex, snippet: h.snippet, score: h.score }));
+    const out: NoteSearchHit[] = [];
+    for (const h of index.search(query, { limit: (opts.limit ?? 8) * 2 })) {
+      // The index covers every note; the policy vault decides which ones agents may see.
+      if (out.length >= (opts.limit ?? 8) || !(await this.ctx.vault.readNote(h.noteId))) continue;
+      out.push({ noteId: h.noteId, title: h.title, pageIndex: h.pageIndex, snippet: h.snippet, score: h.score });
+    }
+    return out;
   }
 
   async readNote(id: string): Promise<NoteContent | null> {
@@ -138,15 +144,21 @@ export class VaultNoteToolHost implements NoteToolHost {
  * pages), so undoing the run removes all of it.
  */
 export class RecordingVaultHost extends RecordingNoteToolHost {
-  constructor(private vaultHost: VaultNoteToolHost, private log: (op: NewActivityOp) => void, clock?: () => number) {
-    super(vaultHost, log, clock);
+  /**
+   * `through` is the host calls go through when it wraps `vaultHost` (the trust layer's access
+   * and dry-run hosts); the boxes placed are still read from `vaultHost`.
+   */
+  constructor(private vaultHost: VaultNoteToolHost, private log: (op: NewActivityOp) => void, clock?: () => number, private through: NoteToolHost = vaultHost) {
+    super(through, log, clock);
   }
 
   override async appendText(noteId: string, text: string, pageIndex?: number) {
-    const before = await this.vaultHost.readNote(noteId);
-    const r = await this.vaultHost.appendText(noteId, text, pageIndex);
+    const before = await this.through.readNote(noteId);
+    this.vaultHost.lastAppend = null;
+    const r = await this.through.appendText(noteId, text, pageIndex);
     const title = before?.meta.title ?? '';
-    for (const b of this.vaultHost.lastAppend?.boxes ?? []) {
+    const placed = this.vaultHost.lastAppend as AppendOutcome | null; // set by the call above
+    for (const b of placed?.boxes ?? []) {
       const clipped = b.text.replace(/\s+/g, ' ');
       this.log({ kind: 'text_appended', tool: this.currentTool || 'append_to_note', noteId, title, pageId: b.pageId, textId: b.textId, text: b.text, ...(b.addedPage ? { addedPage: true } : {}), summary: `Added “${clipped.length > 70 ? `${clipped.slice(0, 69)}…` : clipped}” to “${title || 'Untitled'}”` });
     }
