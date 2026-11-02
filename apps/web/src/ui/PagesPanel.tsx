@@ -9,6 +9,7 @@ import { insertPdf } from '../lib/openFiles.ts';
 import { pickFiles } from '../platform/files.ts';
 import { useApp } from '../state/app.ts';
 import { IconButton, cx } from './primitives.tsx';
+import { PageSummaryNote, SummarizePagesButton, usePageSummaries } from './PageSummaries.tsx';
 
 /**
  * Page sorter: thumbnails of every page, with add / duplicate / move / rotate / delete, adding the
@@ -19,6 +20,7 @@ export function PagesPanel({ doc, current, assets, onGo, onClose, onDelete, vaul
   const [picked, setPicked] = useState<Set<string> | null>(null);
   const { toast } = useApp();
   useEffect(() => doc.subscribe(() => force((x) => x + 1)), [doc]);
+  const summaries = usePageSummaries(vault, doc.meta.id);
   const board = doc.meta.kind === 'board';
   const pickedIdx = picked ? doc.pages.map((p, i) => (picked.has(p.id) ? i : -1)).filter((i) => i >= 0) : [];
 
@@ -72,6 +74,7 @@ export function PagesPanel({ doc, current, assets, onGo, onClose, onDelete, vaul
                 <IconButton label="Delete page" disabled={doc.pageCount <= 1} onClick={() => onDelete(i)}><Trash2 size={14} /></IconButton>
               </div>
             </div>
+            <PageSummaryNote doc={doc} pageIndex={i} summaries={summaries} />
           </li>
         ))}
       </ol>
@@ -86,6 +89,7 @@ export function PagesPanel({ doc, current, assets, onGo, onClose, onDelete, vaul
             <FilePlus2 size={16} /> Add page after {current + 1}
           </button>
           {vault && !board && <button type="button" className="btn" onClick={() => void mergePdf()}><FileUp size={16} /> Add a PDF</button>}
+          {vault && <SummarizePagesButton doc={doc} vault={vault} />}
         </div>
       )}
     </aside>

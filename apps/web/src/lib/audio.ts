@@ -9,12 +9,17 @@ export class Recorder {
   private chunks: Blob[] = [];
   private stream: MediaStream | null = null;
   startedAt = 0;
+  /** Id of the clip being recorded (known from the start, so its live transcript can name it). */
+  clipId = '';
 
   static supported() {
     return typeof MediaRecorder !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
   }
 
   get recording() { return this.rec?.state === 'recording'; }
+
+  /** The microphone stream while recording (live transcription listens to the same audio). */
+  get mediaStream(): MediaStream | null { return this.stream; }
 
   async start(): Promise<void> {
     this.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
@@ -24,6 +29,7 @@ export class Recorder {
     this.rec.ondataavailable = (e) => { if (e.data.size) this.chunks.push(e.data); };
     this.rec.start(1000);
     this.startedAt = Date.now();
+    this.clipId = newId();
   }
 
   async stop(): Promise<{ blob: Blob; clip: Omit<AudioClip, 'asset'> } | null> {
@@ -37,7 +43,7 @@ export class Recorder {
     const blob = new Blob(this.chunks, { type });
     this.rec = null;
     this.stream = null;
-    return { blob, clip: { id: newId(), startedAt: this.startedAt, durationMs: Date.now() - this.startedAt, mimeType: type, title: `Recording ${new Date(this.startedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}` } };
+    return { blob, clip: { id: this.clipId || newId(), startedAt: this.startedAt, durationMs: Date.now() - this.startedAt, mimeType: type, title: `Recording ${new Date(this.startedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}` } };
   }
 }
 

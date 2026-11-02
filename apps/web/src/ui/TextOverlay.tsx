@@ -4,6 +4,8 @@ import type { FontFamily, TextBox } from '@inkstone/core';
 import { FONT_FAMILIES } from '../canvas/render.ts';
 import { INK_PALETTE } from '../state/settings.ts';
 import { cx } from './primitives.tsx';
+import { DictateButton } from './Dictation.tsx';
+import { insertAtCaret } from '../lib/listen/dictation.ts';
 
 /** Edits a text box in place: a textarea laid exactly over where the text renders on the page. */
 export function TextOverlay({ box, screen, zoom, onChange, onDone }: {
@@ -22,7 +24,16 @@ export function TextOverlay({ box, screen, zoom, onChange, onDone }: {
     t.style.height = 'auto';
     t.style.height = `${t.scrollHeight + 2}px`;
   }, [b.text, b.fontSize, zoom, b.width]);
-  const update = (patch: Partial<TextBox>) => { const n = { ...b, ...patch }; setB(n); onChange(n); };
+  const latest = useRef(b);
+  latest.current = b;
+  const update = (patch: Partial<TextBox>) => { const n = { ...latest.current, ...patch }; latest.current = n; setB(n); onChange(n); };
+  // Dictated words go in at the caret.
+  const dictated = (text: string) => {
+    const t = ta.current;
+    const r = insertAtCaret(latest.current.text, t?.selectionStart ?? latest.current.text.length, text);
+    update({ text: r.value });
+    setTimeout(() => { t?.focus(); t?.setSelectionRange(r.caret, r.caret); }, 0);
+  };
   const insertPrefix = (prefix: string) => {
     const t = ta.current!;
     const start = b.text.lastIndexOf('\n', t.selectionStart - 1) + 1;
@@ -42,6 +53,7 @@ export function TextOverlay({ box, screen, zoom, onChange, onDone }: {
         <span className="sel-sep" />
         <button type="button" className="sel-icon" aria-label="Bulleted line" onClick={() => insertPrefix('- ')}><List size={16} /></button>
         <button type="button" className="sel-icon" aria-label="Checkbox line" onClick={() => insertPrefix('- [ ] ')}><ListChecks size={16} /></button>
+        <DictateButton onText={dictated} />
         <span className="sel-sep" />
         {INK_PALETTE.slice(0, 6).map((c) => <button key={c} type="button" className={cx('swatch is-mini', b.color === c && 'is-on')} aria-label={c} style={{ background: '#' + c.slice(3) }} onClick={() => update({ color: c })} />)}
         <button type="button" className="btn btn-primary btn-sm" onClick={() => onDone(b)}><Check size={15} /> Done</button>

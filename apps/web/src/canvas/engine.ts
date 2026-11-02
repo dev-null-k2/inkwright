@@ -178,6 +178,10 @@ export class InkEngine {
   private destroyed = false;
   private wetDirtyRect: { x: number; y: number; w: number; h: number } | null = null;
   private flash: { el: HTMLDivElement; pageIndex: number; rect: Rect; timer: number } | null = null;
+  /** Strokes picked out by a transcript sentence ("written while this was said"); the rest dims. */
+  private strokeFocus: { ids: Set<string>; timer: number } | null = null;
+  /** A tap on ink reports when it was written (onSeek) even without playback: the transcript is open. */
+  tapToSeek = false;
 
   tool: ToolState;
   prefs: InputPrefs;
@@ -247,6 +251,32 @@ export class InkEngine {
   setPlayback(p: { start: number; position: number } | null) {
     this.playback = p;
     this.bumpScene();
+  }
+
+  /**
+   * Highlights the ink written while a transcript sentence was said: other ink dims for `ms`, and
+   * the region is scrolled into view and outlined. `null` clears it.
+   */
+  focusStrokes(pageIndex: number, ids: readonly string[] | null, ms = 2600) {
+    if (this.strokeFocus) clearTimeout(this.strokeFocus.timer);
+    this.strokeFocus = null;
+    if (ids?.length) {
+      const set = new Set(ids);
+      const focus = { ids: set, timer: window.setTimeout(() => { if (this.strokeFocus === focus) { this.strokeFocus = null; this.bumpScene(); } }, ms) };
+      this.strokeFocus = focus;
+      const page = this.doc.pages[pageIndex];
+      const pts = page ? page.strokes.filter((st) => set.has(st.id)).flatMap((st) => st.points) : [];
+      if (pts.length) {
+        const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+        this.flashRegion(pageIndex, { minX: Math.min(...xs), minY: Math.min(...ys), maxX: Math.max(...xs), maxY: Math.max(...ys) }, ms);
+      }
+    }
+    this.bumpScene();
+  }
+
+  /** Ids of the strokes currently picked out by `focusStrokes` (tests, UI state). */
+  get focusedStrokes(): string[] {
+    return this.strokeFocus ? [...this.strokeFocus.ids] : [];
   }
 
   undo() { const i = this.doc.undo(); this.afterHistory(i); }
@@ -703,11 +733,12 @@ export class InkEngine {
       drawImageItem(ctx, im, this.assets.image(note.id, im.asset));
     }
     const playback = this.playback;
+    const focus = this.strokeFocus?.ids;
     drawStrokes(dc, page.strokes, {
       paperColor: paperColorFor(note, page),
       hidden: hidden?.strokes,
       selected: sel && !moving ? sel.strokes : undefined,
-      alphaFor: playback ? (s) => (s.createdAt >= playback.start && s.createdAt > playback.start + playback.position ? 0.18 : 1) : undefined,
+      alphaFor: focus ? (s) => (focus.has(s.id) ? 1 : 0.22) : playback ? (s) => (s.createdAt >= playback.start && s.createdAt > playback.start + playback.position ? 0.18 : 1) : undefined,
     });
     for (const t of page.texts ?? []) {
       if (hidden?.texts.has(t.id)) continue;
@@ -1353,7 +1384,7 @@ export class InkEngine {
       ? { ...g.shape, id: newId() }
       : { id: newId(), pen: g.preset.pen, color: g.preset.color, size: g.preset.size, points: g.points, createdAt: g.wall };
     // Audio playback: a tap on ink seeks to when it was written.
-    if (this.playback && !g.shape && g.points.length < 4) {
+    if ((this.playback || this.tapToSeek) && !g.shape && g.points.length < 4) {
       const last = g.points[g.points.length - 1]!;
       const hit = hitStrokes(this.doc.page(g.pageIndex).strokes, [last], 6 / this.viewport.zoom);
       const target = this.doc.page(g.pageIndex).strokes.find((s) => hit.has(s.id));

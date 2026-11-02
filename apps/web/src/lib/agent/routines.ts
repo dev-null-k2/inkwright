@@ -23,6 +23,7 @@ import type { AppVault } from '../vault.ts';
 import { prepareAgentRun, touchedByAgent } from './assistant.ts';
 import { openAgentView, requestApproval, requireHub, useAgent } from './hub.ts';
 import { describeMcpToolName, startConnectedApps } from './mcp.ts';
+import { recordingRoutineContext, whenListenSettled } from '../listen/session.ts';
 
 let scheduler: RoutineScheduler | null = null;
 const aborts = new Map<string, AbortController>();
@@ -60,7 +61,8 @@ export async function runRoutine(r: Routine, ev: TriggerEvent): Promise<{ status
     remember: false,
     mcp: r.tools.mcpServers,
     alwaysAskForWrites: true,
-    context: routineRunContext(r, ev, Date.now()),
+    // A finished recording brings its transcript, summary and to-dos along.
+    context: routineRunContext(r, ev, Date.now()) + (ev.kind === 'recording-ended' && ev.noteId ? `\n${await recordingRoutineContext(hub.vault, ev.noteId).catch(() => '')}` : ''),
   });
   const ac = new AbortController();
   aborts.set(r.id, ac);
@@ -149,7 +151,8 @@ async function start(vault: AppVault): Promise<void> {
       const count = n.recordings?.length ?? 0;
       const before = recordings.get(n.id) ?? 0;
       recordings.set(n.id, count);
-      if (count > before) void scheduler.recordingEnded({ id: n.id, title: n.title });
+      // Wait for the transcript and summaries so the routine can use them.
+      if (count > before) void whenListenSettled(n.id).then(() => scheduler?.recordingEnded({ id: n.id, title: n.title }));
       if (!touchedByAgent(n.id)) scheduler.noteSaved({ id: n.id, title: n.title, tags: n.tags });
     });
   });

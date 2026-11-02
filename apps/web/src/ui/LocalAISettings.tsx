@@ -72,7 +72,7 @@ export function LocalAISettings() {
   );
 }
 
-function ModelPicker({ role, title, current, recommendedId, onChange }: { role: 'chat' | 'embed'; title: string; current: ModelChoice | null; recommendedId?: string; onChange: (id: string | null) => void }) {
+export function ModelPicker({ role, title, current, recommendedId, onChange }: { role: 'chat' | 'embed' | 'asr'; title: string; current: ModelChoice | null; recommendedId?: string; onChange: (id: string | null) => void }) {
   const st = useLocalAI();
   const hw = st.hardware!;
   const options = runnableModels(hw, role);

@@ -8,7 +8,7 @@ import { matchScore, type RankedChunk } from '@inkstone/core';
 import { useApp } from '../state/app.ts';
 import { useSettings } from '../state/settings.ts';
 import { getActiveAI } from '../lib/ai.ts';
-import { askNotes, SOURCE_KIND, toSources, type AskSource } from '../lib/ask.ts';
+import { anchorOf, askNotes, sourceKindLabel, toSources, type AskSource } from '../lib/ask.ts';
 import { openAnchor } from '../lib/focus.ts';
 import { appMemory, useMemoryStatus } from '../lib/memory.ts';
 import { closePalette, findActions, openPalette, registerPaletteActions, usePalette, type PaletteAction, type PaletteMode } from '../lib/palette.ts';
@@ -46,6 +46,7 @@ const SOURCE_ICON: Record<RankedChunk['chunk']['source'], ReactNode> = {
   text: <Type size={16} />,
   pdf: <FileText size={16} />,
   meta: <NotebookPen size={16} />,
+  speech: <AudioLines size={16} />,
 };
 
 function useGlobalActions() {
@@ -173,12 +174,11 @@ function SearchResults({ query, inputRef, onAsk }: { query: string; inputRef: Re
         key: `chunk:${c.id}`,
         group: 'In your notes',
         icon: SOURCE_ICON[c.source],
-        title: <><span className="pal-note">{c.title}</span><span className="pal-page">p. {c.pageIndex + 1} · {SOURCE_KIND[c.source]}</span></>,
+        title: <><span className="pal-note">{c.title}</span><span className="pal-page">p. {c.pageIndex + 1} · {sourceKindLabel(c)}</span></>,
         detail: <Marked text={r.snippet} />,
         run: () => {
           done();
-          const s = toSources([r])[0]!;
-          openAnchor({ noteId: s.noteId, pageIndex: s.pageIndex, rect: s.rect });
+          openAnchor(anchorOf(toSources([r])[0]!));
         },
       });
     }
@@ -287,7 +287,7 @@ function AskPanel({ query, handle }: { query: string; handle: React.MutableRefOb
   };
   handle.current = { run: () => void run() };
 
-  const go = (s: AskSource) => { closePalette(); openAnchor({ noteId: s.noteId, pageIndex: s.pageIndex, rect: s.rect }); };
+  const go = (s: AskSource) => { closePalette(); openAnchor(anchorOf(s)); };
 
   return (
     <div className="pal-ask">
@@ -317,7 +317,7 @@ function AskPanel({ query, handle }: { query: string; handle: React.MutableRefOb
                   <button type="button" className="pal-source" onClick={() => go(s)}>
                     <span className="pal-cite-n">{s.n}</span>
                     <span className="pal-text">
-                      <span className="pal-title"><span className="pal-note">{s.title}</span><span className="pal-page">p. {s.pageIndex + 1} · {SOURCE_KIND[s.source]}</span></span>
+                      <span className="pal-title"><span className="pal-note">{s.title}</span><span className="pal-page">p. {s.pageIndex + 1} · {sourceKindLabel(s)}</span></span>
                       <span className="pal-detail"><Marked text={s.snippet} /></span>
                     </span>
                   </button>

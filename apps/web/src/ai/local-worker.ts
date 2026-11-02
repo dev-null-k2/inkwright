@@ -8,7 +8,7 @@
 import * as T from '@huggingface/transformers';
 import ortWasmUrl from 'onnxruntime-web/ort-wasm-simd-threaded.asyncify.wasm?url';
 import ortMjsUrl from 'onnxruntime-web/ort-wasm-simd-threaded.asyncify.mjs?url';
-import { normalize, serveLocalEngine, truncateEmbedding, type DownloadProgress, type GenerateRequest, type GenerateResult, type LocalEngine, type ModelRef, type ModelStatus, type PortLike } from '@inkstone/ai';
+import { normalize, serveLocalEngine, truncateEmbedding, type DownloadProgress, type GenerateRequest, type GenerateResult, type LocalEngine, type ModelRef, type ModelStatus, type PortLike, type TranscribeRequest, type TranscribeResult } from '@inkstone/ai';
 import { HF_HOST, fileHandle, filesFor, opfsAvailable, parseCacheKey, readIndex, readStored, removeStored, repoDir, storedSize, storedStatus, writeManifest } from './model-files.ts';
 
 const env = T.env as any;
@@ -134,6 +134,7 @@ async function ensureSpace(needed: number) {
 
 type Loaded =
   | { kind: 'pipe'; pipe: any }
+  | { kind: 'asr'; pipe: any }
   | { kind: 'encoder'; model: any; tokenizer: any }
   | { kind: 'causal'; model: any; tokenizer: any };
 
@@ -144,7 +145,7 @@ async function disposeLoaded(id: string) {
   loaded.delete(id);
   try {
     const m = await p;
-    await (m?.kind === 'pipe' ? m.pipe.dispose?.() : m?.model.dispose?.());
+    await (m?.kind === 'pipe' || m?.kind === 'asr' ? m.pipe.dispose?.() : m?.model.dispose?.());
   } catch {
     /* already gone */
   }
@@ -159,6 +160,8 @@ function load(ref: ModelRef): Promise<Loaded> {
     if (ref.loader === 'causal-lm') for (const k of [...loaded.keys()]) if (k !== key && loaded.has(k)) { const other = await loaded.get(k)!.catch(() => null); if (other?.kind === 'causal') await disposeLoaded(k); }
     const opts = { device: ref.device, dtype: ref.dtype };
     if (ref.loader === 'feature-extraction') return { kind: 'pipe', pipe: await T.pipeline('feature-extraction', ref.repo, opts as any) };
+    // Speech models: per-file dtypes (e.g. a full-precision audio encoder with a 4-bit decoder).
+    if (ref.loader === 'speech-to-text') return { kind: 'asr', pipe: await T.pipeline('automatic-speech-recognition', ref.repo, { device: ref.device, dtype: ref.moduleDtypes ?? ref.dtype } as any) };
     const tokenizer = await T.AutoTokenizer.from_pretrained(ref.repo);
     if (ref.loader === 'text-embedding-multimodal') {
       const config: any = await T.AutoConfig.from_pretrained(ref.repo);
@@ -287,6 +290,24 @@ const engine: LocalEngine = {
     } finally {
       signal?.removeEventListener('abort', onAbort);
     }
+  },
+
+  async transcribe(ref: ModelRef, req: TranscribeRequest, signal?: AbortSignal): Promise<TranscribeResult> {
+    await requireInstalled(ref);
+    const m = await load(ref);
+    if (m.kind !== 'asr') throw new Error(`${ref.id} is not a speech model.`);
+    if (signal?.aborted) throw abortError();
+    const whisper = ref.asr?.family === 'whisper';
+    const opts: Record<string, unknown> = whisper
+      ? { return_timestamps: true, task: 'transcribe', ...(req.language ? { language: req.language } : {}) }
+      // Moonshine: ~6.5 tokens per second of speech is plenty; the cap stops runaway repetition.
+      : { max_new_tokens: Math.max(16, Math.ceil((req.audio.length / 16_000) * 6.5) + 8) };
+    const out = await m.pipe(req.audio, opts);
+    if (signal?.aborted) throw abortError();
+    const r = (Array.isArray(out) ? out[0] : out) as { text?: string; chunks?: { text: string; timestamp: [number, number | null] }[] };
+    const result: TranscribeResult = { text: (r?.text ?? '').trim() };
+    if (r?.chunks?.length) result.chunks = r.chunks.map((c) => ({ text: c.text, start: c.timestamp[0] ?? 0, end: c.timestamp[1] ?? null }));
+    return result;
   },
 
   async unload(modelId?: string) {
