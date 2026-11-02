@@ -1,12 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
-import { line, modKey, newNote, openApp, pen, strokes, word, type Pt } from './helpers.ts';
+import { editorMenu, line, modKey, newNote, openApp, pen, strokes, word, type Pt } from './helpers.ts';
 
 /** Canvas-relative screen point of a page point. */
 const toScreen = (page: Page, x: number, y: number, pageIndex = 0) =>
   page.evaluate(({ x, y, pageIndex }) => { const r = (window as any).__inkwright.engine.pageRectToScreen(pageIndex, { minX: x, minY: y, maxX: x, maxY: y }); return [r.x, r.y] as [number, number]; }, { x, y, pageIndex });
 const pageOf = (page: Page, i = 0) => page.evaluate((i) => (window as any).__inkwright.doc.page(i), i);
-const more = (page: Page) => page.getByRole('button', { name: 'More', exact: true }).click();
-const menuItem = (page: Page, name: RegExp | string) => page.getByRole('menuitem', { name }).click();
 const flush = async (page: Page) => page.keyboard.press(`${await modKey(page)}+s`);
 
 test('selective eraser: long-press the eraser, erase only the highlighter', async ({ page }) => {
@@ -132,8 +130,7 @@ test('tape covers ink; a tap reveals it, and View › Reveal all tape shows ever
   expect(await strokes(page)).toHaveLength(1);
   await pen(page, [[320, 301], [320, 301]]);
   expect(await revealed()).toBe(false);
-  await more(page);
-  await menuItem(page, /^View/);
+  await editorMenu(page, 'Page', 'View');
   await page.getByText('Reveal all tape').click();
   expect(await revealed()).toBe(true);
 });
@@ -166,8 +163,7 @@ test('two-page view: pages side by side on a wide screen, ink lands on the right
   expect(await strokes(page, 0)).toHaveLength(0);
   expect(await page.evaluate(() => (window as any).__inkwright.engine.currentPageIndex)).toBe(1);
   // ••• › View › One page.
-  await more(page);
-  await menuItem(page, /^View/);
+  await editorMenu(page, 'Page', 'View');
   await page.getByRole('radio', { name: 'One page' }).click();
   await expect.poll(() => page.evaluate(() => (window as any).__inkwright.engine.spreadsOn)).toBe(false);
 });
@@ -175,16 +171,14 @@ test('two-page view: pages side by side on a wide screen, ink lands on the right
 test('layers: write on the drawing layer, hide it, and lock it against the eraser', async ({ page }) => {
   await openApp(page);
   await newNote(page);
-  await more(page);
-  await menuItem(page, /^View/);
+  await editorMenu(page, 'Page', 'View');
   await page.getByRole('radio', { name: /Drawing layer/ }).click();
   await page.keyboard.press('Escape');
   await expect(page.locator('.layer-pill')).toHaveText('Drawing layer');
   await pen(page, word(200, 300, 200));
   expect((await pageOf(page)).strokes[0].layer).toBe('drawing');
   // Lock it: the eraser can't touch it (and writing moves to the writing layer).
-  await more(page);
-  await menuItem(page, /^View/);
+  await editorMenu(page, 'Page', 'View');
   await page.getByRole('button', { name: 'Lock drawing layer' }).click();
   await page.keyboard.press('Escape');
   await expect(page.locator('.layer-pill')).toHaveCount(0);
@@ -192,8 +186,7 @@ test('layers: write on the drawing layer, hide it, and lock it against the erase
   await pen(page, line([300, 250], [300, 350]));
   expect(await strokes(page)).toHaveLength(1);
   // Hide it.
-  await more(page);
-  await menuItem(page, /^View/);
+  await editorMenu(page, 'Page', 'View');
   await page.getByRole('button', { name: 'Hide drawing layer' }).click();
   expect((await pageOf(page)).layers).toEqual({ drawing: { hidden: true, locked: true } });
 });
@@ -204,8 +197,7 @@ test('version history: restore an earlier version, then copy a page back in from
   await pen(page, word(200, 250, 200));
   await pen(page, word(200, 320, 200));
   await flush(page);
-  await more(page);
-  await menuItem(page, 'Version history');
+  await editorMenu(page, 'Note', 'Version history');
   const dialog = page.getByRole('dialog', { name: 'Version history' });
   await expect(dialog.locator('.history-item')).toHaveCount(2); // opened (blank) and now
   await expect(dialog.locator('.history-item.is-on')).toContainText('Opened');
@@ -214,8 +206,7 @@ test('version history: restore an earlier version, then copy a page back in from
   await page.getByRole('button', { name: 'Restore', exact: true }).click();
   await expect.poll(async () => (await strokes(page)).length).toBe(0);
   // The state before the restore is a version of its own: copy its page back in.
-  await more(page);
-  await menuItem(page, 'Version history');
+  await editorMenu(page, 'Note', 'Version history');
   await dialog.locator('.history-item', { hasText: 'Before restoring' }).click();
   await dialog.getByRole('button', { name: 'Copy page 1 into the note' }).click();
   await expect.poll(() => page.evaluate(() => (window as any).__inkwright.doc.pageCount)).toBe(2);
@@ -233,8 +224,7 @@ test('lock a note: encrypted cover in the library, passcode to open, kept out of
   });
   await pen(page, word(200, 320, 200));
   await flush(page);
-  await more(page);
-  await menuItem(page, 'Lock note');
+  await editorMenu(page, 'Note', 'Lock note');
   const dialog = page.getByRole('dialog', { name: 'Lock this note' });
   await dialog.getByLabel('Passcode', { exact: true }).fill('tulip-42');
   await dialog.getByLabel('Repeat passcode').fill('tulip-42');

@@ -1,5 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { modKey, newNote, openApp, pen, word } from './helpers.ts';
+import { modKey, newNote, openApp, pen, settingsGroup, word } from './helpers.ts';
 
 /**
  * Time travel across the vault (version history read as the past) and branches for dry-run
@@ -82,7 +82,7 @@ async function openActivity(page: Page) {
 test('dry run onto a branch: compare it with the notes side by side, then merge it', async ({ page }) => {
   await mockLLM(page, [{ tool: 'create_note', args: { title: 'Weekly plan', text: 'Monday: draft the report' } }, { text: 'I proposed a note for you.' }]);
   await openApp(page);
-  // A provider and "Propose" for the assistant (Settings › AI › Routing & privacy).
+  // A provider and "Propose" for the assistant (Settings › Privacy & trust › Routing & privacy).
   await page.getByRole('button', { name: 'Settings' }).click();
   await page.getByRole('button', { name: 'AI', exact: true }).click();
   await page.getByRole('button', { name: 'Add an AI provider' }).click();
@@ -90,6 +90,7 @@ test('dry run onto a branch: compare it with the notes side by side, then merge 
   await page.locator('.add-provider').getByPlaceholder('https://…/v1').fill('https://mock-llm.test/v1');
   await page.locator('.add-provider input[list]').fill('mock-1');
   await page.getByRole('button', { name: 'Save provider' }).click();
+  await settingsGroup(page, 'Privacy & trust', 'AI privacy');
   await page.getByRole('button', { name: /^Routing & privacy/ }).click();
   await page.getByRole('radiogroup', { name: 'How the assistant change notes' }).getByRole('radio', { name: 'Propose' }).click();
   await page.getByRole('button', { name: 'Back' }).first().click();

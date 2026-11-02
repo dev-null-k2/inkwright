@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { modKey, newNote, openApp } from './helpers.ts';
+import { modKey, newNote, openApp, editorMenu, editorMenuCommands } from './helpers.ts';
 
 /**
  * The platform: modules (Settings › Modules), sandboxed plugins (install, permissions, panels,
@@ -10,9 +10,10 @@ import { modKey, newNote, openApp } from './helpers.ts';
 const SLOW = { timeout: 15_000 };
 
 async function settings(page: Page, section: string) {
+  // Section ids from before Settings was grouped still open the right place.
   await page.goto(`/?e2e#settings/${section}`);
   await expect(page.locator('.settings')).toBeVisible();
-  await page.locator('.set-nav .nav-item', { hasText: section === 'modules' ? 'Modules' : section === 'plugins' ? 'Plugins' : 'Developer' }).click();
+  await expect(page.getByRole('tab', { name: section === 'modules' ? 'Modules' : section === 'plugins' ? 'Plugins' : 'Developer', selected: true })).toBeVisible();
 }
 
 /** Puts typed text on the open note's first page (one undo step, like typing). */
@@ -43,7 +44,7 @@ test('modules switch features off and back, with dependencies and presets', asyn
   await expect(confirm).toContainText('Graph');
   await confirm.getByRole('button', { name: 'Turn off' }).click();
   await expect(await moduleSwitch(page, 'Graph')).not.toBeChecked();
-  await expect(page.locator('.set-nav')).not.toContainText('Notes, links & Obsidian');
+  await expect(page.locator('.set-nav')).not.toContainText('Knowledge');
   // Turning Graph back on brings what it needs.
   await (await moduleSwitch(page, 'Graph')).click({ force: true });
   await expect(await moduleSwitch(page, 'Links & daily notes')).toBeChecked();
@@ -54,19 +55,17 @@ test('modules switch features off and back, with dependencies and presets', asyn
   await openApp(page);
   await newNote(page);
   await expect(page.locator('.ai-btn')).toHaveCount(0);
-  await page.getByRole('button', { name: 'More', exact: true }).click();
-  const menu = page.getByRole('menu');
-  await expect(menu).toContainText('Paper');
-  await expect(menu).not.toContainText('Authorship');
-  await expect(menu).not.toContainText('Transcript');
-  await expect(menu).not.toContainText('Search everything');
-  await page.keyboard.press('Escape');
+  const commands = (await editorMenuCommands(page)).join('\n');
+  expect(commands).toContain('Page › Paper');
+  expect(commands).not.toContain('Authorship');
+  expect(commands).not.toContain('Transcript');
+  expect(commands).not.toContain('Search everything');
 
   // Developer preset: everything is back (and survives a reload).
   await settings(page, 'modules');
   await page.getByRole('radio', { name: /Developer/ }).click();
   await page.reload();
-  await expect(page.locator('.set-nav')).toContainText('Developer');
+  await expect(page.getByRole('tab', { name: 'Developer' })).toBeVisible();
   await openApp(page);
   await newNote(page);
   await expect(page.locator('.ai-btn')).toBeVisible();
@@ -91,8 +90,7 @@ test('a plugin from the curated list: permission prompt, panel, command, exporte
   await openApp(page);
   await newNote(page);
   await typeText(page, 'The quick brown fox jumps over the lazy dog');
-  await page.getByRole('button', { name: 'More', exact: true }).click();
-  await page.getByRole('menuitem', { name: /Plugins/ }).click();
+  await editorMenu(page, 'Tools', 'Plugins');
   await page.getByRole('menuitem', { name: /^Word count/ }).click();
   const frame = page.frameLocator('.plg-panel iframe');
   await expect(frame.locator('[data-k="words"]')).toHaveText('9', SLOW);
@@ -107,8 +105,7 @@ test('a plugin from the curated list: permission prompt, panel, command, exporte
   await expect(page.locator('.toasts')).toContainText('11 words', SLOW);
 
   // The exporter.
-  await page.getByRole('button', { name: 'More', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Export and share' }).click();
+  await editorMenu(page, 'Share & export');
   const download = page.waitForEvent('download');
   await page.getByRole('menuitem', { name: /Plain text/ }).click();
   const file = await download;
@@ -240,7 +237,7 @@ test('Settings › Developer: window.inkwright with its own permissions, and API
   expect(await page.evaluate(() => 'inkwright' in window)).toBe(false);
   await settings(page, 'modules');
   await (await moduleSwitch(page, 'Developer tools')).click({ force: true });
-  await page.locator('.set-nav .nav-item', { hasText: 'Developer' }).click();
+  await page.getByRole('tab', { name: 'Developer' }).click();
 
   await page.getByText('Turn on window.inkwright').click();
   await page.waitForFunction(() => !!(window as any).inkwright);

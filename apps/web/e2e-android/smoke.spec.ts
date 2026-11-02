@@ -98,6 +98,7 @@ test('a real stylus stroke (MotionEvents) inks through the WebView and the nativ
 
 test('writing feel popover opens and previews natively', async ({ app: { page } }) => {
   await page.getByRole('button', { name: 'More', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Page', exact: true }).click();
   await page.getByRole('menuitem', { name: /Writing sound & feel/ }).click();
   const pop = page.locator('.feel-pop');
   await expect(pop).toBeVisible();

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
-import { isEngineNoise, modKey, newNote, openApp, pointer } from './helpers.ts';
+import { isEngineNoise, modKey, newNote, openApp, pointer, editorMenu, editorMenuCommands, settingsGroup } from './helpers.ts';
 
 /**
  * The developer module ("notes that know your code"): a repository archive scanned in the page,
@@ -13,7 +13,7 @@ const FIXTURES = fileURLToPath(new URL('./fixtures/dev-repo/', import.meta.url))
 
 async function openDeveloperSettings(page: Page) {
   await page.locator('.nav-item', { hasText: 'Settings' }).click();
-  await page.getByRole('button', { name: 'Code & runbooks', exact: true }).click();
+  await settingsGroup(page, 'Extend', 'Code & runbooks');
   await expect(page.getByRole('heading', { name: 'Code-aware notes' })).toBeVisible();
 }
 
@@ -145,8 +145,7 @@ test.describe('developer module', () => {
   test('runs sql over an attached CSV and js in a sandboxed worker', async ({ page }) => {
     await openApp(page);
     await newNote(page);
-    await page.getByRole('button', { name: 'More', exact: true }).click();
-    await page.getByRole('menuitem', { name: /^Developer/ }).click();
+    await editorMenu(page, 'Developer');
     const chooser = page.waitForEvent('filechooser');
     await page.getByRole('menuitem', { name: /^Attach data file/ }).click();
     await (await chooser).setFiles(FIXTURES + 'incidents.csv');
@@ -174,8 +173,7 @@ test.describe('developer module', () => {
   test('a verified diagram: bad IR is refused with a receipt, good IR renders on the page', async ({ page }) => {
     await openApp(page);
     await newNote(page);
-    await page.getByRole('button', { name: 'More', exact: true }).click();
-    await page.getByRole('menuitem', { name: /^Developer/ }).click();
+    await editorMenu(page, 'Developer');
     await page.getByRole('menuitem', { name: 'Insert diagram…' }).click();
     const dialog = page.getByRole('dialog', { name: 'Insert diagram' });
     const ir = dialog.getByLabel('Diagram IR (JSON)');
@@ -216,9 +214,8 @@ test.describe('developer module', () => {
     await openApp(page);
     await openDeveloperSettings(page);
     await page.locator('.row-switch', { hasText: 'Code-aware notes' }).click();
-    await page.getByRole('button', { name: 'Back' }).click();
+    await page.getByRole('button', { name: 'Back', exact: true }).click();
     await newNote(page);
-    await page.getByRole('button', { name: 'More', exact: true }).click();
-    await expect(page.getByRole('menuitem', { name: /^Developer/ })).toHaveCount(0);
+    expect((await editorMenuCommands(page)).filter((c) => /Developer/.test(c))).toEqual([]);
   });
 });

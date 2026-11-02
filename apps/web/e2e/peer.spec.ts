@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { modKey, newNote, openApp, pen, pointer, word } from './helpers.ts';
+import { editorMenu, modKey, newNote, openApp, pen, pointer, word } from './helpers.ts';
 
 /**
  * Two devices in one test: two browser contexts (separate storage, separate identity keys) in
@@ -148,8 +148,7 @@ test('two people write on one page at the same time and end with identical pages
   await pen(a, word(180, 160, 200));
 
   // Ada shares the note live (write permission) from the ••• menu.
-  await a.getByRole('button', { name: 'More', exact: true }).click();
-  await a.getByRole('menuitem', { name: /Share live/ }).click();
+  await editorMenu(a, 'Share & export', 'Share live');
   await a.getByRole('button', { name: 'Make an invite' }).click();
   const invite = await codeText(a, 'Invitation code');
 

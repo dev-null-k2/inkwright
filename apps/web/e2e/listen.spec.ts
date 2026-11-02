@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { modKey, newNote, openApp, pen, pointer, word } from './helpers';
+import { editorMenu, modKey, newNote, openApp, pen, pointer, word } from './helpers';
 
 /**
  * Notes that listen, end to end in Chromium: a real microphone path (Chromium's fake capture
@@ -142,8 +142,7 @@ test('live transcript lines up with ink; ask while recording; summaries after', 
   // Stop: the transcript is saved next to the clip and pages get summaries.
   await page.getByRole('button', { name: 'Stop recording' }).click();
   await expect(page.locator('.audio-bar')).toBeVisible();
-  await page.locator('.ed-top').getByRole('button', { name: 'More' }).click();
-  await page.getByRole('menuitem', { name: /Transcript/ }).click();
+  await editorMenu(page, 'Audio', 'Transcript');
   await expect(panel.locator('.lis-where')).toContainText('Transcribed by your AI provider');
   await expect(panel.locator('.lis-lecture')).toContainText('An introduction to convolution.', { timeout: 20_000 });
   await expect(panel.locator('.lis-todos')).toContainText('Homework three due Friday');
@@ -173,8 +172,7 @@ test('live transcript lines up with ink; ask while recording; summaries after', 
   expect((await strokesNow(page)).length).toBe(strokes.length); // the tap didn't write a dot
 
   // Per-page summary in Pages, and as a page note on request.
-  await page.locator('.ed-top').getByRole('button', { name: 'More' }).click();
-  await page.getByRole('menuitem', { name: /^Pages/ }).click();
+  await editorMenu(page, 'Pages');
   const pages = page.getByRole('complementary', { name: 'Pages' });
   await expect(pages.locator('.page-sum')).toContainText('Convolution flips one signal and slides it.');
   const texts = await page.evaluate(() => ((window as any).__inkwright.doc.page(0).texts ?? []).length);
@@ -193,8 +191,7 @@ test('search finds what was said and opens that moment', async ({ page }) => {
   await page.getByRole('button', { name: 'Record audio' }).click();
   await page.waitForTimeout(800);
   await pen(page, word(120, 140, 160));
-  await page.locator('.ed-top').getByRole('button', { name: 'More' }).click();
-  await page.getByRole('menuitem', { name: /Transcript/ }).click();
+  await editorMenu(page, 'Audio', 'Transcript');
   await expect(page.locator('.lis-seg')).toHaveCount(2, { timeout: 20_000 });
   await page.getByRole('button', { name: 'Stop recording' }).click();
   await expect(page.locator('.lis-where')).toContainText('Transcribed by your AI provider');
@@ -216,8 +213,7 @@ test('dictate puts speech on the page, processed where the indicator says', asyn
   await addProvider(page);
   await openApp(page);
   await newNote(page);
-  await page.locator('.ed-top').getByRole('button', { name: 'More' }).click();
-  await page.getByRole('menuitem', { name: /Dictate/ }).click();
+  await editorMenu(page, 'Audio', 'Dictate');
   const bar = page.getByRole('region', { name: 'Dictation' });
   await expect(bar.locator('.lis-where')).toContainText('Sent to Custom');
   await expect(bar.locator('.dict-text')).toContainText('Today we cover convolution.', { timeout: 15_000 });

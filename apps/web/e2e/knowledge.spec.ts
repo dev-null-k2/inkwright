@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { readZip } from '../../../packages/sync/src/zip.ts';
-import { modKey, newNote, openApp, pen, pointer, texts, word, noteId } from './helpers.ts';
+import { modKey, newNote, openApp, pen, pointer, texts, word, noteId, editorMenu, settingsGroup } from './helpers.ts';
 
 const VAULT = fileURLToPath(new URL('./fixtures/obsidian-vault', import.meta.url));
 
@@ -57,8 +57,7 @@ test.describe('links', () => {
     await expect(page.locator('.ed-title-text')).toHaveText('Biology');
 
     // Linked here.
-    await page.getByRole('button', { name: 'More', exact: true }).click();
-    await page.getByRole('menuitem', { name: /Links/ }).click();
+    await editorMenu(page, 'Note', 'Links');
     const panel = page.locator('.links-panel');
     const linkedHere = panel.getByRole('region', { name: 'Linked here' });
     await expect(linkedHere.locator('.link-row', { hasText: 'Lecture' })).toContainText('Read Biology tonight');
@@ -83,8 +82,7 @@ test.describe('links', () => {
     await back(page);
     await expect(page.locator('.nav-item', { hasText: 'exams' })).toBeVisible();
     await page.locator('.note-card', { hasText: 'Chemistry' }).first().locator('.note-open').click();
-    await page.getByRole('button', { name: 'More', exact: true }).click();
-    await page.getByRole('menuitem', { name: /Links/ }).click();
+    await editorMenu(page, 'Note', 'Links');
     const mention = page.locator('.mention-row', { hasText: 'Study plan' });
     await expect(mention).toContainText('Chemistry exam on Friday');
     await mention.getByRole('button', { name: /Link the mention/ }).click();
@@ -109,8 +107,7 @@ test.describe('links', () => {
     const id = await noteId(page);
     await page.getByRole('button', { name: 'Open “Reading list”' }).click();
     await expect(page.locator('.ed-title-text')).toHaveText('Reading list');
-    await page.getByRole('button', { name: 'More', exact: true }).click();
-    await page.getByRole('menuitem', { name: /Links/ }).click();
+    await editorMenu(page, 'Note', 'Links');
     await expect(page.locator('.links-panel .link-row')).toContainText('linked ink');
     await page.locator('.links-panel .link-row').click();
     await expect.poll(() => noteId(page)).toBe(id);
@@ -138,8 +135,7 @@ test.describe('daily notes and templates', () => {
     const ta = await textBox(page);
     await ta.fill('# {{title}}\nAttendees:');
     await page.getByRole('button', { name: 'Done' }).click();
-    await page.getByRole('button', { name: 'More', exact: true }).click();
-    await page.getByRole('menuitem', { name: 'Save as template' }).click();
+    await editorMenu(page, 'Note', 'Save as template');
     await page.locator('.dialog input').fill('Meeting notes');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.locator('.toast')).toContainText('Saved “Meeting notes”');
@@ -228,7 +224,7 @@ test.describe('Obsidian', () => {
     await pen(page, word(200, 400, 120));
     await back(page);
     await page.locator('.nav-item', { hasText: 'Settings' }).click();
-    await page.getByRole('button', { name: 'Notes, links & Obsidian' }).click();
+    await settingsGroup(page, 'Knowledge');
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Export as .zip' }).click();
     const d = await download;
@@ -250,7 +246,7 @@ test.describe('Obsidian', () => {
   test('imports a Markdown vault folder: notebooks, tags, links and images', async ({ page }) => {
     await openApp(page);
     await page.locator('.nav-item', { hasText: 'Settings' }).click();
-    await page.getByRole('button', { name: 'Notes, links & Obsidian' }).click();
+    await settingsGroup(page, 'Knowledge');
     const chooser = page.waitForEvent('filechooser');
     await page.getByRole('button', { name: 'Import a vault folder' }).click();
     await (await chooser).setFiles(VAULT);

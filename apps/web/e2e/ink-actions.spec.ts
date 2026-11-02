@@ -1,7 +1,7 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
-import { line, modKey, newNote, openApp, pen, type Pt } from './helpers.ts';
+import { editorMenu, editorMenuCommands, line, modKey, newNote, openApp, pen, type Pt, settingsGroup } from './helpers.ts';
 
 /**
  * Ink that does things (docs/INK_ACTIONS.md): AI answers in ink, executable diagrams, the data
@@ -52,10 +52,17 @@ const typeBox = (page: Page, text: string, x: number, y: number, width = 150) =>
   d.upsertText(0, { id: `t${Math.round(x)}${Math.round(y)}`, x, y, width, text, fontSize: 14, color: '#FF1B1F24', font: 'sans', createdAt: Date.now() });
 }, { text, x, y, width });
 
-async function moreMenu(page: Page, item: string | RegExp) {
-  await page.getByRole('button', { name: 'More', exact: true }).click();
-  await page.getByRole('menuitem', { name: item }).click();
-}
+/** Where each ink action lives in the ••• menu (ui/editorMenu.tsx). */
+const MENU_PATH: Record<string, string[]> = {
+  'Add data': ['Insert', 'Add data'],
+  'Photo to ink': ['Insert', 'Photo to ink'],
+  'Show the original photo': ['Page', 'Show the original photo'],
+  'Hide the original photo': ['Page', 'Hide the original photo'],
+  'Read aloud': ['Audio', 'Read aloud'],
+  'Reading view': ['Page', 'Reading view'],
+  Bibliography: ['Study', 'Bibliography'],
+};
+const moreMenu = (page: Page, item: string) => editorMenu(page, ...MENU_PATH[item]!);
 
 /** Screen position (canvas px) of a page point. */
 const toScreen = (page: Page, x: number, y: number) => page.evaluate(({ x, y }) => {
@@ -91,7 +98,7 @@ test.describe('AI answers in ink', () => {
     await openApp(page);
     await addProvider(page);
     await page.getByRole('button', { name: 'Settings' }).click();
-    await page.getByRole('button', { name: 'Ink actions' }).click();
+    await settingsGroup(page, 'AI', 'Ink actions');
     await page.getByRole('radio', { name: 'Typed text' }).click();
     await page.getByRole('button', { name: 'Back', exact: true }).click();
     await newNote(page);
@@ -413,7 +420,7 @@ test.describe('paper workbench', () => {
 test('every ink action can be switched off in Settings › Modules', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'Settings' }).click();
-  await page.getByRole('button', { name: 'Modules' }).click();
+  await settingsGroup(page, 'Extend', 'Modules');
   for (const name of ['AI answers in ink', 'Executable diagrams', 'Data sandbox', 'Photo to ink', 'Reading and read aloud', 'Paper workbench']) {
     const row = page.locator('.row-switch', { hasText: name });
     await row.click();
@@ -422,6 +429,7 @@ test('every ink action can be switched off in Settings › Modules', async ({ pa
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Papers' })).toHaveCount(0);
   await newNote(page);
-  await page.getByRole('button', { name: 'More', exact: true }).click();
-  for (const item of ['Write the answer here', 'Run diagram', 'Add data', 'Photo to ink', 'Read aloud', 'Bibliography']) await expect(page.getByRole('menuitem', { name: item })).toHaveCount(0);
+  const commands = await editorMenuCommands(page);
+  for (const item of ['Write the answer here', 'Run diagram', 'Add data', 'Photo to ink', 'Read aloud', 'Bibliography']) expect(commands.filter((c) => c.endsWith(item))).toEqual([]);
+  expect(commands).toContain('Page › Paper');
 });
