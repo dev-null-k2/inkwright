@@ -1,4 +1,4 @@
-import type { ListResourcesResult, ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
+import type { ListResourcesResult, ReadResourceResult } from '@modelcontextprotocol/server';
 import { requireId, readNoteFresh, type ServerContext } from './context.ts';
 import { pageSvg } from './render.ts';
 import { noteMarkdown, noteUri, pageUri } from './tools.ts';

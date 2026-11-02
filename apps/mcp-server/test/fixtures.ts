@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { Vault, newNote, newPage, type InkStroke, type NoteMeta, type NotebookMeta, type PageInk } from '@inkstone/core';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult } from '@modelcontextprotocol/server';
 import { createContext, type ContextOptions, type ServerContext } from '../src/context.ts';
 import { NodeFS } from '../src/nodefs.ts';
 
