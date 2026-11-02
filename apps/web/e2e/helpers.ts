@@ -66,3 +66,18 @@ export const circle = (cx: number, cy: number, r: number): Pt[] => Array.from({ 
 export const strokes = (page: Page, pageIndex = 0) => page.evaluate((i) => (window as any).__inkstone.doc.page(i).strokes.map((s: any) => ({ id: s.id, pen: s.pen, shape: s.shape, n: s.points.length, color: s.color })), pageIndex);
 export const texts = (page: Page, pageIndex = 0) => page.evaluate((i) => ((window as any).__inkstone.doc.page(i).texts ?? []).map((t: any) => t.text), pageIndex);
 export const noteId = (page: Page) => page.evaluate(() => (window as any).__inkstone.doc.meta.id as string);
+
+/**
+ * The shortcut modifier the app listens for in this browser: ⌘ (Meta) on Macs, iPads and iPhones,
+ * Ctrl elsewhere. Mirrors platform/env.ts, which decides from the user agent (the WebKit projects
+ * run on Linux but present Apple user agents).
+ */
+export const modKey = (page: Page) =>
+  page.evaluate(() => (/Macintosh|Mac OS X|iPhone|iPad|iPod/.test(navigator.userAgent) ? 'Meta' : 'Control'));
+
+/**
+ * Console messages browsers print about our markup that are not app errors. Safari reports the
+ * viewport meta's `interactive-widget` key (Chromium on Android honours it to keep the editor above
+ * the on-screen keyboard) as unrecognised, and ignores it.
+ */
+export const isEngineNoise = (text: string) => /Viewport argument key "interactive-widget" not recognized/.test(text);

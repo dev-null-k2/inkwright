@@ -9,6 +9,8 @@
     "build:single": "vite build --mode single",
     "preview": "vite preview",
     "e2e": "playwright test",
+    "e2e:all": "node scripts/e2e-all.mjs",
+    "e2e:android": "scripts/android/run-smoke.sh",
     "cap:sync": "npm run build:native && cap sync",
     "android": "npm run cap:sync && cd android && ./gradlew assembleDebug",
     "build:native": "vite build --mode native"
