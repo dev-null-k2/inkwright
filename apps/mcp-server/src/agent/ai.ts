@@ -25,6 +25,11 @@ export interface AgentAIConfig {
    * Endpoints on localhost count anyway.
    */
   onPremises?: boolean;
+  /**
+   * Use this credential of the credential executor instead of a key in this process
+   * (`--ai-credential`; docs/CREDENTIALS.md). The provider and base URL come from the credential.
+   */
+  credential?: string;
 }
 
 export interface AgentAI {
@@ -41,6 +46,10 @@ export interface AgentAI {
   forRun?: (actor: { source: string; label?: string }) => AgentAI;
   /** The trust run behind this AI, when it is guarded. */
   trust?: TrustRun;
+  /** Read-only tools of connected apps, through the credential executor (creds/agent.ts). */
+  connectorTools?: (serverRefs: readonly string[], actor: { source: string; label?: string }) => Promise<{ tools: import('@inkwright/ai').AgentTool[]; missing: string[] }>;
+  /** Closes connections this AI holds (the credential executor's). */
+  close?: () => void;
 }
 
 /** The environment variable each provider's key is usually in. */
