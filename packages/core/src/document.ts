@@ -1,6 +1,6 @@
 import { detectScratchOut, type ScratchOutOptions } from './gestures.ts';
 import { newId as defaultNewId } from './ids.ts';
-import { newPage, type ImageItem, type InkStroke, type NoteMeta, type PageBackground, type PageInk, type PageSize, type PaperSpec, type TextBox } from './model.ts';
+import { newPage, type ImageItem, type InkLink, type InkStroke, type NoteMeta, type PageBackground, type PageInk, type PageSize, type PaperSpec, type TextBox } from './model.ts';
 
 /** Anything with an id that lives in a page list in z-order. */
 interface Item { id: string }
@@ -18,10 +18,12 @@ export interface PageDiff {
   strokes?: ListDiff<InkStroke>;
   texts?: ListDiff<TextBox>;
   images?: ListDiff<ImageItem>;
+  /** Links riding on handwriting (`PageInk.links`). */
+  links?: ListDiff<InkLink>;
 }
 
 const emptyList = <T extends Item>(d?: ListDiff<T>) => !d || (d.removed.length === 0 && d.added.length === 0);
-export const isEmptyDiff = (d: PageDiff) => emptyList(d.strokes) && emptyList(d.texts) && emptyList(d.images);
+export const isEmptyDiff = (d: PageDiff) => emptyList(d.strokes) && emptyList(d.texts) && emptyList(d.images) && emptyList(d.links);
 
 function splice<T extends Item>(list: readonly T[], out: Indexed<T>[], inn: Indexed<T>[]): T[] {
   const outIds = new Set(out.map((o) => o.item.id));
@@ -53,12 +55,17 @@ export function applyDiff(page: PageInk, d: PageDiff): PageInk {
   if (d.strokes) next.strokes = splice(page.strokes, d.strokes.removed, d.strokes.added);
   if (d.texts) next.texts = splice(page.texts ?? [], d.texts.removed, d.texts.added);
   if (d.images) next.images = splice(page.images ?? [], d.images.removed, d.images.added);
+  if (d.links) {
+    const links = splice(page.links ?? [], d.links.removed, d.links.added);
+    if (links.length) next.links = links;
+    else delete next.links;
+  }
   return next;
 }
 
 export function invertDiff(d: PageDiff): PageDiff {
   const inv = <T extends Item>(l?: ListDiff<T>) => (l ? { removed: l.added, added: l.removed } : undefined);
-  return { label: d.label, strokes: inv(d.strokes), texts: inv(d.texts), images: inv(d.images) };
+  return { label: d.label, strokes: inv(d.strokes), texts: inv(d.texts), images: inv(d.images), links: inv(d.links) };
 }
 
 /** Diff turning one page state into another (multi-step gestures commit as one undo step). */
@@ -67,6 +74,7 @@ export function pageDiffBetween(before: PageInk, after: PageInk, label: string):
   if (before.strokes !== after.strokes) d.strokes = listDiffBetween(before.strokes, after.strokes);
   if ((before.texts ?? []) !== (after.texts ?? [])) d.texts = listDiffBetween(before.texts ?? [], after.texts ?? []);
   if ((before.images ?? []) !== (after.images ?? [])) d.images = listDiffBetween(before.images ?? [], after.images ?? []);
+  if ((before.links ?? []) !== (after.links ?? [])) d.links = listDiffBetween(before.links ?? [], after.links ?? []);
   return d;
 }
 
@@ -261,6 +269,18 @@ export class NoteDocument {
       texts: replaceIn(page.texts ?? [], sel.texts, fns.text, res.texts),
       images: replaceIn(page.images ?? [], sel.images, fns.image, res.images),
     };
+    // Moved or recoloured ink gets new ids; links riding on it follow along in the same step.
+    if (diff.strokes && page.links?.length) {
+      const map = new Map(diff.strokes.removed.map((r, k) => [r.item.id, diff.strokes!.added[k]!.item.id]));
+      const removed: Indexed<InkLink>[] = [];
+      const added: Indexed<InkLink>[] = [];
+      page.links.forEach((l, i) => {
+        if (!l.strokeIds.some((id) => map.has(id))) return;
+        removed.push({ index: i, item: l });
+        added.push({ index: i, item: { ...l, strokeIds: l.strokeIds.map((id) => map.get(id) ?? id) } });
+      });
+      if (removed.length) diff.links = { removed, added };
+    }
     this.commit(pageIndex, diff);
     return res;
   }
@@ -369,13 +389,15 @@ export class NoteDocument {
 
   duplicatePage(index: number): number {
     const src = this.pageList[index]!;
+    const ids = new Map<string, string>();
     const copy: PageInk = {
       ...src,
       id: this.newId(),
-      strokes: src.strokes.map((s) => ({ ...s, id: this.newId() })),
+      strokes: src.strokes.map((s) => { const id = this.newId(); ids.set(s.id, id); return { ...s, id }; }),
       texts: src.texts?.map((t) => ({ ...t, id: this.newId() })),
       images: src.images?.map((im) => ({ ...im, id: this.newId() })),
     };
+    if (src.links) copy.links = src.links.map((l) => ({ ...l, id: this.newId(), strokeIds: l.strokeIds.map((id) => ids.get(id) ?? id) }));
     this.pageList.splice(index + 1, 0, copy);
     this.changed.add(copy.id);
     this.syncPageIds();
