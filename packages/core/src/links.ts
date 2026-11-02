@@ -7,7 +7,7 @@
  * Everything here is pure string/data work so the library, the editor, the graph, the Obsidian
  * exporter and the MCP server agree on exactly what counts as a link or a tag.
  */
-import type { InkLink, NoteMeta, NotebookMeta, PageInk } from './model.ts';
+import type { InkLink, NoteMeta, NotebookMeta, PageInk, RecognizedLine } from './model.ts';
 
 export interface WikiLink {
   /** The whole match, brackets included (`![[Note#Page 2|alias]]`). */
@@ -351,17 +351,11 @@ export function linkFirstMention(text: string, title: string): string | null {
 
 // ---- Handwriting -----------------------------------------------------------------------------
 
-/** One recognized line of handwriting with the strokes that wrote it. */
-export interface RecognizedLine {
-  text: string;
-  strokeIds: string[];
-}
-
 /**
  * Turns recognized handwriting that contains `[[…]]` into ink links over the strokes of that line,
  * so the writing itself becomes tappable. Lines already carrying a link are left alone.
  */
-export function inkLinksFromRecognition(page: PageInk, lines: readonly RecognizedLine[], opts: { now: number; newId: () => string; resolve?: (target: string) => string | undefined }): InkLink[] {
+export function inkLinksFromRecognition(page: PageInk, lines: readonly Pick<RecognizedLine, 'text' | 'strokeIds'>[], opts: { now: number; newId: () => string; resolve?: (target: string) => string | undefined }): InkLink[] {
   const existing = new Set((page.links ?? []).flatMap((l) => l.strokeIds));
   const out: InkLink[] = [];
   for (const line of lines) {

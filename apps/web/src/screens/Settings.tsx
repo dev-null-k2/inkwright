@@ -23,6 +23,7 @@ import { BrandMark } from '../ui/Brand.tsx';
 import { AgentSettings } from '../ui/agent/AgentSettings.tsx';
 import { Waypoints } from 'lucide-react';
 import { KnowledgeSettings } from '../ui/knowledge/KnowledgeSettings.tsx';
+import { LocalAISettings } from '../ui/LocalAISettings.tsx';
 
 const SECTIONS = [
   { id: 'writing', label: 'Writing feel', icon: <Vibrate size={17} /> },
@@ -189,6 +190,7 @@ function AISection() {
   const builtin = hasBuiltinClaude();
   return (
     <>
+      <LocalAISettings />
       <Group title="Your AI providers" note={isArtifact
         ? 'This live preview runs inside claude.ai, which only lets it talk to Claude. Keys for other providers work in the installed app and on the web version.'
         : 'Keys are encrypted with a key that never leaves this device and are never synced. Requests go straight from this device to the provider you choose.'}>
