@@ -196,7 +196,7 @@ export function handwrittenLineStrokes(p: PageInk, title: string): string[] | nu
 const JOURNAL_COLOR = '#FF3D7A5A';
 
 /** The Journal notebook, made on first use. */
-async function ensureJournal(): Promise<string | undefined> {
+export async function ensureJournal(): Promise<string | undefined> {
   const v = app().vault;
   if (!v) return undefined;
   const prefs = useKnowledge.getState();

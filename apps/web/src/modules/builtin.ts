@@ -8,6 +8,7 @@
 import { useApp } from '../state/app.ts';
 import { registerModule, registerPreset, type ModuleDefinition } from './registry.ts';
 import { INK_ACTION_MODULES } from '../inkactions/modules.ts';
+import { MEMORY_MODULES, OPT_IN_ONLY } from '../recall/modules.ts';
 
 export const BUILTIN_MODULES: ModuleDefinition[] = [
   {
@@ -244,17 +245,20 @@ export const BUILTIN_MODULES: ModuleDefinition[] = [
   },
   // Ink that does things: AI answers in ink, executable diagrams, data, photo to ink, reading, papers.
   ...INK_ACTION_MODULES,
+  // The desktop app, the memory timeline and the journal that writes itself (opt-in only).
+  ...MEMORY_MODULES,
 ];
 
-const ALL = BUILTIN_MODULES.map((m) => m.id);
+// Presets never switch on modules that only you should turn on (screen capture, journal drafts).
+const ALL = BUILTIN_MODULES.map((m) => m.id).filter((m) => !OPT_IN_ONLY.has(m));
 const without = (...ids: string[]) => ALL.filter((m) => !ids.includes(m));
 
 export const BUILTIN_PRESETS = [
   { id: 'student', name: 'Student', description: 'Lectures that listen, maths and tables, links and daily notes, flashcard routines, proof that the work is yours.', modules: without('developer', 'code') },
-  { id: 'writer', name: 'Writer', description: 'Links and daily notes, the graph, the assistant and authorship certificates; no maths or forms.', modules: ['knowledge', 'graph', 'studio', 'assistant', 'search', 'authorship', 'themes', 'listen', 'deep-links', 'ink-answers', 'accessibility', 'papers'] },
+  { id: 'writer', name: 'Writer', description: 'Links and daily notes, the graph, the assistant and authorship certificates; no maths or forms.', modules: ['knowledge', 'graph', 'studio', 'assistant', 'search', 'authorship', 'themes', 'listen', 'deep-links', 'ink-answers', 'accessibility', 'papers', 'desktop'] },
   { id: 'developer', name: 'Developer', description: 'Everything, plus API keys, the automation API and plugin development.', modules: ALL },
   { id: 'researcher', name: 'Researcher', description: 'PDF reading and forms, transcripts, links, the graph, on-device AI and the assistant.', modules: without('authorship', 'developer', 'code') },
-  { id: 'enterprise', name: 'Enterprise', description: 'Forms, authorship and the assistant on managed devices; no third-party plugins or developer access.', modules: ['fill-sign', 'listen', 'knowledge', 'studio', 'assistant', 'local-ai', 'search', 'authorship', 'deep-links', 'code', 'accessibility', 'data-sandbox'] },
+  { id: 'enterprise', name: 'Enterprise', description: 'Forms, authorship and the assistant on managed devices; no third-party plugins or developer access.', modules: ['fill-sign', 'listen', 'knowledge', 'studio', 'assistant', 'local-ai', 'search', 'authorship', 'deep-links', 'code', 'accessibility', 'data-sandbox', 'desktop'] },
   { id: 'minimal', name: 'Minimal', description: 'Just paper and pen: writing, pages, notebooks, sync and export.', modules: [] },
 ];
 

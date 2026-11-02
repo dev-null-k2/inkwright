@@ -28,3 +28,4 @@ sbom.cdx.json
 
 # Raw store captures (regenerate with STORE=docs/store/screenshots … e2e/store.spec.ts)
 docs/store/screenshots/
+dist-desktop/

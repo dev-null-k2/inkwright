@@ -14,6 +14,7 @@ import {
   useModules,
   type ModuleDefinition,
 } from './registry.ts';
+import { OPT_IN_ONLY } from '../recall/modules.ts';
 import { BUILTIN_MODULES, BUILTIN_PRESETS } from './builtin.ts';
 import { findActions, registerPaletteActions } from '../lib/palette.ts';
 
@@ -121,6 +122,11 @@ describe('built-in modules and presets', () => {
     expect(isModuleOn('developer')).toBe(false);
     expect(isModuleOn('authorship')).toBe(true);
     applyPreset('developer');
-    expect(BUILTIN_MODULES.every((m) => isModuleOn(m.id))).toBe(true);
+    // Everything, except what only the user turns on (screen capture, journal drafts).
+    expect(BUILTIN_MODULES.every((m) => isModuleOn(m.id) === !OPT_IN_ONLY.has(m.id))).toBe(true);
+    for (const p of BUILTIN_PRESETS) {
+      applyPreset(p.id);
+      expect([...OPT_IN_ONLY].some((id) => isModuleOn(id)), p.id).toBe(false);
+    }
   });
 });

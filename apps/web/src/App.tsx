@@ -19,6 +19,7 @@ import { DevGlobal } from './dev/DevGlobal.tsx';
 import { PeerGlobal } from './peer/PeerGlobal.tsx';
 import { isModuleOn, startModules, useModule } from './modules/registry.ts';
 import { registerBuiltinModules } from './modules/builtin.ts';
+import { RecallGlobal } from './recall/Global.tsx';
 
 // Every feature declares itself as a module (Settings › Modules); see modules/builtin.ts.
 registerBuiltinModules();
@@ -35,6 +36,7 @@ export function App() {
   const searchOn = useModule('search');
   const assistantOn = useModule('assistant');
   const compilerOn = useModule('compiler');
+  const recallOn = useModule('memory-timeline');
   useKnowledgeShortcuts();
 
   useEffect(() => {
@@ -133,6 +135,7 @@ export function App() {
       <DevGlobal />
       <PeerGlobal />
       {compilerOn && <CompilerDialogs />}
+      {recallOn && <RecallGlobal />}
       <Toasts />
     </>
   );

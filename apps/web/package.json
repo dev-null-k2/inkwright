@@ -13,7 +13,8 @@
     "e2e:android": "scripts/android/run-smoke.sh",
     "cap:sync": "npm run build:native && cap sync",
     "android": "npm run cap:sync && cd android && ./gradlew assembleDebug",
-    "build:native": "vite build --mode native"
+    "build:native": "vite build --mode native",
+    "build:desktop": "vite build --mode desktop"
   },
   "dependencies": {
     "@capacitor/android": "^8.6.0",
@@ -37,6 +38,11 @@
     "@inkwright/core": "*",
     "@inkwright/plugin-api": "*",
     "@inkwright/sync": "*",
+    "@tauri-apps/api": "2.12.4",
+    "@tauri-apps/plugin-autostart": "2.7.0",
+    "@tauri-apps/plugin-deep-link": "2.6.2",
+    "@tauri-apps/plugin-process": "2.4.0",
+    "@tauri-apps/plugin-updater": "2.14.0",
     "@vscode/tree-sitter-wasm": "^0.3.1",
     "chrono-node": "^2.10.3",
     "dompurify": "^3.4.17",
@@ -51,6 +57,8 @@
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "sql.js": "^1.14.2",
+    "@tesseract.js-data/eng": "1.0.0",
+    "tesseract.js": "7.0.0",
     "three": "^0.187.0",
     "web-tree-sitter": "^0.25.10",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",

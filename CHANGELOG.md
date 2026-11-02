@@ -42,3 +42,5 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 - The developer module: code graph, drift detection, verified diagrams, runbooks, session lessons, CLI and Agent Skill.
 - Accessibility: read aloud, a reading mode, keyboard navigation and an axe-clean UI.
 - Android, iOS (Capacitor) and an installable web app; tested on Chromium, WebKit and Firefox.
+- A desktop app for macOS, Windows and Linux (Tauri 2): notes as a folder, tray, launch at login, `inkwright://` links, Open with for PDFs, signed updates and the MCP server running alongside (docs/DESKTOP.md).
+- A memory timeline (opt-in, desktop): the window in front read on the device, redacted before it is saved, kept for the days you choose, searchable in plain words and erasable everywhere; and a journal that writes itself each evening from your notes, recordings, calendars and the timeline, every sentence with its sources (docs/MEMORY_TIMELINE.md).

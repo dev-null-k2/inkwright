@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Merged into the app bundle's Info.plist by Tauri. macOS shows these when it asks for access. -->
+<plist version="1.0">
+<dict>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Inkwright records lectures and meetings you choose to record, and — only if you turn it on in the memory timeline — transcribes nearby speech on this Mac.</string>
+  <key>NSCameraUsageDescription</key>
+  <string>Inkwright uses the camera when you take a photo of paper to turn into ink.</string>
+</dict>
+</plist>
