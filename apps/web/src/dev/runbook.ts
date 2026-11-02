@@ -176,7 +176,14 @@ const PRELUDE = `'use strict';
   const gone = ['fetch', 'XMLHttpRequest', 'WebSocket', 'WebSocketStream', 'EventSource', 'WebTransport', 'importScripts', 'indexedDB', 'caches', 'BroadcastChannel', 'Worker', 'SharedWorker', 'FileSystemHandle', 'cookieStore'];
   for (let p = Object.getPrototypeOf(self); p; p = Object.getPrototypeOf(p)) for (const k of gone) { try { delete p[k]; } catch {} }
   for (const k of gone) { try { Object.defineProperty(self, k, { value: undefined, writable: false, configurable: false }); } catch {} }
-  try { Object.defineProperty(self.navigator, 'storage', { value: undefined }); } catch {}
+  // The worker shares the app's origin, so its navigator reaches the origin's storage (OPFS) and
+  // locks. The getters live on WorkerNavigator.prototype: remove them there, not only on the
+  // instance, or Object.getOwnPropertyDescriptor(WorkerNavigator.prototype, 'storage').get
+  // brings them back (security review SR-05).
+  const nav = ['storage', 'locks', 'serviceWorker', 'usb', 'serial', 'hid', 'bluetooth'];
+  for (let p = self.navigator; p; p = Object.getPrototypeOf(p)) for (const k of nav) { try { delete p[k]; } catch {} }
+  for (const k of nav) { try { Object.defineProperty(self.navigator, k, { value: undefined, writable: false, configurable: false }); } catch {} }
+  for (const k of ['StorageManager', 'FileSystemDirectoryHandle', 'FileSystemFileHandle', 'FileSystemSyncAccessHandle', 'LockManager']) { try { delete self[k]; } catch {} }
 })();
 const __fmt = (v) => { if (typeof v === 'string') return v; try { const s = JSON.stringify(v, (k, x) => typeof x === 'bigint' ? String(x) : x, 2); return s === undefined ? String(v) : s; } catch { return String(v); } };
 const __post = self.postMessage.bind(self);
