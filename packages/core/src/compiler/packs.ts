@@ -139,7 +139,8 @@ export function buildContextPack(input: ContextPackInput): ContextPack {
     ...(cites.length ? ['# Sources', '', ...cites] : []),
   ].join('\n').trim() + '\n';
 
-  const id = `${slugify(input.title)}-${input.createdAt.toString(36)}`.slice(0, 64);
+  // Vault ids are ASCII (docs/VAULT_FORMAT.md): drop letters a slug of a non-Latin title keeps.
+  const id = `${slugify(input.title).replace(/[^0-9A-Za-z_-]/g, '') || 'pack'}-${input.createdAt.toString(36)}`.slice(0, 64);
   const json = {
     format: 'inkstone-context-pack/1',
     id,
@@ -152,7 +153,7 @@ export function buildContextPack(input: ContextPackInput): ContextPack {
     truncated,
   };
 
-  const skillName = `notes-${slugify(input.title)}`.slice(0, 64).replace(/-+$/, '');
+  const skillName = `notes-${slugify(input.title).replace(/[^a-z0-9-]/g, '') || 'pack'}`.replace(/-{2,}/g, '-').slice(0, 64).replace(/-+$/, '');
   const description = `${input.purpose ? `${input.purpose.replace(/\s+/g, ' ').trim()} ` : ''}Context from the user's own notes about ${input.title}: compiled facts with sources, the notes themselves and key handwriting. Use when working on anything about ${input.title}.`.slice(0, 1024);
   const skill: Record<string, string | Uint8Array> = {
     [`${skillName}/SKILL.md`]: ['---', `name: ${skillName}`, `description: ${JSON.stringify(description)}`, 'metadata:', '  source: inkstone', `  created: "${new Date(input.createdAt).toISOString()}"`, '---', '',

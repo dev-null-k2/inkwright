@@ -177,8 +177,12 @@ describe('ledger', () => {
     const { vault, store, write } = await setup();
     await write('A', 'Latency must stay under 50 ms.', { tags: ['atlas'] });
     await write('B', 'The new pipeline averages 110 ms.', { tags: ['atlas'] });
-    await write('C', 'The nightly job takes 9 minutes.');
-    await write('D', 'Reports must be ready within 5 minutes.');
+    // Unrelated notebooks: the rules can't tell whether "the new index" is what "search" means.
+    const nb2 = await vault.createNotebook('Search', '#FF000000');
+    const nb3 = await vault.createNotebook('Indexing', '#FF000000');
+    await store.saveConfig({ ...(await store.config()), sources: { notebooks: [(await vault.listNotebooks()).find((n) => n.name === 'Atlas')!.id, nb2.id, nb3.id], tags: [], notes: [] } });
+    await write('C', 'Search must return in under 100 ms.', { notebookId: nb2.id });
+    await write('D', 'The new index averages 240 ms.', { notebookId: nb3.id });
     const docs = (await vaultSources(vault, await store.config())).map((s) => extractSource(s.meta, s.pages));
     const scan = scanLedger(docs, new Map());
     expect(scan.open).toHaveLength(1);
