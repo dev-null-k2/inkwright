@@ -186,6 +186,14 @@ export class AppMemory implements MemorySearchHost {
     return out;
   }
 
+  /**
+   * PDF text layers already extracted for a note, by page index (the context compiler reads
+   * imported PDFs as sources). Pages not extracted yet are queued, as for search.
+   */
+  pdfTextOf(note: NoteMeta, pages: readonly PageInk[]): Map<number, PdfTextItem[]> {
+    return this.pdfFor(note, pages);
+  }
+
   private async loadPdfText(noteId: string, asset: string, pageNumber: number): Promise<void> {
     const key = this.pdfKey(noteId, asset, pageNumber);
     const db = await this.database();

@@ -41,6 +41,7 @@ import { cancelListening, finishListening, focusInkMoment, installSaidLinks, sta
 import { useSpeechPrefs } from '../lib/listen/engines.ts';
 import { placeDictatedText, startDictation } from '../lib/listen/dictation.ts';
 import { currentLayer, useStudio } from '../studio/EditorStudio.tsx';
+import { useCompilerEditor } from '../compiler/ui/EditorParts.tsx';
 import { LockGate } from '../studio/LockDialogs.tsx';
 
 declare const __E2E__: boolean;
@@ -473,6 +474,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   const kb = useKnowledgeEditor({ doc, engine, session, onPanel: () => setPanel('links') });
   // Two-page view, layers, sticky notes, tape, snapping, version history, locking (studio/).
   const studio = useStudio({ doc, engine, session, vault, host: host.current, tool, view, menuAnchor: btn.more.current });
+  const compiler = useCompilerEditor({ doc, engine, host: host.current, view });
   // [[Wiki links]]: open the note with that title (at its page), or create it (like Obsidian).
   const openWikiLink = (title: string) => kb.follow(title);
 
@@ -546,6 +548,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
             <SmartLayer doc={doc} engine={engine} vault={vault} host={host.current} tool={tool} view={view} apiRef={smartApi} />
           )}
           {studio.parts}
+          {compiler.parts}
           {dropping && <div className="drop-hint" aria-live="polite"><FileUp size={22} /> Drop to add to this note</div>}
           {latched && <div className="latch-pill" role="status">{settings.input.buttonAction === 'lasso' ? 'Lasso' : settings.input.buttonAction === 'highlighter' ? 'Highlighter' : 'Eraser'} on — press the pen button to switch back</div>}
           {clips.length > 0 && (
@@ -656,6 +659,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
           { label: 'Writing sound & feel', icon: <AudioLines size={16} />, hint: settings.feel.sound ? `${Math.round(settings.feel.soundVolume * 100)}%` : 'Off', onClick: () => setTimeout(() => setMenu('feel'), 0) },
           { label: 'Insert', icon: <ImageIcon size={16} />, onClick: () => setTimeout(() => setMenu('insert'), 0) },
           ...studio.menuItems,
+          ...compiler.menuItems,
           ...(narrow && !isArtifact ? [{ label: recording != null ? 'Stop recording' : 'Record audio', icon: <Mic size={16} />, onClick: () => void toggleRecording() }] : []),
           { label: 'Export and share', icon: <Download size={16} />, onClick: () => setTimeout(() => setMenu('export'), 0) },
           { label: 'Authorship', icon: <Fingerprint size={16} />, hint: doc?.meta.certificate ? 'Signed' : undefined, onClick: () => setAuthOpen(true) },

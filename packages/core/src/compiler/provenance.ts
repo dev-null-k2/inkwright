@@ -181,6 +181,9 @@ export function locateClaims(text: string, file: ProvenanceFile | null, key: str
 
 export type ClaimFreshness = 'fresh' | 'stale' | 'missing';
 
+/** The hash of anchors that point at a region rather than a sentence (never stale, only missing). */
+export const UNHASHED = '0';
+
 /**
  * Current sentence hashes of a source note, or `null` when the note is gone (deleted, trashed or
  * locked). Built by the caller from the notes' current text (see `sourceHashes` in extract.ts).
@@ -198,7 +201,8 @@ export function claimFreshness(claim: Pick<ProvClaim, 'src'>, lookup: SourceHash
     if (!a) continue;
     const hashes = lookup(a.noteId);
     if (!hashes) return 'missing';
-    if (!hashes.has(a.h)) stale = true;
+    // `0`: an anchor with no sentence behind it (ink a solver read, a page): it can't go stale.
+    if (a.h !== UNHASHED && !hashes.has(a.h)) stale = true;
   }
   return stale ? 'stale' : 'fresh';
 }
