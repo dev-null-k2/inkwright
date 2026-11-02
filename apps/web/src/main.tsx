@@ -16,6 +16,7 @@ import './styles/listen.css';
 import './styles/knowledge.css';
 import './studio/studio.css';
 import './compiler/compiler.css';
+import './styles/trust.css';
 import { App } from './App.tsx';
 import { BUILD_TARGET, isNative } from './platform/env.ts';
 import { handleOAuthRedirect } from './lib/agent/oauth-callback.ts';

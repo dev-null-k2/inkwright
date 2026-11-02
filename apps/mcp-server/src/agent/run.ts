@@ -5,8 +5,15 @@
  * `run_routine` task and the always-on runner, so all three behave the same way.
  */
 import {
+  AccessControlledNoteToolHost,
   ActivityStore,
   MemoryStore,
+  PROPOSAL_NOTICE,
+  ProposingNoteToolHost,
+  TrustRun,
+  guardAgentTools,
+  notebookChain,
+  type AuditEntry,
   READ_ONLY_NOTE_TOOLS,
   RunRecorder,
   SkillStore,
@@ -31,6 +38,7 @@ import { readNoteFresh, type ServerContext } from '../context.ts';
 import { gateDestructive, type Approver, type PendingApproval } from '../approvals.ts';
 import type { AgentAI } from './ai.ts';
 import { RecordingVaultHost, VaultNoteToolHost } from './host.ts';
+import { gateSuspicious } from '../trust.ts';
 
 export interface ServerAgentOptions {
   source: ActivitySource;
@@ -64,7 +72,22 @@ export async function describeCall(ctx: ServerContext, tool: string, args: Recor
 export async function prepareServerAgent(ctx: ServerContext, ai: AgentAI, o: ServerAgentOptions): Promise<PreparedServerAgent> {
   const recorder = new RunRecorder(new ActivityStore(ctx.fs), { source: o.source, label: o.label, prompt: o.prompt, ...(o.routineId ? { routineId: o.routineId } : {}) }, ctx.clock);
   const host = new VaultNoteToolHost(ctx);
-  const recording = new RecordingVaultHost(host, recorder.record, ctx.clock);
+  // The policy vault already hides and protects notes; this wrapper tells the run (and the audit
+  // trail) which notes the agent read, and dry run turns writes into proposals.
+  const policy = ctx.policy.current;
+  const run = ai.trust ?? new TrustRun();
+  const audit = ctx.trust.audit;
+  const proposing = policy.agentWrites[o.source] === 'propose' ? new ProposingNoteToolHost(host, ctx.trust.proposals, { source: o.source, label: o.label }) : null;
+  const guarded = new AccessControlledNoteToolHost(proposing ?? host, {
+    policy: () => ctx.policy.current,
+    labelOf: async (id) => { const n = await ctx.vault.readNote(id); return n ? { id: n.id, title: n.title, notebookIds: notebookChain(n.notebookId, (b) => nbParents.get(b)), tags: n.tags } : null; },
+    notebookParent: (id) => nbParents.get(id),
+    run,
+    audit: (e: AuditEntry) => audit.record(e),
+    actor: { source: o.source, label: o.label },
+  });
+  const nbParents = new Map((await ctx.vault.listNotebooks()).map((b) => [b.id, b.parentId] as const));
+  const recording = new RecordingVaultHost(host, recorder.record, ctx.clock, guarded);
   const writable = o.notes === 'write' && !ctx.readOnly;
   const noteTools = createNoteTools(recording, writable ? (ai.vision ? {} : { exclude: ['get_page_image'] }) : { include: READ_ONLY_NOTE_TOOLS.filter((t) => ai.vision || t !== 'get_page_image') });
   // Tell the recorder which tool is running so ops name it.
@@ -82,8 +105,11 @@ export async function prepareServerAgent(ctx: ServerContext, ai: AgentAI, o: Ser
       sections.push(skillsPromptSection(enabled));
     }
   }
+  if (proposing) sections.push(PROPOSAL_NOTICE);
   if (o.context) sections.push(o.context);
-  return { tools, system: notesAgentSystemPrompt({ appName: 'Inkstone', now: new Date(ctx.clock()), extra: sections.join('\n\n') }), recorder, host };
+  // Policy tool rules, and the injection guard: after suspicious content, writes go to the approver.
+  const safe = gateSuspicious(guardAgentTools(tools, policy, run), (req) => o.approver({ ...req, source: o.label, ...(o.routineId ? { routineId: o.routineId } : {}) }));
+  return { tools: safe, system: notesAgentSystemPrompt({ appName: 'Inkstone', now: new Date(ctx.clock()), extra: sections.join('\n\n') }), recorder, host };
 }
 
 export interface ServerAgentRun {
@@ -95,7 +121,9 @@ export interface ServerAgentRun {
 }
 
 /** Runs the agent once and finishes its activity run (always logged, so the user sees it ran). */
-export async function runServerAgent(ctx: ServerContext, ai: AgentAI, o: ServerAgentOptions & { messages: ChatMessage[]; signal?: AbortSignal; onEvent?: (e: AgentEvent) => void; maxSteps?: number; alwaysLog?: boolean }): Promise<ServerAgentRun> {
+export async function runServerAgent(ctx: ServerContext, base: AgentAI, o: ServerAgentOptions & { messages: ChatMessage[]; signal?: AbortSignal; onEvent?: (e: AgentEvent) => void; maxSteps?: number; alwaysLog?: boolean }): Promise<ServerAgentRun> {
+  // A fresh trust run per agent run: the notes it reads and any injection taint are its own.
+  const ai = base.forRun?.({ source: o.source, label: o.label }) ?? base;
   const prep = await prepareServerAgent(ctx, ai, o);
   try {
     const result = await runAgent({ provider: ai.provider, model: ai.model, system: prep.system, messages: o.messages, tools: prep.tools, maxSteps: o.maxSteps ?? 16, signal: o.signal, onEvent: o.onEvent, stream: false });

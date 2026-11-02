@@ -15,7 +15,7 @@ import {
   DEFAULT_COMPILER_CONFIG,
   RunRecorder,
   adjudicate,
-  applyProposal,
+  applyWikiProposal,
   compileWiki,
   createCompilerTools,
   scanLedger,
@@ -326,7 +326,7 @@ export async function decideProposal(id: string, choice: ProposalChoice): Promis
   if (!p) throw new Error('That proposal is gone.');
   const hub = agentHub();
   const recorder = new RunRecorder(hub?.activity ?? null, { source: 'assistant', label: 'Compiled wiki', prompt: `Accepted changes from “${p.reason}”` });
-  const res = await applyProposal(p, choice, { store: s, target: new AppWikiTarget(compilerVault()), record: recorder.record });
+  const res = await applyWikiProposal(p, choice, { store: s, target: new AppWikiTarget(compilerVault()), record: recorder.record });
   const run = await recorder.finish('done');
   if (run.ops.length) {
     p.runIds = [...(p.runIds ?? []), run.id];

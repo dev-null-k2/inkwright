@@ -4,7 +4,7 @@
  * questions from connected apps.
  */
 import { useState, type ReactNode } from 'react';
-import { BookOpen, BookOpenCheck, Brain, History, Library, Plug, Repeat, Scale, Users } from 'lucide-react';
+import { BookOpen, BookOpenCheck, Brain, Gauge, History, Library, Plug, Repeat, Route, Scale, ScrollText, Users } from 'lucide-react';
 import { useAgent, type Elicitation } from '../../lib/agent/hub.ts';
 import { Dialog, cx, relativeTime } from '../primitives.tsx';
 import { ActivityView } from './ActivityView.tsx';
@@ -13,8 +13,11 @@ import { MemoryView } from './MemoryView.tsx';
 import { RoutinesView } from './RoutinesView.tsx';
 import { SkillsView } from './SkillsView.tsx';
 import { CompilerAgentView, isCompilerView, type CompilerViewId } from '../../compiler/ui/views.tsx';
+import { AuditView } from '../trust/AuditView.tsx';
+import { RoutingView } from '../trust/RoutingView.tsx';
+import { UsageView } from '../trust/UsageView.tsx';
 
-export type AgentViewId = 'activity' | 'routines' | 'apps' | 'skills' | 'memory' | CompilerViewId;
+export type AgentViewId = 'activity' | 'routines' | 'apps' | 'skills' | 'memory' | 'routing' | 'usage' | 'audit' | CompilerViewId;
 
 export const AGENT_VIEWS: ReadonlyArray<{ id: AgentViewId; label: string; hint: string; icon: ReactNode }> = [
   { id: 'activity', label: 'Activity', hint: 'What the assistant changed, with undo', icon: <History size={16} /> },
@@ -27,6 +30,10 @@ export const AGENT_VIEWS: ReadonlyArray<{ id: AgentViewId; label: string; hint: 
   { id: 'conflicts', label: 'Conflicts', hint: 'Where your notes disagree with each other', icon: <Scale size={16} /> },
   { id: 'study', label: 'Study', hint: 'Flashcards from your notes, and a tutor that quizzes you', icon: <BookOpenCheck size={16} /> },
   { id: 'people', label: 'People', hint: 'Who your notes mention, with action items and follow-ups', icon: <Users size={16} /> },
+  // Trust and cost (lib/trust, docs/TRUST.md).
+  { id: 'routing', label: 'Routing & privacy', hint: 'Where AI runs, what it may see, budgets', icon: <Route size={16} /> },
+  { id: 'usage', label: 'AI usage', hint: 'Tokens and cost, and what was saved', icon: <Gauge size={16} /> },
+  { id: 'audit', label: 'Audit trail', hint: 'What AI saw and did, signed and verifiable', icon: <ScrollText size={16} /> },
 ];
 
 export function AgentView({ view }: { view: AgentViewId }) {
@@ -38,6 +45,9 @@ export function AgentView({ view }: { view: AgentViewId }) {
       {view === 'skills' && <SkillsView />}
       {view === 'memory' && <MemoryView />}
       {isCompilerView(view) && <CompilerAgentView view={view} />}
+      {view === 'routing' && <RoutingView />}
+      {view === 'usage' && <UsageView />}
+      {view === 'audit' && <AuditView />}
     </div>
   );
 }

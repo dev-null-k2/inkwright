@@ -5,6 +5,13 @@
  * the tools of connected apps (MCP) with their ask-before-running rules.
  */
 import {
+  AccessControlledNoteToolHost,
+  PROPOSAL_NOTICE,
+  ProposingNoteToolHost,
+  TrustRun,
+  guardAgentTools,
+  type AuditEntry,
+  type Proposal,
   READ_ONLY_NOTE_TOOLS,
   RecordingNoteToolHost,
   RunRecorder,
@@ -33,6 +40,8 @@ import { requireHub } from './hub.ts';
 import { appMemory } from '../memory.ts';
 import { mcpAgentTools, useMcp } from './mcp.ts';
 import { compilerAgentTools } from '../../compiler/service.ts';
+import { useApp } from '../../state/app.ts';
+import { aiCanSee, currentPolicy, labelForMeta, noteLabelOf, trustServices } from '../trust/state.ts';
 
 /** Notes an agent changed recently: their saves are not "the user saved a note" (routine triggers). */
 const agentTouched = new Map<string, number>();
@@ -92,19 +101,49 @@ export interface PreparedRun {
   tools: AgentTool[];
   system: string;
   recorder: RunRecorder;
+  /** Changes proposed during the run (dry run); filled in as the agent works. */
+  proposals: Proposal[];
 }
 
 export async function prepareAgentRun(o: PrepareOptions): Promise<PreparedRun> {
   const hub = requireHub();
   const recorder = new RunRecorder(hub.activity, { source: o.source, label: o.label, prompt: o.prompt, ...(o.routineId ? { routineId: o.routineId } : {}) });
-  const host = new RecordingNoteToolHost(new LiveNoteToolHost(o.vault, o.openDoc ?? null), recorder.record);
+  // Trust layer: notebook/tag permissions on every note call, dry-run proposals when the policy
+  // says so, and the run (notes seen, injection taint) shared with the guarded provider.
+  const policy = currentPolicy();
+  const run = o.ai.trust ?? new TrustRun();
+  const actor = { source: o.source, label: o.label };
+  const tsvc = trustServices();
+  const propose = policy.agentWrites[o.source] === 'propose' && !!tsvc;
+  const live = new LiveNoteToolHost(o.vault, o.openDoc ?? null);
+  const proposing = propose ? new ProposingNoteToolHost(live, tsvc!.proposals, { source: o.source, label: o.label }) : null;
+  const guarded = new AccessControlledNoteToolHost(proposing ?? live, {
+    policy: currentPolicy,
+    labelOf: async (id) => (o.openDoc?.meta.id === id ? labelForMeta(o.openDoc.meta) : noteLabelOf(id)),
+    notebookParent: (id) => useApp.getState().notebooks.find((b) => b.id === id)?.parentId,
+    run,
+    ...(tsvc ? { audit: (e: AuditEntry) => tsvc.audit.record(e) } : {}),
+    actor,
+  });
+  const host = new RecordingNoteToolHost(guarded, recorder.record);
   const vision = o.ai.vision;
   const noteTools = createNoteTools(host, o.notes === 'read' ? { include: READ_ONLY_NOTE_TOOLS.filter((t) => vision || t !== 'get_page_image') } : vision ? {} : { exclude: ['get_page_image'] });
   const tools: AgentTool[] = [...noteTools];
   const sections: string[] = [];
   // Semantic memory over everything written (search_memory), cited to exact places.
   const searchMemory = appMemory();
-  if (searchMemory) tools.push(...createMemoryTools(searchMemory));
+  if (searchMemory) {
+    // Passages are note content: hidden notebooks never show up, and a local-only note's
+    // passage keeps the rest of the run on this device.
+    tools.push(...createMemoryTools({
+      searchMemory: async (q, opts) => (await searchMemory.searchMemory(q, opts)).filter((h) => {
+        if (!aiCanSee(h.noteId)) return false;
+        const label = noteLabelOf(h.noteId);
+        if (label) run.see(label);
+        return true;
+      }),
+    }));
+  }
   // The context compiler: compile_wiki (proposals only), list_conflicts, list_followups.
   const compilerTools = compilerAgentTools();
   if (compilerTools.length) {
@@ -143,6 +182,7 @@ export async function prepareAgentRun(o: PrepareOptions): Promise<PreparedRun> {
       sections.push(`Connected apps: ${names.join(', ')}. Their tools are named "<app>__<tool>". Use them only for what the user asked; the user is asked to approve actions that change things in those apps.`);
     }
   }
+  if (propose) sections.push(PROPOSAL_NOTICE);
   if (o.context) sections.push(o.context);
-  return { tools, system: notesAgentSystemPrompt({ appName: 'Inkstone', extra: sections.join('\n\n') }), recorder };
+  return { tools: guardAgentTools(tools, policy, run), system: notesAgentSystemPrompt({ appName: 'Inkstone', extra: sections.join('\n\n') }), recorder, proposals: proposing?.made ?? [] };
 }

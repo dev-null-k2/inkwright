@@ -18,6 +18,7 @@ import {
 } from '@inkstone/ai';
 import { newId } from '@inkstone/core';
 import type { AppVault } from '../vault.ts';
+import { currentPolicy, initTrust } from '../trust/state.ts';
 
 export interface Approval {
   id: string;
@@ -105,7 +106,10 @@ export async function refreshAgentState(): Promise<void> {
 export async function initAgentHub(vault: AppVault): Promise<AgentHub> {
   if (hub?.vault === vault) return hub;
   const fs = vault.fs;
-  hub = { vault, activity: new ActivityStore(fs), memory: new MemoryStore(fs), skills: new SkillStore(fs, builtinSkills()), routines: new RoutineStore(fs) };
+  // The AI policy (lib/trust) decides activity retention and legal hold.
+  await initTrust(vault).catch((e) => console.warn('AI policy could not load; using defaults', e));
+  const retention = () => currentPolicy().retention;
+  hub = { vault, activity: new ActivityStore(fs, { maxAgeDays: () => retention().activityDays, hold: () => retention().legalHold }), memory: new MemoryStore(fs), skills: new SkillStore(fs, builtinSkills()), routines: new RoutineStore(fs) };
   // e2e tests write vault files the way a sync client or the always-on runner would.
   if (typeof __E2E__ !== 'undefined' && __E2E__) (window as unknown as { __inkstoneHub?: AgentHub }).__inkstoneHub = hub;
   hub.activity.onChange(() => void refreshRuns());
