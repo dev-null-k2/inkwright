@@ -2,7 +2,11 @@ import {
   decodeNote,
   decodeNotebook,
   decodePage,
+  decodePageSummaries,
+  decodeTranscript,
   encodeNote,
+  encodePageSummaries,
+  encodeTranscript,
   encodeNotebook,
   encodePage,
   type NoteMeta,
@@ -10,6 +14,7 @@ import {
   type PageInk,
 } from '@inkstone/core';
 import { utf8Decode, utf8Encode } from './util.ts';
+import { mergePageSummaries, mergeTranscript } from './merge-listen.ts';
 
 /*
  * Three-way merges for the vault's JSON files. All functions are pure and work on decoded
@@ -366,13 +371,16 @@ export function mergeNotebook(base: NotebookMeta | null, local: NotebookMeta, re
 
 // ---- Files -------------------------------------------------------------------------------------
 
-export type MergeKind = 'page' | 'note' | 'notebook';
+export type MergeKind = 'page' | 'note' | 'notebook' | 'transcript' | 'page-summaries';
 
 /** Which merge applies to a vault path, or null when the file can't be merged structurally. */
 export function mergeKindOf(path: string): MergeKind | null {
   if (path.endsWith('.ink.json')) return 'page';
   if (/(^|\/)note\.json$/.test(path)) return 'note';
   if (/(^|\/)notebook\.json$/.test(path)) return 'notebook';
+  // Recording transcripts and page summaries live next to the recordings (merge-listen.ts).
+  if (/^notes\/[^/]+\/assets\/[^/]+\.transcript\.json$/.test(path)) return 'transcript';
+  if (/^notes\/[^/]+\/assets\/page-summaries\.json$/.test(path)) return 'page-summaries';
   return null;
 }
 
@@ -415,6 +423,18 @@ export function mergeFileBytes(path: string, base: Uint8Array | null, local: Uin
       const r = dec(decodeNotebook, remote);
       if (!l || !r) return null;
       return utf8Encode(encodeNotebook(mergeNotebook(dec(decodeNotebook, base), l, r, opts)));
+    }
+    case 'transcript': {
+      const l = dec(decodeTranscript, local);
+      const r = dec(decodeTranscript, remote);
+      if (!l || !r) return null;
+      return utf8Encode(encodeTranscript(mergeTranscript(dec(decodeTranscript, base), l, r, { prefer: opts.prefer })));
+    }
+    case 'page-summaries': {
+      const l = dec(decodePageSummaries, local);
+      const r = dec(decodePageSummaries, remote);
+      if (!l || !r) return null;
+      return utf8Encode(encodePageSummaries(mergePageSummaries(dec(decodePageSummaries, base), l, r)));
     }
   }
 }
