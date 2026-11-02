@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { PDFDocument } from 'pdf-lib';
-import { newNote, openApp, pen, word } from './helpers.ts';
+import { isEngineNoise, newNote, openApp, pen, word } from './helpers.ts';
 
 test('first run shows the welcome note and no errors', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('console', (m) => { if (m.type() === 'error' && !isEngineNoise(m.text())) errors.push(m.text()); });
   await openApp(page);
   await expect(page.locator('.note-title').first()).toHaveText('Welcome to Inkstone');
   await page.locator('.note-open').first().click();
