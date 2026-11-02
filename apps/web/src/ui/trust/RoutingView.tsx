@@ -36,13 +36,18 @@ const ACCESS_OPTIONS: { value: NotebookAccess; label: string }[] = [
 
 const ACTION_LABEL: Record<PrivacyAction, string> = { redact: 'Hide from cloud AI', block: 'Don’t send at all', allow: 'Send as written' };
 
+/** Changes are applied one after another to the latest saved file, so quick edits never overwrite each other. */
+let saving: Promise<void> = Promise.resolve();
+
 function usePolicyEditor() {
   const policy = useTrust((s) => s.userPolicy);
   const toast = useApp((s) => s.toast);
   const update = (summary: string, change: (p: AIPolicy) => void) => {
-    const next = structuredClone(policy) as AIPolicy;
-    change(next);
-    savePolicy(next, summary).catch((e) => toast({ text: (e as Error).message, tone: 'error' }));
+    saving = saving.then(async () => {
+      const next = structuredClone(useTrust.getState().userPolicy) as AIPolicy;
+      change(next);
+      await savePolicy(next, summary);
+    }).catch((e) => toast({ text: (e as Error).message, tone: 'error' }));
   };
   return { policy, update };
 }
