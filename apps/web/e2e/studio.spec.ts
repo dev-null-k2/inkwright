@@ -15,7 +15,7 @@ test('selective eraser: long-press the eraser, erase only the highlighter', asyn
   await pen(page, word(200, 250, 220));
   await page.getByRole('radio', { name: /^Highlighter/ }).click();
   await pen(page, line([190, 252], [440, 252]));
-  expect((await strokes(page)).map((s) => s.pen)).toEqual(['fountain', 'highlighter']);
+  expect((await strokes(page)).map((s: { pen: string }) => s.pen)).toEqual(['fountain', 'highlighter']);
   // Press and hold the eraser: choose what it erases.
   const eraser = page.getByRole('button', { name: 'Eraser' });
   await eraser.hover();
@@ -25,7 +25,7 @@ test('selective eraser: long-press the eraser, erase only the highlighter', asyn
   await page.getByRole('radio', { name: /Only highlighter/ }).click();
   await expect(page.locator('.tool-filter-badge')).toBeVisible();
   await pen(page, line([300, 200], [300, 300]));
-  expect((await strokes(page)).map((s) => s.pen)).toEqual(['fountain']);
+  expect((await strokes(page)).map((s: { pen: string }) => s.pen)).toEqual(['fountain']);
   // "Only shapes" leaves the handwriting alone too.
   await eraser.hover();
   await page.mouse.down();

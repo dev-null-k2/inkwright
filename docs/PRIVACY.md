@@ -26,6 +26,8 @@ Inkstone is a note-taking app. Your notes stay under your control.
 
 **Smart ink** (tables, solving maths, circled dates) works on your device. Handwriting is read by on-device recognition where available; it is sent to your AI provider only when you tap an action that needs it, or if you turned on automatic AI recognition. Calendar events are files you download or your calendar app's own "new event" screen — Inkstone never reads your calendar.
 
+**Locked notes:** you can lock a note with a passcode. Its pages, pictures, recordings, version history, summary and form values are then encrypted on your device before they are saved, so the copies on your device and in your Drive, WebDAV server or folder are unreadable without the passcode. Search, links, the assistant, routines, outside agents and library thumbnails skip locked notes; the assistant button is hidden while one is open, and smart ink never sends a locked note to an AI on its own. The title, tags, notebook, dates and number of pages stay visible so the note can be listed. **There is no recovery:** Inkstone never stores the passcode or the key, so a forgotten passcode means the note can't be opened by anyone, including the developer. See "Threat model for locked notes" below.
+
 **Proof of authorship:** each page keeps a history of edits (what changed and when, as content fingerprints) so you can sign a certificate of your handwriting. The signing key is made on your device and cannot be exported. Certificates contain the signed handwriting, its timing and your key's fingerprint; they leave your device only when you share them or export a PDF with one attached (Settings › Authorship can turn that off).
 
 **Microphone:** used only while you record an audio note, or while you hold the microphone button to talk to the assistant. Recordings are saved with the note. Speech for the assistant is turned into text by your browser's speech recognition (which may use the browser maker's servers) or, where that is not available, by your AI provider; it is not stored.
@@ -33,5 +35,36 @@ Inkstone is a note-taking app. Your notes stay under your control.
 **Deleting data:** delete notes in the app. Trash empties after 30 days, or right away with "Delete forever". Uninstall the app or clear site data to remove everything stored on the device. Synced copies stay in your Drive or server until you delete them there.
 
 **Children:** Inkstone is not directed at children under 13.
+
+## Threat model for locked notes
+
+What a lock protects against:
+
+- **Someone who gets the files** — a synced copy in a cloud account, a backup, a stolen or shared
+  computer's vault folder, the browser's storage: they see the note's title, tags, notebook, dates,
+  page count and page sizes, the number and size of its pictures and recordings, and when it was
+  changed, but not what is written, drawn, typed, recorded or summarised in it.
+- **Tampering:** encryption is authenticated (AES-GCM) and bound to each file's role and name, so a
+  changed, truncated or swapped file fails to open instead of showing altered content.
+- **Guessing the passcode offline:** the key is stretched with PBKDF2-SHA-256 at 600,000 iterations
+  and a random salt per note, which makes each guess slow. A short or common passcode can still be
+  guessed by a determined attacker with the files — use a long one for anything sensitive.
+
+What it does not protect against:
+
+- **A device that is unlocked and in someone else's hands while the note is open**, or malware on
+  the device: while a note is open its content is in memory, readable like any open note.
+- **Copies made while the note was not locked.** Locking rewrites the files, but earlier unencrypted
+  copies may survive elsewhere: old file revisions kept by Google Drive or a WebDAV server, backups,
+  exports, PDFs or images you shared. Lock a note before syncing sensitive content, and delete old
+  revisions in your storage service if needed.
+- **Metadata:** titles, tags and dates stay readable (pick a neutral title if the title is sensitive).
+- **What you do with an open note:** exports, printing and copying pages out produce unencrypted files,
+  and if you tap an AI action yourself (for example "Ask AI" on a selection) the content goes to the
+  AI provider you chose.
+- **Forgetting the passcode:** there is no reset, recovery key or back door.
+
+The passcode is never written anywhere; the key exists only in memory while the note is open and is
+forgotten when you leave it. Locking and unlocking happen entirely on your device.
 
 **Contact:** [your support email]

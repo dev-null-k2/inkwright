@@ -46,8 +46,10 @@
 
 /* Eraser: what it erases */
 .tool-filter-badge { position: absolute; right: 7px; bottom: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--iron); }
-.eraser-filters .menu-item { flex-wrap: wrap; }
-.eraser-filters .menu-hint { flex-basis: 100%; margin-left: 0; text-align: left; }
+.eraser-filters .menu-item { flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; padding: 7px 12px; min-width: 240px; }
+.eraser-filters .menu-label { flex: none; }
+.eraser-filters .menu-hint { max-width: none; white-space: normal; }
+.eraser-filters .menu-item.is-on .menu-label { color: var(--iron); }
 .tape-options { border-top: 1px solid var(--line); }
 
 /* ••• › View */
@@ -108,6 +110,9 @@
 .lock-warning { padding: 10px 12px; border-radius: var(--r-control); background: var(--seal-soft); color: var(--ink); font-size: var(--t-sm); line-height: 1.45; }
 .lock-ack { display: flex; gap: 8px; align-items: flex-start; font-size: var(--t-sm); color: var(--ink-2); }
 .lock-ack input { margin-top: 2px; }
+
+/* Pen settings: eight pen types (with the calligraphy pen) in two rows of four */
+.pen-types { grid-template-columns: repeat(4, 1fr); row-gap: 4px; }
 
 /* Library: a locked note's frosted cover */
 .locked-cover { position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden; background: #fffdf5; }
