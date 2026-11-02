@@ -114,6 +114,9 @@ function InputSection() {
           </select>
         </label>
       </Group>
+      <Group title="Writing hand" note="On screens wide enough for the side tray, it sits on the edge away from your writing hand.">
+        <Segmented label="Writing hand" value={s.hand} onChange={(v) => s.update(() => ({ hand: v }))} options={[{ value: 'right', label: 'Right hand' }, { value: 'left', label: 'Left hand' }]} />
+      </Group>
       <Group title="Fingers">
         <label className="field-row">
           <span className="row-label">One finger</span>
@@ -251,7 +254,8 @@ function ProviderRow({ cfg }: { cfg: AIProviderConfig }) {
   );
 }
 
-function AddProvider({ onDone }: { onDone: () => void }) {
+/** Adds an AI provider and its key (Settings › AI, and the welcome's AI step). */
+export function AddProvider({ onDone }: { onDone: () => void }) {
   const s = useSettings();
   const [pid, setPid] = useState<string>('gemini');
   const info = getProviderInfo(pid) as ProviderInfo;
@@ -491,7 +495,7 @@ function AboutSection() {
         <p className="muted small">Everything is plain files in an open format (docs/VAULT_FORMAT.md). No account is required and nothing is sent anywhere unless you turn on sync or use AI.</p>
       </Group>
       <Group title="Reset">
-        <button type="button" className="btn btn-danger-ghost" onClick={async () => { if (await askConfirm('Reset settings?', 'Pens, gestures, feel and AI choices go back to defaults. Your notes and saved keys are not touched.', 'Reset', true)) s.update(() => ({ ...DEFAULT_SETTINGS, ai: s.ai, sync: s.sync })); }}>Reset settings to defaults</button>
+        <button type="button" className="btn btn-danger-ghost" onClick={async () => { if (await askConfirm('Reset settings?', 'Pens, gestures, feel and AI choices go back to defaults. Your notes and saved keys are not touched.', 'Reset', true)) s.update(() => ({ ...DEFAULT_SETTINGS, ai: s.ai, sync: s.sync, onboardingDone: s.onboardingDone })); }}>Reset settings to defaults</button>
       </Group>
       <p className="muted small"><PenLine size={13} /> Made for people who think with a pen.</p>
     </>

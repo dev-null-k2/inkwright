@@ -55,6 +55,14 @@ test('library loads with the welcome note', async ({ app: { page } }) => {
     await page.evaluate(() => { location.hash = ''; });
   }
   await expect(page.locator('.library')).toBeVisible();
+  // A fresh install opens with the first-run welcome over the library; its own test is
+  // e2e/welcome.spec.ts. Skipping marks it done for good.
+  const welcome = page.locator('.welcome');
+  if (await welcome.isVisible()) {
+    screencap('welcome-light');
+    await welcome.getByRole('button', { name: 'Skip' }).click();
+    await expect(welcome).toHaveCount(0);
+  }
   await expect(page.locator('.note-title', { hasText: 'Welcome to Inkwright' })).toBeVisible();
   setSystemDarkMode(false);
   await page.waitForTimeout(1500);

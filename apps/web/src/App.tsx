@@ -19,6 +19,7 @@ import { DevGlobal } from './dev/DevGlobal.tsx';
 import { PeerGlobal } from './peer/PeerGlobal.tsx';
 import { isModuleOn, startModules, useModule } from './modules/registry.ts';
 import { registerBuiltinModules } from './modules/builtin.ts';
+import { WelcomeGate } from './welcome/Welcome.tsx';
 
 // Every feature declares itself as a module (Settings › Modules); see modules/builtin.ts.
 registerBuiltinModules();
@@ -127,6 +128,8 @@ export function App() {
       {route.name === 'settings' && <Settings section={route.section} />}
       {route.name === 'graph' && !graphOn && <Library />}
       {route.name === 'graph' && graphOn && <Suspense fallback={<div className="boot" aria-live="polite"><BrandMark size={44} /></div>}><GraphView /></Suspense>}
+      {/* First run only: how you write, colours, AI and sync (welcome/). */}
+      <WelcomeGate />
       {searchOn && <Palette />}
       <Prompts />
       {assistantOn && <AgentDialogs />}

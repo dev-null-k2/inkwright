@@ -56,6 +56,49 @@
 .set-tab.is-on { background: var(--raised); color: var(--ink); box-shadow: 0 0 0 1px var(--line), 0 1px 2px var(--line-strong); }
 .settings:not(.is-wide) .set-main { padding-top: 8px; }
 
+/* ---------- Welcome (welcome/Welcome.tsx) ---------- */
+/* The desk itself, with one sheet on it: calm, and nothing else competing. */
+.welcome { position: fixed; inset: 0; z-index: 65; display: grid; place-items: center; overflow-y: auto; overscroll-behavior: contain; background: var(--desk);
+  padding: calc(12px + var(--safe-top)) calc(12px + var(--safe-right)) calc(12px + var(--safe-bottom)) calc(12px + var(--safe-left)); }
+.welcome-card { width: min(560px, 100%); min-height: min(640px, calc(var(--usable-h) - 24px)); display: flex; flex-direction: column; background: var(--raised); border-radius: var(--r-panel); box-shadow: var(--float-shadow); animation: pop-in 0.2s var(--ease-out); }
+.welcome-head { display: flex; align-items: center; gap: 10px; padding: 14px 14px 0 18px; min-height: 56px; }
+.welcome-dots { flex: 1; display: flex; justify-content: center; gap: 7px; list-style: none; margin: 0; padding: 0; }
+.welcome-dots li { width: 7px; height: 7px; border-radius: 50%; background: var(--line-strong); transition: background 0.2s, transform 0.2s; }
+.welcome-dots li.is-done { background: var(--ink-3); }
+/* "You are here": the jade stone-eye. */
+.welcome-dots li.is-on { background: radial-gradient(circle, var(--eye-core) 0 1.5px, var(--eye) 2px); transform: scale(1.35); }
+.welcome-skip { color: var(--ink-2); }
+.welcome-body { flex: 1; display: flex; flex-direction: column; gap: 14px; padding: 18px clamp(18px, 5vw, 36px) 8px; animation: menu-sub-in 0.2s var(--ease-out); }
+.welcome-kicker { margin: 0; font-size: var(--t-sm); font-weight: 600; color: var(--ink-3); }
+.welcome-body h1 { margin: 0 0 4px; font-family: var(--font-title); font-weight: 500; font-size: clamp(24px, 5vw, var(--t-2xl)); letter-spacing: -0.015em; line-height: 1.15; outline: none; }
+.welcome-lede, .welcome-note { margin: 0; color: var(--ink-2); font-size: var(--t-sm); display: flex; gap: 6px; align-items: center; }
+.welcome-choices, .welcome-list { display: flex; flex-direction: column; gap: 8px; }
+.welcome-choice, .welcome-sync { display: flex; align-items: flex-start; gap: 14px; width: 100%; min-height: 64px; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: var(--r-control); background: transparent; text-align: left; color: var(--ink); transition: border-color 0.15s, background 0.15s; }
+.welcome-choice:hover, .welcome-sync:hover { background: color-mix(in srgb, var(--chrome-2) 55%, transparent); }
+.welcome-choice.is-on { border-color: var(--ink); background: var(--chrome); }
+.welcome-choice-icon { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 10px; background: var(--chrome); color: var(--ink-2); }
+.welcome-choice.is-on .welcome-choice-icon { background: var(--ink); color: var(--ink-inverse); }
+.welcome-choice-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.welcome-choice-title { font-weight: 600; }
+.welcome-choice-hint { font-size: var(--t-sm); color: var(--ink-2); }
+.welcome-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.welcome-detail { padding: 4px 0; }
+.welcome-detail .add-provider { padding: 0; }
+.welcome-samples { margin-top: 4px; padding: 4px 14px; border-radius: var(--r-control); background: var(--chrome); }
+.welcome-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 12px clamp(18px, 5vw, 36px) 20px; }
+.welcome-next { min-width: 140px; }
+@media (max-width: 560px) {
+  .welcome { padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); place-items: stretch; }
+  .welcome-card { border-radius: 0; box-shadow: none; min-height: var(--usable-h); }
+  .welcome-next { flex: 1; }
+}
+
+/* ---------- Left-handed side tray (ui/PenDock.tsx) ---------- */
+.dock.is-vertical.is-right-edge { left: auto; right: 14px; }
+.dock.is-right-edge .pen svg { transform: translate(-18%, -50%) rotate(-90deg); }
+.dock.is-right-edge .pen.is-on svg { transform: translate(-42%, -50%) rotate(-90deg); }
+.dock.is-right-edge .pen:hover:not(.is-on) svg { transform: translate(-28%, -50%) rotate(-90deg); }
+
 /* A setting found by search: a brief jade ring ("you are here"), then calm again. */
 .is-found { border-radius: 12px; animation: set-found 1.8s var(--ease-out); }
 @keyframes set-found { 0%, 55% { box-shadow: 0 0 0 3px var(--iron-soft), 0 0 0 1px var(--iron); background: var(--iron-soft); } 100% { box-shadow: 0 0 0 0 transparent; } }
