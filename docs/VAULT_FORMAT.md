@@ -27,6 +27,9 @@ reference implementation is `packages/core/src/codec.ts` + `vault.ts`.
   templates/<templateId>/assets/<name>  files a template's pages use
   ai/leases/routines.json               which always-on runner runs routines automatically
   ai/approvals/<id>.json                actions an unattended agent is waiting for your OK on
+  ai/lessons.json                       lessons proposed from coding-agent sessions (see "Code sources")
+  code/sources/<sourceId>/source.json   a mounted repository: where it came from, last scan (see "Code sources")
+  code/sources/<sourceId>/graph.json    its code graph: symbols with signature hashes, edges
   notes/<noteId>/assets/provenance.json where each AI-written sentence of the note came from (see "Context compiler")
   ai/compiler/config.json, state.json   context compiler: sources, settings, compiled pages
   ai/compiler/proposals/<id>.json       compiled-wiki changes waiting for review (and decided ones)
@@ -133,7 +136,16 @@ don't understand.
 { "type": "graph", "id", "x", "y", "createdAt", "width": 320, "height": 220,
   "functions": [{ "expr": "x^2-4", "color": "#FF2F6FB5", "label": "y" }],
   "view": { "xMin": -10, "xMax": 10, "yMin": -6, "yMax": 30 }, "origin": "solver" }
+
+{ "type": "diagram", "id", "x", "y", "createdAt", "width": 520, "height": 340,
+  "ir": { "title?", "direction?": "TB|LR", "nodes": [ … ], "edges": [ … ], "groups?": [ … ], "acyclic?", "layout?" },
+  "color": "#FF1B1F24", "origin?": "ai" }
 ```
+
+**Diagrams** are verified architecture diagrams: `ir` is the typed diagram IR (docs/DEVELOPERS.md
+§ 4), valid when written, and the picture is laid out from it (`layoutDiagram` in
+`packages/core/src/dev/diagram.ts`) and scaled to `width` × `height`. Tools that change the IR must
+keep it valid (`validateDiagram`); readers that don't draw diagrams can show `ir` as text.
 
 **Tables.** `cells` is always `rows.length × cols.length`. A cell's `text` is what was typed into
 it; `recognized` is what was read from the ink written in it (typed text wins when both exist).
@@ -188,6 +200,12 @@ and never saved. Writers must keep overlays they don't draw, like any object.
 ```
 
 `lock` is present while the note is locked with a passcode (see "Locked notes").
+
+`codeRefs` (optional) holds, per code link in the note (`[[code:path#Symbol]]` typed or recognized,
+or an ink link whose `target` starts with `code:`), what the link was written or last reviewed
+against: `{ "src/auth.ts#createSession": { "hash", "signature", "sourceId?", "linkedAt", "reviewedAt?" } }`.
+A scan whose signature hash differs makes the link *drifted* (see "Code sources"). Keys of links no
+longer in the note may remain; they are ignored.
 
 `certificate` points at the note's latest signed authorship certificate in `assets/` (format in
 [AUTHORSHIP.md](AUTHORSHIP.md)).
@@ -376,7 +394,7 @@ Sync engines (Google Drive, WebDAV, local folder) mirror this tree file-for-file
 images/objects are unioned by id with deletions honoured from either side; authorship chain events
 are unioned and ordered by time; scalar metadata takes the most
 recent `updatedAt`. `forms` merges per PDF and per field (filling different fields on two devices
-keeps both; the newer note wins a field both changed). Transcripts merge too: within the same `run`,
+keeps both; the newer note wins a field both changed). `codeRefs` merges per link the same way. Transcripts merge too: within the same `run`,
 segments are unioned by id (one-sided edits and deletions honoured, the newer file wins a segment
 both changed) and `complete` is true if either side finished; different runs (one device
 transcribed the recording again) are not mixed — the newer file's run wins whole. The lecture
@@ -526,6 +544,57 @@ first), and `sig` is an ES256 signature (base64url) over the 32 hash bytes by th
 the latest `key` event (`data.publicJwk`; each month file starts with one). Kinds and fields are
 listed in docs/TRUST.md › Audit trail. Retention removes whole months and then records a
 `retention` event whose `data.prunedHead` is the hash the remaining chain starts after.
+
+**Runbook runs** (docs/DEVELOPERS.md § 5) are activity runs with `source: "external"`, `label:
+"Runbook"` and one `external` op (`server: "Runbook"`, `tool: "run_http|run_sql|run_js"`, the
+outcome in `summary`, the block's first 300 characters in `detail`); status `cancelled` when the
+user declined a request. They change nothing in the notes, so there is nothing to undo.
+
+## Code sources (`code/`)
+
+Repositories the developer module has read (docs/DEVELOPERS.md). Written by the app, the
+`inkstone scan` CLI or any tool; each source is its own folder, synced as whole files. Ids match
+`^[0-9A-Za-z_-]{1,64}$`. The reference is `CodeStore` in `packages/core/src/dev/codegraph.ts`.
+
+```jsonc
+// code/sources/<id>/source.json
+{ "id": "shop", "name": "shop", "kind": "folder|zip|tarball|cli|graphify|generic",
+  "origin": "shop-main.zip", "createdAt", "scannedAt",
+  "stats": { "files": 42, "symbols": 310, "edges": 512, "skipped?": 3 }, "formatVersion": 1 }
+
+// code/sources/<id>/graph.json (compact JSON)
+{ "formatVersion": 1, "sourceId": "shop", "name": "shop", "scannedAt",
+  "generator": "inkstone-tree-sitter/1",            // or "graphify/<version>", "generic-json"
+  "files": [ { "path": "src/auth.ts", "language": "typescript", "hash": "<16 hex>", "size": 812 } ],
+  "symbols": [ {
+      "id": "src/auth.ts#SessionStore.put",           // path#qualified: exactly what a code link names
+      "name": "put", "qualified": "SessionStore.put",
+      "kind": "function|method|class|interface|type|enum|const|struct|trait|route|module",
+      "file": "src/auth.ts", "line": 14, "endLine": 18,
+      "signature": "put(s: Session): void",           // the declaration without its body
+      "hash": "<16 hex>",                              // SHA-256 of the normalised signature
+      "bodyHash?": "<16 hex>", "exported?": true, "doc?": "First doc-comment line",
+      "source?": "<first 80 lines>", "route?": { "method": "GET", "path": "/health" } } ],
+  "edges": [ { "from": "<symbol id or file path>", "to": "<symbol id, file path, Go package folder, or module:<name>>",
+               "kind": "calls|imports|contains|extends|implements|references|handles",
+               "confidence?": "extracted|inferred|ambiguous" } ],
+  "skipped?": 3, "warnings?": ["…"] }
+```
+
+The signature is normalised before hashing: whitespace collapsed, spaces around punctuation
+removed, trailing commas dropped — so reformatting never reads as a change. Writers sort files,
+symbols and edges (by path, line, id) so the same code always gives the same file.
+
+**Lesson proposals** — `ai/lessons.json`:
+
+```jsonc
+{ "version": 1, "items": [
+  { "id", "text": "Run migrations with --dry-run first", "why?", "noteId?", "noteTitle?",
+    "status": "proposed|accepted|dismissed", "createdAt", "decidedAt?" } ] }
+```
+
+Accepted lessons are appended to the `AGENTS.md` note as text; decided ones stay (newest 300) so
+the same lesson is not proposed twice.
 
 ## Context compiler
 

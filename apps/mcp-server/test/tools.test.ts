@@ -392,7 +392,8 @@ describe('read-only mode', () => {
   it('hides write tools and rejects writes without touching the vault', async () => {
     const ro = await fx.ctx({ readOnly: true });
     const names = activeTools(ro).map((t) => t.name);
-    expect(names).toEqual(['list_notes', 'search_notes', 'read_note', 'get_page_image', 'list_notebooks', 'get_recent_handwriting']);
+    // The developer module's tools (dev/tools.ts) only read, so they stay.
+    expect(names).toEqual(['list_notes', 'search_notes', 'read_note', 'get_page_image', 'list_notebooks', 'get_recent_handwriting', 'code_search', 'code_symbol', 'drift_report', 'get_runbook', 'validate_diagram']);
     expect(activeTools(ctx).map((t) => t.name)).toContain('create_note');
     const before = (await readdir(path.join(fx.dir, 'notes'))).sort();
     await expect(createNote(ro, { title: 'nope' })).rejects.toThrow(/read-only/);

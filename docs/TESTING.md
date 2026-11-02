@@ -13,6 +13,11 @@ Three layers cover every feature.
 | Every browser engine | `npm run e2e:all` | the end-to-end suite on Chromium plus WebKit (Safari on macOS; iPad and iPhone screens with touch) and Firefox. See [Browsers and platforms](#browsers-and-platforms) |
 | Android app | `npm run e2e:android` | the real app (debug APK) in an Android emulator or on a USB-connected phone: Playwright drives its WebView over CDP, adb sends real stylus MotionEvents, logcat is checked for crashes, ANRs and native evidence. See [Android emulator and devices](#android-emulator-and-devices) |
 
+Developer module (code graphs, links and drift, diagrams, runbooks, session journals): see
+[DEVELOPERS.md § Tests](DEVELOPERS.md#tests) — unit tests in `packages/core/test/dev`, the
+`create_diagram` repair-loop eval, MCP tools and the spawned `inkstone` CLI in
+`apps/mcp-server/test/dev.test.ts`, and `e2e/dev.spec.ts`.
+
 ## Browsers and platforms
 
 Inkstone runs in three browser engines. What each platform uses:
