@@ -33,8 +33,8 @@ import { requestElicitation } from './hub.ts';
 
 const KEY = 'inkwright.mcp.v1';
 const TASKS_KEY = 'inkwright.mcp.tasks.v1';
-export const OAUTH_CHANNEL = 'inkwright-mcp-oauth';
-export const OAUTH_CALLBACK_KEY = 'inkwright.mcp.oauth-callback';
+import { OAUTH_CALLBACK_KEY, OAUTH_CHANNEL } from './oauth-keys.ts';
+export { OAUTH_CALLBACK_KEY, OAUTH_CHANNEL };
 
 export interface McpRuntime {
   status: McpStatus;

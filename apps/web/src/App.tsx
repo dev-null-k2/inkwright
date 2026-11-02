@@ -4,19 +4,17 @@ import { useSettings } from './state/settings.ts';
 import { AppVault } from './lib/vault.ts';
 import { startSyncLoop } from './lib/sync.ts';
 import { Library } from './screens/Library.tsx';
-import { Editor } from './screens/Editor.tsx';
-import { Settings } from './screens/Settings.tsx';
 import { Prompts } from './ui/prompts.tsx';
 import { Toasts } from './ui/Toasts.tsx';
 import { BrandMark } from './ui/Brand.tsx';
-import { Palette } from './ui/Palette.tsx';
 import { attachMemory } from './lib/memory.ts';
 import { isNative } from './platform/env.ts';
-import { CompilerDialogs } from './compiler/ui/dialogs.tsx';
-import { AgentDialogs } from './ui/agent/shared.tsx';
 import { useKnowledgeShortcuts } from './ui/knowledge/shortcuts.ts';
-import { DevGlobal } from './dev/DevGlobal.tsx';
-import { PeerGlobal } from './peer/PeerGlobal.tsx';
+// Only the library is in the startup bundle; the other screens and app-wide overlays are chunks
+// fetched in the background once it is up (boot/screens.ts, docs/PERFORMANCE.md).
+import { AgentDialogs, CompilerDialogs, DevGlobal, Editor, PeerGlobal, Settings, afterEditorPreload, preloadAfterLibrary } from './boot/screens.ts';
+import { PaletteHost, usePaletteShortcutUntilLoaded } from './boot/paletteShortcut.ts';
+import { releaseBackgroundSoon, useBackgroundReady } from './boot/background.ts';
 import { isModuleOn, startModules, useModule } from './modules/registry.ts';
 import { registerBuiltinModules } from './modules/builtin.ts';
 
@@ -36,6 +34,17 @@ export function App() {
   const assistantOn = useModule('assistant');
   const compilerOn = useModule('compiler');
   useKnowledgeShortcuts();
+  usePaletteShortcutUntilLoaded(searchOn);
+  useEffect(() => { if (ready) preloadAfterLibrary(); }, [ready]);
+  // Leaving the library (a note, Settings, the graph): modules start now, since the screens use
+  // their services (the editor reads the compiler's sources, the assistant's hub…); overlays and
+  // preloading follow once the new screen is up.
+  useEffect(() => {
+    if (!ready || route.name === 'library') return;
+    startModules();
+    releaseBackgroundSoon();
+  }, [ready, route.name]);
+  const background = useBackgroundReady();
 
   useEffect(() => {
     const root = document.documentElement;
@@ -81,7 +90,7 @@ export function App() {
         // Modules that are on start their background work: the assistant (activity log, memory,
         // skills, routines, connected apps), plugins, links from other apps… A problem in one
         // must never keep the notes from opening.
-        startModules();
+        afterEditorPreload(() => startModules());
       } catch (e) {
         console.error(e);
         useApp.setState({ error: (e as Error).message });
@@ -120,19 +129,24 @@ export function App() {
       </div>
     );
   }
+  const screenFallback = <div className="boot" aria-live="polite"><BrandMark size={44} /></div>;
   return (
     <>
       {route.name === 'library' && <Library />}
-      {route.name === 'editor' && <Editor key={route.noteId} noteId={route.noteId} initialPage={route.page} />}
-      {route.name === 'settings' && <Settings section={route.section} />}
+      <Suspense fallback={screenFallback}>
+        {route.name === 'editor' && <Editor key={route.noteId} noteId={route.noteId} initialPage={route.page} />}
+        {route.name === 'settings' && <Settings section={route.section} />}
+      </Suspense>
       {route.name === 'graph' && !graphOn && <Library />}
-      {route.name === 'graph' && graphOn && <Suspense fallback={<div className="boot" aria-live="polite"><BrandMark size={44} /></div>}><GraphView /></Suspense>}
-      {searchOn && <Palette />}
+      {route.name === 'graph' && graphOn && <Suspense fallback={screenFallback}><GraphView /></Suspense>}
+      {background && <Suspense fallback={null}>
+        {searchOn && <PaletteHost />}
+        {assistantOn && <AgentDialogs />}
+        <DevGlobal />
+        <PeerGlobal />
+        {compilerOn && <CompilerDialogs />}
+      </Suspense>}
       <Prompts />
-      {assistantOn && <AgentDialogs />}
-      <DevGlobal />
-      <PeerGlobal />
-      {compilerOn && <CompilerDialogs />}
       <Toasts />
     </>
   );

@@ -1,0 +1,68 @@
+import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
+
+/**
+ * Code-splitting helpers for startup.
+ *
+ * The library is the first screen, so the initial bundle carries only what it needs. Every other
+ * screen and app-wide dialog is a separate chunk that is (1) fetched in the background as soon as
+ * the library is idle — so opening a note or pressing Ctrl/⌘-K never waits for the network — and
+ * (2) still loaded on demand if someone gets there first (deep links, `#new`, a fast tap).
+ *
+ * See docs/PERFORMANCE.md for the measurements behind this split and the budget that guards it.
+ */
+
+/** A `React.lazy` component that can also be fetched ahead of time with `preload()`. */
+export type PreloadableComponent<T extends ComponentType<any>> = LazyExoticComponent<T> & {
+  /** Starts (or joins) the chunk download; resolves once the module is evaluated. */
+  preload: () => Promise<unknown>;
+  /** Whether the chunk has been evaluated, so it renders without suspending. */
+  readonly loaded: boolean;
+};
+
+/**
+ * `React.lazy` for a named export, with `preload()`. The import runs at most once: `preload()` and
+ * the first render share the same promise, so preloading never fetches twice.
+ */
+export function lazyNamed<M, K extends keyof M>(load: () => Promise<M>, name: K): PreloadableComponent<M[K] & ComponentType<any>> {
+  let promise: Promise<{ default: M[K] & ComponentType<any> }> | null = null;
+  let loaded = false;
+  const start = () =>
+    (promise ??= load().then((m) => {
+      loaded = true;
+      return { default: m[name] as M[K] & ComponentType<any> };
+    }, (e) => {
+      promise = null; // a failed chunk (offline mid-update) can be retried on the next render
+      throw e;
+    }));
+  const component = lazy(start) as PreloadableComponent<M[K] & ComponentType<any>>;
+  component.preload = start;
+  Object.defineProperty(component, 'loaded', { get: () => loaded });
+  return component;
+}
+
+type IdleWindow = Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number };
+
+/**
+ * Runs `fn` when the main thread is idle (or after `timeout` ms at the latest), so background
+ * chunk fetches and module evaluation never compete with the first paint or the first stroke.
+ */
+export function whenIdle(fn: () => void, timeout = 2000): void {
+  const w = window as IdleWindow;
+  if (typeof w.requestIdleCallback === 'function') w.requestIdleCallback(fn, { timeout });
+  else setTimeout(fn, Math.min(timeout, 200));
+}
+
+/**
+ * Preloads chunks one after another at idle time. Sequential on purpose: evaluating a large chunk
+ * is a long task on a slow phone, and several at once would make the app janky exactly when
+ * someone starts scrolling.
+ */
+export function preloadInSequence(loaders: Array<() => Promise<unknown>>): void {
+  const next = (i: number) => {
+    if (i >= loaders.length) return;
+    whenIdle(() => {
+      loaders[i]!().catch(() => {}).finally(() => next(i + 1));
+    });
+  };
+  next(0);
+}
