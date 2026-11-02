@@ -75,23 +75,16 @@ export const versioningFor = (noteId: string) => open.get(noteId) ?? null;
 const lastAgentSnapshot = new Map<string, number>();
 
 /**
- * Before the assistant or a routine changes a note: snapshot it (at most once every two minutes
- * per note, so a run that appends ten times makes one version). Works for open and closed notes.
+ * Before the assistant or a routine changes a note: snapshot it as it is now (at most once every
+ * two minutes per note, so a run that appends ten times makes one version). The state is taken
+ * right away and written in the background, so the agent's edit never waits on it.
  */
-export async function snapshotBeforeAgentEdit(vault: AppVault, noteId: string): Promise<void> {
+export function snapshotBeforeAgentEdit(vault: AppVault, meta: NoteMeta, pages: readonly PageInk[]): void {
   const now = Date.now();
-  if (now - (lastAgentSnapshot.get(noteId) ?? 0) < 120_000) return;
-  lastAgentSnapshot.set(noteId, now);
-  try {
-    const v = versioningFor(noteId);
-    if (v) { await v.take('agent'); return; }
-    const meta: NoteMeta | null = await vault.vault.readNote(noteId);
-    if (!meta || meta.lock) return;
-    const pages: PageInk[] = await vault.vault.readPages(meta);
-    await new VersionHistory(vault.vault).take(meta, pages, 'agent');
-  } catch (e) {
-    console.warn('snapshot before assistant edit failed', e);
-  }
+  if (meta.lock || now - (lastAgentSnapshot.get(meta.id) ?? 0) < 120_000) return;
+  lastAgentSnapshot.set(meta.id, now);
+  const history = versioningFor(meta.id)?.history ?? new VersionHistory(vault.vault);
+  void history.take(meta, [...pages], 'agent').catch((e) => console.warn('snapshot before assistant edit failed', e));
 }
 
 /**
