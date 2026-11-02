@@ -10,6 +10,7 @@ import { Dialog, IconButton, Menu, Popover, cx, relativeTime, useMediaQuery } fr
 import { NewNoteSheet } from '../ui/NewNoteSheet.tsx';
 import { createNote, importFiles, moveNote, renameNote, togglePin, trashNote, restoreNote, deleteForever, duplicateNote, createNotebook, deleteNotebook, renameNotebook } from '../lib/actions.ts';
 import { BrandMark } from '../ui/Brand.tsx';
+import { InkRipple, NotebookCover } from '../ui/Cover.tsx';
 import { syncNow, useSync } from '../lib/sync.ts';
 
 export function Library() {
@@ -174,10 +175,25 @@ export function Library() {
           ) : (
             <>
               <div className="lib-heading">
+                {filter.kind === 'notebook' && (() => { const nb = notebooks.find((b) => b.id === filter.id); return nb ? <span className="lib-cover"><NotebookCover id={nb.id} color={nb.color} size={42} /></span> : null; })()}
                 <h1 className="lib-h1">{heading}</h1>
                 {filter.kind === 'notebook' && <NotebookActions id={filter.id} />}
                 {filter.kind === 'trash' && trash.length > 0 && <span className="muted">Notes in Trash are deleted after 30 days.</span>}
               </div>
+              {filter.kind === 'all' && notebooks.some((nb) => !nb.parentId) && (
+                <section className="nb-shelf" aria-label="Notebooks">
+                  {notebooks.filter((nb) => !nb.parentId).map((nb) => {
+                    const count = notes.filter((n) => n.notebookId === nb.id).length;
+                    return (
+                      <button key={nb.id} type="button" className="nb-shelf-item" onClick={() => setFilter({ kind: 'notebook', id: nb.id })}>
+                        <NotebookCover id={nb.id} color={nb.color} size={96} />
+                        <span className="nb-shelf-name">{nb.name}</span>
+                        <span className="nb-shelf-count">{count === 1 ? '1 note' : `${count} notes`}</span>
+                      </button>
+                    );
+                  })}
+                </section>
+              )}
               {pinned.length > 0 && (
                 <>
                   <h2 className="lib-h2">Pinned</h2>
@@ -252,7 +268,7 @@ function NavItem({ icon, label, count, on, onClick }: { icon: React.ReactNode; l
 function NotebookItem({ nb, depth, on, count, onClick }: { nb: NotebookMeta; depth: number; on: boolean; count: number; onClick: () => void }) {
   return (
     <button type="button" className={cx('nav-item', on && 'is-on')} style={{ paddingLeft: 12 + depth * 16 }} onClick={onClick}>
-      <span className="nb-swatch" style={{ background: argbCss(nb.color) }} />
+      <span className="nb-mini"><NotebookCover id={nb.id} color={nb.color} size={15} /></span>
       <span className="nav-label">{nb.name}</span>
       {count > 0 && <span className="nav-count">{count}</span>}
     </button>
@@ -356,6 +372,7 @@ function EmptyState({ filter, onNew, onImport }: { filter: LibraryFilter; onNew:
   if (filter.kind === 'trash') return <div className="empty"><p>Trash is empty.</p></div>;
   return (
     <div className="empty">
+      <InkRipple />
       <p className="empty-lead">{filter.kind === 'all' ? 'Your desk is clear.' : 'No notes here yet.'}</p>
       <p className="muted">Start a page, or bring in a PDF to write on.</p>
       <div className="empty-actions">

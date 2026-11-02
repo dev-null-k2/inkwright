@@ -14,12 +14,22 @@ import { isNative } from './platform/env.ts';
 export function App() {
   const { ready, route, error, setVault, refresh, navigate } = useApp();
   const theme = useSettings((s) => s.theme);
+  const palette = useSettings((s) => s.palette);
 
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'system') root.removeAttribute('data-theme');
     else root.setAttribute('data-theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!palette || palette === 'duan') root.removeAttribute('data-palette');
+    else root.setAttribute('data-palette', palette);
+    // Status bar / browser chrome follows the desk colour.
+    const desk = getComputedStyle(root).getPropertyValue('--desk').trim();
+    if (desk) document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', desk));
+  }, [palette, theme]);
 
   useEffect(() => {
     let alive = true;

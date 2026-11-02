@@ -1,3 +1,4 @@
+import { PalettePicker } from '../ui/PalettePicker.tsx';
 import { FeelPanel } from '../ui/FeelPanel.tsx';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -441,8 +442,9 @@ function AppearanceSection() {
   return (
     <>
       <Group title="Theme">
-        <Segmented label="Theme" value={s.theme} onChange={(v) => s.update(() => ({ theme: v }))} options={[
-          { value: 'system', label: 'Match device' }, { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' },
+        <PalettePicker value={s.palette ?? 'duan'} onChange={(v) => s.update(() => ({ palette: v }))} />
+        <Segmented label="Light or dark" value={s.theme} onChange={(v) => s.update(() => ({ theme: v }))} options={[
+          { value: 'system', label: 'Match device' }, { value: 'light', label: 'Day' }, { value: 'dark', label: 'Night' },
         ]} />
       </Group>
       <Group title="Paper for new notes">

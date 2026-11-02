@@ -1,0 +1,288 @@
+/*
+ * Inkstone palettes. "Duan" (tokens.css) is the default; each alternative here comes from another
+ * material of the writing desk and has a day and a night version, chosen with the light/dark
+ * setting. Each keeps the same roles: one desk, one ink, one "you are here" accent, cinnabar for
+ * record/delete, and a dark tray for the pens.
+ *
+ *   Aizome  — indigo-dyed cotton; the accent is the gold of sashiko thread.
+ *   Celadon — Goryeo porcelain glaze; the accent is the iron-brown of the unglazed foot.
+ *   Sumi    — pure black on white: e-ink tablets (Boox, reMarkable-class Android), sunlight and
+ *             low vision. No shadows, no motion, maximum contrast.
+ *
+ * Order matters: day block, explicit night, then system night (equal specificity, later wins).
+ */
+
+/* aizome */
+:root[data-palette='aizome']:not([data-theme='dark']) {
+  color-scheme: light;
+  --desk: #e2e6ee;
+  --desk-grain: #d9dee8;
+  --chrome: #edf0f5;
+  --chrome-2: #d6dce7;
+  --raised: #fafbfd;
+  --ink: #1c2641;
+  --ink-2: #4b5671;
+  --ink-3: #7d87a0;
+  --ink-inverse: #f4f6fa;
+  --line: rgba(28, 38, 65, 0.11);
+  --line-strong: rgba(28, 38, 65, 0.2);
+  --iron: #7c5213;
+  --iron-soft: rgba(124, 82, 19, 0.13);
+  --eye: #c08a3a;
+  --eye-core: #1c2641;
+  --seal: #b0392d;
+  --seal-soft: #f1dad5;
+  --stone: #1c2641;
+  --stone-hi: rgba(255, 255, 255, 0.07);
+  --stone-rim: rgba(255, 255, 255, 0.1);
+  --stone-ink: rgba(244, 246, 250, 0.74);
+  --stone-ink-strong: #f4f6fa;
+  --sheet-shadow: 0 0.5px 0 rgba(28, 38, 65, 0.08), 0 1px 2px rgba(28, 38, 65, 0.09), 0 14px 28px -18px rgba(28, 38, 65, 0.45);
+  --float-shadow: 0 1px 2px rgba(28, 38, 65, 0.07), 0 18px 40px -16px rgba(28, 38, 65, 0.32);
+  --tray-shadow: inset 0 1px 0 var(--stone-hi), 0 2px 4px rgba(28, 38, 65, 0.18), 0 18px 34px -16px rgba(28, 38, 65, 0.55);
+}
+
+:root[data-palette='aizome'][data-theme='dark'] {
+  color-scheme: dark;
+  --desk: #111727;
+  --desk-grain: #141b2e;
+  --chrome: #192036;
+  --chrome-2: #232b44;
+  --raised: #1f273e;
+  --ink: #e8ecf5;
+  --ink-2: #adb6ca;
+  --ink-3: #7e88a0;
+  --ink-inverse: #111727;
+  --line: rgba(232, 236, 245, 0.1);
+  --line-strong: rgba(232, 236, 245, 0.19);
+  --iron: #e3b86b;
+  --iron-soft: rgba(227, 184, 107, 0.16);
+  --eye: #e3b86b;
+  --eye-core: #111727;
+  --seal: #e8705c;
+  --seal-soft: rgba(232, 112, 92, 0.18);
+  --stone: #222b47;
+  --stone-hi: rgba(255, 255, 255, 0.08);
+  --stone-rim: rgba(255, 255, 255, 0.2);
+  --stone-ink: rgba(232, 236, 245, 0.72);
+  --stone-ink-strong: #e8ecf5;
+  --sheet-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), 0 16px 32px -14px rgba(0, 0, 0, 0.75);
+  --float-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 18px 44px -14px rgba(0, 0, 0, 0.75);
+  --tray-shadow: inset 0 1px 0 var(--stone-hi), 0 0 0 1px rgba(0, 0, 0, 0.35), 0 18px 36px -14px rgba(0, 0, 0, 0.8);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-palette='aizome']:not([data-theme='light']) {
+    color-scheme: dark;
+    --desk: #111727;
+    --desk-grain: #141b2e;
+    --chrome: #192036;
+    --chrome-2: #232b44;
+    --raised: #1f273e;
+    --ink: #e8ecf5;
+    --ink-2: #adb6ca;
+    --ink-3: #7e88a0;
+    --ink-inverse: #111727;
+    --line: rgba(232, 236, 245, 0.1);
+    --line-strong: rgba(232, 236, 245, 0.19);
+    --iron: #e3b86b;
+    --iron-soft: rgba(227, 184, 107, 0.16);
+    --eye: #e3b86b;
+    --eye-core: #111727;
+    --seal: #e8705c;
+    --seal-soft: rgba(232, 112, 92, 0.18);
+    --stone: #222b47;
+    --stone-hi: rgba(255, 255, 255, 0.08);
+    --stone-rim: rgba(255, 255, 255, 0.2);
+    --stone-ink: rgba(232, 236, 245, 0.72);
+    --stone-ink-strong: #e8ecf5;
+    --sheet-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), 0 16px 32px -14px rgba(0, 0, 0, 0.75);
+    --float-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 18px 44px -14px rgba(0, 0, 0, 0.75);
+    --tray-shadow: inset 0 1px 0 var(--stone-hi), 0 0 0 1px rgba(0, 0, 0, 0.35), 0 18px 36px -14px rgba(0, 0, 0, 0.8);
+  }
+}
+
+/* celadon */
+:root[data-palette='celadon']:not([data-theme='dark']) {
+  color-scheme: light;
+  --desk: #e1e8e2;
+  --desk-grain: #d8e1da;
+  --chrome: #edf2ee;
+  --chrome-2: #d4ded6;
+  --raised: #fafcfa;
+  --ink: #21302a;
+  --ink-2: #4e5e56;
+  --ink-3: #808f88;
+  --ink-inverse: #f3f7f4;
+  --line: rgba(33, 48, 42, 0.11);
+  --line-strong: rgba(33, 48, 42, 0.2);
+  --iron: #874a2e;
+  --iron-soft: rgba(135, 74, 46, 0.13);
+  --eye: #b26b48;
+  --eye-core: #21302a;
+  --seal: #b3412f;
+  --seal-soft: #f3ddd8;
+  --stone: #2b3a33;
+  --stone-hi: rgba(255, 255, 255, 0.07);
+  --stone-rim: rgba(255, 255, 255, 0.1);
+  --stone-ink: rgba(243, 247, 244, 0.74);
+  --stone-ink-strong: #f3f7f4;
+  --sheet-shadow: 0 0.5px 0 rgba(33, 48, 42, 0.08), 0 1px 2px rgba(33, 48, 42, 0.09), 0 14px 28px -18px rgba(33, 48, 42, 0.45);
+  --float-shadow: 0 1px 2px rgba(33, 48, 42, 0.07), 0 18px 40px -16px rgba(33, 48, 42, 0.32);
+  --tray-shadow: inset 0 1px 0 var(--stone-hi), 0 2px 4px rgba(33, 48, 42, 0.18), 0 18px 34px -16px rgba(33, 48, 42, 0.55);
+}
+
+:root[data-palette='celadon'][data-theme='dark'] {
+  color-scheme: dark;
+  --desk: #131a17;
+  --desk-grain: #16201c;
+  --chrome: #1a231f;
+  --chrome-2: #232f29;
+  --raised: #1f2924;
+  --ink: #e7eee9;
+  --ink-2: #acbcb3;
+  --ink-3: #7d8e85;
+  --ink-inverse: #131a17;
+  --line: rgba(231, 238, 233, 0.1);
+  --line-strong: rgba(231, 238, 233, 0.19);
+  --iron: #e1a37f;
+  --iron-soft: rgba(225, 163, 127, 0.16);
+  --eye: #e1a37f;
+  --eye-core: #131a17;
+  --seal: #e06a55;
+  --seal-soft: rgba(224, 106, 85, 0.18);
+  --stone: #25332c;
+  --stone-hi: rgba(255, 255, 255, 0.08);
+  --stone-rim: rgba(255, 255, 255, 0.2);
+  --stone-ink: rgba(231, 238, 233, 0.72);
+  --stone-ink-strong: #e7eee9;
+  --sheet-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), 0 16px 32px -14px rgba(0, 0, 0, 0.75);
+  --float-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 18px 44px -14px rgba(0, 0, 0, 0.75);
+  --tray-shadow: inset 0 1px 0 var(--stone-hi), 0 0 0 1px rgba(0, 0, 0, 0.35), 0 18px 36px -14px rgba(0, 0, 0, 0.8);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-palette='celadon']:not([data-theme='light']) {
+    color-scheme: dark;
+    --desk: #131a17;
+    --desk-grain: #16201c;
+    --chrome: #1a231f;
+    --chrome-2: #232f29;
+    --raised: #1f2924;
+    --ink: #e7eee9;
+    --ink-2: #acbcb3;
+    --ink-3: #7d8e85;
+    --ink-inverse: #131a17;
+    --line: rgba(231, 238, 233, 0.1);
+    --line-strong: rgba(231, 238, 233, 0.19);
+    --iron: #e1a37f;
+    --iron-soft: rgba(225, 163, 127, 0.16);
+    --eye: #e1a37f;
+    --eye-core: #131a17;
+    --seal: #e06a55;
+    --seal-soft: rgba(224, 106, 85, 0.18);
+    --stone: #25332c;
+    --stone-hi: rgba(255, 255, 255, 0.08);
+    --stone-rim: rgba(255, 255, 255, 0.2);
+    --stone-ink: rgba(231, 238, 233, 0.72);
+    --stone-ink-strong: #e7eee9;
+    --sheet-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), 0 16px 32px -14px rgba(0, 0, 0, 0.75);
+    --float-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 18px 44px -14px rgba(0, 0, 0, 0.75);
+    --tray-shadow: inset 0 1px 0 var(--stone-hi), 0 0 0 1px rgba(0, 0, 0, 0.35), 0 18px 36px -14px rgba(0, 0, 0, 0.8);
+  }
+}
+
+/* sumi */
+:root[data-palette='sumi']:not([data-theme='dark']) {
+  color-scheme: light;
+  --desk: #ffffff;
+  --desk-grain: #f3f3f3;
+  --chrome: #f3f3f3;
+  --chrome-2: #e2e2e2;
+  --raised: #ffffff;
+  --ink: #000000;
+  --ink-2: #1f1f1f;
+  --ink-3: #4d4d4d;
+  --ink-inverse: #ffffff;
+  --line: rgba(0, 0, 0, 0.28);
+  --line-strong: rgba(0, 0, 0, 0.55);
+  --iron: #000000;
+  --iron-soft: rgba(0, 0, 0, 0.1);
+  --eye: #000000;
+  --eye-core: #ffffff;
+  --seal: #9e1b10;
+  --seal-soft: #f2dcd9;
+  --stone: #000000;
+  --stone-hi: rgba(255, 255, 255, 0.18);
+  --stone-rim: rgba(255, 255, 255, 0.3);
+  --stone-ink: #ffffff;
+  --stone-ink-strong: #ffffff;
+  --sheet-shadow: 0 0.5px 0 rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.09), 0 14px 28px -18px rgba(0, 0, 0, 0.45);
+  --float-shadow: 0 1px 2px rgba(0, 0, 0, 0.07), 0 18px 40px -16px rgba(0, 0, 0, 0.32);
+  --tray-shadow: inset 0 1px 0 var(--stone-hi), 0 2px 4px rgba(0, 0, 0, 0.18), 0 18px 34px -16px rgba(0, 0, 0, 0.55);
+}
+
+:root[data-palette='sumi'][data-theme='dark'] {
+  color-scheme: dark;
+  --desk: #000000;
+  --desk-grain: #0c0c0c;
+  --chrome: #0c0c0c;
+  --chrome-2: #262626;
+  --raised: #000000;
+  --ink: #ffffff;
+  --ink-2: #e6e6e6;
+  --ink-3: #b3b3b3;
+  --ink-inverse: #000000;
+  --line: rgba(255, 255, 255, 0.3);
+  --line-strong: rgba(255, 255, 255, 0.6);
+  --iron: #ffffff;
+  --iron-soft: rgba(255, 255, 255, 0.14);
+  --eye: #ffffff;
+  --eye-core: #000000;
+  --seal: #ff7a66;
+  --seal-soft: rgba(255, 122, 102, 0.2);
+  --stone: #000000;
+  --stone-hi: rgba(255, 255, 255, 0.3);
+  --stone-rim: rgba(255, 255, 255, 0.6);
+  --stone-ink: #ffffff;
+  --stone-ink-strong: #ffffff;
+  --sheet-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), 0 16px 32px -14px rgba(0, 0, 0, 0.75);
+  --float-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 18px 44px -14px rgba(0, 0, 0, 0.75);
+  --tray-shadow: inset 0 1px 0 var(--stone-hi), 0 0 0 1px rgba(0, 0, 0, 0.35), 0 18px 36px -14px rgba(0, 0, 0, 0.8);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-palette='sumi']:not([data-theme='light']) {
+    color-scheme: dark;
+    --desk: #000000;
+    --desk-grain: #0c0c0c;
+    --chrome: #0c0c0c;
+    --chrome-2: #262626;
+    --raised: #000000;
+    --ink: #ffffff;
+    --ink-2: #e6e6e6;
+    --ink-3: #b3b3b3;
+    --ink-inverse: #000000;
+    --line: rgba(255, 255, 255, 0.3);
+    --line-strong: rgba(255, 255, 255, 0.6);
+    --iron: #ffffff;
+    --iron-soft: rgba(255, 255, 255, 0.14);
+    --eye: #ffffff;
+    --eye-core: #000000;
+    --seal: #ff7a66;
+    --seal-soft: rgba(255, 122, 102, 0.2);
+    --stone: #000000;
+    --stone-hi: rgba(255, 255, 255, 0.3);
+    --stone-rim: rgba(255, 255, 255, 0.6);
+    --stone-ink: #ffffff;
+    --stone-ink-strong: #ffffff;
+    --sheet-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), 0 16px 32px -14px rgba(0, 0, 0, 0.75);
+    --float-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 18px 44px -14px rgba(0, 0, 0, 0.75);
+    --tray-shadow: inset 0 1px 0 var(--stone-hi), 0 0 0 1px rgba(0, 0, 0, 0.35), 0 18px 36px -14px rgba(0, 0, 0, 0.8);
+  }
+}
+
+/* Sumi: e-ink friendly — no shadows, no motion, crisp hairlines. */
+:root[data-palette='sumi'] { --sheet-shadow: 0 0 0 1px var(--line-strong); --float-shadow: 0 0 0 1.5px var(--ink); --tray-shadow: none; }
+:root[data-palette='sumi'] *, :root[data-palette='sumi'] *::before, :root[data-palette='sumi'] *::after { transition: none !important; animation: none !important; }
+:root[data-palette='sumi'] .dock { box-shadow: 0 0 0 1.5px var(--ink); }
