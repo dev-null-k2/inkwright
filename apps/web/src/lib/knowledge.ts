@@ -61,11 +61,22 @@ async function editNotePages(noteId: string, label: string, fn: (page: PageInk, 
 
 // ---- Following links ------------------------------------------------------------------------
 
+/** Opens a link target that is not a note (e.g. `code:` links, dev/); true when it handled it. */
+export type LinkHandler = (target: string) => boolean | Promise<boolean>;
+const linkHandlers = new Set<LinkHandler>();
+
+/** Lets an optional module claim link targets before they are treated as note titles. */
+export function registerLinkHandler(h: LinkHandler): () => void {
+  linkHandlers.add(h);
+  return () => linkHandlers.delete(h);
+}
+
 /**
  * Opens what a link points at: the note (at the page it names), or — like Obsidian — creates the
  * note when there is none yet. A day like `[[2026-11-02]]` opens (or starts) that daily note.
  */
 export async function followLink(target: string, opts: { from?: NoteMeta; noteId?: string } = {}): Promise<void> {
+  for (const h of linkHandlers) if (await h(target)) return;
   await activeSession()?.flush();
   const { notes, notebooks, navigate } = app();
   const r = resolveWikiTarget(target, notes, { from: opts.from, notebooks, noteId: opts.noteId });

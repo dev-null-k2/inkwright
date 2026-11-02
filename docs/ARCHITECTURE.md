@@ -20,7 +20,10 @@ packages/ai       @inkstone/ai    providers (OpenAI-compatible family, Anthropic
 packages/sync     @inkstone/sync  storage backends (IndexedDB, File System Access, Capacitor, Node), remotes
                                   (Google Drive, WebDAV, folder), three-way merge, sync engine, zip backup
 apps/web          @inkstone/web   the app: React UI + canvas ink engine; PWA; Capacitor Android/iOS shells
-apps/mcp-server   @inkstone/mcp-server  MCP server (2026-07-28, stdio + HTTP), A2A agent and always-on routine runner over a vault folder
+apps/mcp-server   @inkstone/mcp-server  MCP server (2026-07-28, stdio + HTTP), REST API, A2A agent and always-on routine runner over a vault folder
+packages/plugin-api @inkstone/plugin-api plugin manifest, permissions, versioned message protocol and client
+packages/sdk      @inkstone/sdk   typed REST client generated from the OpenAPI document
+examples/         example plugins and the plugin template (npm create inkstone-plugin)
 docs/             architecture, vault format, setup, publishing, testing, privacy
 ```
 
@@ -196,6 +199,22 @@ Every agent run — a chat in the panel or a routine — is assembled by `prepar
   an always-on runner on a computer take over automatic triggers; the app then defers to it and
   says so on the Routines screen.
 
+### Trust and cost (`packages/ai/src/trust/`, `apps/web/src/lib/trust/`, see docs/TRUST.md)
+
+- **One choke point for model calls.** `getActiveAI(opts)` hands every caller a provider made by
+  `createGuardedProvider`: per call it routes by the AI policy (`ai/policy.json`: task routes,
+  local-only notes the run has read, monthly budgets), scans tool results for injection, shortens
+  large context reversibly (originals stay on the device; `retrieve_original` is answered inside
+  the guard), spotlights untrusted content, redacts personal data before cloud calls and puts it
+  back in the answer, meters cost (`ai/usage/`) and writes a signed, hash-chained audit event
+  (`ai/audit/`). The server wraps its AI the same way.
+- **One choke point for note access.** `AccessControlledNoteToolHost` (app and server agents) and
+  `PolicyVault` (every MCP tool, resource and prompt) apply per-notebook/tag permissions; the run
+  learns which notes' content it carries (`TrustRun`). `guardAgentTools` removes denied tools and
+  asks before writes after suspicious content; `ProposingNoteToolHost` turns writes into proposals.
+- **Managed policy.** `mergeManagedPolicy` lets a deployment's policy tighten, never loosen, the
+  user's (docs/ENTERPRISE.md).
+
 ### Outside agents (`apps/mcp-server`, see docs/AGENTS.md)
 
 One Node program set over the vault folder, sharing `@inkstone/core` (files) and `@inkstone/ai`
@@ -259,6 +278,17 @@ as "what was said" passages. Details in docs/LOCAL_AI.md § Speech to text.
   the layout settles before it is shown.
 - **Daily notes, templates, Obsidian**: `daily.ts`, `templates.ts`, `obsidian.ts` + docs/OBSIDIAN.md.
 
+## Developer module (`packages/core/src/dev/`, `apps/web/src/dev/`, see [DEVELOPERS.md](DEVELOPERS.md))
+
+Optional (Settings › Developer). Repositories become code graphs in the vault (`code/sources/`)
+through deterministic tree-sitter extraction (web-tree-sitter in the page or in Node, the same
+grammars); `[[code:path#Symbol]]` links and ink links carry the signature they were written against
+(`NoteMeta.codeRefs`) so a re-scan flags drift without touching the note; diagrams are a typed IR
+checked by a validator whose repair receipt drives the assistant's `create_diagram` loop and drawn
+as a `diagram` page object; ```http/```sql/```js blocks run with approval (sql.js, a sandboxed
+worker) and are logged in Activity; agent-session transcripts become notes and proposed lessons.
+The MCP server adds read-only code tools, and the `inkstone` CLI scans and checks drift.
+
 ## Context compiler (`packages/core/src/compiler/`, `packages/ai/src/compiler/`, `apps/web/src/compiler/`)
 
 Notes that maintain themselves and can be trusted (details: [COMPILER.md](COMPILER.md)).
@@ -277,6 +307,34 @@ Notes that maintain themselves and can be trusted (details: [COMPILER.md](COMPIL
 - **Study** with FSRS-6 (ts-fsrs), handwritten answers, a teach-back tutor; **context packs**
   (Markdown, JSON, Agent Skill, MCP resource) and AGENTS.md; **people** with consent; a built-in
   memory eval in Settings › AI.
+
+## Modules, plugins and the public API (`apps/web/src/{modules,plugins,developer}/`, `packages/plugin-api`, `apps/mcp-server/src/api/`, `packages/sdk`)
+
+- **Modules** (`modules/registry.ts`, `builtin.ts`): every major feature declares its id,
+  dependencies, contributions (menu items, palette actions, panels, page objects, assistant tools,
+  importers/exporters, routine templates, settings sections, screens, background work), lazy
+  `activate` (returns its stop) and `aiTools`. Settings › Modules switches them with dependency
+  handling and presets; the editor, library, settings and palette ask `isModuleOn`. Turning a
+  module off never edits notes; their data still renders. See docs/PLUGINS.md.
+- **Plugins**: manifest + one ES module, stored in the vault (`plugins/`), run in
+  `sandbox="allow-scripts"` iframes with their own strict CSP (`sandbox.ts`; runtime bundled
+  from `sandbox-runtime.ts`). Frames speak the versioned postMessage protocol of
+  `@inkstone/plugin-api`; `dispatcher.ts` checks every call against the `METHODS` table, the
+  granted permissions (live), the note scope and the network allowlist. `host.ts` loads plugins,
+  activates them on first use, routes contributions (palette, ••• › Plugins, side panels,
+  exporters, importers, assistant tools) and events, and installs, updates, revokes and
+  uninstalls. Plugin writes go through `AppNoteToolHost` + `RecordingNoteToolHost`, so they are
+  live in an open note, undoable and logged in Activity under the plugin's name.
+- **Automation API** (`developer/automation.ts`): `window.inkstone` is the plugin API over an
+  in-process channel to the same dispatcher, with permissions chosen in Settings › Developer.
+- **Links** (`developer/deeplinks.ts`): `inkstone://`, `web+inkstone://` and `?action=` URLs
+  (Android intent filter, PWA `protocol_handlers`, the launch URL).
+- **REST API** (`apps/mcp-server/src/api/`): routes declared once with zod (`routes.ts`) →
+  router (auth: API keys from `api/keys.json`, the token, OAuth or loopback; scopes; rate
+  limits; validation; idempotency; ETags; problem+json) and the OpenAPI 3.1 document
+  (`openapi.ts`). Writes reuse the MCP tool handlers and the Activity log. `events.ts` scans the
+  vault for changes; `webhooks.ts` delivers them per Standard Webhooks with a persisted retry
+  queue. `@inkstone/sdk` is generated from the document. See docs/API.md.
 
 ## Platforms
 
@@ -298,5 +356,9 @@ Notes that maintain themselves and can be trusted (details: [COMPILER.md](COMPIL
 - **A built-in skill:** add `packages/ai/skills/<name>/SKILL.md` and list it in `builtin-skills.ts`.
 - **A routine template:** add it to `ROUTINE_TEMPLATES` in `packages/ai/src/routines.ts`.
 - **A speech engine:** implement `Transcriber` (`packages/ai/src/transcribe.ts`) and return it from `providerTranscriber` in `lib/agent/voice.ts`.
+- **A code language:** add its extension to `languageOf` and an extractor to `EXTRACT` in `packages/core/src/dev/codescan.ts`, its grammar to `apps/web/src/dev/wasm-assets.ts` (and the CLI picks it up from `@vscode/tree-sitter-wasm`), and fixture cases to `packages/core/test/dev/codescan.test.ts`.
 - **A sync target:** implement `Remote` (`list/read/write/delete`) and the engine does the rest.
 - **A storage backend:** implement `VaultFS` and run the shared conformance suite in `packages/sync/test`.
+- **A feature that can be switched off:** declare a module in `apps/web/src/modules/builtin.ts` and gate its entry points with `useModule`/`isModuleOn` (docs/PLUGINS.md).
+- **A plugin API method:** add it to `METHODS` (with its permission) in `packages/plugin-api/src/protocol.ts`, to `InkstoneAPI` and the client, and implement it in `apps/web/src/plugins/dispatcher.ts` with a test.
+- **A REST operation:** add a `defineRoute` in `apps/mcp-server/src/api/routes.ts` with registered schemas; the contract test requires exercising it, and `npm run generate -w @inkstone/sdk` updates the SDK.

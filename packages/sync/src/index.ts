@@ -17,3 +17,4 @@ export * from './state.ts';
 export * from './engine.ts';
 export * from './scheduler.ts';
 export * from './zip.ts';
+export * from './merge-platform.ts';

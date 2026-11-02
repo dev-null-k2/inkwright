@@ -22,7 +22,9 @@ object IncomingFiles {
 
     /** Whether this intent carries files (or text) for Inkstone. */
     fun isIncoming(intent: Intent?): Boolean = when (intent?.action) {
-        Intent.ACTION_VIEW -> intent.data != null
+        // inkstone:// deep links are VIEW intents too; Capacitor's App plugin hands those to the
+        // web layer (appUrlOpen), so only content:// and file:// data are files.
+        Intent.ACTION_VIEW -> intent.data?.scheme == "content" || intent.data?.scheme == "file"
         Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE -> true
         else -> false
     }

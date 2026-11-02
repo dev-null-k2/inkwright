@@ -335,6 +335,23 @@ export function localActiveAI(kind: 'device' | 'chrome' | 'native'): LocalActive
   return { provider: createLocalProvider(localEngine(), ref, { contextTokens: c.spec.contextTokens, label: `On this device · ${c.spec.label}` }), model: ref.id, label: `On this device · ${c.spec.label}`, vision: false, tools: true };
 }
 
+/**
+ * A model that is ready on this device right now (the phone's native engine, Chrome's built-in AI
+ * once downloaded, or the downloaded model), for the AI policy's "this device only" routes.
+ */
+export async function readyDeviceAI(): Promise<LocalActiveAI | null> {
+  await initLocalAI();
+  if (nativeLLMs().length && (await nativeLLMReady())) {
+    const a = localActiveAI('native');
+    if (a) return a;
+  }
+  if (useLocalAI.getState().chrome === 'available') {
+    const a = localActiveAI('chrome');
+    if (a) return a;
+  }
+  return localActiveAI('device');
+}
+
 // ---- Embeddings ---------------------------------------------------------------------------------
 
 /** Turns passages and queries into vectors for semantic search. */

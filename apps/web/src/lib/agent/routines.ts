@@ -18,8 +18,7 @@ import {
 import { pageText } from '@inkstone/core';
 import { useApp } from '../../state/app.ts';
 import { useSettings } from '../../state/settings.ts';
-import { getProviderInfo, guessModelCapabilities } from '@inkstone/ai';
-import { getActiveAI, providerFromConfig, type ActiveAI } from '../ai.ts';
+import { activeFromConfig, getActiveAI, type ActiveAI } from '../ai.ts';
 import type { AppVault } from '../vault.ts';
 import { prepareAgentRun, touchedByAgent } from './assistant.ts';
 import { openAgentView, requestApproval, requireHub, useAgent } from './hub.ts';
@@ -29,17 +28,20 @@ import { recordingRoutineContext, whenListenSettled } from '../listen/session.ts
 let scheduler: RoutineScheduler | null = null;
 const aborts = new Map<string, AbortController>();
 
-/** The AI a routine uses: its chosen provider, or whatever Settings › AI has active. */
-export async function aiForRoutine(r: Pick<Routine, 'ai'>): Promise<ActiveAI | null> {
+/**
+ * The AI a routine uses: its chosen provider, or whatever Settings › AI has active — through the
+ * trust gateway like every other AI call (routines are background work in the AI policy).
+ */
+export async function aiForRoutine(r: Pick<Routine, 'ai'> & { name?: string }): Promise<ActiveAI | null> {
+  const opts = { task: 'background', source: 'routine', ...(r.name ? { label: r.name } : {}) } as const;
   if (r.ai) {
     const cfg = useSettings.getState().ai.providers.find((p) => p.id === r.ai);
     if (cfg) {
-      const info = getProviderInfo(cfg.providerId);
-      const caps = guessModelCapabilities(cfg.model);
-      return { provider: await providerFromConfig(cfg), model: cfg.model, label: `${info?.label ?? cfg.label} · ${cfg.model}`, vision: (info?.capabilities.vision ?? true) && caps.vision, tools: info?.capabilities.tools ?? true };
+      const { guardActiveAI } = await import('../trust/gateway.ts');
+      return guardActiveAI(await activeFromConfig(cfg), opts);
     }
   }
-  return getActiveAI();
+  return getActiveAI(opts);
 }
 
 /** One routine run: an agent run with the routine's tools, logged as a run in AI activity. */
@@ -134,6 +136,17 @@ export function startAgents(vault: AppVault): Promise<void> {
   return starting;
 }
 
+/**
+ * Stops automatic routine runs (Settings › Modules turned the assistant off). A routine that is
+ * running finishes; nothing new starts until `startAgents` runs again.
+ */
+export function stopAgents(): void {
+  scheduler?.stop();
+  scheduler = null;
+  starting = null;
+  useAgent.setState({ runningRoutine: null, queuedRoutines: [] });
+}
+
 async function start(vault: AppVault): Promise<void> {
   const hub = requireHub();
   const recordings = new Map<string, number>();
@@ -153,7 +166,7 @@ async function start(vault: AppVault): Promise<void> {
   });
   scheduler.onStatus = () => useAgent.setState({ runningRoutine: scheduler!.runningId, queuedRoutines: scheduler!.queued });
   vault.vault.onChange((c) => {
-    if (c.type !== 'note') return;
+    if (c.type !== 'note' || !scheduler) return;
     void vault.vault.readNote(c.noteId).then((n) => {
       if (!n || n.trashedAt != null || !scheduler) return;
       const count = n.recordings?.length ?? 0;
@@ -166,5 +179,5 @@ async function start(vault: AppVault): Promise<void> {
   });
   void startConnectedApps().catch((e) => console.warn('connected apps failed to start', e));
   await new Promise((r) => setTimeout(r, 2500));
-  await scheduler.start();
+  await scheduler?.start();
 }

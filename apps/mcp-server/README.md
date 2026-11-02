@@ -189,6 +189,16 @@ node apps/mcp-server/dist/index.js --vault "$HOME/…/Inkstone" --http 8765 --re
   `approvals`.
 - `--ai-provider`, `--ai-model`, `--ai-base-url`, `--ai-key-env` choose the AI those features use.
 
+## REST API and webhooks
+
+With `--http`, the same port serves a REST API at `/api/v1` (reference page at `/api/v1/docs`,
+OpenAPI 3.1 at `/api/v1/openapi.json`): notes, pages (ink JSON, text, SVG, PNG, PDF), notebooks,
+tags, links, the graph, search (semantic with `--embeddings-model`), assets, transcripts,
+activity, routines, Standard Webhooks and scoped API keys (`inkstone-mcp keys create|list|revoke`).
+Options: `--no-api`, `--cors-origin`, `--rate-limit`, `--state-dir`, `--embeddings-*`. In the
+config file they live under `api.{enabled,corsOrigins,rateLimit,stateDir,embeddings}`. See
+[`docs/API.md`](../../docs/API.md) and the typed client in `packages/sdk`.
+
 ## Options
 
 `node dist/index.js --help` and `node dist/agent.js --help` list every option. All of them can

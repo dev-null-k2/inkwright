@@ -23,8 +23,22 @@ export interface CliOptions {
   /** Serve the A2A agent on the HTTP port. */
   a2a: boolean;
   ai?: AgentAIConfig;
+  /** REST API at /api/v1 (on by default with --http). */
+  api: boolean;
+  /** Browser origins allowed to call the REST API (CORS); `*` for any. */
+  corsOrigins: string[];
+  /** REST requests per minute per caller. */
+  rateLimit?: number;
+  /** Folder for webhook subscriptions and their delivery log. */
+  stateDir?: string;
+  /** Embedding model for semantic search (any OpenAI-compatible /embeddings endpoint). */
+  embeddings?: { baseUrl: string; model: string; apiKeyEnv?: string };
   watch: boolean;
   config?: string;
+  /** Managed AI policy file (enterprise): users can tighten it but not loosen it. */
+  policyFile?: string;
+  /** P-256 private JWK that signs the audit trail. */
+  auditKey?: string;
   help: boolean;
   version: boolean;
 }
@@ -37,6 +51,9 @@ export interface ConfigFile {
   auth?: { token?: string; oauth?: { issuer: string; audience?: string[]; jwksUrl?: string; readScope?: string; writeScope?: string } };
   ai?: AgentAIConfig;
   runner?: { tickSeconds?: number; serve?: boolean };
+  api?: { enabled?: boolean; corsOrigins?: string[]; rateLimit?: number; stateDir?: string; embeddings?: { baseUrl?: string; model: string; apiKeyEnv?: string } };
+  /** Managed AI policy file and audit signing key (docs/ENTERPRISE.md). */
+  trust?: { policyFile?: string; auditKey?: string };
 }
 
 export const DEFAULT_READ_SCOPE = 'notes:read';
@@ -68,11 +85,36 @@ Sign-in (HTTP):
   --oauth-read-scope <s>   Scope for reading (default ${DEFAULT_READ_SCOPE}).
   --oauth-write-scope <s>  Scope for writing (default ${DEFAULT_WRITE_SCOPE}).
 
+REST API (HTTP mode; see docs/API.md):
+  --no-api                 Don't serve the REST API at /api/v1.
+  --cors-origin <origin>   Let this browser origin call the API (repeatable; "*" for any).
+  --rate-limit <n>         Requests per minute per API key (default 600).
+  --state-dir <dir>        Where webhooks and their delivery log are kept (default ~/.config/inkstone/api/…).
+  --embeddings-model <m>   Embedding model for semantic search, e.g. text-embedding-3-small or nomic-embed-text.
+  --embeddings-url <url>   OpenAI-compatible base URL (default https://api.openai.com/v1).
+  --embeddings-key-env <N> Environment variable with its key (default OPENAI_API_KEY for OpenAI).
+
+API keys:
+  inkstone-mcp keys create --vault <dir> --name <name> --scope notes:read [--scope …] [--expires-days n]
+  inkstone-mcp keys list   --vault <dir>
+  inkstone-mcp keys revoke --vault <dir> <key id>
+
 AI for the server's own agent (A2A, run_routine, summarize/transcribe tasks):
   --ai-provider <id>       openai, anthropic, gemini, ollama, lmstudio, openrouter, groq, mistral, custom, …
   --ai-model <model>       Model id (default: the provider's default).
   --ai-base-url <url>      Custom endpoint (Ollama, LM Studio, a proxy, custom).
   --ai-key-env <NAME>      Environment variable with the API key (default: the provider's usual one).
+  --ai-on-premises         The AI runs inside this deployment (e.g. an Ollama container): it counts as
+                           "this device" for the AI policy and requests to it are not redacted.
+
+Trust (docs/TRUST.md, docs/ENTERPRISE.md):
+  --policy <file>          Managed AI policy (same format as ai/policy.json); users can only tighten it.
+  --audit-key <file>       P-256 private key (JWK) that signs the audit trail (default: a key per process).
+
+Every option also reads an environment variable: INKSTONE_VAULT, INKSTONE_HTTP_PORT, INKSTONE_HOST,
+INKSTONE_PUBLIC_URL, INKSTONE_A2A=1, INKSTONE_MCP_TOKEN, INKSTONE_OAUTH_ISSUER, INKSTONE_OAUTH_AUDIENCE,
+INKSTONE_OAUTH_JWKS_URL, INKSTONE_AI_PROVIDER, INKSTONE_AI_MODEL, INKSTONE_AI_BASE_URL,
+INKSTONE_AI_ON_PREMISES=1, INKSTONE_POLICY_FILE, INKSTONE_AUDIT_KEY.
 
   --config <file>          JSON config file with any of the above (see docs/AGENTS.md).
   -h, --help               Show this help.
@@ -86,6 +128,12 @@ Examples:
 `;
 
 export class CliError extends Error {}
+
+/** "1", "true", "yes" → true; "0", "false", "no" → false; unset → undefined. */
+function truthy(v: string | undefined): boolean | undefined {
+  if (v == null || v === '') return undefined;
+  return /^(1|true|yes|on)$/i.test(v.trim());
+}
 
 export function expandHome(p: string): string {
   if (p === '~') return homedir();
@@ -111,7 +159,17 @@ export const SHARED_OPTIONS = {
   'ai-model': { type: 'string' },
   'ai-base-url': { type: 'string' },
   'ai-key-env': { type: 'string' },
+  'ai-on-premises': { type: 'boolean' },
+  policy: { type: 'string' },
+  'audit-key': { type: 'string' },
   config: { type: 'string' },
+  'no-api': { type: 'boolean', default: false },
+  'cors-origin': { type: 'string', multiple: true },
+  'rate-limit': { type: 'string' },
+  'state-dir': { type: 'string' },
+  'embeddings-model': { type: 'string' },
+  'embeddings-url': { type: 'string' },
+  'embeddings-key-env': { type: 'string' },
   'no-watch': { type: 'boolean', default: false },
   help: { type: 'boolean', short: 'h', default: false },
   version: { type: 'boolean', short: 'v', default: false },
@@ -141,46 +199,66 @@ function port(v: unknown, what: string): number {
 export function resolveOptions(values: Record<string, unknown>, env: NodeJS.ProcessEnv): CliOptions {
   const cfg: ConfigFile = values.config ? readConfigFile(String(values.config)) : {};
   const rawVault = (values.vault as string | undefined) ?? env.INKSTONE_VAULT ?? cfg.vault;
-  const httpRaw = values.http ?? cfg.http?.port;
+  const httpRaw = values.http ?? env.INKSTONE_HTTP_PORT ?? cfg.http?.port;
   const http = httpRaw !== undefined ? port(httpRaw, '--http') : undefined;
   const token = (values.token as string | undefined) ?? env.INKSTONE_MCP_TOKEN ?? cfg.auth?.token ?? undefined;
   if (values.token !== undefined && http === undefined) throw new CliError('--token only applies with --http <port>.');
   const issuer = (values['oauth-issuer'] as string | undefined) ?? env.INKSTONE_OAUTH_ISSUER ?? cfg.auth?.oauth?.issuer;
   if (issuer && http === undefined) throw new CliError('--oauth-issuer only applies with --http <port>.');
   if (issuer && !/^https:\/\//.test(issuer) && !/^http:\/\/(localhost|127\.)/.test(issuer)) throw new CliError('--oauth-issuer must be an https:// URL.');
-  const audience = ((values['oauth-audience'] as string[] | undefined) ?? cfg.auth?.oauth?.audience ?? []).flatMap((a) => a.split(',')).map((a) => a.trim()).filter(Boolean);
+  const audience = ((values['oauth-audience'] as string[] | undefined) ?? (env.INKSTONE_OAUTH_AUDIENCE ? [env.INKSTONE_OAUTH_AUDIENCE] : undefined) ?? cfg.auth?.oauth?.audience ?? []).flatMap((a) => a.split(',')).map((a) => a.trim()).filter(Boolean);
   const provider = (values['ai-provider'] as string | undefined) ?? env.INKSTONE_AI_PROVIDER ?? cfg.ai?.provider;
   const ai: AgentAIConfig | undefined = provider
     ? {
         ...cfg.ai,
         provider,
         model: (values['ai-model'] as string | undefined) ?? env.INKSTONE_AI_MODEL ?? cfg.ai?.model,
-        baseUrl: (values['ai-base-url'] as string | undefined) ?? cfg.ai?.baseUrl,
+        baseUrl: (values['ai-base-url'] as string | undefined) ?? env.INKSTONE_AI_BASE_URL ?? cfg.ai?.baseUrl,
         apiKeyEnv: (values['ai-key-env'] as string | undefined) ?? cfg.ai?.apiKeyEnv,
+        onPremises: Boolean(values['ai-on-premises'] ?? truthy(env.INKSTONE_AI_ON_PREMISES) ?? cfg.ai?.onPremises ?? false),
       }
     : undefined;
-  const publicUrl = (values['public-url'] as string | undefined) ?? cfg.http?.publicUrl;
+  const publicUrl = (values['public-url'] as string | undefined) ?? env.INKSTONE_PUBLIC_URL ?? cfg.http?.publicUrl;
   if (publicUrl && !/^https?:\/\/[^/]+/.test(publicUrl)) throw new CliError(`--public-url must be a full URL like https://notes.example.com (got ${publicUrl}).`);
+  const rateRaw = values['rate-limit'] ?? cfg.api?.rateLimit;
+  const rateLimit = rateRaw === undefined ? undefined : Number(rateRaw);
+  if (rateLimit !== undefined && (!Number.isInteger(rateLimit) || rateLimit < 1)) throw new CliError(`Invalid --rate-limit: ${rateRaw}`);
+  const corsOrigins = ((values['cors-origin'] as string[] | undefined) ?? cfg.api?.corsOrigins ?? []).flatMap((a) => a.split(',')).map((a) => a.trim().replace(/\/+$/, '')).filter(Boolean);
+  for (const c of corsOrigins) if (c !== '*' && !/^https?:\/\/[^/]+$/.test(c)) throw new CliError(`--cors-origin must be an origin like https://app.example.com (got ${c}).`);
+  const embModel = (values['embeddings-model'] as string | undefined) ?? env.INKSTONE_EMBEDDINGS_MODEL ?? cfg.api?.embeddings?.model;
+  const embUrl = (values['embeddings-url'] as string | undefined) ?? env.INKSTONE_EMBEDDINGS_URL ?? cfg.api?.embeddings?.baseUrl ?? 'https://api.openai.com/v1';
+  const embeddings = embModel ? { baseUrl: embUrl, model: embModel, apiKeyEnv: (values['embeddings-key-env'] as string | undefined) ?? cfg.api?.embeddings?.apiKeyEnv ?? (/api\.openai\.com/.test(embUrl) ? 'OPENAI_API_KEY' : undefined) } : undefined;
+  const stateDir = (values['state-dir'] as string | undefined) ?? cfg.api?.stateDir;
   return {
     vault: rawVault ? path.resolve(expandHome(rawVault)) : undefined,
     readOnly: Boolean(values['read-only'] ?? cfg.readOnly ?? false),
     http,
-    host: (values.host as string | undefined) ?? cfg.http?.host,
+    host: (values.host as string | undefined) ?? env.INKSTONE_HOST ?? cfg.http?.host,
     publicUrl: publicUrl?.replace(/\/+$/, ''),
     token: issuer ? undefined : token || undefined,
     oauth: issuer
       ? {
           issuer,
           ...(audience.length ? { audience } : {}),
-          jwksUrl: (values['oauth-jwks-url'] as string | undefined) ?? cfg.auth?.oauth?.jwksUrl,
+          jwksUrl: (values['oauth-jwks-url'] as string | undefined) ?? env.INKSTONE_OAUTH_JWKS_URL ?? cfg.auth?.oauth?.jwksUrl,
           readScope: (values['oauth-read-scope'] as string | undefined) ?? cfg.auth?.oauth?.readScope ?? DEFAULT_READ_SCOPE,
           writeScope: (values['oauth-write-scope'] as string | undefined) ?? cfg.auth?.oauth?.writeScope ?? DEFAULT_WRITE_SCOPE,
         }
       : undefined,
-    a2a: Boolean(values.a2a ?? cfg.http?.a2a ?? false),
+    a2a: Boolean(values.a2a ?? truthy(env.INKSTONE_A2A) ?? cfg.http?.a2a ?? false),
     ai,
+    api: !values['no-api'] && cfg.api?.enabled !== false,
+    corsOrigins,
+    ...(rateLimit !== undefined ? { rateLimit } : {}),
+    ...(stateDir ? { stateDir: path.resolve(expandHome(stateDir)) } : {}),
+    ...(embeddings ? { embeddings } : {}),
     watch: !values['no-watch'],
     config: values.config as string | undefined,
+    ...(() => {
+      const policyFile = (values.policy as string | undefined) ?? env.INKSTONE_POLICY_FILE ?? cfg.trust?.policyFile;
+      const auditKey = (values['audit-key'] as string | undefined) ?? env.INKSTONE_AUDIT_KEY ?? cfg.trust?.auditKey;
+      return { ...(policyFile ? { policyFile: path.resolve(expandHome(policyFile)) } : {}), ...(auditKey ? { auditKey: path.resolve(expandHome(auditKey)) } : {}) };
+    })(),
     help: Boolean(values.help),
     version: Boolean(values.version),
   };

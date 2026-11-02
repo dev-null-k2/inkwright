@@ -16,6 +16,13 @@ export interface AgentTool<A = any> extends ToolDef {
   destructive?: boolean;
   /** Only reads data (UI may auto-approve, show it quieter). */
   readOnly?: boolean;
+  /**
+   * Asked before each call: true makes this call need the user's confirmation like a destructive
+   * tool (the trust layer uses it once a run has read content that looks like a prompt injection).
+   */
+  needsConfirmation?: (args: A) => boolean;
+  /** Why confirmation is needed, for the prompt the UI shows (optional). */
+  confirmReason?: string;
 }
 
 /** A tool result with images (e.g. a page rendering for vision models). */
@@ -159,7 +166,7 @@ export async function runAgent(opts: RunAgentOptions): Promise<AgentResult> {
     if (call.invalidArguments !== undefined) return fail(`The arguments were not valid JSON: ${call.invalidArguments.slice(0, 200)}. Call the tool again with a JSON object.`);
     const v = validateArgs(tool.parameters, call.arguments);
     if (!v.ok) return fail(`Invalid arguments for ${tool.name}: ${v.errors.join('; ')}. Fix them and call the tool again.`);
-    if (tool.destructive) {
+    if (tool.destructive || tool.needsConfirmation?.(v.value)) {
       let ok = false;
       if (opts.confirm) {
         try {

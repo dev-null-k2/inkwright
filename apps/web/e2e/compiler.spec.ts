@@ -205,7 +205,10 @@ async function mockLLM(page: Page) {
       msg = { role: 'assistant', content: null, tool_calls: [{ id: 'c1', type: 'function', function: { name: 'search_memory', arguments: JSON.stringify({ query: 'latency limit' }) } }] };
     } else {
       const toolMsg = body.messages.filter((m: any) => m.role === 'tool').pop();
-      const hit = toolMsg ? JSON.parse(toolMsg.content).results?.[0] : null;
+      // Tool results arrive inside the agent firewall's untrusted-content markers (docs/TRUST.md):
+      // read the JSON between them, as a model would.
+      const raw = toolMsg ? String(toolMsg.content) : '';
+      const hit = raw ? JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1)).results?.[0] : null;
       msg = { role: 'assistant', content: hit ? `Latency must stay under 50 ms ([${hit.title}, p. ${hit.page}](${hit.link})). The moon is made of cheese.` : 'Nothing found.' };
     }
     if (body.stream) {

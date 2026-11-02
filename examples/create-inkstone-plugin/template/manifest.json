@@ -1,0 +1,17 @@
+{
+  "id": "com.example.my-plugin",
+  "name": "My plugin",
+  "version": "0.1.0",
+  "author": "Your name",
+  "description": "What it does, in one or two plain sentences.",
+  "entry": "main.js",
+  "minAppVersion": "1.0.0",
+  "apiVersion": 1,
+  "permissions": ["editor:read"],
+  "activation": "onUse",
+  "contributes": {
+    "commands": [{ "id": "hello", "title": "Say hello", "context": "editor" }],
+    "panels": [{ "id": "main", "title": "My plugin" }],
+    "settings": [{ "key": "greeting", "type": "string", "title": "Greeting", "default": "Hello" }]
+  }
+}

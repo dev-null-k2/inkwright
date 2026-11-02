@@ -16,6 +16,7 @@ import { syncNow, useSync } from '../lib/sync.ts';
 import { OPENABLE, useFileDrop } from '../lib/openFiles.ts';
 import { GraphNavItem, TodayNavItem } from '../ui/knowledge/LibraryParts.tsx';
 import { openPalette, usePaletteActions } from '../lib/palette.ts';
+import { isModuleOn, useModules } from '../modules/registry.ts';
 
 export function Library() {
   const { notes, trash, notebooks, filter, setFilter, query, setQuery, navigate, vault } = useApp();
@@ -97,6 +98,7 @@ export function Library() {
     if (id) navigate({ name: 'editor', noteId: id });
   }
 
+  const mods = useModules((m) => m.enabled);
   const sidebar = (
     <nav className="lib-nav" aria-label="Library">
       <div className="lib-brand">
@@ -105,11 +107,11 @@ export function Library() {
         {!wide && <IconButton label="Close" onClick={() => setDrawer(false)}><X size={18} /></IconButton>}
       </div>
       <NavItem icon={<BookOpen size={17} />} label="All notes" count={notes.length} on={filter.kind === 'all'} onClick={() => { setFilter({ kind: 'all' }); setDrawer(false); }} />
-      <TodayNavItem onDone={() => setDrawer(false)} />
+      {isModuleOn('knowledge', mods) && <TodayNavItem onDone={() => setDrawer(false)} />}
       <NavItem icon={<Pin size={17} />} label="Pinned" count={notes.filter((n) => n.pinned).length} on={filter.kind === 'pinned'} onClick={() => { setFilter({ kind: 'pinned' }); setDrawer(false); }} />
       <NavItem icon={<Clock size={17} />} label="This week" on={filter.kind === 'recent'} onClick={() => { setFilter({ kind: 'recent' }); setDrawer(false); }} />
       <NavItem icon={<Inbox size={17} />} label="Unfiled" on={filter.kind === 'unfiled'} onClick={() => { setFilter({ kind: 'unfiled' }); setDrawer(false); }} />
-      <GraphNavItem />
+      {isModuleOn('graph', mods) && <GraphNavItem />}
       <div className="lib-nav-head">
         <span>Notebooks</span>
         <IconButton label="New notebook" onClick={async () => { const nb = await createNotebook(); if (nb) setFilter({ kind: 'notebook', id: nb.id }); }}><Plus size={16} /></IconButton>
@@ -159,7 +161,7 @@ export function Library() {
           <label className="search">
             <Search size={18} aria-hidden />
             <input ref={searchRef} type="search" placeholder="Search your notes and handwriting" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search notes"
-              onFocus={(e) => { if (touch) { e.currentTarget.blur(); openPalette({ query }); } }} />
+              onFocus={(e) => { if (touch && isModuleOn('search', mods)) { e.currentTarget.blur(); openPalette({ query }); } }} />
             {query && <button type="button" className="search-clear" aria-label="Clear search" onClick={() => setQuery('')}><X size={16} /></button>}
           </label>
           {account && <IconButton label="Sync now" onClick={() => void syncNow()} className={cx(sync.status === 'syncing' && 'is-spinning')}><Cloud size={19} /></IconButton>}

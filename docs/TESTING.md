@@ -13,6 +13,11 @@ Three layers cover every feature.
 | Every browser engine | `npm run e2e:all` | the end-to-end suite on Chromium plus WebKit (Safari on macOS; iPad and iPhone screens with touch) and Firefox. See [Browsers and platforms](#browsers-and-platforms) |
 | Android app | `npm run e2e:android` | the real app (debug APK) in an Android emulator or on a USB-connected phone: Playwright drives its WebView over CDP, adb sends real stylus MotionEvents, logcat is checked for crashes, ANRs and native evidence. See [Android emulator and devices](#android-emulator-and-devices) |
 
+Developer module (code graphs, links and drift, diagrams, runbooks, session journals): see
+[DEVELOPERS.md § Tests](DEVELOPERS.md#tests) — unit tests in `packages/core/test/dev`, the
+`create_diagram` repair-loop eval, MCP tools and the spawned `inkstone` CLI in
+`apps/mcp-server/test/dev.test.ts`, and `e2e/dev.spec.ts`.
+
 ## Browsers and platforms
 
 Inkstone runs in three browser engines. What each platform uses:
@@ -101,6 +106,26 @@ The emulator still runs when there is no `/dev/kvm`: QEMU emulates the x86_64 CP
 | Unit | `npx vitest run --project sync packages/sync/test/compiler-merge.test.ts`, `--project mcp apps/mcp-server/test/packs.test.ts`, `--project web apps/web/src/compiler` | provenance and deck merges; packs as MCP resources; passages from tool results |
 | Evals | `npx vitest run --project evals packages/core/evals/compiler.eval.ts packages/ai/evals/compiler.eval.ts` | contradiction precision/recall (58 labelled pairs) and noise floor (40 everyday notes), staleness, anchors; drafts against a noisy scripted model (provenance precision, pass-through, recall, tag accuracy); live model with `INKSTONE_EVAL_*` |
 | End-to-end | `cd apps/web && PW_PORT=4192 npx playwright test e2e/compiler.spec.ts --project desktop` | compile → review → accept → Explain with thumbnails → conflicts → stale → re-check → undo; study review with a typed answer and FSRS ratings; context pack (skill zip, save for MCP); model drafts with dropped sentences; memory eval; Explain this answer; conflict badge in the editor |
+
+### Modules, plugins and the API
+
+| Layer | Command | What it covers |
+| --- | --- | --- |
+| Unit | `npx vitest run --project platform` | manifest validation (every error at once, permissions, hosts, AI tools need `ai:tools`), version ordering, note scopes, the network allowlist, the plugin client over a fake host (calls, errors, invokes, events, timeouts); the example plugins and the template validate; the SDK is regenerated and compared with the committed file, then used against a real server (ETags, idempotent retries after a lost answer, problem errors, pagination) and its Web Crypto webhook check against the server's signer |
+| Unit | `npx vitest run --project core packages/core/test/platform.test.ts`, `--project sync packages/sync/test/merge-platform.test.ts` | API keys (hash-only storage, malformed/unknown/revoked/expired), plugins.json decoding; sync merges (newest record, uninstall vs update, keys never dropped, revocation wins) |
+| Unit | `npx vitest run --project mcp apps/mcp-server/test/api.test.ts apps/mcp-server/test/webhooks.test.ts` | the REST API over HTTP with **contract tests**: every response validated against the served OpenAPI document with Ajv (JSON Schema 2020-12), and every documented operation must be exercised; auth modes and scopes, keyset pagination and filters, ETag/If-None-Match/If-Match, Idempotency-Key replay/reuse, 400/404/405/412/415/422/429 problems, rate-limit headers, CORS, pages as ink/text/SVG/PNG/PDF, exports, search, links, graph, assets, keys API and CLI, webhooks end to end (signed delivery verified, an external write becoming `note.created`); Standard Webhooks test vector, the retry schedule on a fake clock, 410, persistence across restarts; vault events (created, updated, trashed, restored, recordings, routine runs) |
+| Unit | `npx vitest run --project web apps/web/src/modules apps/web/src/plugins apps/web/src/developer` | module dependencies (transitive, cycles), presets, palette/settings gating, lazy start/stop of background work, assistant tools from modules; the dispatcher (permissions and live revocation, scopes, locked notes, network allowlist without cookies, storage limits, events); plugin packages (top folder, junk and data.json dropped, size and version limits, zip and URL sources) and the vault store (install, update keeps data, uninstall); deep-link parsing |
+| End-to-end | `cd apps/web && PW_PORT=4191 npx playwright test e2e/extensibility.spec.ts --project desktop` | Settings › Modules (dependency prompt, Minimal and Developer presets reach the editor and survive reload); installing the word-count plugin from the curated list (permission prompt, sandboxed panel updating live, palette command, exporter download, revocation refusing the next call, uninstall); a plugin from a URL proving its sandbox (fetch, parent and storage blocked, unpermitted calls refused) with a plugin importer; the webhook plugin posting the selection through the host without cookies; links (`?action=new`, `web+inkstone://search`, open, capture with origin `import`); `window.inkstone` with per-permission refusal and API keys created once, listed and revoked |
+
+### Trust and cost
+
+| Layer | Command | What it covers |
+|---|---|---|
+| Unit | `npx vitest run --project ai packages/ai/test/trust.test.ts` | policy parsing (bad fields keep safe defaults), compact serialization, managed-policy merge, routing (local-only notes pull a run onto the device); validators (Luhn, mod-97, Verhoeff), detection with look-alikes, stable placeholders and rehydration (also streamed); shape-aware shortening, determinism, retrieval and sticky expansion; prices and the ledger across devices; audit chain signing, tamper cases (edit, remove, reorder, forged signature, cut tail) and retention; spotlighting and the injection guard in a real agent run; notebook permissions; the guarded provider (redaction round trip, device routing, budgets, `retrieve_original`, tasks switched off); proposals |
+| Unit | `npx vitest run --project mcp apps/mcp-server/test/trust.test.ts` | the policy vault on every tool, resource and search (hidden, local-only, read-only, nested notebooks), managed policy, dry run for MCP writes, audit of reads/writes and `inkstone-agent audit` verification, the server agent through the guarded provider, retention; security review: hostile ids on every tool, resource URIs, symlink escapes, `/healthz`, body limit, no SSRF surface |
+| Evals | `npx vitest run --project evals packages/ai/evals/trust.eval.ts` | privacy firewall precision/recall per kind; context budgeter benchmark (tokens and answer quality with and without, including where it costs more); injection detection, attack success with and without the guard, held-out cases and strict mode. Numbers are published in docs/TRUST.md |
+| End-to-end | `cd apps/web && PW_PORT=4193 npx playwright test e2e/trust.spec.ts --project desktop` | the provider never sees an email the user does; AI usage and the audit trail (verify, JSONL export); Routing & privacy writes `ai/policy.json`; a local-only notebook stops a cloud run, a hidden one is invisible; dry run → proposal with a diff → approve |
+| Appliance | `docker compose -f deploy/docker-compose.yml config` | compose file validity (no daemon needed); `docker build -f deploy/Dockerfile --target server .` where a daemon is available |
 
 ## Testing on a device
 

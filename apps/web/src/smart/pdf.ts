@@ -2,6 +2,7 @@ import { argbToHexOpacity, cellRect, colEdges, formatMathNumber, graphGeometry, 
 import { LineCapStyle, rgb, type PDFDocument, type PDFFont, type PDFPage } from 'pdf-lib';
 import { canvasBytes } from '../lib/canvasBytes.ts';
 import { tableCellFontSize, drawPageObjects } from './render.ts';
+import { drawDiagramPdf } from '../dev/diagramRender.ts';
 
 /**
  * Page objects in exported PDFs: tables and graphs as vectors (crisp at any zoom, table text is
@@ -23,6 +24,7 @@ export async function drawPageObjectsPdf(pdf: PDFDocument, p: PDFPage, page: Pag
     if (o.type === 'table') tablePdf(p, o, H, font, bold);
     else if (o.type === 'graph') graphPdf(p, o, H, font);
     else if (o.type === 'math') await mathPdf(pdf, p, o, H);
+    else if (o.type === 'diagram') drawDiagramPdf(p, o, H, font, bold);
   }
 }
 

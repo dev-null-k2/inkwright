@@ -4,6 +4,7 @@ import type { MemoryHit, MemorySearchHost } from '@inkstone/ai';
 import { loadPdfJs } from '../canvas/assets.ts';
 import type { AppVault } from './vault.ts';
 import { currentEmbedder, onLocalAIChange, type Embedder } from './localai.ts';
+import { aiMaySend } from './trust/state.ts';
 import { loadNoteTranscripts } from './listen/transcripts.ts';
 
 /**
@@ -245,7 +246,11 @@ export class AppMemory implements MemorySearchHost {
         if (emb.key !== this.embedderKey) await this.loadVectors(emb);
         const batch: MemoryChunk[] = [];
         const seen = new Set<string>();
+        // A provider's embedding endpoint is a cloud call: notes the AI policy keeps on the device
+        // (or hides from AI) are not sent; they stay findable by keyword.
+        const remote = emb.key.startsWith('provider:');
         for (const noteId of [...this.pending]) {
+          if (remote && !aiMaySend(noteId)) { this.pending.delete(noteId); continue; }
           const missing = this.corpus.chunksOf(noteId).filter((c) => !this.vectors.has(c.hash) && !seen.has(c.hash));
           if (!missing.length) { this.pending.delete(noteId); continue; }
           for (const c of missing) { seen.add(c.hash); if (batch.length < 24) batch.push(c); }
@@ -427,8 +432,21 @@ export function attachMemory(vault: AppVault): AppMemory {
   s.indexNote = (note, pages) => { indexNote(note, pages); m.update(note, pages); };
   s.remove = (id) => { remove(id); m.remove(id); };
   s.clear = () => { clear(); m.clear(); };
+  detach = () => { s.indexNote = indexNote; s.remove = remove; s.clear = clear; };
   memory = m;
   return m;
+}
+
+let detach: (() => void) | null = null;
+
+/**
+ * Undoes `attachMemory` (Settings › Modules switched search-everything off): the keyword index
+ * goes back to its own methods and the passage index is dropped from memory.
+ */
+export function detachMemory(): void {
+  detach?.();
+  detach = null;
+  memory = null;
 }
 
 export function appMemory(): AppMemory | null {
