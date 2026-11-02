@@ -24,7 +24,7 @@
     "sbom": "npx --yes @cyclonedx/cyclonedx-npm@4.0.0 --omit dev --output-format JSON --spec-version 1.6 --output-file sbom.cdx.json"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
+    "@types/node": "^26.6.6",
     "typescript": "6.0.3",
     "vitest": "^5.0.5",
     "jsdom": "^30.1.3",
