@@ -95,7 +95,7 @@ export class EditorSession {
       try {
         const r = await recognizeLocally(this.doc.page(i).strokes);
         if (r) {
-          this.doc.setRecognizedText(id, r.text, r.engine);
+          this.doc.setRecognizedText(id, r.text, r.engine, r.lines);
           // Handwritten [[links]] turn the line's ink into a link.
           applyRecognizedLinks(this.doc, id, r.lines);
         }

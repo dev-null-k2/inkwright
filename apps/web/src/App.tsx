@@ -9,6 +9,8 @@ import { Settings } from './screens/Settings.tsx';
 import { Prompts } from './ui/prompts.tsx';
 import { Toasts } from './ui/Toasts.tsx';
 import { BrandMark } from './ui/Brand.tsx';
+import { Palette } from './ui/Palette.tsx';
+import { attachMemory } from './lib/memory.ts';
 import { isNative } from './platform/env.ts';
 import { initAgentHub } from './lib/agent/hub.ts';
 import { startAgents } from './lib/agent/routines.ts';
@@ -46,6 +48,7 @@ export function App() {
         const v = await AppVault.open();
         if (!alive) return;
         setVault(v);
+        attachMemory(v); // before the first index build, so search-everything starts complete
         await refresh();
         if (location.hash === '#new') {
           // App shortcut / home-screen action: start writing immediately.
@@ -111,6 +114,7 @@ export function App() {
       {route.name === 'editor' && <Editor key={route.noteId} noteId={route.noteId} initialPage={route.page} />}
       {route.name === 'settings' && <Settings section={route.section} />}
       {route.name === 'graph' && <Suspense fallback={<div className="boot" aria-live="polite"><BrandMark size={44} /></div>}><GraphView /></Suspense>}
+      <Palette />
       <Prompts />
       <AgentDialogs />
       <Toasts />

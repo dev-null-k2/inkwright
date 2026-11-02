@@ -24,3 +24,5 @@ export * from './builtin-skills.ts';
 export * from './routines.ts';
 export * from './transcribe.ts';
 export * from './mcp/index.ts';
+export * from './local/index.ts';
+export * from './tools/memory.ts';

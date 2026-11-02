@@ -21,3 +21,4 @@ export * from './graph.ts';
 export * from './forcelayout.ts';
 export * from './yaml.ts';
 export * from './obsidian.ts';
+export * from './memory.ts';
