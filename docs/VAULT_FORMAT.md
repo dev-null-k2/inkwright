@@ -13,6 +13,8 @@ reference implementation is `packages/core/src/codec.ts` + `vault.ts`.
   notes/<noteId>/pages/<pageId>.ink.json  PageInk (compact JSON) — the source of truth for ink
   notes/<noteId>/pages/<pageId>.svg     SVG render of the page — generated
   notes/<noteId>/assets/<name>          images, PDFs, audio recordings referenced by pages/notes
+  notes/<noteId>/assets/<clipId>.transcript.json  transcript of a recording (+ its summary)
+  notes/<noteId>/assets/page-summaries.json       summaries of the note's pages, by page id
   ai/skills/<name>/SKILL.md             Agent Skills the user imported (+ their bundled files)
   ai/skills.json                        which skills are switched off
   ai/memory.json                        assistant memory: instructions, facts, proposals
@@ -80,6 +82,42 @@ tilt / orientation are omitted from the point array (or `-1` when a later field 
 }
 ```
 
+### Transcripts and page summaries
+
+A recording's transcript lives next to its audio, `assets/<clipId>.transcript.json`
+(`packages/core/src/transcript.ts`):
+
+```jsonc
+{
+  "formatVersion": 1,
+  "clipId": "01JC…",                  // the recording in note.json `recordings`
+  "run": "01JD…",                     // one transcription pass (live, or "transcribe again")
+  "engine": "device:moonshine-base",  // or "browser", "provider:openai:gpt-4o-mini-transcribe", "native:…"
+  "where": "device",                  // device | browser | provider: where the audio was processed
+  "language": "en-US",                // optional
+  "complete": true,                   // false while still being transcribed
+  "updatedAt": 0,
+  "segments": [ { "id": "1kq-0", "startMs": 1200, "endMs": 4800, "text": "Today we cover convolution." } ],
+  "lecture": { "summary": "…", "keyTerms": ["…"], "todos": ["…"], "at": 0, "by": "On this device · Qwen3 1.7B" }  // optional
+}
+```
+
+Segment times are milliseconds from the start of the recording, so a segment's wall-clock span is
+`clip.startedAt + startMs … clip.startedAt + endMs`. The ink "written while it was said" is every
+stroke whose writing time (`createdAt` to `createdAt` + its last point's `t`) overlaps that span,
+extended by 1.5 s for writing lag, and every text box created in it. Segments are sorted by
+`startMs`; ids are unique within a run.
+
+`assets/page-summaries.json` holds AI-written summaries of pages, keyed by page id:
+`{ "formatVersion": 1, "updatedAt", "pages": { "<pageId>": { "text": "- …", "at", "by", "clipIds": ["…"] } } }`.
+A page's summary draws on what is on the page and on the segments assigned to it: each segment
+goes to the page with the most writing during it, else the page last written on before it, else
+the first page written on after it. Summaries are suggestions; nothing on the page changes unless
+the user adds a summary to it (as an ordinary text box).
+
+Readers that don't know these files ignore them (they look like any other asset). Search indexes
+transcript segments as "what was said" passages anchored to the page and the ink written then.
+
 ### PDF form values (`forms`, "Fill & sign")
 
 Values the user typed into the AcroForm fields of an imported PDF. Keys are the PDF's asset name,
@@ -115,7 +153,11 @@ Sync engines (Google Drive, WebDAV, local folder) mirror this tree file-for-file
 `*.ink.json` and `note.json` are merged three-way against the last-synced base: strokes/texts/
 images are unioned by id with deletions honoured from either side; scalar metadata takes the most
 recent `updatedAt`. `forms` merges per PDF and per field (filling different fields on two devices
-keeps both; the newer note wins a field both changed). Derived files are regenerated after merge. Sync state lives outside the vault
+keeps both; the newer note wins a field both changed). Transcripts merge too: within the same `run`,
+segments are unioned by id (one-sided edits and deletions honoured, the newer file wins a segment
+both changed) and `complete` is true if either side finished; different runs (one device
+transcribed the recording again) are not mixed — the newer file's run wins whole. The lecture
+summary with the newer `at` wins. Page summaries merge per page id, newer `at` winning. Derived files are regenerated after merge. Sync state lives outside the vault
 (app storage), never inside it.
 
 ## Assistant data (`ai/`)
