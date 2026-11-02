@@ -1,5 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { newNote, openApp, pen, word } from './helpers.ts';
+import { modKey, newNote, openApp, pen, word } from './helpers.ts';
 
 /**
  * Time travel across the vault (version history read as the past) and branches for dry-run
@@ -38,7 +38,7 @@ test('show my notes as of a date: the library and a note read the past, read-onl
   await pen(page, word(200, 340, 200));
   await backToLibrary(page); // three lines at noon
 
-  await page.keyboard.press('ControlOrMeta+k');
+  await page.keyboard.press(`${await modKey(page)}+k`);
   await page.getByLabel('Search', { exact: true }).fill('as of a date');
   await page.getByRole('option', { name: /Show notes as of a date/ }).click();
   await page.getByLabel('Date and time').fill('2026-10-01T10:30');

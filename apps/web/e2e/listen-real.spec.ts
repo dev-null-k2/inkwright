@@ -13,6 +13,9 @@ import { newNote, openApp } from './helpers';
 const ENABLED = !!process.env.INKWRIGHT_REAL_MODELS;
 const WAV = join(process.cwd(), 'test-results', 'listen-jfk.wav');
 
+// Chromium only: the fake microphone (a WAV file as mic input) is a Chromium launch flag.
+test.skip(({ browserName }) => browserName !== 'chromium', 'Chromium-only launch flags');
+
 test.use({
   permissions: ['microphone'],
   launchOptions: { args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${WAV}`] },

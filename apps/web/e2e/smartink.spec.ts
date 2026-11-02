@@ -80,10 +80,13 @@ test('draw a grid → it becomes a table → write and type in its cells', async
   expect(yAfter).toBeGreaterThan(yBefore + 10);
 
   // Copy as Markdown.
-  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  // Only Chromium lets a test read the clipboard back (its permission names); elsewhere the copy
+  // runs and the toast confirms it.
+  const chromium = page.context().browser()?.browserType().name() === 'chromium';
+  if (chromium) await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.getByRole('button', { name: 'Copy table' }).click();
   await page.getByRole('menuitem', { name: 'Copy as Markdown' }).click();
-  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain('| Item |');
+  if (chromium) await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain('| Item |');
   await page.screenshot({ path: 'test-results/smartink-table.png' });
   await page.getByRole('button', { name: 'Done', exact: true }).click();
 });

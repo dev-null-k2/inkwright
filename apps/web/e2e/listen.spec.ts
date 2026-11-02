@@ -37,6 +37,9 @@ mkdirSync(dir, { recursive: true });
 const WAV = join(dir, `listen-fixture-${process.pid}.wav`);
 writeFileSync(WAV, speechLikeWav());
 
+// Chromium only: the fake microphone (a WAV file as mic input) is a Chromium launch flag.
+test.skip(({ browserName }) => browserName !== 'chromium', 'Chromium-only launch flags');
+
 test.use({
   permissions: ['microphone'],
   launchOptions: { args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${WAV}`, '--autoplay-policy=no-user-gesture-required'] },

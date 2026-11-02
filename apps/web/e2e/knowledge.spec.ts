@@ -170,7 +170,9 @@ test.describe('graph', () => {
     await page.getByRole('button', { name: 'Graph' }).click();
     await page.waitForFunction(() => (window as any).__inkwrightGraph?.frames() > 3, null, { timeout: 20000 });
     const info = await page.evaluate(() => { const g = (window as any).__inkwrightGraph; return { renderer: g.renderer, nodes: g.nodes, edges: g.edges }; });
-    expect(info.renderer).toBe('3d');
+    // 3D needs WebGL; without it (some headless browsers) the graph falls back to 2D by design.
+    const webgl = await page.evaluate(() => !!document.createElement('canvas').getContext('webgl2') || !!document.createElement('canvas').getContext('webgl'));
+    expect(info.renderer).toBe(webgl ? '3d' : '2d');
     const notes = info.nodes.filter((n: any) => n.kind === 'note').map((n: any) => n.label).sort();
     expect(notes).toEqual(['Atoms', 'Welcome to Inkwright']);
     expect(info.nodes.some((n: any) => n.kind === 'tag' && n.label === '#physics')).toBe(true);
