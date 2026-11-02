@@ -4,6 +4,11 @@
  * and AI agents. Units: 1 page unit = 1/96 inch (CSS px at 100%).
  */
 
+import type { PageObject } from './objects.ts';
+import type { PageAuthorship } from './authorship.ts';
+
+export type { PageObject };
+
 /** Current on-disk format version. Readers accept older versions and ignore unknown fields. */
 export const VAULT_FORMAT_VERSION = 2;
 
@@ -52,7 +57,27 @@ export interface InkStroke {
   createdAt: number;
   /** Set when the stroke was snapped to a geometric shape. */
   shape?: ShapeKind;
+  /**
+   * How a stroke written in Inkstone was made: stylus, finger or mouse. Set by the ink engine
+   * when the stroke is drawn; absent for strokes from older versions or created by code.
+   */
+  input?: StrokeInput;
+  /** Where the stroke came from when it was not written by hand (see `ContentOrigin`). */
+  origin?: ContentOrigin;
 }
+
+export type StrokeInput = 'pen' | 'touch' | 'mouse';
+
+/**
+ * Where a piece of content came from, so it can never be mistaken for handwriting (see
+ * docs/AUTHORSHIP.md). Absent means "made by the user in the app" (handwriting for strokes,
+ * typing for text boxes).
+ *  - `ai`: written by an AI model (assistant text, AI ink, AI-solved results).
+ *  - `solver`: computed on the device by the maths engine (no AI involved).
+ *  - `recognized`: machine transcription of the user's own handwriting.
+ *  - `import`: brought in from a file (images, PDF pages, pasted pictures).
+ */
+export type ContentOrigin = 'ai' | 'solver' | 'recognized' | 'import';
 
 export type NoteKind = 'paged' | 'board';
 
@@ -164,6 +189,8 @@ export interface TextBox {
   color: string;
   font: FontFamily;
   createdAt: number;
+  /** Set when the text was not typed by the user (AI answer, recognized handwriting…). */
+  origin?: ContentOrigin;
 }
 
 /** An image placed on a page; the bytes live in the note's assets folder. */
@@ -177,6 +204,8 @@ export interface ImageItem {
   asset: string;
   rotation: number;
   createdAt: number;
+  /** Images are imported (`import`) or generated (`ai`); never handwriting. */
+  origin?: ContentOrigin;
 }
 
 /** A page whose background is an imported document page (PDF annotation) or an image. */
@@ -206,6 +235,13 @@ export interface PageInk {
   recognizedText?: string;
   recognizedAt?: number;
   recognizedBy?: string;
+  /**
+   * Live objects on the page made from ink: tables, solved equations, function graphs
+   * (see objects.ts). Drawn under the ink so handwriting in a table cell sits on top.
+   */
+  objects?: PageObject[];
+  /** Append-only hash chain of content events, for authorship certificates (authorship.ts). */
+  authorship?: PageAuthorship;
   formatVersion: number;
 }
 
@@ -245,6 +281,11 @@ export interface NoteMeta {
    * written into a copy on export. See `FormFieldValue`.
    */
   forms?: Record<string, Record<string, FormFieldValue>>;
+  /**
+   * The latest signed authorship certificate of this note (a JSON file in `assets/`), so the
+   * "Verified handwriting" panel can show what changed since it was signed.
+   */
+  certificate?: { asset: string; signedAt: number };
   formatVersion: number;
 }
 
