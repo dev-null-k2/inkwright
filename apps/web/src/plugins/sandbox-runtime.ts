@@ -20,6 +20,21 @@ interface Boot {
   theme?: Record<string, string>;
 }
 
+/**
+ * WebRTC is the one way out of the frame that its `connect-src 'none'` does not cover: a peer
+ * connection reaches any STUN/TURN server it names (and leaks through the DNS lookup), without the
+ * `network` permission (security review SR-12). Plugins have no use for it, so the constructors
+ * are removed before any plugin code exists. A nested frame can't bring them back: inside this
+ * opaque-origin sandbox every child frame is cross-origin to the plugin.
+ */
+for (const k of ['RTCPeerConnection', 'webkitRTCPeerConnection', 'mozRTCPeerConnection', 'RTCDataChannel', 'RTCSessionDescription', 'RTCIceCandidate', 'RTCRtpSender', 'RTCRtpReceiver', 'RTCRtpTransceiver', 'RTCIceTransport', 'RTCDtlsTransport', 'RTCSctpTransport', 'RTCCertificate']) {
+  try {
+    delete (globalThis as Record<string, unknown>)[k];
+  } catch {
+    /* not present in this browser */
+  }
+}
+
 const send = (m: PluginToHost) => parent.postMessage(m, '*');
 const log = (level: 'info' | 'warn' | 'error', message: string) => send(envelope({ kind: 'log' as const, level, message }));
 

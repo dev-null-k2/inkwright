@@ -16,6 +16,10 @@
  *
  *   POST /signal/v1/<room>                   body: ≤ 64 KiB of bytes → { seq }
  *   GET  /signal/v1/<room>?after=<seq>&wait=<s>   long-polls up to `wait` (≤ 30) seconds
+ *
+ * Memory is bounded twice: per room (`perRoom` messages) and in total (`maxBytes`, 32 MiB by
+ * default), the stalest rooms going first — so even a holder of the token can't make the
+ * process (which may also serve the vault) grow without limit (security review SR-06).
  *                                            → { messages: [{ seq, data (base64url) }] }
  */
 import { timingSafeEqual } from 'node:crypto';
@@ -29,6 +33,8 @@ export interface SignalRelayOptions {
   perRoom?: number;
   /** Rooms kept at once (default 1000; the stalest go first). */
   maxRooms?: number;
+  /** Message bytes kept in all rooms together (default 32 MiB; the stalest rooms go first). */
+  maxBytes?: number;
   clock?: () => number;
 }
 
@@ -38,7 +44,7 @@ const ROOM = /^[A-Za-z0-9_-]{16,128}$/;
 interface Room {
   seq: number;
   touched: number;
-  messages: { seq: number; data: string }[];
+  messages: { seq: number; data: string; size: number }[];
   waiters: Set<() => void>;
 }
 
@@ -63,6 +69,9 @@ export interface SignalRelay {
   close(): void;
   /** Rooms currently held (tests, health). */
   readonly size: number;
+  /** Message bytes currently held, and the most it will hold. */
+  readonly bytes: number;
+  readonly maxBytes: number;
 }
 
 export function createSignalRelay(opts: SignalRelayOptions): SignalRelay {
@@ -71,7 +80,23 @@ export function createSignalRelay(opts: SignalRelayOptions): SignalRelay {
   const ttl = opts.ttlMs ?? 10 * 60_000;
   const perRoom = opts.perRoom ?? 16;
   const maxRooms = opts.maxRooms ?? 1000;
+  const maxBytes = opts.maxBytes ?? 32 * 1024 * 1024;
   const rooms = new Map<string, Room>();
+  let bytes = 0;
+
+  const drop = (id: string, r: Room) => {
+    for (const w of r.waiters) w();
+    for (const m of r.messages) bytes -= m.size;
+    rooms.delete(id);
+  };
+  /** Drops the stalest rooms (never `keep`) until the rooms and bytes are within bounds. */
+  const evict = (keep?: string) => {
+    while (rooms.size > maxRooms || bytes > maxBytes) {
+      const stalest = [...rooms].filter(([id]) => id !== keep).sort((a, b) => a[1].touched - b[1].touched)[0];
+      if (!stalest) return;
+      drop(stalest[0], stalest[1]);
+    }
+  };
   const expected = Buffer.from(`Bearer ${opts.token}`);
 
   const authorized = (req: Request) => {
@@ -81,12 +106,8 @@ export function createSignalRelay(opts: SignalRelayOptions): SignalRelay {
 
   const sweep = () => {
     const now = clock();
-    for (const [id, r] of rooms) if (now - r.touched > ttl && r.waiters.size === 0) rooms.delete(id);
-    while (rooms.size > maxRooms) {
-      const stalest = [...rooms].sort((a, b) => a[1].touched - b[1].touched)[0]!;
-      for (const w of stalest[1].waiters) w();
-      rooms.delete(stalest[0]);
-    }
+    for (const [id, r] of rooms) if (now - r.touched > ttl && r.waiters.size === 0) drop(id, r);
+    evict();
   };
 
   const room = (id: string): Room => {
@@ -102,9 +123,14 @@ export function createSignalRelay(opts: SignalRelayOptions): SignalRelay {
     get size() {
       return rooms.size;
     },
+    get bytes() {
+      return bytes;
+    },
+    maxBytes,
     close() {
       for (const r of rooms.values()) for (const w of r.waiters) w();
       rooms.clear();
+      bytes = 0;
     },
     async handle(req: Request): Promise<Response> {
       if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
@@ -118,9 +144,11 @@ export function createSignalRelay(opts: SignalRelayOptions): SignalRelay {
         if (!body.length || body.length > SIGNAL_MAX_BYTES) return json(413, { error: `Messages must be 1 to ${SIGNAL_MAX_BYTES} bytes.` });
         const r = room(id);
         const seq = ++r.seq;
-        r.messages.push({ seq, data: b64url(body) });
-        if (r.messages.length > perRoom) r.messages.splice(0, r.messages.length - perRoom);
+        r.messages.push({ seq, data: b64url(body), size: body.length });
+        bytes += body.length;
+        if (r.messages.length > perRoom) for (const m of r.messages.splice(0, r.messages.length - perRoom)) bytes -= m.size;
         r.touched = clock();
+        evict(id);
         for (const w of [...r.waiters]) w();
         return json(200, { seq });
       }

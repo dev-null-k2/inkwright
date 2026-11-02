@@ -237,8 +237,27 @@ describe('security review: MCP and HTTP surface', () => {
       // Bodies over the limit are refused before parsing.
       const big = await fetch(http.url, { method: 'POST', headers: { authorization: 'Bearer sekret', 'content-type': 'application/json' }, body: 'x'.repeat(4 * 1024 * 1024 + 10) });
       expect(big.status).toBe(413);
+      // Security review SR-07: without credentials nothing is read at all — the server used to
+      // buffer up to 4 MiB per anonymous request before asking who it was.
+      const anon = await fetch(http.url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: 'x'.repeat(4 * 1024 * 1024 + 10) });
+      expect(anon.status).toBe(401);
     } finally {
       await http.close();
+    }
+  });
+
+  // Security review SR-08: stat() followed symlinks without the containment check the other
+  // methods make, so a link in the vault told size and modification time of any file outside.
+  it('stat does not report on files outside the vault through a symlink', async () => {
+    const outside = await mkdtemp(path.join(tmpdir(), 'inkwright-outside-'));
+    try {
+      await writeFile(path.join(outside, 'secret.txt'), 'x'.repeat(1234));
+      await symlink(path.join(outside, 'secret.txt'), path.join(fx.dir, 'leak.txt'));
+      const fs = new NodeFS(fx.dir);
+      await expect(fs.stat('leak.txt')).rejects.toThrow(/escapes vault/);
+      expect(await fs.stat('missing.txt')).toBeNull();
+    } finally {
+      await rm(outside, { recursive: true, force: true });
     }
   });
 

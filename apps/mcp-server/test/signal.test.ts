@@ -67,6 +67,25 @@ describe('signalling relay', () => {
     expect(relay.size).toBe(1);
   });
 
+  // Security review SR-06: rooms × messages × 64 KiB let one token holder make the server (which
+  // also serves the vault over MCP) hold about 1.4 GB. The relay now keeps a total byte budget.
+  it('keeps the bytes it holds under a budget, dropping the stalest rooms first', async () => {
+    let now = 0;
+    const relay = createSignalRelay({ token: TOKEN, clock: () => now, maxBytes: 1024 * 1024 });
+    const c = clientFor(relay);
+    const big = new Uint8Array(60 * 1024);
+    for (let i = 0; i < 40; i++) {
+      now = i;
+      await c.post(`flood${i}`.padEnd(20, 'x'), big);
+    }
+    expect(relay.bytes).toBeLessThanOrEqual(1024 * 1024);
+    // The newest messages are the ones kept.
+    expect((await c.poll('flood39'.padEnd(20, 'x'), 0, { waitSec: 0 })).length).toBe(1);
+    expect((await c.poll('flood0'.padEnd(20, 'x'), 0, { waitSec: 0 })).length).toBe(0);
+    // The default budget is bounded too.
+    expect(createSignalRelay({ token: TOKEN }).maxBytes).toBeLessThanOrEqual(64 * 1024 * 1024);
+  });
+
   it('is configured with its own token and only over HTTP', () => {
     expect(parseCli(['--vault', '/tmp/v', '--http', '8765', '--signal-token', TOKEN], {}).signalToken).toBe(TOKEN);
     expect(() => parseCli(['--vault', '/tmp/v', '--signal-token', TOKEN], {})).toThrow(/only applies with --http/);

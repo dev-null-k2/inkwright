@@ -12,6 +12,7 @@ import { PluginInstallError, packageFromFolder, packageFromUrl, packageFromZip }
 import type { PluginPackage } from './store.ts';
 import {
   applyUpdate,
+  approvePlugin,
   checkForUpdate,
   grantedPermissions,
   installPackage,
@@ -31,6 +32,8 @@ interface PromptReq {
   manifest: PluginManifest;
   /** For updates: only these are new; the rest stay as they were. */
   added?: Permission[];
+  /** A plugin added or changed outside this device, waiting for approval here (consent.ts). */
+  review?: { granted: Permission[] };
   resolve(granted: Permission[] | null): void;
 }
 
@@ -40,8 +43,8 @@ const usePrompt = create<{ req: PromptReq | null }>(() => ({ req: null }));
  * Shows what a plugin may do and adds before it is installed (or what an update adds). Resolves
  * to the permissions the user left ticked, or null when they cancel.
  */
-export function askPluginPermissions(manifest: PluginManifest, added?: Permission[]): Promise<Permission[] | null> {
-  return new Promise((resolve) => usePrompt.setState({ req: { manifest, ...(added ? { added } : {}), resolve } }));
+export function askPluginPermissions(manifest: PluginManifest, added?: Permission[], review?: { granted: Permission[] }): Promise<Permission[] | null> {
+  return new Promise((resolve) => usePrompt.setState({ req: { manifest, ...(added ? { added } : {}), ...(review ? { review } : {}), resolve } }));
 }
 
 export function contributionSummary(m: PluginManifest): string[] {
@@ -76,19 +79,20 @@ function PermissionList({ manifest, perms, checked, onChange }: { manifest: Plug
 export function PluginPermissionPrompt() {
   const req = usePrompt((s) => s.req);
   const [checked, setChecked] = useState<Set<Permission>>(new Set());
-  useEffect(() => { if (req) setChecked(new Set(req.added ?? req.manifest.permissions)); }, [req]);
+  useEffect(() => { if (req) setChecked(new Set(req.review?.granted ?? req.added ?? req.manifest.permissions)); }, [req]);
   if (!req) return null;
   const m = req.manifest;
   const close = (v: Permission[] | null) => { usePrompt.setState({ req: null }); req.resolve(v); };
   const perms = req.added ?? m.permissions;
   const adds = contributionSummary(m);
   return (
-    <Dialog open wide title={req.added ? `Update ${m.name}?` : `Install ${m.name}?`} onClose={() => close(null)} actions={<>
+    <Dialog open wide title={req.review ? `Allow ${m.name} on this device?` : req.added ? `Update ${m.name}?` : `Install ${m.name}?`} onClose={() => close(null)} actions={<>
       <button type="button" className="btn" onClick={() => close(null)}>Cancel</button>
-      <button type="button" className="btn btn-primary" autoFocus onClick={() => close([...checked])}><ShieldCheck size={15} /> {req.added ? 'Update' : 'Install'}</button>
+      <button type="button" className="btn btn-primary" autoFocus onClick={() => close([...checked])}><ShieldCheck size={15} /> {req.review ? 'Allow' : req.added ? 'Update' : 'Install'}</button>
     </>}>
       <p className="plg-by">{m.version} · by {m.author}</p>
       <p>{m.description}</p>
+      {req.review && <p className="muted small">It was installed, updated or given permissions somewhere other than this device — another device, a sync or a restored backup. It runs here only once you allow it here.</p>}
       <h3 className="plg-h">{req.added ? 'The new version also asks to' : 'It asks to'}</h3>
       <PermissionList manifest={m} perms={perms} checked={checked} onChange={(p, on) => setChecked((s) => { const n = new Set(s); if (on) n.add(p); else n.delete(p); return n; })} />
       {adds.length > 0 && <><h3 className="plg-h">It adds</h3><ul className="plg-adds">{adds.map((a) => <li key={a}>{a}</li>)}</ul></>}
@@ -208,6 +212,16 @@ function PluginCard({ p }: { p: LoadedPlugin }) {
         <Switch label={name} hint={p.error ? p.error : `${p.record.version}${m ? ` · ${m.author}` : ''}${m ? ` — ${m.description}` : ''}`} checked={p.record.enabled && !p.error} onChange={(v) => void setPluginEnabled(p.record.id, v)} />
         <button type="button" className="mod-more" aria-expanded={open} onClick={() => setOpen(!open)}>Details <ChevronDown size={14} className={cx('mod-chev', open && 'is-open')} /></button>
       </div>
+      {p.needsReview && m && (
+        <div className="row-buttons">
+          <button type="button" className="btn btn-sm" onClick={async () => {
+            const allowed = await askPluginPermissions(m, undefined, { granted: p.record.granted.filter((g): g is Permission => m.permissions.includes(g as Permission)) });
+            if (allowed === null) return;
+            await approvePlugin(p.record.id, allowed);
+            toast({ text: `${name} can run on this device`, tone: 'success' });
+          }}><ShieldCheck size={14} /> Review</button>
+        </div>
+      )}
       {open && m && (
         <div className="plg-details">
           <h3 className="plg-h">Permissions</h3>

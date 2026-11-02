@@ -70,7 +70,12 @@ curated list or its URL; new permissions need a new OK) and **Uninstall** (remov
 settings and stored data; notes are untouched).
 
 Plugins are stored in the vault (`plugins/<id>/`, `plugins/plugins.json`, see
-VAULT_FORMAT.md), so they sync to your other devices with your notes. Their commands appear in
+VAULT_FORMAT.md), so they sync to your other devices with your notes. A plugin only runs on a
+device where you approved it, though: each device remembers the exact code and permissions you
+allowed there. One that arrives installed, updated or granted more from elsewhere — another
+device, a sync, a restored backup — shows **Review** in Settings › Plugins and stays off until
+you allow it on this device (revoking a permission elsewhere needs no review). Anything that can
+write your vault could otherwise put a networked plugin in it. Their commands appear in
 the search palette and the editor's ••• › Plugins, panels in the editor's side panel, exporters
 under Export, importers in the palette, and assistant tools in the assistant.
 
@@ -187,6 +192,16 @@ Limits: plugin packages ≤ 5 MB and 200 files (code, JSON, CSS, Markdown, text 
 only); handlers time out (30 s; importers 2 min). In `vite dev` the sandbox runtime is not
 bundled the same way, so try plugins in a build (`npm run build && npx vite preview`) or the
 installed app. A plugin can still use CPU while it runs; switching it off stops its frames.
+
+Browsers don't apply `connect-src` to WebRTC, so the runtime removes the WebRTC constructors
+(`RTCPeerConnection` and friends) before plugin code loads; nested frames can't bring them back,
+because inside the opaque-origin sandbox every child frame is cross-origin (security review
+SR-12). What remains is low-bandwidth: a frame can still trigger DNS lookups (for example a
+`<link rel="dns-prefetch">`), which no CSP governs.
+
+A scoped plugin (`noteScope`) sees the editor only while a note inside its scope is open:
+otherwise `editor.current()` is `null`, the selection is empty, `insertText` refuses, and
+`note.opened` / `selection.changed` events are not delivered. Locked notes are never visible.
 
 ## How it fits together
 

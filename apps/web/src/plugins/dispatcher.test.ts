@@ -68,6 +68,32 @@ describe('plugin API dispatcher', () => {
     expect(await dispatch(e, c, 'notes.create', [{ title: 'New', tags: ['x'] }])).toMatchObject({ tags: ['x', 'work'] });
   });
 
+  // Security review SR-04: the editor methods used to answer for whatever note was open, so a
+  // plugin scoped to #work (or any plugin, for a locked note) could read the title and selection
+  // of notes it may not see, write into them, and open them.
+  it('treats an open note outside the scope, or locked, as no open note', async () => {
+    const { e } = env([note('W', { tags: ['work'] }), note('H', { tags: ['home'] }), note('L', { locked: true })]);
+    const scoped = caller(['editor:read', 'editor:write'], { noteScope: { tags: ['work'] } });
+    e.editor.state = () => ({ noteId: 'H', title: 'Home secrets', page: 1, pages: 1 });
+    expect(await dispatch(e, scoped, 'editor.current', [])).toBeNull();
+    expect(await dispatch(e, scoped, 'editor.selection', [])).toBe('');
+    await expect(dispatch(e, scoped, 'editor.insertText', ['x'])).rejects.toMatchObject({ code: 'unavailable' });
+    expect(e.editor.insertText).not.toHaveBeenCalled();
+    await expect(dispatch(e, scoped, 'ui.openNote', ['H'])).rejects.toMatchObject({ code: 'not_found' });
+    expect(e.openNote).not.toHaveBeenCalled();
+
+    e.editor.state = () => ({ noteId: 'W', title: 'W', page: 1, pages: 1 });
+    expect(await dispatch(e, scoped, 'editor.current', [])).toMatchObject({ noteId: 'W' });
+    expect(await dispatch(e, scoped, 'editor.selection', [])).toBe('selected words');
+
+    // A locked note is hidden from every plugin, scoped or not.
+    const open = caller(['editor:read', 'editor:write']);
+    e.editor.state = () => ({ noteId: 'L', title: 'Locked', page: 1, pages: 1 });
+    expect(await dispatch(e, open, 'editor.current', [])).toBeNull();
+    expect(await dispatch(e, open, 'editor.selection', [])).toBe('');
+    await expect(dispatch(e, open, 'editor.insertText', ['x'])).rejects.toMatchObject({ code: 'unavailable' });
+  });
+
   it('labels writes with the caller and validates input', async () => {
     const { e, calls } = env();
     const c = caller(['notes:write', 'notes:read']);

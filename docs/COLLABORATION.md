@@ -142,7 +142,7 @@ answering device sends its hello only after the first one arrives.
 | A paired device | sync your whole vault (that is what pairing means) | anything after you *Remove* it: its key is no longer accepted |
 | A live-session guest with *can view* | see the note and its live strokes | change it: the host ignores their edits (and their device rolls them back) |
 | A live-session guest with *can write* | change the shared note | change anything else in your vault, or make their writing count as yours (below) |
-| Someone with your unlocked device | everything the app can do | read the identity private key out of storage (non-extractable), though they can use it while the browser profile is theirs |
+| Someone with your unlocked device | everything the app can do | read the identity private key out through the app (non-extractable), though they can use it while the browser profile is theirs. A copy of the profile's files does contain it (IndexedDB stores the key bytes), which is why the Android app allows no cloud backup |
 
 **Not protected:** metadata (who connects to whom, when, how much — visible to STUN/TURN/relay
 operators at the IP level); availability (any relay can refuse service); a compromised device or

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What Android may copy out of the app (Android 12+; security review SR-03, docs/ANDROID.md).
+
+  Everything Inkwright keeps lives in the WebView's storage: the vault (IndexedDB), and next to it
+  the non-extractable AES key that encrypts API keys and MCP sign-ins, the peer-link identity key
+  and the authorship signing key. "Non-extractable" stops scripts from reading a key, not a copy of
+  the files: the key bytes are in the IndexedDB files, so a backup holding both is a backup of the
+  API keys in the clear. Cloud backup (Google Drive) therefore gets nothing; notes reach other
+  devices through the app's own sync instead.
+
+  Device-to-device transfer (setting up a new phone from the old one, over a cable or local
+  Wi-Fi, end to end encrypted, same owner) keeps the default and moves everything, so a new phone
+  starts with the notes and keys of the one it replaces.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+    </cloud-backup>
+</data-extraction-rules>

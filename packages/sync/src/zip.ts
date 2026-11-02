@@ -1,4 +1,4 @@
-import type { VaultFS } from '@inkwright/core';
+import { API_KEYS_FILE, type VaultFS } from '@inkwright/core';
 import { noteIdOf, regenerateDerived } from './derived.ts';
 import { mergeFileBytes } from './merge.ts';
 import { isJunkName, safePath, toBufferView, utf8Decode, utf8Encode, walkFiles, bytesEqual } from './util.ts';
@@ -244,7 +244,17 @@ export interface ImportZipReport {
   merged: string[];
   /** Existing files kept unchanged (identical, or not mergeable in 'merge' mode). */
   kept: string[];
+  /** Entries never taken from an archive (credentials: see NEVER_IMPORTED). */
+  skipped: string[];
 }
+
+/**
+ * Vault files an archive must not bring in: they are credentials, not notes. An API key record
+ * (a hash and its scopes) in a "backup" someone sent would let them use a key they hold against
+ * every server that serves this vault (security review SR-10). In 'replace' mode this vault's own
+ * copy is kept. Keys from an old backup of your own are simply made again in Settings.
+ */
+export const NEVER_IMPORTED: ReadonlySet<string> = new Set([API_KEYS_FILE]);
 
 /** Restores a vault ZIP. The whole archive is validated (paths, CRCs) before anything is written. */
 export async function importVaultZip(fs: VaultFS, zip: Uint8Array, opts: ImportZipOptions): Promise<ImportZipReport> {
@@ -253,17 +263,24 @@ export async function importVaultZip(fs: VaultFS, zip: Uint8Array, opts: ImportZ
     if (!path) throw new Error(`Invalid ZIP entry name: ${e.path}`);
     return { ...e, path };
   });
-  const report: ImportZipReport = { written: [], merged: [], kept: [] };
+  const report: ImportZipReport = { written: [], merged: [], kept: [], skipped: [] };
+  const take = entries.filter((e) => {
+    if (!NEVER_IMPORTED.has(e.path)) return true;
+    report.skipped.push(e.path);
+    return false;
+  });
   if (opts.mode === 'replace') {
+    const own = await Promise.all([...NEVER_IMPORTED].map(async (p) => [p, await fs.readBytes(p)] as const));
     await fs.deleteDir('');
-    for (const e of entries) {
+    for (const [p, bytes] of own) if (bytes) await fs.writeBytes(p, bytes);
+    for (const e of take) {
       await fs.writeBytes(e.path, e.bytes);
       report.written.push(e.path);
     }
     return report;
   }
   const mergedNotes = new Set<string>();
-  for (const e of entries) {
+  for (const e of take) {
     const cur = await fs.readBytes(e.path);
     if (!cur) {
       await fs.writeBytes(e.path, e.bytes);

@@ -131,6 +131,8 @@ export class NodeFS implements VaultFS {
   /** mtime (ms) and size of a file, or null when missing. */
   async stat(p: string): Promise<{ mtime: number; size: number } | null> {
     const abs = this.resolve(p);
+    // Like every other read: a symlink must not report on a file outside the vault (SR-08).
+    await this.assertInside(abs);
     try {
       const st = await fsp.stat(abs);
       return { mtime: st.mtimeMs, size: st.size };

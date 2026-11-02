@@ -33,6 +33,7 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 - Per-notebook permissions, dry-run proposals and prompt-injection defences.
 - An enterprise appliance with an SBOM and security workflows.
 - Proof-of-authorship certificates.
+- An independent security review before release (docs/SECURITY_REVIEW.md), with its fixes: plugins run only with consent given on each device (a plugin installed or changed through sync or a backup asks for a review once); a sealed DuckDB, runbook and plugin sandbox; no cloud backup of keys on Android; credentials never restored from backups; pinned, least-privilege CI.
 
 ### Platform
 - A module registry with presets.
