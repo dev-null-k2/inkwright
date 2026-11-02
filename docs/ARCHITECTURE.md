@@ -20,7 +20,7 @@ packages/ai       @inkstone/ai    providers (OpenAI-compatible family, Anthropic
 packages/sync     @inkstone/sync  storage backends (IndexedDB, File System Access, Capacitor, Node), remotes
                                   (Google Drive, WebDAV, folder), three-way merge, sync engine, zip backup
 apps/web          @inkstone/web   the app: React UI + canvas ink engine; PWA; Capacitor Android/iOS shells
-apps/mcp-server   @inkstone/mcp-server  MCP server exposing a vault folder to AI agents (stdio + HTTP)
+apps/mcp-server   @inkstone/mcp-server  MCP server (2026-07-28, stdio + HTTP), A2A agent and always-on routine runner over a vault folder
 docs/             architecture, vault format, setup, publishing, testing, privacy
 ```
 
@@ -81,6 +81,36 @@ Sync (`@inkstone/sync`) compares content hashes with the last-synced state and r
   (`launchQueue`), the POST share target (the service worker stashes files in Cache Storage), and
   Android intents. Text and Markdown become typed notes.
 
+## Smart ink (`apps/web/src/smart/`, core `objects.ts`, `tables.ts`, `inkcues.ts`, `mathexpr.ts`)
+
+- **Noticing:** `SmartLayer.tsx` watches the document for new handwritten strokes and, ~1 s after
+  the pen rests, runs the geometric detectors in core: a drawn grid (`detectTable` — strict, with
+  tests for near misses), a trailing "=" (`detectTrailingEquals`), a loop around writing
+  (`detectEnclosure`), handwritten checkboxes (`detectChecklist`). At most one chip is offered;
+  writing on or × dismisses it. Settings › Pen & touch › Smart ink suggestions turns it off.
+- **Objects:** tables, solved results and graphs are `PageInk.objects`, committed through
+  `NoteDocument.editObjects` (undoable; automatic follow-ups like a table growing to fit its ink
+  use `adjust`, which is not an undo step). Canvas (`smart/render.ts`, called from the engine's
+  page drawing and `renderPageStandalone`), SVG (`core/objectsvg.ts`) and PDF (`smart/pdf.ts`) draw
+  the same picture.
+- **Reading ink:** `smart/read.ts` uses on-device recognition first; the active AI's vision
+  (`getActiveAI()`, whichever provider — cloud or on-device) with strict JSON prompts for maths and
+  tables, automatically only when Settings › Handwriting allows AI, otherwise on a tap.
+- **Solving:** `smart/math.ts` — nerdamer-prime (equations, systems, derivatives, integrals,
+  limits) and mathjs (units), both lazy-loaded; every symbolic answer is checked numerically with
+  core's own parser, and a numeric root finder covers transcendental equations. Offline.
+- **Dates and links:** `smart/detect.ts` (chrono-node, phone/email/URL patterns, task lines) and
+  `smart/ics.ts` (RFC 5545 files, Google Calendar links); on Android the plugin's
+  `insertCalendarEvent` opens the calendar app's prefilled new-event screen.
+
+## Proof of authorship (`core/authorship.ts`, `apps/web/src/authorship/`)
+
+Strokes record their input device; AI/solver/recognized/imported content carries an `origin`;
+`NoteDocument.commit` appends content-digest events to a per-page hash chain. Certificates (claim
++ evidence + ES256 signature with a non-extractable device key in IndexedDB) are made in the
+editor's Authorship panel and embedded in exported PDFs; Settings › Authorship verifies PDFs and
+JSON offline. Details and limits: [AUTHORSHIP.md](AUTHORSHIP.md).
+
 ## AI (`@inkstone/ai`, `apps/web/src/lib/ai.ts`)
 
 - **Providers:** one `Provider` interface over OpenAI-compatible APIs (OpenAI, OpenRouter, Groq, Mistral, xAI, DeepSeek, Together, Fireworks, Perplexity, Cerebras, Azure, Ollama, LM Studio, custom), Anthropic, Gemini, and Claude through the claude.ai `sample` capability. Requests stream, retry and send images. Tool calling is unified across providers, with a prompt-based fallback for models without native tools.
@@ -122,7 +152,36 @@ Every agent run — a chat in the panel or a routine — is assembled by `prepar
   weekly times with one catch-up run after the app was closed, a tagged note being saved by the
   user (debounced; agent saves are ignored), a recording ending, or N days before a date written
   in a note. Runs are serialized; background runs ask before every connected-app write and queue
-  approvals in Activity.
+  approvals in Activity. A lease in the vault (`routine-lease.ts`, `ai/leases/routines.json`) lets
+  an always-on runner on a computer take over automatic triggers; the app then defers to it and
+  says so on the Routines screen.
+
+### Outside agents (`apps/mcp-server`, see docs/AGENTS.md)
+
+One Node program set over the vault folder, sharing `@inkstone/core` (files) and `@inkstone/ai`
+(note tools, agent loop, skills, memory, routines, activity) with the app:
+
+- **MCP server** on the official SDK v2 (`@modelcontextprotocol/server`): `serveStdio` and
+  `createMcpHandler` serve protocol 2026-07-28 (stateless requests with a `_meta` envelope,
+  `server/discover`) and fall back to 2025 clients; one MCP server instance per request or
+  connection, with process-wide services (`createServices`: tasks, activity sessions, approvals,
+  AI). Writes are logged per agent in Activity.
+- **Sign-in** (`auth.ts`): loopback only, a bearer token, or an OAuth 2.1 resource server that
+  validates JWTs from the user's own issuer (RFC 9728 metadata, RFC 8707 audience, step-up
+  `insufficient_scope` for the write scope through the SDK's scope challenges).
+- **Tasks** (`tasks.ts`): the server runtime for the `io.modelcontextprotocol/tasks` extension —
+  `summarize_notebook`, `transcribe_pages`, `run_routine` return tasks with progress in
+  `statusMessage`, approvals as `input_required` elicitations, and cooperative cancel.
+- **MCP Apps** (`ui.ts`): self-contained `ui://` views (page viewer, search picker, approval card)
+  speaking the MCP Apps postMessage protocol, with text fallbacks.
+- **A2A** (`a2a.ts`): the same agent behind an Agent Card and JSON-RPC (v1.0 and v0.3) through
+  `@a2a-js/sdk`; destructive steps pause the task in `INPUT_REQUIRED`.
+- **Approvals** (`approvals.ts`): the app's rule everywhere — undoable note writes just happen,
+  moving to Trash waits for a person (an elicitation, an A2A reply, or a pending approval in
+  `ai/approvals/` when nobody can be asked).
+- **Runner** (`runner/`): `inkstone-agent run` drives `RoutineScheduler` over the folder, detects
+  note saves and recordings by scanning, holds the routines lease, and installs as a launchd,
+  systemd or Task Scheduler service (`runner/services.ts`).
 - **Voice.** Push-to-talk uses the Web Speech API when present, otherwise the provider's
   transcription endpoint through the `Transcriber` interface. Spoken replies use
   `speechSynthesis`, off by default.
@@ -135,6 +194,30 @@ summaries. Speech is transcribed on the device by default (Moonshine/Whisper in 
 windowed at pauses by a VAD), else by the browser's speech service, else by the provider; the UI
 always shows which. Transcripts are vault files next to their clips, merged by sync and indexed
 as "what was said" passages. Details in docs/LOCAL_AI.md § Speech to text.
+
+## Knowledge base (`packages/core/src/{links,knowledge,daily,templates,graph,forcelayout,obsidian,yaml}.ts`, `apps/web/src/lib/{knowledge,docLinks,related,obsidian}.ts`, `apps/web/src/ui/knowledge/`, `apps/web/src/graph/`)
+
+- **Links.** `links.ts` parses, resolves, renames and suggests `[[links]]` and `#tags`. Typed links
+  get `[[` autocomplete (`ui/knowledge/LinkSuggest.tsx`, fuzzy titles with notebook, pages after
+  `#`, tags after `#`). Lassoed ink becomes an `InkLink` ("Link" in the selection bar); recognized
+  handwriting containing `[[…]]` becomes one automatically (the recognizer reports which strokes
+  wrote each line). `InkLinkLayer` draws a jade dotted thread under every link and a small arrow
+  to follow it — only the arrow takes taps, so writing over linked ink is unaffected.
+- **Index.** `KnowledgeIndex` (in `AppVault.knowledge`, updated wherever search is) answers
+  backlinks with the linking line, unlinked mentions (typed and handwritten), outgoing links, tags
+  and keyword relatedness. The Links panel (••• › Links) shows them and links a mention in one tap.
+- **Related notes** go through `RelatedNotesProvider` (`lib/related.ts`): a registered provider,
+  else the on-device semantic memory (mean of each note's passage embeddings, `AppMemory.noteVector`),
+  else shared keywords/tags. The panel and the graph never know which.
+- **Graph.** `buildGraph` makes nodes (notes, tags, notebooks) and edges (links, tags, notebook
+  membership, related); `ForceLayout` places them deterministically in 2D or 3D (Barnes–Hut above
+  220 nodes, notebook clusters, seeded from ids so the map is stable). `graph/GraphView.tsx` is
+  lazy-loaded; three.js only loads for the 3D view (`render3d.ts`: ink-drop point shader, threads
+  with per-vertex alpha, suminagashi ring clouds per notebook, the stone-eye on the selection, depth
+  fog in the desk colour); `render2d.ts` is the canvas fallback. Colours come from the CSS
+  variables, so every palette and night mode apply. Reduced motion: no auto-rotate, no tweens,
+  the layout settles before it is shown.
+- **Daily notes, templates, Obsidian**: `daily.ts`, `templates.ts`, `obsidian.ts` + docs/OBSIDIAN.md.
 
 ## Platforms
 
@@ -151,7 +234,7 @@ as "what was said" passages. Details in docs/LOCAL_AI.md § Speech to text.
 - **A pen:** add it to `PenType`/`PEN_INFO`, give it a `penLook` and `outlineOptions` (core) and a `PenNib` drawing (web).
 - **A paper:** add it to `PaperStyle`, then add a case in `paperElements` (`core/paper.ts`). It renders on screen, in thumbnails, SVG and PDF export automatically.
 - **An AI provider:** add a registry entry in `packages/ai/src/providers/registry.ts`. Most are OpenAI-compatible and need only a base URL.
-- **An agent tool:** add it in `createNoteTools` and implement it in `NoteToolHost`, both for the app (`lib/ai.ts`) and for the MCP server. If it writes, record it in `RecordingNoteToolHost` with an op kind and its inverse in `undoOp`.
+- **An agent tool:** add it in `createNoteTools` and implement it in `NoteToolHost`, both for the app (`lib/ai.ts`) and for the MCP server (`apps/mcp-server/src/agent/host.ts`). If it writes, record it in `RecordingNoteToolHost` with an op kind and its inverse in `undoOp`.
 - **A built-in skill:** add `packages/ai/skills/<name>/SKILL.md` and list it in `builtin-skills.ts`.
 - **A routine template:** add it to `ROUTINE_TEMPLATES` in `packages/ai/src/routines.ts`.
 - **A speech engine:** implement `Transcriber` (`packages/ai/src/transcribe.ts`) and return it from `providerTranscriber` in `lib/agent/voice.ts`.

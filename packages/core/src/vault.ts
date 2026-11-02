@@ -220,13 +220,18 @@ export class Vault {
     const pages = await this.readPages(src);
     const now = this.clock();
     const noteId = newId(now);
-    const newPages = pages.map((p) => ({
-      ...p,
-      id: newId(now),
-      strokes: p.strokes.map((s) => ({ ...s, id: newId(now) })),
-      texts: p.texts?.map((t) => ({ ...t, id: newId(now) })),
-      images: p.images?.map((im) => ({ ...im, id: newId(now) })),
-    }));
+    const newPages = pages.map((p) => {
+      const ids = new Map<string, string>();
+      const out: PageInk = {
+        ...p,
+        id: newId(now),
+        strokes: p.strokes.map((s) => { const id = newId(now); ids.set(s.id, id); return { ...s, id }; }),
+        texts: p.texts?.map((t) => ({ ...t, id: newId(now) })),
+        images: p.images?.map((im) => ({ ...im, id: newId(now) })),
+      };
+      if (p.links) out.links = p.links.map((l) => ({ ...l, id: newId(now), strokeIds: l.strokeIds.map((id) => ids.get(id) ?? id) }));
+      return out;
+    });
     const copy: NoteMeta = {
       ...src,
       id: noteId,

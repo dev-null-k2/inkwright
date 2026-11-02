@@ -1,6 +1,10 @@
 # @inkstone/mcp-server
 
-An [MCP](https://modelcontextprotocol.io) server that lets AI agents (Claude Desktop, Claude Code,
+> Setting it up for Claude, ChatGPT, A2A clients or as an always-on routine runner? Start with
+> [`docs/AGENTS.md`](../../docs/AGENTS.md). This page is the reference.
+
+An [MCP](https://modelcontextprotocol.io) server (protocol 2026-07-28, with 2025 clients still
+served, over stdio and Streamable HTTP) that lets AI agents (Claude Desktop, Claude Code,
 Cursor, ChatGPT, or any other MCP client) read, search and write your Inkstone notes. It works directly on
 your **vault**, the folder of plain files that Inkstone syncs to your computer (for example with
 Google Drive for desktop). See [`docs/VAULT_FORMAT.md`](../../docs/VAULT_FORMAT.md) for the layout.
@@ -25,6 +29,22 @@ from another device is never overwritten, and never leave the vault folder.
 | `append_to_note` | Adds typed text below everything already on a page; handwriting is left untouched. |
 | `update_note` | Title, tags, notebook, pinned, summary. |
 | `trash_note` / `restore_note` | Soft delete and undo. Trash is reversible (the app purges it after 30 days). |
+| `show_note_page` | One page as you wrote it: an MCP Apps page view (SVG of the ink) in hosts that render apps, text elsewhere. |
+| `summarize_notebook` | Summaries for every note in a notebook with the server's AI; saves them (replacing existing ones only after asking). Long-running: a task. |
+| `transcribe_pages` | Converts handwriting not yet recognized into text with a vision model, page by page; undoable. Long-running: a task. |
+| `list_routines` / `run_routine` | The user's routines; runs one now as the app would. Moving notes to Trash waits for approval. Long-running: a task. |
+| `list_pending_approvals` / `decide_approval` | Actions unattended agents are waiting on (approval card in MCP Apps hosts). |
+
+`search_notes` also returns structured hits for the MCP Apps search picker.
+
+**Tasks** (`io.modelcontextprotocol/tasks`): for clients that declare the extension, the
+long-running tools return a task at once (`tasks/get` for progress and the result, `tasks/update`
+to answer an approval, `tasks/cancel`). Tasks live in the server process for an hour. Other
+clients get the work done inline; approvals they can't answer become pending approvals.
+
+**MCP Apps** (`io.modelcontextprotocol/ui`): `ui://inkstone/note-page.html`,
+`ui://inkstone/search.html`, `ui://inkstone/approvals.html` (`text/html;profile=mcp-app`),
+self-contained, no network access.
 
 Resources: `inkstone://notes/{id}` (Markdown) and `inkstone://notes/{id}/pages/{n}.svg`.
 Prompts: `summarize_note`, `daily_review`, `todos_from_notes`.
@@ -156,15 +176,27 @@ node apps/mcp-server/dist/index.js --vault "$HOME/…/Inkstone" --http 8765 --re
   token when you use a tunnel**: anyone who has the URL can reach your notes. Prefer `--read-only`
   unless you want ChatGPT to write.
 
+## OAuth, A2A and the always-on runner
+
+- `--oauth-issuer <url>` makes the HTTP endpoint an OAuth 2.1 resource server for your own
+  identity provider (Protected Resource Metadata at `/.well-known/oauth-protected-resource/mcp`,
+  JWT validation, `notes:read` / `notes:write` scopes with step-up). Step by step in
+  [`docs/AGENTS.md`](../../docs/AGENTS.md#oauth-21-with-your-own-identity-provider-step-by-step).
+- `--a2a` (with `--http`) also serves Inkstone's agent over A2A: `/.well-known/agent-card.json`
+  and JSON-RPC at `/a2a` (v1.0 and v0.3).
+- `inkstone-agent` (`dist/agent.js`) runs routines on schedule when the app is closed and installs
+  itself as a launchd / systemd / Task Scheduler service: `run`, `install`, `uninstall`, `status`,
+  `approvals`.
+- `--ai-provider`, `--ai-model`, `--ai-base-url`, `--ai-key-env` choose the AI those features use.
+
 ## Options
 
-```
---vault <dir>      Vault folder (default $INKSTONE_VAULT)
---read-only        Read tools only
---http <port>      Streamable HTTP on 127.0.0.1:<port>/mcp instead of stdio
---token <secret>   Bearer token for HTTP (default $INKSTONE_MCP_TOKEN)
---no-watch         Don't use fs.watch; re-check file times on every call
-```
+`node dist/index.js --help` and `node dist/agent.js --help` list every option. All of them can
+also come from a JSON file passed with `--config` (keys `vault`, `readOnly`, `http.{port,host,
+publicUrl,a2a}`, `auth.{token,oauth.{issuer,audience,jwksUrl,readScope,writeScope}}`,
+`ai.{provider,model,baseUrl,apiKeyEnv,apiKey}`); command-line flags win, then the environment
+(`INKSTONE_VAULT`, `INKSTONE_MCP_TOKEN`, `INKSTONE_OAUTH_ISSUER`, `INKSTONE_AI_PROVIDER`,
+`INKSTONE_AI_MODEL`), then the file.
 
 The server sees changes from other devices right away. It watches the folder with `fs.watch` and
 reindexes only the notes whose files changed. If watching isn't available, for example on some
@@ -173,9 +205,16 @@ network mounts, it checks file modification times before each call instead.
 ## Development
 
 ```sh
-npx vitest run --project mcp     # handler tests on a temp vault, plus stdio and HTTP end-to-end tests
+npx vitest run --project mcp     # handlers, protocol (2026 + 2025, stdio + HTTP), OAuth, Tasks, MCP Apps, A2A, runner, services
 npx tsc -p tsconfig.json --noEmit
+npm start -w @inkstone/mcp-server -- --vault <dir>        # MCP server from source
+npm run agent -w @inkstone/mcp-server -- run --vault <dir> # runner from source
 ```
 
-The tool handlers in `src/tools.ts` are plain `(ctx, args)` functions; `src/server.ts` only wires
-them to the MCP SDK.
+Layout: `src/tools.ts` (plain `(ctx, args)` note tools), `src/server.ts` (MCP wiring, task
+methods), `src/agent-tools.ts` (tasks, page view, approvals), `src/tasks.ts` (Tasks runtime),
+`src/ui.ts` (MCP Apps views), `src/auth.ts` (sign-in), `src/http.ts` (routes), `src/a2a.ts`,
+`src/agent/` (the server's agent: AI, vault note host, runs), `src/approvals.ts`, `src/runner/`
+(runner and service files), `src/agent-cli.ts` (`inkstone-agent`). Running from source needs
+`--import ./scripts/raw-hooks.mjs` (the npm scripts add it) so `@inkstone/ai`'s built-in skill
+files load; the build inlines them.

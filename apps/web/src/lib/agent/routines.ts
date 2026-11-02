@@ -8,6 +8,7 @@ import {
   RoutineScheduler,
   RunRecorder,
   findDateMentions,
+  routineLeaseHeldByOther,
   routineRunContext,
   runAgent,
   type DatedNote,
@@ -142,6 +143,13 @@ async function start(vault: AppVault): Promise<void> {
     run: runRoutine,
     findDatedNotes: (kw) => findDatedNotes(vault, kw),
     onError: (e) => console.warn('routine check failed', e),
+    // An always-on runner (`inkstone-agent run`) holding the routines lease runs the automatic
+    // triggers; the app then only runs routines when you press Run.
+    deferAutomatic: async () => {
+      const lease = await routineLeaseHeldByOther(vault.fs, Date.now());
+      useAgent.setState({ routinesRunner: lease ? lease.label : null });
+      return !!lease;
+    },
   });
   scheduler.onStatus = () => useAgent.setState({ runningRoutine: scheduler!.runningId, queuedRoutines: scheduler!.queued });
   vault.vault.onChange((c) => {

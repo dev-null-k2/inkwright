@@ -30,6 +30,7 @@
     }
   },
   "shortcuts": [
-    { "name": "New note", "url": "./#new", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+    { "name": "New note", "url": "./#new", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Today", "url": "./#today", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

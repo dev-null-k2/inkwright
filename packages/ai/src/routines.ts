@@ -5,7 +5,9 @@
  *
  * Honest by design: routines run while Inkstone is open. On open, the scheduler catches up —
  * a routine whose time passed while the app was closed runs once (not once per missed slot).
- * Nothing runs when the app is closed; the UI says so.
+ * Nothing runs when the app is closed, unless the user runs the always-on runner
+ * (`inkstone-agent run`, apps/mcp-server) on a computer: it uses this same scheduler over the
+ * vault folder and holds the routines lease (routine-lease.ts) so the two never both run a trigger.
  *
  * This module is pure scheduling logic with an injected clock and timers, so every rule is
  * unit-tested; the app supplies `run` (an agent run) and the note-scanning callbacks.
@@ -360,6 +362,12 @@ export interface SchedulerHooks {
   /** Quiet period after the last save before a note-saved routine runs (default 20 s). */
   saveDebounceMs?: number;
   onError?: (e: unknown) => void;
+  /**
+   * Asked before automatic triggers (times, dates, note saves, recordings) are acted on. Return
+   * true to leave them to someone else — the always-on runner holding the routines lease (see
+   * routine-lease.ts). "Run now" is never deferred.
+   */
+  deferAutomatic?: () => Promise<boolean> | boolean;
 }
 
 /**
@@ -415,6 +423,11 @@ export class RoutineScheduler {
   /** Checks time and date triggers now. */
   async tick(): Promise<void> {
     try {
+      if (await this.deferred()) {
+        this.schedule();
+        await this.pump();
+        return;
+      }
       const now = this.clock();
       const routines = (await this.h.store.list()).filter((r) => r.enabled);
       for (const r of routines) for (const ev of dueTimeTriggers(r, now)) this.enqueue(r.id, ev);
@@ -444,7 +457,18 @@ export class RoutineScheduler {
     }, this.h.saveDebounceMs ?? 20_000));
   }
 
+  /** Automatic triggers belong to someone else right now (errors count as "not deferred"). */
+  private async deferred(): Promise<boolean> {
+    try {
+      return !!(await this.h.deferAutomatic?.());
+    } catch (e) {
+      this.h.onError?.(e);
+      return false;
+    }
+  }
+
   private async fireNoteSaved(note: { id: string; title: string; tags: readonly string[] }) {
+    if (await this.deferred()) return;
     const tags = new Set(note.tags.map((t) => t.toLowerCase().replace(/^#/, '')));
     for (const r of await this.h.store.list()) {
       if (!r.enabled) continue;
@@ -458,6 +482,7 @@ export class RoutineScheduler {
 
   /** A recording in a note ended. */
   async recordingEnded(note: { id: string; title: string }): Promise<void> {
+    if (await this.deferred()) return;
     for (const r of await this.h.store.list()) {
       if (!r.enabled) continue;
       const i = r.triggers.findIndex((t) => t.kind === 'recording-ended');

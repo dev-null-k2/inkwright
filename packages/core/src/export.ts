@@ -4,6 +4,9 @@ import { rect, rectExpand, rectHeight, rectIsEmpty, rectUnion, rectWidth, type R
 import { PAPER_TINTS, isInfinite, pagePaper, pageSizeOf, type ImageItem, type NoteMeta, type PageInk, type TextBox } from './model.ts';
 import { centerlineSvgPath, formatNumber as f, outlineToSvgPath, penLook, strokeOutline } from './outline.ts';
 import { paperElements, paperRoleColor } from './paper.ts';
+import { liveInkLinks } from './links.ts';
+import { objectsSvg } from './objectsvg.ts';
+import { objectsText, objectRect } from './objects.ts';
 
 export const xmlEscape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -38,6 +41,7 @@ export function contentBounds(page: PageInk): Rect {
   let r = boundsOfStrokes(page.strokes);
   for (const t of page.texts ?? []) r = rectUnion(r, rect(t.x, t.y, t.x + t.width, t.y + textBoxHeight(t)));
   for (const im of page.images ?? []) r = rectUnion(r, rect(im.x, im.y, im.x + im.width, im.y + im.height));
+  for (const o of page.objects ?? []) r = rectUnion(r, objectRect(o));
   return r;
 }
 
@@ -91,6 +95,8 @@ export function exportPageSvg(note: NoteMeta, page: PageInk, opts: SvgOptions = 
     }
   }
   for (const im of page.images ?? []) parts.push(imageElement(im, href));
+  // Tables, solved results and graphs sit under the ink (handwriting in table cells is on top).
+  if (page.objects?.length) parts.push(objectsSvg(page.objects));
   // Highlighters under ink, like on paper.
   const under = page.strokes.filter((s) => penLook(s.pen).underlay);
   const over = page.strokes.filter((s) => !penLook(s.pen).underlay);
@@ -137,6 +143,8 @@ export function pageText(page: PageInk): string {
   const texts = [...(page.texts ?? [])].sort((a, b) => a.y - b.y || a.x - b.x);
   for (const t of texts) if (t.text.trim()) parts.push(t.text.trim());
   if (page.recognizedText?.trim()) parts.push(page.recognizedText.trim());
+  const objs = objectsText(page.objects);
+  if (objs) parts.push(objs);
   return parts.join('\n\n');
 }
 
@@ -164,6 +172,9 @@ export function exportMarkdown(note: NoteMeta, pages: PageInk[]): string {
     if (text) out.push(text, '');
     else if (page.strokes.length) out.push('_(handwriting not yet recognized)_', '');
     else out.push('_(blank)_', '');
+    // Links made on handwriting, so agents and Markdown readers see them too.
+    const inkLinks = liveInkLinks(page);
+    if (inkLinks.length) out.push(`Linked in handwriting: ${[...new Set(inkLinks.map((l) => `[[${l.target}]]`))].join(' · ')}`, '');
     out.push(`![Page ${i + 1}](pages/${page.id}.svg)`, '');
   });
   return out.join('\n');

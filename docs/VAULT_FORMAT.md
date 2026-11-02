@@ -20,6 +20,10 @@ reference implementation is `packages/core/src/codec.ts` + `vault.ts`.
   ai/memory.json                        assistant memory: instructions, facts, proposals
   ai/routines/<routineId>.json          routines (background agents) and their run state
   ai/activity/<runId>.json              AI activity log: what agents changed, for undo
+  templates/<templateId>/template.json  note templates (see "Templates")
+  templates/<templateId>/assets/<name>  files a template's pages use
+  ai/leases/routines.json               which always-on runner runs routines automatically
+  ai/approvals/<id>.json                actions an unattended agent is waiting for your OK on
 ```
 
 Rules
@@ -42,10 +46,14 @@ Rules
   "strokes": [
     { "id": "…", "pen": "fountain", "color": "#FF1B1F24", "size": 2.6, "createdAt": 1730000000000,
       "shape": "rectangle",                 // optional, when snapped to a shape
+      "input": "pen",                       // optional: pen | touch | mouse — how it was written in Inkstone
+      "origin": "ai",                       // optional: ai | solver | recognized | import — not handwriting
       "points": [[x, y, t, p?, tilt?, orient?], …] }   // t = ms since stroke start; p 0..1; radians
   ],
-  "texts":  [{ "id", "x", "y", "width", "text" /* Markdown */, "fontSize", "color", "font": "sans|serif|mono|hand", "createdAt" }],
-  "images": [{ "id", "x", "y", "width", "height", "asset", "rotation", "createdAt" }],
+  "texts":  [{ "id", "x", "y", "width", "text" /* Markdown */, "fontSize", "color", "font": "sans|serif|mono|hand", "createdAt", "origin?" }],
+  "images": [{ "id", "x", "y", "width", "height", "asset", "rotation", "createdAt", "origin?" }],
+  "objects": [ … ],                                                            // optional: tables, solved results, graphs (below)
+  "authorship": { "v": 1, "events": [ … ] },                                   // optional: hash chain (docs/AUTHORSHIP.md)
   "background": { "kind": "pdf|image", "asset": "file.pdf", "pageNumber": 1, "rotation": 90 },   // optional
   "paper": { … }, "size": { … },                                               // optional per-page overrides
   "recognizedText": "…", "recognizedAt": 0, "recognizedBy": "mlkit|gemini-2.5-flash|…",  // optional
@@ -67,6 +75,51 @@ without line anchors drop it. Readers that don't know it ignore it.
 Pens: `fountain | ballpoint | pencil | brush | marker | highlighter | dashed`. Missing pressure /
 tilt / orientation are omitted from the point array (or `-1` when a later field is present).
 
+`input` and `origin` (strokes, texts, images) say how content was made; see
+[AUTHORSHIP.md](AUTHORSHIP.md). Absent `origin` means made by the user in the app. Readers that
+don't know them ignore them; writers keep them when they rewrite an item.
+
+### Page objects (`objects`, "ink that does things")
+
+Live objects made from ink, drawn **under** the strokes (handwriting in a table cell sits on top of
+the grid). Every object has `id`, `type`, `x`, `y` (top-left, page units), `createdAt`, and an
+optional `origin`. Readers that don't know `objects` show the page without them (the ink is all
+still there); readers that don't know a `type` skip that object. Writers must keep objects they
+don't understand.
+
+```jsonc
+{ "type": "table", "id", "x", "y", "createdAt",
+  "cols": [120, 90, 90],                 // column widths, left to right
+  "rows": [32, 32, 32],                  // row heights, top to bottom
+  "cells": [[{ "text": "Item" }, {}, {}], [{ "recognized": "milk" }, {}, {}], …],   // [row][col]
+  "color": "#FF1B1F24", "lineWidth": 1.6, "header": true }
+
+{ "type": "math", "id", "x", "y", "createdAt",
+  "input": "2x + 3 = 7", "latex": "2x+3=7", "result": "x = 2", "steps": ["…"],
+  "fontSize": 22, "color": "#FF1B1F24", "source": ["<stroke ids>"], "origin": "solver|ai" }
+
+{ "type": "graph", "id", "x", "y", "createdAt", "width": 320, "height": 220,
+  "functions": [{ "expr": "x^2-4", "color": "#FF2F6FB5", "label": "y" }],
+  "view": { "xMin": -10, "xMax": 10, "yMin": -6, "yMax": 30 }, "origin": "solver" }
+```
+
+**Tables.** `cells` is always `rows.length × cols.length`. A cell's `text` is what was typed into
+it; `recognized` is what was read from the ink written in it (typed text wins when both exist).
+Ink written in a table is an ordinary stroke in `strokes`: it belongs to the cell that contains
+the centre of its bounds, and moves with that cell when rows or columns are inserted, removed or
+resized (`relayoutStrokes` in `packages/core/src/objects.ts`). Markdown and CSV exports use typed
+text, else recognized text.
+
+**Solved results** (`math`) are machine-made answers shown next to the handwriting they came
+from, in a handwriting-style font with a faint wash so they are never mistaken for the user's ink.
+`input` is plain ASCII maths. `origin` is `solver` when the device read and solved it, `ai` when
+an AI read the handwriting (the answer is still checked by the on-device solver when it can).
+
+**Graphs** plot each `expr` as y = f(x) over `view`. Expressions use the syntax in
+`packages/core/src/mathexpr.ts`: `+ - * / ^`, implicit multiplication (`2x`, `3sin(x)`),
+`sqrt abs exp ln log(=log10) sin cos tan asin acos atan sinh cosh tanh sec csc cot floor ceil`,
+`pi`, `e`, `|x|`, `n!`. Any tool can redraw them; SVG exports already include them.
+
 ## NoteMeta (`note.json`)
 
 ```jsonc
@@ -78,9 +131,13 @@ tilt / orientation are omitted from the point array (or `-1` when a later field 
   "createdAt", "updatedAt", "pinned": false, "color": "#AARRGGBB?",
   "recordings": [{ "id", "asset", "startedAt", "durationMs", "mimeType", "title?" }],
   "summary": "…?", "trashedAt": 0, "formatVersion": 2,
-  "forms": { "file.pdf": { "applicant.name": "Ada Lovelace", "agree": true, "color": "blue", "langs": ["en", "fr"] } }   // optional
+  "forms": { "file.pdf": { "applicant.name": "Ada Lovelace", "agree": true, "color": "blue", "langs": ["en", "fr"] } },   // optional
+  "certificate": { "asset": "authorship-1730000000000.json", "signedAt": 1730000000000 }   // optional, latest signed authorship certificate
 }
 ```
+
+`certificate` points at the note's latest signed authorship certificate in `assets/` (format in
+[AUTHORSHIP.md](AUTHORSHIP.md)).
 
 ### Transcripts and page summaries
 
@@ -143,6 +200,47 @@ Paper styles: `blank ruled_narrow ruled_wide dot_grid square_grid graph_mm isome
 planner_day planner_week todo`. Tints: `white ivory cream recycled kraft mint blush slate midnight`.
 Textures: `smooth standard toothy`.
 
+## Links, tags and daily notes
+
+- **Wiki links** are text: `[[Title]]`, `[[Title#Page 2]]`, `[[Title|alias]]`, `[[Folder/Title]]`,
+  `![[Title]]`, in a text box's Markdown or in `recognizedText`. Titles match case-insensitively
+  (whitespace collapsed, a `.md` suffix ignored); a `Folder/Title` path picks the note in that
+  notebook; ties go to the linking note's notebook, then the most recently edited note.
+  `packages/core/src/links.ts` is the reference.
+- **Links on handwriting** live on the page:
+
+  ```jsonc
+  "links": [{ "id", "strokeIds": ["…"], "target": "Title#Page 2", "noteId": "…?", "createdAt" }]
+  ```
+
+  The ink stays ink; the link rides on its strokes. `target` is a wiki-link target; `noteId` is the
+  note it resolved to when made (resolution prefers it, so renames never break it). A link whose
+  strokes are all erased is ignored. Sync merges `links` by id like texts and images.
+- **Inline tags.** `#tags` in typed text or recognized handwriting (Obsidian's rule: `#` after
+  whitespace or punctuation, letters/digits/`_`/`-`/`/`, at least one non-digit; not in links,
+  code or URLs) are added to `tags`. `inlineTags` remembers which ones came from the text, so
+  deleting the `#tag` removes it again without touching tags set by hand.
+- **Daily notes** carry `"daily": "YYYY-MM-DD"` (local day) and are titled with that day, in the
+  "Journal" notebook. `[[2026-11-02]]` opens (or starts) that day's note.
+- **`properties`** (optional object) holds front-matter properties imported from Markdown that
+  Inkstone has no field for; they are written back on Obsidian export (docs/OBSIDIAN.md).
+- Renaming a note in the app rewrites `[[Old title…]]` links (and ink link targets) in the notes
+  that pointed to it. Other writers should do the same or leave links to resolve by `noteId`.
+
+## Templates (`templates/<id>/template.json`)
+
+```jsonc
+{ "id", "name", "kind": "paged|board", "paper": { … }, "pageSize": { … }, "tags": ["…"],
+  "pages": [ /* PageInk without recognition results; ids are placeholders */ ],
+  "createdAt", "updatedAt", "formatVersion": 2 }
+```
+
+A note made from a template gets fresh ids for itself, its pages and every item (ink links are
+remapped to the new stroke ids), and `{{date}}`, `{{date:FORMAT}}`, `{{time}}`, `{{title}}`,
+`{{weekday}}`, `{{yesterday}}`, `{{tomorrow}}` in typed text are filled in (Moment-style formats,
+as in Obsidian). Files used by the template's pages are under `templates/<id>/assets/` and are
+copied into the new note.
+
 ## NotebookMeta (`notebook.json`)
 
 `{ "id", "name", "color", "parentId?", "createdAt", "formatVersion" }` — notebooks nest via `parentId`.
@@ -151,7 +249,8 @@ Textures: `smooth standard toothy`.
 
 Sync engines (Google Drive, WebDAV, local folder) mirror this tree file-for-file. Conflicts on
 `*.ink.json` and `note.json` are merged three-way against the last-synced base: strokes/texts/
-images are unioned by id with deletions honoured from either side; scalar metadata takes the most
+images/objects are unioned by id with deletions honoured from either side; authorship chain events
+are unioned and ordered by time; scalar metadata takes the most
 recent `updatedAt`. `forms` merges per PDF and per field (filling different fields on two devices
 keeps both; the newer note wins a field both changed). Transcripts merge too: within the same `run`,
 segments are unioned by id (one-sided edits and deletions honoured, the newer file wins a segment
@@ -202,7 +301,34 @@ and wait for the user.
 ```
 
 Times are the device's local time. A routine runs while Inkstone is open; a slot missed while it
-was closed runs once on the next open (`slots` records it so no device repeats it).
+was closed runs once on the next open (`slots` records it so no device repeats it). The always-on
+runner (`inkstone-agent run`, see docs/AGENTS.md) runs the same routines from a computer.
+
+**Routines lease** — `ai/leases/routines.json`, written by an always-on runner while it runs:
+
+```jsonc
+{ "holder": "runner:<host>:<pid>:<random>", "label": "The Inkstone agent on <host>",
+  "kind": "runner", "acquiredAt", "renewedAt", "expiresAt" }
+```
+
+While `expiresAt` is in the future, only the holder acts on automatic triggers (times, dates,
+note saves, recordings); the app and other runners leave them to it ("Run now" always runs where
+it is pressed). The holder renews it every minute (10-minute lifetime) and deletes it when it stops,
+so the app takes over at once — or after expiry if the computer went to sleep. A missing or
+unreadable file means no lease.
+
+**Pending approvals** — `ai/approvals/<id>.json`, actions an unattended agent (a routine run by the
+runner, or through an MCP client that can't ask mid-call) wanted to take but that need a person's
+OK, such as moving a note to Trash:
+
+```jsonc
+{ "id", "tool": "trash_note", "args": { "note_id": "…" }, "title": "Move “…” to Trash",
+  "detail?", "source": "<routine or agent name>", "routineId?", "createdAt",
+  "status": "pending|approved|denied|failed|expired", "decidedAt?", "decidedBy?", "outcome?" }
+```
+
+Approving runs exactly the recorded call (logged as its own Activity run, so it can be undone);
+pending approvals older than seven days read as `expired`.
 
 **Activity** — `ai/activity/<runId>.json`, one run per assistant turn, routine run or external
 agent connection (the MCP server writes these too):
@@ -218,5 +344,7 @@ Op kinds and how undo reverses them: `note_created {noteId, title}` → move to 
 addedPage?}` → remove that text box (and the page, if it was added and is now empty);
 `meta_changed {noteId, before, after}` (fields `title`, `tags`, `notebookId` (null = unfiled),
 `pinned`, `summary` (null = none)) → put back each field that still has the `after` value;
-`notebook_created {notebookId, name}` → delete it if still empty; `external {server, detail?}` —
+`notebook_created {notebookId, name}` → delete it if still empty; `handwriting_recognized {noteId,
+pageId, text}` (the MCP server's `transcribe_pages`) → clear the page's recognized text if it is
+still that text; `external {server, detail?}` —
 a change in a connected app, listed only. The newest 300 runs are kept.

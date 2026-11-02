@@ -20,8 +20,12 @@ import { chooseSyncFolder, folderSyncSupported, resetSyncEngines, syncNow, useSy
 import { saveFile, pickFiles } from '../platform/files.ts';
 import { importFiles } from '../lib/actions.ts';
 import { BrandMark } from '../ui/Brand.tsx';
+import { Fingerprint } from 'lucide-react';
+import { AuthorshipSection } from '../authorship/AuthorshipSection.tsx';
 import { AgentSettings } from '../ui/agent/AgentSettings.tsx';
 import { SpeechSettings } from '../ui/SpeechSettings.tsx';
+import { Waypoints } from 'lucide-react';
+import { KnowledgeSettings } from '../ui/knowledge/KnowledgeSettings.tsx';
 import { LocalAISettings } from '../ui/LocalAISettings.tsx';
 
 const SECTIONS = [
@@ -31,7 +35,9 @@ const SECTIONS = [
   { id: 'ai', label: 'AI', icon: <Bot size={17} /> },
   { id: 'sync', label: 'Account & sync', icon: <Cloud size={17} /> },
   { id: 'agents', label: 'Agents (MCP)', icon: <Plug size={17} /> },
+  { id: 'authorship', label: 'Authorship', icon: <Fingerprint size={17} /> },
   { id: 'appearance', label: 'Appearance & paper', icon: <Palette size={17} /> },
+  { id: 'knowledge', label: 'Notes, links & Obsidian', icon: <Waypoints size={17} /> },
   { id: 'about', label: 'About', icon: <Info size={17} /> },
 ] as const;
 
@@ -71,7 +77,9 @@ export function Settings({ section }: { section?: string }) {
             {active === 'ai' && <AISection />}
             {active === 'sync' && <SyncSection />}
             {active === 'agents' && <AgentsSection />}
+            {active === 'authorship' && <AuthorshipSection />}
             {active === 'appearance' && <AppearanceSection />}
+            {active === 'knowledge' && <KnowledgeSettings />}
             {active === 'about' && <AboutSection />}
           </main>
         )}
@@ -138,6 +146,7 @@ function InputSection() {
         <Switch label="Scribble to erase" hint="Scratch back and forth over ink to delete it" checked={s.input.scratchToErase} onChange={(v) => setInput({ scratchToErase: v })} />
         {isNative && nativePlatform === 'android' && <Switch label="Instant ink" hint="The newest part of each stroke is drawn natively, straight to the screen, so ink keeps up with the nib. Turn off if the tip ever looks offset." checked={s.input.instantInk} onChange={(v) => setInput({ instantInk: v })} />}
         <Switch label="Hold to perfect shapes" hint="Pause at the end of a line, circle, box or triangle to snap it" checked={s.input.holdToShape} onChange={(v) => setInput({ holdToShape: v })} />
+        <Switch label="Smart ink suggestions" hint="After a pause, offer to turn a drawn grid into a table, solve “… =”, or add a circled date to your calendar" checked={s.smartInk.suggestions} onChange={(v) => s.update(() => ({ smartInk: { suggestions: v } }))} />
       </Group>
       <Group title="Keyboard shortcuts">
         <dl className="shortcuts">

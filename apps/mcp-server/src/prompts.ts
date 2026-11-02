@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { GetPromptResult } from '@modelcontextprotocol/sdk/types.js';
+import type { GetPromptResult } from '@modelcontextprotocol/server';
 import { requireId, type ServerContext } from './context.ts';
 import { noteMarkdown, recentNotesMarkdown } from './tools.ts';
 

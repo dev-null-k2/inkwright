@@ -52,8 +52,9 @@ export async function renameNote(id: string) {
   if (!v || !n) return;
   const title = await askText('Rename note', 'Title', n.title, 'Rename');
   if (!title) return;
-  await v.vault.updateNote(id, (x) => ({ ...x, title }));
-  await after(id);
+  // Links to the note ([[Old title]]) are rewritten to the new title.
+  const { renameNoteKeepingLinks } = await import('./knowledge.ts');
+  await renameNoteKeepingLinks(id, title);
 }
 
 export async function togglePin(id: string) {
@@ -167,6 +168,9 @@ export async function importFiles(files: File[], notebookId?: string): Promise<s
         const id = await importText(await readText(f), f.name.replace(/\.(txt|md|markdown|text)$/i, ''), notebookId);
         first ??= id;
       } else if (kind === 'backup') {
+        // A zip of Markdown notes (an Obsidian vault) is imported as notes, not restored as a backup.
+        const md = await import('./obsidian.ts');
+        if (await md.isMarkdownVaultZip(f)) { await md.importMarkdownVault([f]); continue; }
         await importBackup(f);
       } else app().fail(`${f.name} isn't a PDF, image, text file or Inkstone backup.`);
     } catch (e) {

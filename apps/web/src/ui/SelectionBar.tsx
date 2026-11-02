@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react';
-import { Copy, CopyPlus, Link2, Palette, Pencil, Scissors, Sparkles, Trash2, Type } from 'lucide-react';
+import { Copy, CopyPlus, Link2, Link2Off, Palette, Pencil, Scissors, Sparkles, Trash2, Type } from 'lucide-react';
 import type { SelectionInfo } from '../canvas/engine.ts';
 import { INK_PALETTE } from '../state/settings.ts';
 import { Popover, cx } from './primitives.tsx';
 
-export function SelectionBar({ sel, onDelete, onDuplicate, onCopy, onCut, onRecolor, onAsk, onConvert, onEditText, aiReady, links = [], onOpenLink }: {
+export function SelectionBar({ sel, onDelete, onDuplicate, onCopy, onCut, onRecolor, onAsk, onConvert, onEditText, aiReady, links = [], onOpenLink, onLink, onUnlink, extra }: {
   sel: SelectionInfo;
   onDelete: () => void;
   onDuplicate: () => void;
@@ -18,6 +18,12 @@ export function SelectionBar({ sel, onDelete, onDuplicate, onCopy, onCut, onReco
   /** [[Wiki links]] found in selected text; tapping opens (or creates) that note. */
   links?: string[];
   onOpenLink?: (title: string) => void;
+  /** Turn the selected ink into a link to a note ("Link to note…"). */
+  onLink?: () => void;
+  /** Remove the links riding on the selected ink. */
+  onUnlink?: () => void;
+  /** More actions for the selection (smart ink: Solve, Dates & links, Table). */
+  extra?: React.ReactNode;
 }) {
   const [colors, setColors] = useState(false);
   const colorBtn = useRef<HTMLButtonElement>(null);
@@ -32,6 +38,9 @@ export function SelectionBar({ sel, onDelete, onDuplicate, onCopy, onCut, onReco
         {sel.texts === 1 && sel.count === 1 && onEditText && <button type="button" className="sel-btn" onClick={onEditText}><Pencil size={16} /><span>Edit</span></button>}
         {links.slice(0, 2).map((l) => <button key={l} type="button" className="sel-btn" onClick={() => onOpenLink?.(l)} title={`Open “${l}”`}><Link2 size={16} /><span>{l.length > 18 ? l.slice(0, 17) + '…' : l}</span></button>)}
         {sel.strokes > 0 && <button type="button" className="sel-btn" onClick={onConvert} title="Turn handwriting into typed text"><Type size={16} /><span>To text</span></button>}
+        {onLink && <button type="button" className="sel-btn" onClick={onLink} title="Link to note…"><Link2 size={16} /><span>Link</span></button>}
+        {onUnlink && <button type="button" className="sel-icon" aria-label="Remove link" title="Remove link" onClick={onUnlink}><Link2Off size={17} /></button>}
+        {extra}
         <button type="button" className={cx('sel-btn', !aiReady && 'is-dim')} onClick={onAsk} title="Ask AI about this"><Sparkles size={16} /><span>Ask AI</span></button>
         <span className="sel-sep" />
         <button ref={colorBtn} type="button" className="sel-icon" aria-label="Change colour" onClick={() => setColors(true)}><Palette size={17} /></button>
