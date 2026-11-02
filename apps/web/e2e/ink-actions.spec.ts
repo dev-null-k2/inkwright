@@ -328,11 +328,18 @@ test.describe('reading and read aloud', () => {
       ]);
     });
     await typeBox(page, 'Typed in the middle.', 60, 160, 300);
+    // Record which ink is picked out as each piece is read (the search highlight).
+    await page.evaluate(() => {
+      const e = (window as any).__inkstone.engine;
+      const orig = e.focusStrokes.bind(e);
+      (window as any).__focus = [];
+      e.focusStrokes = (i: number, ids: string[] | null, ms?: number) => { (window as any).__focus.push(ids); return orig(i, ids, ms); };
+    });
     await moreMenu(page, 'Read aloud');
     const bar = page.getByRole('region', { name: 'Reading aloud' });
     await expect(bar).toBeVisible();
-    await expect.poll(() => page.evaluate(() => (window as any).__inkstone.engine.focusedStrokes)).toEqual(['w2']);
     await expect.poll(() => page.evaluate(() => (window as any).__said)).toEqual(['top line', 'Typed in the middle.', 'bottom line']);
+    await expect.poll(() => page.evaluate(() => (window as any).__focus)).toEqual([['w2'], ['w1']]);
     await expect(bar).toHaveCount(0);
     // Reading view: arrow keys move the focused line.
     await moreMenu(page, 'Reading view');

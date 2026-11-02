@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import {
+  STICKY_COLORS,
   describeValue,
   extractGraph,
   isLocalOp,
@@ -164,7 +165,7 @@ export async function keepResults(vault: AppVault, doc: NoteDocument): Promise<n
       objects.push(dataTableObject({ columns: v.columns, rows: v.rows, x, y, origin: 'solver', data: { asset: '', table: 'result', rowCount: v.rows.length, columns: v.columns.map((name) => ({ name, type: 'text' })) }, maxRows: 6, maxCols: 4 }));
     } else {
       const text = describeValue(v).slice(0, 400);
-      const sticky: StickyObject = { id: newId(), type: 'sticky', x, y, width: 180, height: Math.min(220, 60 + Math.ceil(text.length / 24) * 16), color: '#FFC9EBC3', text, createdAt: Date.now(), origin };
+      const sticky: StickyObject = { id: newId(), type: 'sticky', x, y, width: 180, height: Math.min(220, 60 + Math.ceil(text.length / 24) * 16), color: STICKY_COLORS[2], text, createdAt: Date.now(), origin };
       objects.push(sticky);
     }
   }

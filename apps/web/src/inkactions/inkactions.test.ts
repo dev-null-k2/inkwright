@@ -41,6 +41,9 @@ describe('data sandbox engines', () => {
     const r = await engine.query(`SELECT region, sum(amount) AS total, sum(paid) AS paid FROM ${d.name} GROUP BY region ORDER BY total DESC`);
     expect(r).toEqual({ columns: ['region', 'total', 'paid'], rows: [['North', 17.5, 2], ['South', 5, 0]] });
     await expect(engine.query('SELECT nope FROM sales_2024')).rejects.toThrow(/no such column/);
+    // Switching notes drops the previous note's tables: they can't be queried from another note.
+    await engine.drop(d.name);
+    await expect(engine.query(`SELECT * FROM ${d.name}`)).rejects.toThrow(/no such table/);
     await engine.close();
   });
   it('feeds real engine errors back through the repair loop', async () => {
