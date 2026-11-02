@@ -113,7 +113,11 @@ const info = (n: NoteMeta): NoteInfo => ({ id: n.id, title: n.title, tags: n.tag
  * written to the vault and synced.
  */
 export class AppNoteToolHost implements NoteToolHost {
-  constructor(private vault: AppVault, private open: NoteDocument | null) {}
+  /**
+   * `origin` marks the text it writes for proof of authorship: 'ai' for the assistant, 'import'
+   * for plugins, links from other apps and the automation API (not handwriting, not AI).
+   */
+  constructor(private vault: AppVault, private open: NoteDocument | null, private origin: 'ai' | 'import' = 'ai') {}
 
   private async pagesOf(n: NoteMeta): Promise<PageInk[]> {
     // Locked notes stay away from the assistant, even while open.
@@ -163,7 +167,7 @@ export class AppNoteToolHost implements NoteToolHost {
   async createNote(args: { title: string; text: string; notebookId?: string; tags?: string[] }): Promise<NoteInfo> {
     const s = useSettings.getState();
     const { note, pages } = await this.vault.vault.createNote({ title: args.title, notebookId: args.notebookId, tags: args.tags, paper: s.defaultPaper, pageSize: s.defaultPageSize });
-    const box = textBox(64, 80, (note.pageSize.width || 794) - 128, args.text);
+    const box = textBox(64, 80, (note.pageSize.width || 794) - 128, args.text, this.origin);
     const page = { ...pages[0]!, texts: [box] };
     await this.vault.vault.saveNote(note, [page]);
     this.vault.indexNote(note, [page]);
@@ -182,7 +186,7 @@ export class AppNoteToolHost implements NoteToolHost {
     const b = contentBounds(page);
     const width = (pageSizeOf(n, page).width || 794) - 128;
     const y = Number.isFinite(b.maxY) ? b.maxY + 24 : 80;
-    const box = textBox(64, y, width, text);
+    const box = textBox(64, y, width, text, this.origin);
     if (this.open && this.open.meta.id === noteId) {
       this.open.upsertText(i, box, 'AI added text');
     } else {
@@ -241,8 +245,8 @@ function clean(p: NotePatch): Partial<NoteMeta> {
   return out;
 }
 
-function textBox(x: number, y: number, width: number, text: string): TextBox {
-  return { id: newId(), x, y, width, text, fontSize: 16, color: '#FF1B1F24', font: 'sans', createdAt: Date.now(), origin: 'ai' };
+function textBox(x: number, y: number, width: number, text: string, origin: 'ai' | 'import' = 'ai'): TextBox {
+  return { id: newId(), x, y, width, text, fontSize: 16, color: '#FF1B1F24', font: 'sans', createdAt: Date.now(), origin };
 }
 
 export { textBoxHeight };

@@ -1,0 +1,24 @@
+{
+  "$schema": "../../../packages/plugin-api/manifest.schema.json",
+  "id": "app.inkstone.examples.webhook",
+  "name": "Send selection to a webhook",
+  "version": "1.0.0",
+  "author": "Inkstone",
+  "description": "Sends the selected text (typed or recognized handwriting) with the note's title to a webhook you choose — Zapier, Make, n8n, Slack, Discord or your own server.",
+  "entry": "main.js",
+  "minAppVersion": "1.0.0",
+  "apiVersion": 1,
+  "permissions": ["editor:read", "network"],
+  "network": { "hosts": ["*"] },
+  "activation": "onUse",
+  "contributes": {
+    "commands": [
+      { "id": "send", "title": "Send selection to webhook", "keywords": "zapier slack discord n8n make post share", "context": "editor" }
+    ],
+    "settings": [
+      { "key": "url", "type": "string", "title": "Webhook URL", "description": "An https address that accepts a JSON POST." },
+      { "key": "format", "type": "string", "title": "Format", "description": "\"json\" (default) sends {title, text, noteId, page, sentAt}; \"slack\" sends {text} for Slack and Discord-compatible hooks.", "default": "json" },
+      { "key": "authorization", "type": "string", "title": "Authorization header (optional)", "secret": true }
+    ]
+  }
+}

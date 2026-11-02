@@ -419,8 +419,21 @@ export function attachMemory(vault: AppVault): AppMemory {
   s.indexNote = (note, pages) => { indexNote(note, pages); m.update(note, pages); };
   s.remove = (id) => { remove(id); m.remove(id); };
   s.clear = () => { clear(); m.clear(); };
+  detach = () => { s.indexNote = indexNote; s.remove = remove; s.clear = clear; };
   memory = m;
   return m;
+}
+
+let detach: (() => void) | null = null;
+
+/**
+ * Undoes `attachMemory` (Settings › Modules switched search-everything off): the keyword index
+ * goes back to its own methods and the passage index is dropped from memory.
+ */
+export function detachMemory(): void {
+  detach?.();
+  detach = null;
+  memory = null;
 }
 
 export function appMemory(): AppMemory | null {

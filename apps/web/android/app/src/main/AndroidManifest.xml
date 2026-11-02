@@ -76,6 +76,18 @@
                 <data android:mimeType="text/plain" />
                 <data android:mimeType="text/markdown" />
             </intent-filter>
+            <!--
+              Deep links (docs/API.md § Links): inkstone://new?title=…&text=…, inkstone://open?note=…,
+              inkstone://search?q=…, inkstone://capture?url=… — for Shortcuts-style automation
+              (Tasker, launchers, other apps). Capacitor's App plugin passes them to the web layer
+              as appUrlOpen (developer/deeplinks.ts).
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="inkstone" />
+            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <action android:name="android.intent.action.SEND_MULTIPLE" />

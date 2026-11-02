@@ -134,6 +134,17 @@ export function startAgents(vault: AppVault): Promise<void> {
   return starting;
 }
 
+/**
+ * Stops automatic routine runs (Settings › Modules turned the assistant off). A routine that is
+ * running finishes; nothing new starts until `startAgents` runs again.
+ */
+export function stopAgents(): void {
+  scheduler?.stop();
+  scheduler = null;
+  starting = null;
+  useAgent.setState({ runningRoutine: null, queuedRoutines: [] });
+}
+
 async function start(vault: AppVault): Promise<void> {
   const hub = requireHub();
   const recordings = new Map<string, number>();
@@ -153,7 +164,7 @@ async function start(vault: AppVault): Promise<void> {
   });
   scheduler.onStatus = () => useAgent.setState({ runningRoutine: scheduler!.runningId, queuedRoutines: scheduler!.queued });
   vault.vault.onChange((c) => {
-    if (c.type !== 'note') return;
+    if (c.type !== 'note' || !scheduler) return;
     void vault.vault.readNote(c.noteId).then((n) => {
       if (!n || n.trashedAt != null || !scheduler) return;
       const count = n.recordings?.length ?? 0;
@@ -166,5 +177,5 @@ async function start(vault: AppVault): Promise<void> {
   });
   void startConnectedApps().catch((e) => console.warn('connected apps failed to start', e));
   await new Promise((r) => setTimeout(r, 2500));
-  await scheduler.start();
+  await scheduler?.start();
 }

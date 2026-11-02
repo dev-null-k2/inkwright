@@ -27,6 +27,11 @@ import { SpeechSettings } from '../ui/SpeechSettings.tsx';
 import { Waypoints } from 'lucide-react';
 import { KnowledgeSettings } from '../ui/knowledge/KnowledgeSettings.tsx';
 import { LocalAISettings } from '../ui/LocalAISettings.tsx';
+import { Blocks, Code2, Puzzle } from 'lucide-react';
+import { ModulesSettings } from '../modules/ModulesSettings.tsx';
+import { PluginsSettings } from '../plugins/PluginsSettings.tsx';
+import { DeveloperSettings } from '../developer/DeveloperSettings.tsx';
+import { contributionOn, isModuleOn, useModules } from '../modules/registry.ts';
 
 const SECTIONS = [
   { id: 'writing', label: 'Writing feel', icon: <Vibrate size={17} /> },
@@ -38,6 +43,9 @@ const SECTIONS = [
   { id: 'authorship', label: 'Authorship', icon: <Fingerprint size={17} /> },
   { id: 'appearance', label: 'Appearance & paper', icon: <Palette size={17} /> },
   { id: 'knowledge', label: 'Notes, links & Obsidian', icon: <Waypoints size={17} /> },
+  { id: 'modules', label: 'Modules', icon: <Blocks size={17} /> },
+  { id: 'plugins', label: 'Plugins', icon: <Puzzle size={17} /> },
+  { id: 'developer', label: 'Developer', icon: <Code2 size={17} /> },
   { id: 'about', label: 'About', icon: <Info size={17} /> },
 ] as const;
 
@@ -46,7 +54,10 @@ export function Settings({ section }: { section?: string }) {
   const wide = useMediaQuery('(min-width: 900px)');
   const [active, setActive] = useState(section ?? (wide ? 'writing' : ''));
   useEffect(() => { if (section) setActive(section); }, [section]);
-  const current = SECTIONS.find((s) => s.id === active);
+  // Sections owned by a switched-off module (Settings › Modules) are hidden.
+  const mods = useModules((m) => m.enabled);
+  const sections = SECTIONS.filter((s) => contributionOn('settingsSections', s.id, mods));
+  const current = sections.find((s) => s.id === active);
 
   const back = () => {
     if (!wide && active) setActive('');
@@ -62,7 +73,7 @@ export function Settings({ section }: { section?: string }) {
       <div className="set-body">
         {(wide || !active) && (
           <nav className="set-nav" aria-label="Settings sections">
-            {SECTIONS.map((s) => (
+            {sections.map((s) => (
               <button key={s.id} type="button" className={cx('nav-item', active === s.id && 'is-on')} onClick={() => setActive(s.id)}>
                 <span className="nav-icon">{s.icon}</span><span className="nav-label">{s.label}</span>
               </button>
@@ -77,9 +88,12 @@ export function Settings({ section }: { section?: string }) {
             {active === 'ai' && <AISection />}
             {active === 'sync' && <SyncSection />}
             {active === 'agents' && <AgentsSection />}
-            {active === 'authorship' && <AuthorshipSection />}
+            {active === 'authorship' && current && <AuthorshipSection />}
             {active === 'appearance' && <AppearanceSection />}
-            {active === 'knowledge' && <KnowledgeSettings />}
+            {active === 'knowledge' && current && <KnowledgeSettings />}
+            {active === 'modules' && <ModulesSettings />}
+            {active === 'plugins' && current && <PluginsSettings />}
+            {active === 'developer' && current && <DeveloperSettings />}
             {active === 'about' && <AboutSection />}
           </main>
         )}
@@ -201,7 +215,7 @@ function AISection() {
   const builtin = hasBuiltinClaude();
   return (
     <>
-      <LocalAISettings />
+      {isModuleOn('local-ai') && <LocalAISettings />}
       <SpeechSettings />
       <Group title="Your AI providers" note={isArtifact
         ? 'This live preview runs inside claude.ai, which only lets it talk to Claude. Keys for other providers work in the installed app and on the web version.'
@@ -224,7 +238,7 @@ function AISection() {
       <Group title="Safety">
         <Switch label="Ask before the assistant deletes or moves notes" checked={s.ai.confirmDestructive} onChange={(v) => s.update((x) => ({ ai: { ...x.ai, confirmDestructive: v } }))} />
       </Group>
-      <AgentSettings />
+      {isModuleOn('assistant') && <AgentSettings />}
     </>
   );
 }
@@ -462,7 +476,7 @@ function AppearanceSection() {
   return (
     <>
       <Group title="Theme">
-        <PalettePicker value={s.palette ?? 'duan'} onChange={(v) => s.update(() => ({ palette: v }))} />
+        {isModuleOn('themes') && <PalettePicker value={s.palette ?? 'duan'} onChange={(v) => s.update(() => ({ palette: v }))} />}
         <Segmented label="Light or dark" value={s.theme} onChange={(v) => s.update(() => ({ theme: v }))} options={[
           { value: 'system', label: 'Match device' }, { value: 'light', label: 'Day' }, { value: 'dark', label: 'Night' },
         ]} />
