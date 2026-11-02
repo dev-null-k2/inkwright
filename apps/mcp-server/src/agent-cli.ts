@@ -23,7 +23,7 @@ import { createContext } from './context.ts';
 import { applyServerRetention, logPolicy, trustedAI } from './trust.ts';
 import { RoutineRunner } from './runner/runner.ts';
 import { currentPlatform, decodeServiceContent, serviceFile, type ServicePlatform } from './runner/services.ts';
-import { aiFromOptions, serveHttp } from './serve.ts';
+import { aiFromOptionsAsync, featuresFromOptions, serveHttp } from './serve.ts';
 import { VERSION } from './version.ts';
 
 export const AGENT_USAGE = `inkwright-agent — runs your Inkwright routines on this computer, even when the app is closed
@@ -152,11 +152,11 @@ function needVault(o: CliOptions): string {
 
 async function run(c: AgentCommand): Promise<void> {
   const log = makeLog(c.logFile);
-  const ctx = await createContext({ root: needVault(c.options), readOnly: c.options.readOnly, watch: c.options.watch, ...(c.options.policyFile ? { managedPolicyFile: c.options.policyFile } : {}), ...(c.options.auditKey ? { auditKeyFile: c.options.auditKey } : {}) });
+  const ctx = await createContext({ root: needVault(c.options), readOnly: c.options.readOnly, watch: c.options.watch, features: await featuresFromOptions(c.options, log), ...(c.options.policyFile ? { managedPolicyFile: c.options.policyFile } : {}), ...(c.options.auditKey ? { auditKeyFile: c.options.auditKey } : {}) });
   logPolicy(ctx, log);
   if (!ctx.readOnly) void applyServerRetention(ctx).catch((e) => log(`Retention: ${(e as Error).message}`));
   // The runner's AI goes through the trust layer (routing, privacy firewall, meter, audit).
-  const ai = trustedAI(aiFromOptions(c.options, log), ctx.trust);
+  const ai = trustedAI(await aiFromOptionsAsync(c.options, log), ctx.trust);
   if (!ai) log('No AI configured: routines will be logged as failed until you add --ai-provider (see docs/AGENTS.md).');
   const runner = new RoutineRunner({ ctx, ai, log, tickMs: c.tickMs, watch: c.options.watch });
   let http: Awaited<ReturnType<typeof serveHttp>> | null = null;
@@ -169,6 +169,7 @@ async function run(c: AgentCommand): Promise<void> {
     stopping = true;
     log('Stopping; handing routines back to the app.');
     await runner.stop();
+    ai?.close?.();
     if (http) {
       http.services.tasks.close();
       await http.services.activity.flush();

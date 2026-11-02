@@ -371,6 +371,16 @@ describe('limits and CORS', () => {
   });
 });
 
+describe('team search routes (off on this server)', () => {
+  it('are documented, answer 404 without a team file, and need their own scope', async () => {
+    expect((await call('GET', '/federated/search?q=launch', { key: keys.reader })).status).toBe(403);
+    const off = await call('GET', '/federated/search?q=launch', { key: 'server-token' });
+    expect(off.status).toBe(404);
+    expect(off.body.detail).toMatch(/--team/);
+    expect((await call('GET', '/federated/team-search?q=launch', { key: keys.reader })).status).toBe(404);
+  });
+});
+
 describe('keys CLI', () => {
   it('creates, lists and revokes keys in the vault', async () => {
     let out = '';
