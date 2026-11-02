@@ -123,8 +123,14 @@ async function findDatedNotes(vault: AppVault, keyword: string): Promise<DatedNo
  * Starts routines and connected apps once the vault is open. Note saves by the user (not by an
  * agent) and new recordings are watched through vault change events.
  */
-export async function startAgents(vault: AppVault): Promise<void> {
-  if (scheduler) return;
+let starting: Promise<void> | null = null;
+
+export function startAgents(vault: AppVault): Promise<void> {
+  starting ??= start(vault);
+  return starting;
+}
+
+async function start(vault: AppVault): Promise<void> {
   const hub = requireHub();
   const recordings = new Map<string, number>();
   for (const n of await vault.listNotes(true)) recordings.set(n.id, n.recordings?.length ?? 0);

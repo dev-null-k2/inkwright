@@ -16,6 +16,7 @@ import {
   OAuthError,
   ProtocolError,
   SdkError,
+  SdkErrorCode,
   StreamableHTTPClientTransport,
   UnauthorizedError,
   type AuthProvider,
@@ -133,8 +134,7 @@ export async function explainMcpError(e: unknown, url: string, probe?: (url: str
   if (UnauthorizedError.isInstance(e)) return new McpConnectionError('auth', `Sign in to ${host(url)} to use it.`, 401, { cause: e });
   if (e instanceof InsufficientScopeError) return new McpConnectionError('scope', `${host(url)} needs more permissions${e.requiredScope ? ` (${e.requiredScope})` : ''}. Sign in again to grant them.`, 403, { cause: e });
   if (e instanceof OAuthError) return new McpConnectionError('auth', `Sign-in with ${host(url)} failed: ${e.message}`, undefined, { cause: e });
-  const root = (e as { cause?: unknown })?.cause ?? e;
-  if (root instanceof TypeError || (e instanceof TypeError)) {
+  if (isFetchFailure(e)) {
     const reachable = probe ? await probe(url).catch(() => false) : false;
     return reachable
       ? new McpConnectionError('cors', `${host(url)} answered, but it doesn’t allow web apps to connect to it (the browser blocked the response: CORS). This is a setting on that server — ask its provider to allow browser clients, or use a server that does.`, undefined, { cause: e })
@@ -146,8 +146,29 @@ export async function explainMcpError(e: unknown, url: string, probe?: (url: str
   if (status === 404 || status === 405) return new McpConnectionError('http', `There’s no MCP server at this address (${status}). Check the URL — it often ends in /mcp.`, status, { cause: e });
   if (status && status >= 500) return new McpConnectionError('http', `${host(url)} had a problem (${status}). Try again later.`, status, { cause: e });
   if (e instanceof ProtocolError) return new McpConnectionError('protocol', `${host(url)} reported an error: ${e.message}`, undefined, { cause: e });
-  if (e instanceof SdkError) return new McpConnectionError('protocol', `Couldn’t talk to ${host(url)}: ${e.message}`, status, { cause: e });
+  if (e instanceof SdkError) {
+    // Negotiation and validation failures carry schema dumps; say what they mean instead.
+    const garbled = e.code === SdkErrorCode.EraNegotiationFailed || e.code === SdkErrorCode.InvalidResult || e.message.length > 200;
+    return new McpConnectionError('protocol', garbled ? `${host(url)} didn’t answer like an MCP server. Check the address — it often ends in /mcp.` : `Couldn’t talk to ${host(url)}: ${e.message}`, status, { cause: e });
+  }
   return new McpConnectionError('other', (e as Error)?.message ?? String(e), status, { cause: e });
+}
+
+const FETCH_FAILED = /failed to fetch|networkerror|load failed|fetch failed|network request failed/i;
+
+/**
+ * Whether the browser's fetch itself failed (blocked by CORS, offline, DNS). The SDK wraps such
+ * failures (negotiation probe, transport) in its own errors, so the cause chain is searched.
+ */
+export function isFetchFailure(e: unknown, depth = 0): boolean {
+  if (!e || depth > 5) return false;
+  if (Array.isArray(e)) return e.some((x) => isFetchFailure(x, depth + 1));
+  if (typeof e !== 'object') return false;
+  const o = e as { name?: string; message?: string; cause?: unknown; errors?: unknown; data?: { cause?: unknown } };
+  if (e instanceof TypeError || o.name === 'TypeError') return true;
+  if (UnauthorizedError.isInstance(e) || e instanceof OAuthError || statusOf(e)) return false;
+  if (typeof o.message === 'string' && FETCH_FAILED.test(o.message)) return true;
+  return isFetchFailure(o.cause, depth + 1) || isFetchFailure(o.errors, depth + 1) || isFetchFailure(o.data?.cause, depth + 1);
 }
 
 /** A no-cors request: resolves true when the server answered at all (opaque response). */
