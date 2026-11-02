@@ -40,6 +40,12 @@ async function openAISettings(page: Page) {
 }
 
 test('model downloads show their size, survive an interruption and resume where they stopped', async ({ page }) => {
+  // Resuming needs OPFS. Playwright's WebKit runs ephemeral sessions, where WebKit refuses OPFS
+  // (like Safari private windows); the app then downloads through transformers.js's cache instead.
+  test.skip(test.info().project.name.startsWith('webkit'), 'OPFS is unavailable in WebKit ephemeral sessions');
+  // In Firefox the download requests the AI worker makes were not intercepted by page.route here
+  // (the progress stayed at 0 B), so the mocked interruption cannot be staged.
+  test.skip(test.info().project.name.startsWith('firefox'), 'worker fetches are not routed in Firefox');
   // A stand-in for the Hugging Face repository: small files, and the weights cut off half-way the
   // first time (like a dropped connection). The second attempt must ask only for the rest.
   const weights = Buffer.alloc(3_000_000, 7);

@@ -16,6 +16,7 @@ import app.inkstone.feel.NativePaperFeel
 import app.inkstone.ink.NativeInkTip
 import app.inkstone.input.StylusButtonEvent
 import app.inkstone.input.StylusKeyFilter
+import app.inkstone.webview.RendererRecovery
 import com.getcapacitor.BridgeActivity
 import ee.forgr.capacitor.social.login.GoogleProvider
 import ee.forgr.capacitor.social.login.ModifiedMainActivityForSocialLoginPlugin
@@ -41,6 +42,8 @@ class MainActivity : BridgeActivity(), ModifiedMainActivityForSocialLoginPlugin 
     override fun onCreate(savedInstanceState: Bundle?) {
         registerPlugin(InkstoneNativePlugin::class.java)
         super.onCreate(savedInstanceState)
+        // A lost WebView renderer recreates the activity instead of crashing the app.
+        bridge?.addWebViewListener(RendererRecovery(this))
         bridge?.webView?.let { webView ->
             // Paper colour (light/dark) behind the page so loads and fold/unfold never flash white.
             webView.setBackgroundColor(ContextCompat.getColor(this, R.color.inkstone_splash))
