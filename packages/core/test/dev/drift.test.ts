@@ -11,7 +11,7 @@ const scan = (over: Record<string, string | null> = {}) => scanRepository(repoFi
 
 function noteWith(text: string, links: PageInk['links'] = [], strokes = 0): { meta: NoteMeta; pages: PageInk[] } {
   const page: PageInk = { ...newPage('p1'), texts: [{ id: 't1', x: 0, y: 0, width: 300, text, fontSize: 16, color: '#FF000000', font: 'sans', createdAt: 1 }], links };
-  for (let i = 0; i < strokes; i++) page.strokes.push({ id: `s${i}`, pen: 'fountain', color: '#FF000000', size: 2, createdAt: 1, points: [{ x: 0, y: 0, t: 0 }, { x: 5, y: 5, t: 5 }] });
+  for (let i = 0; i < strokes; i++) page.strokes.push({ id: `s${i}`, pen: 'fountain', color: '#FF000000', size: 2, createdAt: 1, points: [{ x: 0, y: 0, t: 0, p: 0.5, tilt: -1, orient: -1 }, { x: 5, y: 5, t: 5, p: 0.5, tilt: -1, orient: -1 }] });
   return { meta: newNote({ id: 'n1', title: 'Auth design', pageId: 'p1', now: 1 }), pages: [page] };
 }
 
