@@ -6,9 +6,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult } from '@modelcontextprotocol/server';
 import { VaultLayout, decodeNote } from '@inkstone/core';
 import { startHttpServer, type RunningHttpServer } from '../src/http.ts';
+import { createServices } from '../src/server.ts';
 import { json, makeFixture, text, type Fixture } from './fixtures.ts';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -22,7 +23,7 @@ describe('stdio end-to-end', () => {
     client = new Client({ name: 'inkstone-e2e', version: '0.0.0' });
     const transport = new StdioClientTransport({
       command: 'npx',
-      args: ['tsx', 'apps/mcp-server/src/index.ts', '--vault', fx.dir],
+      args: ['tsx', '--import', './apps/mcp-server/scripts/raw-hooks.mjs', 'apps/mcp-server/src/index.ts', '--vault', fx.dir],
       cwd: repoRoot,
       stderr: 'pipe',
     });
@@ -84,7 +85,7 @@ describe('Streamable HTTP', () => {
 
   beforeAll(async () => {
     fx = await makeFixture();
-    http = await startHttpServer(await fx.ctx({ readOnly: true }), { port: 0, token: 'sekret' });
+    http = await startHttpServer(createServices(await fx.ctx({ readOnly: true }), { transport: 'http' }), { port: 0, token: 'sekret' });
   });
   afterAll(async () => {
     await http?.close();
@@ -117,15 +118,15 @@ describe('Streamable HTTP', () => {
       expect(names).not.toContain('create_note');
       const r = json((await client.callTool({ name: 'list_notes', arguments: { tag: 'launch' } })) as CallToolResult);
       expect(r.notes[0].id).toBe('LAUNCH');
-      const write = (await client.callTool({ name: 'create_note', arguments: { title: 'x' } })) as CallToolResult;
-      expect(write.isError).toBe(true);
+      // Unknown tools are a protocol error (-32602) since MCP 2025-11-25.
+      await expect(client.callTool({ name: 'create_note', arguments: { title: 'x' } })).rejects.toThrow(/not found/);
     } finally {
       await client.close();
     }
   });
 
   it('without a token, only accepts loopback Host headers', async () => {
-    const open = await startHttpServer(await fx.ctx(), { port: 0 });
+    const open = await startHttpServer(createServices(await fx.ctx(), { transport: 'http' }), { port: 0 });
     try {
       const init = { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '1' } } };
       const headers = { 'content-type': 'application/json', accept: 'application/json, text/event-stream' };
