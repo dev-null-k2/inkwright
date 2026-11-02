@@ -19,7 +19,7 @@ Local-first. Bring your own model, or none. Open source. No server of ours, anyw
 ![Runs on](https://img.shields.io/badge/runs_on-Android_·_iPad_·_Mac_·_Windows_·_Linux_·_web-356b53)
 ![Server](https://img.shields.io/badge/server_required-none-356b53)
 
-<img src="docs/media/screens/lecture.png" alt="A handwritten lecture page with a sketched square wave and its Fourier approximation" width="880">
+<img src="docs/media/screens/ask.png" alt="A question written by hand, answered on the page by the AI in its own blue handwriting" width="880">
 
 </div>
 
@@ -91,6 +91,8 @@ It was built for a foldable phone with a stylus (Razr Fold + Moto Pen Ultra), an
 
 </td></tr>
 </table>
+
+<p align="center"><img src="docs/media/screens/lecture.png" alt="A handwritten lecture page with a sketched square wave and its Fourier approximation" width="49%"> <img src="docs/media/screens/review-dark.png" alt="A design review with typed decisions, red handwritten margin notes and a hand-drawn diagram" width="49%"></p>
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/section-agents-dark.svg"><img alt="For your agents" src="docs/media/section-agents-light.svg" height="52"></picture>
 
