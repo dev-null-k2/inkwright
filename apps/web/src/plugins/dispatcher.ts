@@ -132,7 +132,7 @@ async function visibleEditor(env: HostEnv, caller: Caller): Promise<EditorState 
 export async function dispatch(env: HostEnv, caller: Caller, method: unknown, params: unknown[]): Promise<unknown> {
   if (!isMethod(method)) throw new PluginApiError('not_found', `Unknown API method ${JSON.stringify(method)}.`);
   const need = permissionFor(method);
-  if (need && !caller.permissions().has(need)) throw new PluginApiError('permission_denied', `${caller.label} does not have the “${need}” permission${caller.id === 'automation' ? ' (Settings › Developer › Automation API)' : ' (Settings › Plugins)'}.`);
+  if (need && !caller.permissions().has(need)) throw new PluginApiError('permission_denied', `${caller.label} does not have the “${need}” permission${caller.id === 'automation' ? ' (Settings › Extend › Developer › Automation API)' : ' (Settings › Plugins)'}.`);
   const p = Array.isArray(params) ? params : [];
 
   switch (method) {

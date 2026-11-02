@@ -71,7 +71,7 @@ function PapersDialog({ onClose }: { onClose: () => void }) {
       {nb && <button type="button" className="btn" onClick={() => { setFilter({ kind: 'notebook', id: nb.id }); onClose(); }}>Show papers</button>}
       <button type="button" className="btn btn-primary" onClick={onClose}>Done</button>
     </>}>
-      <p>{count ? `${count} ${count === 1 ? 'paper' : 'papers'} in your library.` : 'Each reference becomes a note in the “Papers” notebook, with its details kept in the note.'} Cite them in typed text with <code>[@key]</code>; ••• › Bibliography lists and exports what a note cites.</p>
+      <p>{count ? `${count} ${count === 1 ? 'paper' : 'papers'} in your library.` : 'Each reference becomes a note in the “Papers” notebook, with its details kept in the note.'} Cite them in typed text with <code>[@key]</code>; ••• › Study › Bibliography lists and exports what a note cites.</p>
       <div className="ia-row">
         <button type="button" className="btn" disabled={busy} onClick={() => void doImport()}><FileUp size={16} aria-hidden /> Import references</button>
         <button type="button" className="btn" disabled={busy || !count} onClick={() => void doAttach(true)}><FolderOpen size={16} aria-hidden /> Attach PDFs from a folder</button>

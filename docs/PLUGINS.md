@@ -4,8 +4,8 @@ Inkwright is built from switchable **modules** (its own features) and can run **
 other people write). Both are designed so that adding or removing something never puts a note
 at risk: data a feature wrote stays in the vault whether the feature is on, off or uninstalled.
 
-- [Modules](#modules) — Settings › Modules
-- [Plugins for users](#plugins-for-users) — Settings › Plugins
+- [Modules](#modules) — Settings › Extend › Modules
+- [Plugins for users](#plugins-for-users) — Settings › Extend › Plugins
 - [Writing a plugin](#writing-a-plugin) — manifest, API, permissions, sandbox
 - [How plugins, MCP servers, the REST API and window.inkwright fit together](#how-it-fits-together)
 
@@ -29,7 +29,7 @@ registerModule({
 
 | Field | What the app does with it |
 | --- | --- |
-| `contributes` | Lists menu items, palette actions, panels, page-object types, assistant tools, importers/exporters, routine templates, settings sections, screens and background work. Palette actions and settings sections owned by a switched-off module disappear automatically; Settings › Modules shows the list under "What it adds". |
+| `contributes` | Lists menu items, palette actions, panels, page-object types, assistant tools, importers/exporters, routine templates, settings sections, screens and background work. Palette actions and settings sections owned by a switched-off module disappear automatically; Settings › Extend › Modules shows the list under "What it adds". |
 | `dependencies` | Turning a module on turns on what it needs; turning it off asks before also turning off what needs it. |
 | `activate` | Runs (lazily, with dynamic imports inside) while the module is on; the returned function runs the moment it is switched off. Declarations are plain data, so startup stays fast. |
 | `aiTools` | Collected by the assistant (`prepareAgentRun`) from modules that are on. |
@@ -56,7 +56,7 @@ work in `activate`.
 
 ## Plugins for users
 
-Settings › Plugins:
+Settings › Extend › Plugins:
 
 - **Browse** — the curated list (shipped inside the app, so it works offline and can't be changed
   remotely).
@@ -73,11 +73,11 @@ Plugins are stored in the vault (`plugins/<id>/`, `plugins/plugins.json`, see
 VAULT_FORMAT.md), so they sync to your other devices with your notes. A plugin only runs on a
 device where you approved it, though: each device remembers the exact code and permissions you
 allowed there. One that arrives installed, updated or granted more from elsewhere — another
-device, a sync, a restored backup — shows **Review** in Settings › Plugins and stays off until
+device, a sync, a restored backup — shows **Review** in Settings › Extend › Plugins and stays off until
 you allow it on this device (revoking a permission elsewhere needs no review). Anything that can
 write your vault could otherwise put a networked plugin in it. Their commands appear in
-the search palette and the editor's ••• › Plugins, panels in the editor's side panel, exporters
-under Export, importers in the palette, and assistant tools in the assistant.
+the search palette and the editor's ••• › Tools › Plugins, panels in the editor's side panel, exporters
+under ••• › Share & export, importers in the palette, and assistant tools in the assistant.
 
 ## Writing a plugin
 
@@ -86,7 +86,7 @@ npm create inkwright-plugin my-plugin        # once published; in this repo:
 node examples/create-inkwright-plugin/index.mjs my-plugin
 ```
 
-Then Settings › Plugins › From a folder, pick `my-plugin`. Re-install from the folder after a
+Then Settings › Extend › Plugins › From a folder, pick `my-plugin`. Re-install from the folder after a
 change (settings and storage are kept). Examples: `examples/plugins/word-count` (panel, command,
 assistant tool, exporter, settings, events) and `examples/plugins/webhook` (network).
 
@@ -208,7 +208,7 @@ otherwise `editor.current()` is `null`, the selection is empty, `insertText` ref
 | | Runs where | Talks to | For |
 | --- | --- | --- | --- |
 | **Plugins** | inside the app, sandboxed | the plugin API (permission-checked) | UI: commands, panels, exporters/importers, assistant tools |
-| **`window.inkwright`** | the app's page (Settings › Developer, off by default) | the same API and permission model, as "Automation API" | browser extensions, userscripts, the console |
+| **`window.inkwright`** | the app's page (Settings › Extend › Developer, off by default) | the same API and permission model, as "Automation API" | browser extensions, userscripts, the console |
 | **MCP servers** (Settings › AI › Connected apps) | anywhere; the assistant connects to them | MCP | giving the in-app assistant outside tools (calendars, issue trackers…) |
 | **`inkwright-mcp`** | your computer, over the vault folder | MCP, A2A, REST (`/api/v1`) | outside agents and programs using your notes (docs/AGENTS.md, docs/API.md) |
 | **Links** | the OS / browser | `inkwright://…`, `?action=…` | Shortcuts, Tasker, launchers (docs/API.md § Links) |

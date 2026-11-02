@@ -14,12 +14,12 @@ Reference implementation:
 | Optional signalling relay | `apps/mcp-server/src/signal.ts` (`inkwright-mcp --signal-token`) |
 | Tests | `packages/sync/test/peer.test.ts`, `packages/core/test/collab.test.ts`, `apps/mcp-server/test/signal.test.ts`, `apps/web/e2e/peer.spec.ts` |
 
-Both features are the **Devices & live sharing** module (Settings › Modules) and can be switched
+Both features are the **Devices & live sharing** module (Settings › Extend › Modules) and can be switched
 off; the vault keeps everything they wrote.
 
 ## What you can do
 
-- **Pair a device** — Settings › Devices & sharing › *Pair a new device* shows a QR code (and the
+- **Pair a device** — Settings › Sync & devices › Devices & sharing › *Pair a new device* shows a QR code (and the
   same code as text). On the other device, scan it (where the browser has a camera barcode
   reader: Chrome on Android, ChromeOS and macOS) or paste it, confirm, and show the answer back
   the same way. Both devices then remember each other's public key; *Remove* forgets it.
@@ -28,8 +28,8 @@ off; the vault keeps everything they wrote.
   open on both. The sync is the same engine as Google Drive or WebDAV sync, with the same
   three-way merge of ink and text, conflict copies for images, and the same safety stops (an
   empty or wiped device is never mistaken for "delete everything").
-- **Share a page live** — Editor › ••• › *Share live* makes a one-time invite, *can write* or
-  *can view*. The other person enters it in Settings › Devices & sharing and shows their answer
+- **Share a page live** — Editor › ••• › Share & export › *Share live* makes a one-time invite, *can write* or
+  *can view*. The other person enters it in Settings › Sync & devices › Devices & sharing and shows their answer
   back. Strokes appear as they are being drawn, cursors show where everyone is (name and a calm
   colour), and edits made at the same moment on different devices never conflict. A guest's
   copy is an ordinary note in their own vault; when the session ends it stays, like a photocopy.
@@ -65,7 +65,7 @@ user=inkwright:<a long random password>
 realm=turn.example.com
 ```
 
-Then in Settings › Devices & sharing › Network set *TURN server* to
+Then in Settings › Sync & devices › Devices & sharing › Network set *TURN server* to
 `turn:turn.example.com:3478` (or `turns:…:5349` with TLS), the username and the credential (kept in
 the encrypted secret store, never in the vault). A TURN relay sees connection metadata (which IP
 addresses talk, when, how much) and ciphertext; it cannot read or alter content (see the threat
@@ -82,7 +82,7 @@ offers expire after ten minutes and can be used once.
 
 **Your own relay (optional).** `inkwright-mcp --http 8765 --signal-token "$(openssl rand -hex 16)"`
 adds `/signal/v1` to the MCP server's HTTP port: a mailbox you `POST` sealed messages to and
-long-poll with `GET ?after=<seq>`. Set the URL and token in Settings › Devices & sharing ›
+long-poll with `GET ?after=<seq>`. Set the URL and token in Settings › Sync & devices › Devices & sharing ›
 Network on every device. Then *Sync now* posts the offer to the other paired device's mailbox and
 waits for its answer; a device with Inkwright open answers paired devices by itself. The relay:
 

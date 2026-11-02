@@ -81,7 +81,7 @@ export function useDevEditor({ doc, engine, vault, host, view, menuAnchor, editi
       toast({ text: 'Reading the session for lessons…' });
       try {
         const n = await findLessons(doc.meta.id);
-        toast({ text: n ? `${n} ${n === 1 ? 'lesson' : 'lessons'} proposed. Review them in Settings › Developer.` : 'No new lessons in this session.', tone: n ? 'success' : undefined });
+        toast({ text: n ? `${n} ${n === 1 ? 'lesson' : 'lessons'} proposed. Review them in Settings › Extend › Code & runbooks.` : 'No new lessons in this session.', tone: n ? 'success' : undefined });
       } catch (e) {
         toast({ text: (e as Error).message, tone: 'error' });
       }

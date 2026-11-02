@@ -27,7 +27,7 @@ function loadGis(): Promise<void> {
 
 function clientId(): string {
   const id = useSettings.getState().sync.googleClientId.trim();
-  if (!id) throw new Error('Add your Google OAuth client ID in Settings › Account & sync first.');
+  if (!id) throw new Error('Add your Google OAuth client ID in Settings › Sync & devices first.');
   return id;
 }
 

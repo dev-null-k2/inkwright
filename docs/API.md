@@ -53,7 +53,7 @@ Scopes: `notes:read` (notes, pages, notebooks, tags, links, search, assets, tran
 activity, routines), `notes:write` (create/change/trash/restore), `routines:run`, `webhooks`
 (manage subscriptions), `admin` (manage keys).
 
-Create keys in the app (**Settings › Developer › API keys**), with the CLI, or with an `admin`
+Create keys in the app (**Settings › Extend › Developer › API keys**), with the CLI, or with an `admin`
 key through the API. Keys are stored in the vault's `api/keys.json` as SHA-256 hashes only — the
 key is shown once — so a key made on your phone works with the server on your laptop after sync,
 and revoking it anywhere revokes it everywhere (revocation always wins in sync merges).
@@ -232,7 +232,7 @@ Modules ignores them. The parser is `apps/web/src/developer/deeplinks.ts`.
 
 ## window.inkwright
 
-Settings › Developer › Automation API exposes the plugin API (docs/PLUGINS.md) to scripts on
+Settings › Extend › Developer › Automation API exposes the plugin API (docs/PLUGINS.md) to scripts on
 the app's page — browser extensions, userscripts, the devtools console — with the permissions
 you tick there. Calls go through the same permission-checked dispatcher as plugins, and changes
 appear in Activity as "Automation API". It needs the Developer tools module (Settings ›

@@ -1,5 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { openApp } from './helpers.ts';
+import { openApp, editorMenu } from './helpers.ts';
 
 /**
  * The context compiler end to end (docs/COMPILER.md): compile → review a proposal → accept →
@@ -175,8 +175,7 @@ test('study: cards from a note, a calm review with a typed answer, FSRS rating; 
   await page.getByRole('button', { name: 'Back' }).click();
   await page.getByRole('button', { name: 'Open Physics', exact: true }).click();
   await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
-  await page.getByRole('button', { name: 'More', exact: true }).first().click();
-  await page.getByRole('menuitem', { name: /^Context pack/ }).click();
+  await editorMenu(page, 'Share & export', 'Context pack');
   const packDialog = page.getByRole('dialog', { name: 'Context pack' });
   await packDialog.getByRole('button', { name: 'Build pack' }).click();
   await expect(packDialog.locator('.cp-preview')).toContainText('# Physics');

@@ -335,7 +335,7 @@ export class PrivacyBlockError extends Error {
   readonly code = 'policy_blocked';
   readonly reason = 'privacy' as const;
   constructor(readonly kinds: PiiKind[]) {
-    super(`This request contains ${kinds.map((k) => KIND_PHRASE[k]).join(' and ')}, which your AI policy does not allow to leave this device. Remove it, or route this work to the device in Settings › AI › Routing & privacy.`);
+    super(`This request contains ${kinds.map((k) => KIND_PHRASE[k]).join(' and ')}, which your AI policy does not allow to leave this device. Remove it, or route this work to the device in Settings › Privacy & trust › Routing & privacy.`);
     this.name = 'PolicyBlockedError';
   }
 }

@@ -42,7 +42,7 @@ export function DevicesSection() {
             </div>
           </div>
         ) : <p className="muted">Preparing this device’s key…</p>}
-        <p className="muted small">Change the name in Settings › Authorship.</p>
+        <p className="muted small">Change the name in Settings › Privacy & trust › Authorship.</p>
       </Group>
       {me && <PairFlows />}
       {me && <PairedList />}
@@ -219,7 +219,7 @@ function PairedList() {
   };
   if (!paired.length) return null;
   return (
-    <Group title="Paired devices" note={relayConfigured() ? 'Sync now reaches the other device through your signalling server; Inkwright must be open there.' : 'Without a signalling server, each sync is started with a code: show it on the other device (Settings › Devices & sharing) and enter its answer here.'}>
+    <Group title="Paired devices" note={relayConfigured() ? 'Sync now reaches the other device through your signalling server; Inkwright must be open there.' : 'Without a signalling server, each sync is started with a code: show it on the other device (Settings › Sync & devices) and enter its answer here.'}>
       <ul className="peer-devices">
         {paired.map((d) => (
           <li key={d.key} className="peer-device">

@@ -1,5 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { openApp } from './helpers.ts';
+import { openApp, settingsGroup } from './helpers.ts';
 
 /**
  * The memory timeline and the journal that writes itself (docs/MEMORY_TIMELINE.md).
@@ -20,9 +20,10 @@ const enableModules = (page: Page, ids: string[]) => page.addInitScript((on) => 
 
 const hubReady = (page: Page) => page.waitForFunction(() => !!(window as any).__inkwrightHub);
 
+/** Memory timeline and Journal are tabs of Settings › Knowledge (Desktop app: Sync & devices). */
 async function openSettings(page: Page, section: string) {
   await page.getByRole('button', { name: 'Settings' }).click();
-  await page.getByRole('button', { name: section, exact: true }).click();
+  await settingsGroup(page, section === 'Desktop app' ? 'Sync & devices' : 'Knowledge', section);
 }
 
 test('memory timeline over synced captures: days, hours, notes written at the time, search, erase', async ({ page }) => {
@@ -149,7 +150,7 @@ async function mockLLM(page: Page, replies: ({ text: string } | { tool: string; 
 
 async function addCustomProvider(page: Page) {
   await page.getByRole('button', { name: 'Settings' }).click();
-  await page.getByRole('button', { name: 'AI', exact: true }).click();
+  await settingsGroup(page, 'AI');
   await page.getByRole('button', { name: 'Add an AI provider' }).click();
   await page.locator('.add-provider select').selectOption('custom');
   await page.locator('.add-provider').getByPlaceholder('https://…/v1').fill('https://mock-llm.test/v1');
@@ -186,7 +187,7 @@ test('the journal routine drafts the day in AI ink, citing a note and the calend
   await addCustomProvider(page);
 
   // Import a calendar with an all-day event today.
-  await page.getByRole('button', { name: 'Journal', exact: true }).click();
+  await settingsGroup(page, 'Knowledge', 'Journal');
   const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT', 'UID:offsite@example.com', `DTSTART;VALUE=DATE:${today}`, 'SUMMARY:Team offsite planning', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
   await page.getByLabel('Calendar file').setInputFiles({ name: 'team.ics', mimeType: 'text/calendar', buffer: Buffer.from(ics) });
   await expect(page.locator('.jr-cals li')).toContainText('team');

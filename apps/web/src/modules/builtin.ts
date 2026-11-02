@@ -247,6 +247,13 @@ export const BUILTIN_MODULES: ModuleDefinition[] = [
   ...INK_ACTION_MODULES,
   // The desktop app, the memory timeline and the journal that writes itself (opt-in only).
   ...MEMORY_MODULES,
+  {
+    id: 'device-check',
+    name: 'Device check',
+    description: 'Settings › About › Check this device: measures the pen, the screen and how fast ink appears on this device, and makes a report to copy or share.',
+    defaultEnabled: true,
+    contributes: { panels: ['Check this device'] },
+  },
 ];
 
 // Presets never switch on modules that only you should turn on (screen capture, journal drafts).

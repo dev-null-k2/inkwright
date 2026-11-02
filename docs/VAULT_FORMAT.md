@@ -558,7 +558,7 @@ update) → put `before` back if the text box still holds `after`; `external {se
 a change in a connected app, listed only. The newest 300 runs are kept (and fewer days when the
 AI policy's `retention.activityDays` says so; none are removed under legal hold).
 
-**AI policy** — `ai/policy.json`, written by Settings › AI › Routing & privacy (or by hand). Only
+**AI policy** — `ai/policy.json`, written by Settings › Privacy & trust › Routing & privacy (or by hand). Only
 fields that differ from the defaults are present; every field is optional and readers fill in the
 defaults. The full schema and defaults are in docs/TRUST.md › The policy file:
 
@@ -765,7 +765,7 @@ also keeps, outside the vault (browser storage `inkwright.plugins.consent.v1`), 
 of the manifest and entry script and the permissions approved **on that device**; a plugin runs
 there only while its files match that fingerprint and `granted` asks for nothing more. A plugin
 installed, updated or granted more by another device, a sync remote or a restored backup waits
-for a review in Settings › Plugins (security review SR-01, docs/PLUGINS.md › Plugins for users).
+for a review in Settings › Extend › Plugins (security review SR-01, docs/PLUGINS.md › Plugins for users).
 
 ## API keys (`api/keys.json`)
 

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { PDFDocument } from 'pdf-lib';
-import { isEngineNoise, newNote, openApp, pen, word } from './helpers.ts';
+import { isEngineNoise, newNote, openApp, pen, word, editorMenu } from './helpers.ts';
 
 test('first run shows the welcome note and no errors', async ({ page }) => {
   const errors: string[] = [];
@@ -64,9 +64,7 @@ test('importing a PDF creates annotatable pages and exports a vector PDF', async
   await expect(page.locator('.ed-title-text')).toHaveText('Lecture slides');
   await pen(page, word(200, 220, 160));
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'More', exact: true }).click();
-  await page.getByRole('menuitem', { name: /Export and share/ }).click();
-  await page.getByRole('menuitem', { name: /PDF/ }).click();
+  await editorMenu(page, 'Share & export', 'PDF');
   const d = await download;
   const path = await d.path();
   const fs = await import('node:fs');
@@ -80,9 +78,7 @@ test('markdown export contains typed text', async ({ page }) => {
   await page.locator('.note-open').first().click();
   await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'More', exact: true }).click();
-  await page.getByRole('menuitem', { name: /Export and share/ }).click();
-  await page.getByRole('menuitem', { name: /Markdown/ }).click();
+  await editorMenu(page, 'Share & export', 'Markdown');
   const d = await download;
   const fs = await import('node:fs');
   const md = fs.readFileSync((await d.path())!, 'utf8');

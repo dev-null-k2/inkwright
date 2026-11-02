@@ -39,6 +39,9 @@ export function PenDock(p: DockProps) {
   const moreBtn = useRef<HTMLButtonElement>(null);
 
   const editingPreset = s.tray.find((x) => x.id === editing) ?? null;
+  // The side tray sits away from the writing hand; its popovers open towards the page.
+  const leftHanded = p.vertical && s.hand === 'left';
+  const side = p.vertical ? (leftHanded ? 'left' : 'right') : 'above';
 
   const choosePen = (id: string) => {
     if (p.tool === 'pen' && p.activePresetId === id) setEditing(id);
@@ -53,7 +56,7 @@ export function PenDock(p: DockProps) {
   };
 
   return (
-    <div className={cx('dock', p.vertical ? 'is-vertical' : 'is-horizontal', p.compact && 'is-compact')} role="toolbar" aria-label="Writing tools" aria-orientation={p.vertical ? 'vertical' : 'horizontal'}>
+    <div className={cx('dock', p.vertical ? 'is-vertical' : 'is-horizontal', p.compact && 'is-compact', leftHanded && 'is-right-edge')} role="toolbar" aria-label="Writing tools" aria-orientation={p.vertical ? 'vertical' : 'horizontal'}>
       {!p.compact && (
         <>
           <div className="dock-group">
@@ -103,11 +106,11 @@ export function PenDock(p: DockProps) {
       </div>
 
       {editingPreset && (
-        <Popover anchor={refs.current.get(editingPreset.id) ?? null} open onClose={() => setEditing(null)} title="Pen settings" placement={p.vertical ? 'right' : 'above'}>
+        <Popover anchor={refs.current.get(editingPreset.id) ?? null} open onClose={() => setEditing(null)} title="Pen settings" placement={side}>
           <PenEditor preset={editingPreset} onClose={() => setEditing(null)} />
         </Popover>
       )}
-      <Popover anchor={eraserBtn.current} open={eraserOpen} onClose={() => setEraserOpen(false)} title="Eraser" placement={p.vertical ? 'right' : 'above'}>
+      <Popover anchor={eraserBtn.current} open={eraserOpen} onClose={() => setEraserOpen(false)} title="Eraser" placement={side}>
         <div className="pop-section">
           <Segmented label="Eraser mode" value={s.eraserMode} onChange={(v) => s.update(() => ({ eraserMode: v }))} options={[
             { value: 'stroke', label: 'Whole strokes' },
@@ -118,10 +121,10 @@ export function PenDock(p: DockProps) {
           <button type="button" className="btn btn-danger-ghost" onClick={() => { setEraserOpen(false); p.onClearPage(); }}><Trash2 size={16} /> Clear page</button>
         </div>
       </Popover>
-      <Popover anchor={eraserBtn.current} open={filterOpen} onClose={() => setFilterOpen(false)} title="Erase" placement={p.vertical ? 'right' : 'above'}>
+      <Popover anchor={eraserBtn.current} open={filterOpen} onClose={() => setFilterOpen(false)} title="Erase" placement={side}>
         <EraserFilterList onPick={() => { setFilterOpen(false); p.onTool('eraser'); }} />
       </Popover>
-      <Popover anchor={moreBtn.current} open={moreOpen} onClose={() => setMoreOpen(false)} title="More tools" placement={p.vertical ? 'right' : 'above'}>
+      <Popover anchor={moreBtn.current} open={moreOpen} onClose={() => setMoreOpen(false)} title="More tools" placement={side}>
         <div className="menu">
           <button type="button" className={cx('menu-item', p.tool === 'hand' && 'is-on')} onClick={() => { p.onTool('hand'); setMoreOpen(false); }}><span className="menu-icon"><Hand size={16} /></span><span className="menu-label">Pan and zoom</span><span className="menu-hint">H</span></button>
           <button type="button" className={cx('menu-item', p.tool === 'laser' && 'is-on')} onClick={() => { p.onTool('laser'); setMoreOpen(false); }}><span className="menu-icon"><Crosshair size={16} /></span><span className="menu-label">Laser pointer</span><span className="menu-hint">K</span></button>

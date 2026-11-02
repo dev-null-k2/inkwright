@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { PDFCheckBox, PDFDocument, PDFDropdown, PDFTextField, StandardFonts } from 'pdf-lib';
-import { openApp } from './helpers.ts';
+import { openApp, editorMenu } from './helpers.ts';
 
 /** PDF rendering and form reading run in the background; give them time on a busy machine. */
 const SLOW = { timeout: 15_000 };
@@ -224,8 +224,7 @@ test('pages panel: rotate a PDF page and copy pages to a new note', async ({ pag
   await openApp(page);
   await page.locator('input[type=file]').first().setInputFiles({ name: 'Three.pdf', mimeType: 'application/pdf', buffer: Buffer.from(await pdf.save()) });
   await page.waitForFunction(() => (window as any).__inkwright?.doc?.pageCount === 3, null, { timeout: 20000 });
-  await page.getByRole('button', { name: 'More', exact: true }).click();
-  await page.getByRole('menuitem', { name: /^Pages/ }).click();
+  await editorMenu(page, 'Pages');
   const panel = page.getByRole('complementary', { name: 'Pages' });
   await panel.getByRole('button', { name: 'Rotate page' }).first().click();
   const p0 = await page.evaluate(() => { const p = (window as any).__inkwright.doc.page(0); return { w: p.size.width, h: p.size.height, rot: p.background.rotation }; });

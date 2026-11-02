@@ -116,7 +116,7 @@ export async function runDeepLink(a: DeepLinkAction): Promise<void> {
     } else {
       app.setFilter({ kind: 'all' });
       app.navigate({ name: 'library' });
-      app.toast({ text: `Search everything is switched off (Settings › Modules); showing all notes.` });
+      app.toast({ text: `Search everything is switched off (Settings › Extend › Modules); showing all notes.` });
     }
     return;
   }

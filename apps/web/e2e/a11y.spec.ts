@@ -1,6 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { modKey, newNote, openApp } from './helpers.ts';
+import { modKey, newNote, openApp, editorMenu, settingsGroup } from './helpers.ts';
 
 /**
  * Accessibility: axe-core (WCAG 2.1 A/AA rules) over the library, the editor (with its menus and
@@ -31,17 +31,19 @@ test('library, editor and settings have no serious or critical axe violations', 
   await page.getByRole('button', { name: 'More', exact: true }).click();
   await audit(page, 'Editor ••• menu');
   await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: 'More', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Query data' }).click();
+  await editorMenu(page, 'Insert', 'Query data');
   await expect(page.getByRole('dialog', { name: 'Data' })).toBeVisible();
   await audit(page, 'Data dialog');
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Back to library' }).click();
   await page.getByRole('button', { name: 'Settings' }).click();
-  for (const section of ['Writing feel', 'Pen & touch', 'AI', 'Ink actions', 'Reading', 'Modules']) {
-    await page.getByRole('navigation', { name: 'Settings sections' }).getByRole('button', { name: section, exact: true }).click();
-    await audit(page, `Settings › ${section}`);
+  for (const [group, tab] of [['Writing', 'Feel'], ['Writing', 'Pen & touch'], ['AI', 'Models & assistant'], ['AI', 'Ink actions'], ['Appearance', 'Reading'], ['Privacy & trust', 'AI privacy'], ['Extend', 'Modules'], ['About', undefined]] as const) {
+    await settingsGroup(page, group, tab);
+    await audit(page, `Settings › ${group}${tab ? ` › ${tab}` : ''}`);
   }
+  // The search field finds a setting by name.
+  await page.getByRole('searchbox', { name: 'Search settings' }).fill('dark mode');
+  await audit(page, 'Settings search');
   expect(problems.join('\n\n')).toBe('');
 });
 
@@ -67,6 +69,21 @@ test('keyboard: the library and editor chrome work without a pointer, with visib
   await expect(menu.getByRole('menuitem').nth(1)).toBeFocused();
   await page.keyboard.press('End');
   await expect(menu.getByRole('menuitem').last()).toBeFocused();
+  // Sub-sheets: → opens one with focus on its first command, ← and Escape come back to its row.
+  const insert = menu.getByRole('menuitem', { name: /^Insert/ });
+  await expect(insert).toHaveAttribute('aria-haspopup', 'menu');
+  await insert.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('menu', { name: 'Insert' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'Back to More' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /^Image/ })).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.getByRole('menu', { name: 'More' })).toBeVisible();
+  await expect(insert).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('menu', { name: 'Insert' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(insert).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(menu).toHaveCount(0);
   await expect(more).toBeFocused();

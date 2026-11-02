@@ -115,7 +115,7 @@ The emulator still runs when there is no `/dev/kvm`: QEMU emulates the x86_64 CP
 | Unit | `npx vitest run --project core packages/core/test/platform.test.ts`, `--project sync packages/sync/test/merge-platform.test.ts` | API keys (hash-only storage, malformed/unknown/revoked/expired), plugins.json decoding; sync merges (newest record, uninstall vs update, keys never dropped, revocation wins) |
 | Unit | `npx vitest run --project mcp apps/mcp-server/test/api.test.ts apps/mcp-server/test/webhooks.test.ts` | the REST API over HTTP with **contract tests**: every response validated against the served OpenAPI document with Ajv (JSON Schema 2020-12), and every documented operation must be exercised; auth modes and scopes, keyset pagination and filters, ETag/If-None-Match/If-Match, Idempotency-Key replay/reuse, 400/404/405/412/415/422/429 problems, rate-limit headers, CORS, pages as ink/text/SVG/PNG/PDF, exports, search, links, graph, assets, keys API and CLI, webhooks end to end (signed delivery verified, an external write becoming `note.created`); Standard Webhooks test vector, the retry schedule on a fake clock, 410, persistence across restarts; vault events (created, updated, trashed, restored, recordings, routine runs) |
 | Unit | `npx vitest run --project web apps/web/src/modules apps/web/src/plugins apps/web/src/developer` | module dependencies (transitive, cycles), presets, palette/settings gating, lazy start/stop of background work, assistant tools from modules; the dispatcher (permissions and live revocation, scopes, locked notes, network allowlist without cookies, storage limits, events); plugin packages (top folder, junk and data.json dropped, size and version limits, zip and URL sources) and the vault store (install, update keeps data, uninstall); deep-link parsing |
-| End-to-end | `cd apps/web && PW_PORT=4191 npx playwright test e2e/extensibility.spec.ts --project desktop` | Settings › Modules (dependency prompt, Minimal and Developer presets reach the editor and survive reload); installing the word-count plugin from the curated list (permission prompt, sandboxed panel updating live, palette command, exporter download, revocation refusing the next call, uninstall); a plugin from a URL proving its sandbox (fetch, parent and storage blocked, unpermitted calls refused) with a plugin importer; the webhook plugin posting the selection through the host without cookies; links (`?action=new`, `web+inkwright://search`, open, capture with origin `import`); `window.inkwright` with per-permission refusal and API keys created once, listed and revoked |
+| End-to-end | `cd apps/web && PW_PORT=4191 npx playwright test e2e/extensibility.spec.ts --project desktop` | Settings › Extend › Modules (dependency prompt, Minimal and Developer presets reach the editor and survive reload); installing the word-count plugin from the curated list (permission prompt, sandboxed panel updating live, palette command, exporter download, revocation refusing the next call, uninstall); a plugin from a URL proving its sandbox (fetch, parent and storage blocked, unpermitted calls refused) with a plugin importer; the webhook plugin posting the selection through the host without cookies; links (`?action=new`, `web+inkwright://search`, open, capture with origin `import`); `window.inkwright` with per-permission refusal and API keys created once, listed and revoked |
 
 ### Trust and cost
 
@@ -136,10 +136,24 @@ The emulator still runs when there is no `/dev/kvm`: QEMU emulates the x86_64 CP
 | Eval | `npx vitest run --project evals packages/core/evals/canvasdag.eval.ts` | graph extraction over 120 synthetic sketches (bar in docs/INK_ACTIONS.md) |
 | End-to-end | `cd apps/web && PW_PORT=4195 npx playwright test e2e/ink-actions.spec.ts e2e/a11y.spec.ts --project desktop` | answers in ink and typed, the assistant's `write_in_ink`, a drawn diagram run with fetch, local and AI steps, re-run and keep, loops refused, CSV drop → DuckDB → ask with repair → table and chart, spreadsheets, photo to ink with corners and underlay, read aloud with highlighting and the reading view, BibTeX import → PDF by DOI → `[@` autocomplete → APA/IEEE → BibTeX export, modules switched off; axe-core over library/editor/settings, keyboard paths, reduced motion and contrast |
 
+### Menus, Settings, first run and fit
+
+| Layer | Command | What it covers |
+|---|---|---|
+| Unit | `npx vitest run --project web apps/web/src/ui/editorMenu.test.tsx apps/web/src/settings apps/web/src/welcome apps/web/src/devicecheck` | where each editor ••• command goes (about ten top-level entries with everything on, lasso-first commands left to the selection bar, nothing lost); Settings groups, old section ids, search ranking and what a device lacks; when the welcome shows; the device check's rates, latency, frame pacing, fit rules and report |
+| End-to-end | `cd apps/web && PW_PORT=4201 npx playwright test e2e/settings.spec.ts e2e/welcome.spec.ts e2e/devicecheck.spec.ts e2e/fit.spec.ts --project desktop` | search jumps to a setting (keyboard too), every indexed setting is where the index says, old `#settings/<id>` links; the welcome's four steps, skip, Google without a client ID, links honoured; the device check on a synthetic pen; at fold, phone and tablet sizes with system bars: the library, the editor menu and each sub-sheet, every dialog the editor menu opens, the lasso toolbar, the pen dock, the AI panel to its end, every Settings tab, the welcome |
+
+The suite starts every test as someone who has finished the welcome (`storageState` in
+`playwright.config.ts`); `welcome.spec.ts` clears it. Menu paths go through `editorMenu(page,
+'Share & export', 'PDF')` and `editorMenuCommands(page)` in `e2e/helpers.ts`, Settings through
+`settingsGroup(page, 'Privacy & trust', 'Authorship')`, so a regrouping is one change in the app
+and none in the specs that only use a command.
+
 ## Testing on a device
 
 The pen-on-glass feel, haptics, Bluetooth pen buttons and real latency can only be judged on hardware. On the Razr Fold:
 
+0. Settings › About › **Check this device**: draw on the test pad for a few seconds with the pen, make the report and share it. It records the pen's event and sample rates, pressure, tilt and twist, input-to-paint latency, frame pacing while drawing, the screen and system bars (browser and Capacitor), memory, graphics and audio latency, and whether the app fits the screen, as text and JSON. Attach it to any bug report about feel or layout.
 1. Install the APK (`docs/ANDROID.md`).
 2. Write fast and slow, then scribble out a word.
 3. Press the pen button once (eraser latches, a red pill appears), press it again (back to the pen), then hold it while erasing.

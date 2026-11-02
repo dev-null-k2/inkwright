@@ -1,5 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { circle, line, newNote, openApp, pen, strokes, word, type Pt } from './helpers.ts';
+import { circle, editorMenu, line, newNote, openApp, pen, strokes, word, type Pt, settingsGroup } from './helpers.ts';
 
 /** A scripted OpenAI-compatible server (vision model) for the AI-read paths. */
 async function mockLLM(page: Page, reply: (body: any) => string) {
@@ -179,8 +179,7 @@ test('export PDF → verify its authorship certificate; the panel notices later 
   await pen(page, word(200, 340, 120), { type: 'mouse' });
 
   // Sign in the editor's panel: verified, then changed after more writing.
-  await page.getByRole('button', { name: 'More', exact: true }).click();
-  await page.getByRole('menuitem', { name: /Authorship/ }).click();
+  await editorMenu(page, 'Share & export', 'Authorship');
   const panel = page.getByRole('dialog', { name: 'Authorship' });
   await expect(panel).toContainText('Not signed yet');
   await expect(panel).toContainText('3 strokes (2 with pen pressure), 1 by mouse');
@@ -188,21 +187,18 @@ test('export PDF → verify its authorship certificate; the panel notices later 
   await expect(panel).toContainText('Verified handwriting');
   await panel.getByRole('button', { name: 'Done' }).click();
   await pen(page, word(200, 400, 100));
-  await page.getByRole('button', { name: 'More', exact: true }).click();
-  await page.getByRole('menuitem', { name: /Authorship/ }).click();
+  await editorMenu(page, 'Share & export', 'Authorship');
   await expect(panel).toContainText('Changed since signing');
   await panel.getByRole('button', { name: 'Done' }).click();
 
   // Export: the PDF carries a fresh certificate; verify it offline in Settings › Authorship.
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'More', exact: true }).click();
-  await page.getByRole('menuitem', { name: /Export and share/ }).click();
-  await page.getByRole('menuitem', { name: /PDF/ }).click();
+  await editorMenu(page, 'Share & export', 'PDF');
   const d = await download;
   const path = (await d.path())!;
   await page.getByRole('button', { name: 'Back to library' }).click();
   await page.getByRole('button', { name: 'Settings' }).click();
-  await page.getByRole('button', { name: 'Authorship' }).click();
+  await settingsGroup(page, 'Privacy & trust', 'Authorship');
   const own = await page.getByTestId('device-fingerprint').textContent();
   await page.locator('input.auth-file').setInputFiles({ name: 'note.pdf', mimeType: 'application/pdf', buffer: (await import('node:fs')).readFileSync(path) });
   const report = page.getByTestId('verify-report');

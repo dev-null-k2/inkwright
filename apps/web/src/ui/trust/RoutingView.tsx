@@ -1,5 +1,5 @@
 /**
- * Settings › AI › Routing & privacy: a form over the AI policy file (`ai/policy.json`). Every
+ * Settings › Privacy & trust › Routing & privacy: a form over the AI policy file (`ai/policy.json`). Every
  * control writes the file straight away (it is small, and syncs like a note), so what the form
  * shows is always what the gateway enforces. Fields an administrator's managed policy decides
  * are shown with the stricter value and a note; users can tighten them but not loosen them.

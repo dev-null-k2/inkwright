@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { circle, line, modKey, newNote, openApp, pen, pointer, scribble, strokes, texts, word } from './helpers.ts';
+import { circle, line, modKey, newNote, openApp, pen, pointer, scribble, strokes, texts, word, editorMenu } from './helpers.ts';
 
 test.describe('writing', () => {
   test.beforeEach(async ({ page }) => { await openApp(page); await newNote(page); });
@@ -136,8 +136,7 @@ test.describe('writing', () => {
   });
 
   test('pages can be added, navigated and deleted', async ({ page }) => {
-    await page.getByRole('button', { name: 'More', exact: true }).click();
-    await page.getByRole('menuitem', { name: /Pages/ }).click();
+    await editorMenu(page, 'Pages');
     await page.getByRole('button', { name: /Add page after/ }).click();
     await expect(page.locator('.page-item')).toHaveCount(2);
     await pen(page, word(200, 220, 120));
@@ -168,7 +167,7 @@ test.describe('writing', () => {
   test('writing sound and feel can be adjusted from the editor', async ({ page }) => {
     const feelBtn = page.getByRole('button', { name: 'Writing feel' });
     if (await feelBtn.isVisible()) await feelBtn.click();
-    else { await page.getByRole('button', { name: 'More', exact: true }).click(); await page.getByText('Writing sound & feel').click(); }
+    else await editorMenu(page, 'Page', 'Writing sound & feel');
     const vol = page.getByRole('slider', { name: 'Writing sound volume' });
     await expect(vol).toBeVisible();
     await vol.fill('0.25');

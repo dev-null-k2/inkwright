@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { newNote, openApp } from './helpers.ts';
+import { newNote, openApp, settingsGroup } from './helpers.ts';
 
 /**
  * The trust layer end to end, against a mocked OpenAI-compatible provider: the privacy firewall
@@ -40,7 +40,9 @@ async function addCustomProvider(page: Page) {
 
 async function openAgentScreen(page: Page, name: RegExp) {
   await page.getByRole('button', { name: 'Settings' }).click();
-  await page.getByRole('button', { name: 'AI', exact: true }).click();
+  // The trust screens live under Privacy & trust; the assistant's own under AI.
+  if (/usage|privacy|audit/i.test(name.source)) await settingsGroup(page, 'Privacy & trust', 'AI privacy');
+  else await page.getByRole('button', { name: 'AI', exact: true }).click();
   await page.getByRole('button', { name }).click();
 }
 
@@ -72,7 +74,7 @@ test('privacy firewall: the provider never sees the email, the user does; usage 
   await expect(page.locator('.trust-usage .ag-item')).toContainText('Custom (OpenAI-compatible) · mock-1');
 
   // Audit trail: the call is there with what was kept private; it verifies and exports.
-  await page.getByRole('button', { name: 'Assistant', exact: true }).click();
+  await page.getByRole('button', { name: 'AI privacy', exact: true }).click();
   await page.getByRole('button', { name: /^Audit trail/ }).click();
   await expect(page.locator('.trust-event.is-ai_call').first()).toContainText('kept private: 1 email');
   await page.getByRole('button', { name: 'Verify' }).click();
@@ -107,6 +109,7 @@ test('routing & privacy: a notebook kept on this device never reaches the cloud,
   await addCustomProvider(page);
 
   // The form writes ai/policy.json: Clients stays on this device; Diary is hidden.
+  await settingsGroup(page, 'Privacy & trust', 'AI privacy');
   await page.getByRole('button', { name: /^Routing & privacy/ }).click();
   await page.getByRole('combobox', { name: 'Add a rule for a notebook' }).selectOption({ label: 'Clients' });
   const clientsRule = page.locator('.trust-rule', { hasText: 'Clients' });
@@ -142,6 +145,7 @@ test('dry run: the assistant proposes, the change waits in Activity with a diff,
   await mockLLM(page, [{ tool: 'create_note', args: { title: 'Weekly plan', text: 'Monday: draft the report' } }, { text: 'I proposed a note for you.' }]);
   await openApp(page);
   await addCustomProvider(page);
+  await settingsGroup(page, 'Privacy & trust', 'AI privacy');
   await page.getByRole('button', { name: /^Routing & privacy/ }).click();
   await page.getByRole('radiogroup', { name: 'How the assistant change notes' }).getByRole('radio', { name: 'Propose' }).click();
   await page.getByRole('button', { name: 'Back' }).first().click();

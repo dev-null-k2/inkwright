@@ -27,6 +27,13 @@ export function Library() {
   // On touch screens the search field opens search-everything (notes, handwriting, PDFs, Ask).
   const touch = useMediaQuery('(pointer: coarse)');
   const [drawer, setDrawer] = useState(false);
+  // The drawer closes with Escape, like the app's other overlays.
+  useEffect(() => {
+    if (!drawer) return;
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') setDrawer(false); };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, [drawer]);
   const [newOpen, setNewOpen] = useState(false);
   const newBtn = useRef<HTMLButtonElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);

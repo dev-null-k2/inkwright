@@ -10,7 +10,7 @@ import { openDataPanel } from './DataPanel.tsx';
 
 /**
  * Data in, the two ways: dropping files on a page (a file handler while the module is on) and
- * ••• › Add data. Each file becomes a dataset (a note asset) plus a table on the page showing its
+ * ••• › Insert › Add data. Each file becomes a dataset (a note asset) plus a table on the page showing its
  * first rows, linked to the full data; one undo step per file removes the table (the file stays,
  * like an attached PDF, so undo never loses data).
  */

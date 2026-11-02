@@ -38,6 +38,9 @@ export default defineConfig({
     baseURL: `http://localhost:${PORT}`,
     trace: 'retain-on-failure',
     acceptDownloads: true,
+    // Tests start as someone who has already been through the first-run welcome; welcome.spec.ts
+    // clears this to test the welcome itself.
+    storageState: { cookies: [], origins: [{ origin: `http://localhost:${PORT}`, localStorage: [{ name: 'inkwright.settings.v1', value: JSON.stringify({ onboardingDone: true }) }] }] },
   },
   webServer: {
     command: `npx vite build --mode e2e --outDir ${OUT} && npx vite preview --port ${PORT} --strictPort --outDir ${OUT}`,
