@@ -6,6 +6,8 @@ import { centerlineSvgPath, formatNumber as f, outlineToSvgPath, penLook, stroke
 import { paperElements, paperRoleColor } from './paper.ts';
 import { liveInkLinks } from './links.ts';
 import { objectsSvg } from './objectsvg.ts';
+import { overlaysSvg } from './overlays.ts';
+import { visibleStrokes } from './layers.ts';
 import { objectsText, objectRect } from './objects.ts';
 
 export const xmlEscape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -98,8 +100,10 @@ export function exportPageSvg(note: NoteMeta, page: PageInk, opts: SvgOptions = 
   // Tables, solved results and graphs sit under the ink (handwriting in table cells is on top).
   if (page.objects?.length) parts.push(objectsSvg(page.objects));
   // Highlighters under ink, like on paper.
-  const under = page.strokes.filter((s) => penLook(s.pen).underlay);
-  const over = page.strokes.filter((s) => !penLook(s.pen).underlay);
+  // Hidden layers are left out; the drawing layer comes before the writing layer.
+  const shown = visibleStrokes(page);
+  const under = shown.filter((s) => penLook(s.pen).underlay);
+  const over = shown.filter((s) => !penLook(s.pen).underlay);
   parts.push('<g id="ink" stroke-linejoin="round" stroke-linecap="round">');
   for (const s of [...under, ...over]) {
     const look = penLook(s.pen);
@@ -114,6 +118,8 @@ export function exportPageSvg(note: NoteMeta, page: PageInk, opts: SvgOptions = 
   }
   parts.push('</g>');
   for (const t of page.texts ?? []) parts.push(textElement(t));
+  // Sticky notes and tape lie on top of everything.
+  if (page.objects?.length) parts.push(overlaysSvg(page.objects));
   parts.push('</svg>');
   return parts.join('\n') + '\n';
 }
