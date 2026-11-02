@@ -25,6 +25,8 @@ import { AuthorshipSection } from '../authorship/AuthorshipSection.tsx';
 import { AgentSettings } from '../ui/agent/AgentSettings.tsx';
 import { SpeechSettings } from '../ui/SpeechSettings.tsx';
 import { Waypoints } from 'lucide-react';
+import { Code2 } from 'lucide-react';
+import { DeveloperSection } from '../dev/DevSettings.tsx';
 import { KnowledgeSettings } from '../ui/knowledge/KnowledgeSettings.tsx';
 import { LocalAISettings } from '../ui/LocalAISettings.tsx';
 
@@ -38,6 +40,7 @@ const SECTIONS = [
   { id: 'authorship', label: 'Authorship', icon: <Fingerprint size={17} /> },
   { id: 'appearance', label: 'Appearance & paper', icon: <Palette size={17} /> },
   { id: 'knowledge', label: 'Notes, links & Obsidian', icon: <Waypoints size={17} /> },
+  { id: 'developer', label: 'Developer', icon: <Code2 size={17} /> },
   { id: 'about', label: 'About', icon: <Info size={17} /> },
 ] as const;
 
@@ -80,6 +83,7 @@ export function Settings({ section }: { section?: string }) {
             {active === 'authorship' && <AuthorshipSection />}
             {active === 'appearance' && <AppearanceSection />}
             {active === 'knowledge' && <KnowledgeSettings />}
+            {active === 'developer' && <DeveloperSection />}
             {active === 'about' && <AboutSection />}
           </main>
         )}
