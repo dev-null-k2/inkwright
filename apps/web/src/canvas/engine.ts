@@ -177,6 +177,7 @@ export class InkEngine {
   private fitted = false;
   private destroyed = false;
   private wetDirtyRect: { x: number; y: number; w: number; h: number } | null = null;
+  private flash: { el: HTMLDivElement; pageIndex: number; rect: Rect; timer: number } | null = null;
 
   tool: ToolState;
   prefs: InputPrefs;
@@ -284,6 +285,40 @@ export class InkEngine {
     this.viewport.panY = -s.y * this.viewport.zoom + 16;
     this.clampView();
     this.invalidate();
+  }
+
+  /**
+   * Scrolls a page-space region into view and briefly highlights it, so a search result or an AI
+   * citation lands on the exact words. The highlight follows panning and zooming until it fades.
+   */
+  flashRegion(pageIndex: number, r: Rect, ms = 2200) {
+    const slot = this.layout.slots[pageIndex];
+    if (!slot) return;
+    const v = this.viewport;
+    const ox = slot.infinite ? 0 : slot.x, oy = slot.infinite ? 0 : slot.y;
+    const cx = (r.minX + r.maxX) / 2 + ox, cy = (r.minY + r.maxY) / 2 + oy;
+    if (this.layout.infinite) v.panX = v.width / 2 - cx * v.zoom;
+    v.panY = v.height * 0.4 - cy * v.zoom;
+    this.clampView();
+    if (this.flash) { clearTimeout(this.flash.timer); this.flash.el.remove(); }
+    const box = el('div', 'ink-flash') as HTMLDivElement;
+    box.setAttribute('aria-hidden', 'true');
+    this.overlay.append(box);
+    const flash = { el: box, pageIndex, rect: r, timer: 0 };
+    flash.timer = window.setTimeout(() => {
+      box.classList.add('is-fading');
+      setTimeout(() => { box.remove(); if (this.flash === flash) this.flash = null; }, 500);
+    }, ms);
+    this.flash = flash;
+    this.invalidate();
+  }
+
+  private positionFlash() {
+    const f = this.flash;
+    if (!f) return;
+    const pad = 6;
+    const s = this.pageRectToScreen(f.pageIndex, f.rect);
+    Object.assign(f.el.style, { left: `${s.x - pad}px`, top: `${s.y - pad}px`, width: `${s.w + pad * 2}px`, height: `${s.h + pad * 2}px` });
   }
 
   get currentPageIndex(): number {
@@ -459,6 +494,7 @@ export class InkEngine {
       this.needsBase = false;
       this.renderBase();
       this.updateSelectionOverlay();
+      this.positionFlash();
       this.emitViewport();
     }
     if (this.needsWet) {
