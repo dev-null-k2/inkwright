@@ -84,6 +84,17 @@ export async function readText(f: Blob): Promise<string> {
  * Drops files into the open note: PDFs add their pages after the current one, images land where
  * they were dropped, text files become a text box there.
  */
+/**
+ * Files a module takes over when they are dropped into a note (data files become datasets, photos
+ * can become ink…): return true when handled. Registered by modules; the first match wins.
+ */
+export type NoteFileHandler = (f: File, ctx: { vault: AppVault; doc: NoteDocument; engine: InkEngine; pageIndex: number; at: { x: number; y: number } }) => Promise<boolean>;
+const noteFileHandlers = new Set<NoteFileHandler>();
+export function registerNoteFileHandler(h: NoteFileHandler): () => void {
+  noteFileHandlers.add(h);
+  return () => noteFileHandlers.delete(h);
+}
+
 export async function insertFilesIntoNote(vault: AppVault, doc: NoteDocument, engine: InkEngine, files: File[], drop?: { clientX: number; clientY: number; host: HTMLElement }): Promise<void> {
   const app = useApp.getState();
   let pageIndex = engine.currentPageIndex;
@@ -106,6 +117,9 @@ export async function insertFilesIntoNote(vault: AppVault, doc: NoteDocument, en
   let addedPages = 0;
   for (const f of files) {
     try {
+      let handled = false;
+      for (const h of noteFileHandlers) if (!handled) handled = await h(f, { vault, doc, engine, pageIndex, at: { x: at.x + offset, y: at.y + offset } });
+      if (handled) { offset += 24; continue; }
       const kind = classifyFile(f);
       if (kind === 'pdf') {
         addedPages += await insertPdf(vault, doc, f, engine.currentPageIndex + 1 + addedPages);

@@ -35,6 +35,8 @@ import { PluginsSettings } from '../plugins/PluginsSettings.tsx';
 import { DeveloperSettings } from '../developer/DeveloperSettings.tsx';
 import { contributionOn, isModuleOn, useModules } from '../modules/registry.ts';
 import { MemoryEvalSection } from '../compiler/ui/MemoryEvalSection.tsx';
+import { Accessibility } from 'lucide-react';
+import { InkActionsSettings, ReadingSettings } from '../inkactions/Settings.tsx';
 
 const SECTIONS = [
   { id: 'writing', label: 'Writing feel', icon: <Vibrate size={17} /> },
@@ -46,6 +48,8 @@ const SECTIONS = [
   { id: 'authorship', label: 'Authorship', icon: <Fingerprint size={17} /> },
   { id: 'appearance', label: 'Appearance & paper', icon: <Palette size={17} /> },
   { id: 'knowledge', label: 'Notes, links & Obsidian', icon: <Waypoints size={17} /> },
+  { id: 'ink-actions', label: 'Ink actions', icon: <PenLine size={17} /> },
+  { id: 'reading', label: 'Reading', icon: <Accessibility size={17} /> },
   { id: 'modules', label: 'Modules', icon: <Blocks size={17} /> },
   { id: 'plugins', label: 'Plugins', icon: <Puzzle size={17} /> },
   { id: 'code', label: 'Code & runbooks', icon: <FileCode2 size={17} /> },
@@ -95,6 +99,8 @@ export function Settings({ section }: { section?: string }) {
             {active === 'authorship' && current && <AuthorshipSection />}
             {active === 'appearance' && <AppearanceSection />}
             {active === 'knowledge' && current && <KnowledgeSettings />}
+            {active === 'ink-actions' && <InkActionsSettings />}
+            {active === 'reading' && current && <ReadingSettings />}
             {active === 'modules' && <ModulesSettings />}
             {active === 'plugins' && current && <PluginsSettings />}
             {active === 'code' && <DeveloperSection />}

@@ -233,3 +233,16 @@ const SQL_RESERVED = new Set(['select', 'from', 'where', 'table', 'order', 'grou
 export function isDatasetFile(name: string): boolean {
   return /\.(csv|tsv|json|ndjson)$/i.test(name);
 }
+
+/**
+ * JSON assets the app writes for itself (provenance, page summaries, transcripts, certificates):
+ * never data, even though they end in `.json`.
+ */
+export function isInternalAsset(name: string): boolean {
+  return /^(provenance|page-summaries)\.json$|\.transcript\.json$|^authorship-\d+\.json$/.test(name);
+}
+
+/** A dropped or picked file's name as a note asset in the shared data format ("Q1 sales.csv" → "Q1-sales.csv"). */
+export function dataAssetName(fileName: string): string {
+  return fileName.replace(/[^0-9A-Za-z_.-]+/g, '-').replace(/^[-.]+/, '').slice(0, 90) || 'data.csv';
+}
