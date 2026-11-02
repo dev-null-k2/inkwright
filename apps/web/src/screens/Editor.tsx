@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft, Camera, CloudUpload, Undo2, Redo2, Download, FileImage, FileText, FileType2, Files, Image as ImageIcon, Layers,
   AudioLines, Mic, MoreHorizontal, Pause, Play, Sparkles, Square, Tag, Trash2, Maximize2, FilePlus2, Copy, Scan, Search,
-  Signature, FileUp,
+  Signature, FileUp, Captions, MicVocal,
 } from 'lucide-react';
 import { newId, PAGE_SIZE_PRESETS, pagePaper, pageSizeOf, type ImageItem, type InkStroke, type TextBox } from '@inkstone/core';
 import { InkEngine, type SelectionInfo, type Tool, type ToolState } from '../canvas/engine.ts';
@@ -32,6 +32,11 @@ import { FillLayer, FilledExportDialog, noteHasPdf } from '../fill/FillLayer.tsx
 import { insertFilesIntoNote, useFileDrop } from '../lib/openFiles.ts';
 import { useFocusRequests } from '../lib/focus.ts';
 import { openPalette, usePaletteActions } from '../lib/palette.ts';
+import { TranscriptPanel } from '../ui/TranscriptPanel.tsx';
+import { DictationBar } from '../ui/Dictation.tsx';
+import { cancelListening, finishListening, focusInkMoment, installSaidLinks, startListening, useListen, useListenFocus } from '../lib/listen/session.ts';
+import { useSpeechPrefs } from '../lib/listen/engines.ts';
+import { placeDictatedText, startDictation } from '../lib/listen/dictation.ts';
 
 declare const __E2E__: boolean;
 /** Test builds (`vite build --mode e2e`) expose the document to end-to-end tests; releases never do. */
@@ -57,7 +62,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   const [sel, setSel] = useState<SelectionInfo | null>(null);
   const [editingText, setEditingText] = useState<{ pageIndex: number; box: TextBox; isNew: boolean } | null>(null);
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'error'>('saved');
-  const [panel, setPanel] = useState<'pages' | 'ai' | null>(null);
+  const [panel, setPanel] = useState<'pages' | 'ai' | 'transcript' | null>(null);
   const [aiRequest, setAiRequest] = useState<AIRequest | null>(null);
   const [paperOpen, setPaperOpen] = useState(false);
   const [menu, setMenu] = useState<'export' | 'insert' | 'more' | 'feel' | null>(null);
@@ -223,7 +228,13 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   }); // re-bind each render: handlers close over current state
 
   // Search results and AI citations land here: scroll to the cited words and flash them.
-  useFocusRequests(engine, noteId);
+  useFocusRequests(engine, noteId, (clipId, ms) => void playClip(clipId, ms));
+  // Notes that listen: citations and transcript taps highlight the ink written then and play it.
+  useEffect(() => installSaidLinks(), []);
+  useListenFocus({ engine, doc, vault, onSeek: (clipId, ms) => void playClip(clipId, ms), openTranscript: () => setPanel((p) => (p === 'ai' ? p : 'transcript')) });
+  const listening = useListen((s) => s.noteId === noteId && s.status !== 'idle');
+  // With the transcript open, a tap on ink finds what was being said when it was written.
+  useEffect(() => { if (engine) engine.tapToSeek = panel === 'transcript' && recording == null; }, [engine, panel, recording]);
   usePaletteActions('editor', [
     { id: 'export-pdf', label: 'Export PDF', keywords: 'save share print', hint: `${modKey}P`, icon: <FileType2 size={16} />, run: () => void doExport('pdf') },
     { id: 'export-md', label: 'Export Markdown', keywords: 'save share text', icon: <FileText size={16} />, run: () => void doExport('md') },
@@ -328,10 +339,14 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
       await vault.vault.writeAsset(doc.meta.id, asset, new Uint8Array(await out.blob.arrayBuffer()));
       doc.updateMeta((m) => ({ ...m, recordings: [...(m.recordings ?? []), { ...out.clip, asset }] }));
       toast({ text: `Saved recording (${formatDuration(out.clip.durationMs)})`, tone: 'success' });
+      void finishListening({ vault, doc, clip: { ...out.clip, asset } });
     } else {
       try {
         await r.start();
         setRecording(Date.now());
+        // Live transcript of the same microphone audio (on this device by default).
+        if (r.mediaStream) void startListening({ noteId: doc.meta.id, clipId: r.clipId, startedAt: r.startedAt, stream: r.mediaStream });
+        if (useSpeechPrefs.getState().autoOpen && useSpeechPrefs.getState().engine !== 'off') setPanel((p) => (p === 'ai' ? p : 'transcript'));
       } catch (e) {
         toast({ text: `Microphone unavailable: ${(e as Error).message}`, tone: 'error' });
       }
@@ -371,6 +386,8 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   };
 
   const seekTo = (createdAt: number) => {
+    // Transcript open: show the sentence; only move the audio when it is already playing.
+    if (panel === 'transcript' && doc && focusInkMoment(doc.meta.id, clips, createdAt) && !playback?.playing) return;
     const clip = [...clips].reverse().find((c) => createdAt >= c.startedAt && createdAt <= c.startedAt + c.durationMs);
     if (clip) void playClip(clip.id, Math.max(0, createdAt - clip.startedAt - 1500));
   };
@@ -387,7 +404,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   useEffect(() => () => {
     const a = audioEl.current;
     if (a) { a.pause(); URL.revokeObjectURL(a.src); }
-    if (recorder.current.recording) void recorder.current.stop();
+    if (recorder.current.recording) { void recorder.current.stop(); cancelListening(); }
   }, []);
 
   // A note moved to Trash (e.g. by the assistant) closes the editor.
@@ -507,6 +524,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
             <FillLayer doc={doc} engine={engine} vault={vault} session={session} host={host.current} active={fill} onActive={setFill}
               sel={sel} onTool={setTool} onExport={() => setFillExport(true)} view={view} />
           )}
+          {doc && engine && <DictationBar onDone={(t) => { placeDictatedText(doc, engine.currentPageIndex, t); toast({ text: 'Added to the page', action: { label: 'Undo', run: () => engine.undo() } }); }} />}
           {dropping && <div className="drop-hint" aria-live="polite"><FileUp size={22} /> Drop to add to this note</div>}
           {latched && <div className="latch-pill" role="status">{settings.input.buttonAction === 'lasso' ? 'Lasso' : settings.input.buttonAction === 'highlighter' ? 'Highlighter' : 'Eraser'} on — press the pen button to switch back</div>}
           {clips.length > 0 && (
@@ -544,6 +562,9 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
           <PagesPanel doc={doc!} current={view.pageIndex} assets={vault!.assets} onGo={(i) => engine!.scrollToPage(i)} onClose={() => setPanel(null)}
             vault={vault!} onOpenNote={(id) => void session?.flush().then(() => navigate({ name: 'editor', noteId: id }))}
             onDelete={async (i) => { if (await askConfirm(`Delete page ${i + 1}?`, 'The page and its ink are removed from this note.', 'Delete page', true)) doc!.deletePage(i); }} />
+        )}
+        {sidePanel && panel === 'transcript' && (
+          <TranscriptPanel doc={doc!} vault={vault!} recording={recording != null} playing={playback} onClose={() => setPanel(null)} />
         )}
         {sidePanel && panel === 'ai' && (
           <AIPanel session={session!} engine={engine!} request={aiRequest} onClose={() => setPanel(null)} onOpenSettings={() => navigate({ name: 'settings', section: 'ai' })} />
@@ -603,6 +624,10 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
           ...(noteHasPdf(doc) ? [{ label: fill ? 'Stop filling in' : 'Fill & sign', icon: <Signature size={16} />, onClick: () => setFill(!fill) }] : []),
           { label: 'Search everything', icon: <Search size={16} />, hint: `${modKey}K`, onClick: () => openPalette({ query: '' }) },
           { label: 'Pages', icon: <Layers size={16} />, hint: doc && doc.pageCount > 1 ? `${doc.pageCount}` : undefined, onClick: () => setPanel('pages') },
+          ...(!isArtifact ? [
+            { label: 'Transcript', icon: <Captions size={16} />, hint: listening ? 'Live' : clips.length ? `${clips.length}` : undefined, onClick: () => setPanel('transcript') },
+            { label: 'Dictate', icon: <MicVocal size={16} />, hint: recording != null ? 'Not while recording' : undefined, disabled: recording != null, onClick: () => void startDictation('page') },
+          ] : []),
           { label: 'Paper', icon: <Files size={16} />, onClick: () => setTimeout(() => setPaperOpen(true), 0) },
           { label: 'Writing sound & feel', icon: <AudioLines size={16} />, hint: settings.feel.sound ? `${Math.round(settings.feel.soundVolume * 100)}%` : 'Off', onClick: () => setTimeout(() => setMenu('feel'), 0) },
           { label: 'Insert', icon: <ImageIcon size={16} />, onClick: () => setTimeout(() => setMenu('insert'), 0) },

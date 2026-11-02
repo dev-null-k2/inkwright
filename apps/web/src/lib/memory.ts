@@ -1,9 +1,10 @@
 import { useSyncExternalStore } from 'react';
-import { MemoryCorpus, chunkNote, hybridSearch, type MemoryChunk, type NoteMeta, type PageInk, type PdfTextItem, type RankedChunk } from '@inkstone/core';
+import { MemoryCorpus, chunkNote, hybridSearch, type MemoryChunk, type NoteMeta, type PageInk, type PdfTextItem, type RankedChunk, type RecordingTranscript } from '@inkstone/core';
 import type { MemoryHit, MemorySearchHost } from '@inkstone/ai';
 import { loadPdfJs } from '../canvas/assets.ts';
 import type { AppVault } from './vault.ts';
 import { currentEmbedder, onLocalAIChange, type Embedder } from './localai.ts';
+import { loadNoteTranscripts } from './listen/transcripts.ts';
 
 /**
  * All notes as one searchable memory (see packages/core/src/memory.ts for chunking and ranking).
@@ -80,6 +81,9 @@ export class AppMemory implements MemorySearchHost {
   private listeners = new Set<() => void>();
   private snapshot: MemoryStatus = { version: 0, passages: 0, embedded: 0, embedder: null, indexing: false, error: null };
   private version = 0;
+  /** Transcripts of each note's recordings ("what was said" passages), loaded once per note. */
+  private transcripts = new Map<string, RecordingTranscript[]>();
+  private transcriptsQueued = new Set<string>();
 
   constructor(readonly vault: AppVault) {
     onLocalAIChange(() => this.kick());
@@ -94,7 +98,7 @@ export class AppMemory implements MemorySearchHost {
   /** Indexes or re-indexes one note (called whenever the keyword index is). */
   update(note: NoteMeta, pages: readonly PageInk[]): void {
     if (note.trashedAt != null) return this.remove(note.id);
-    this.corpus.setNote(note.id, chunkNote(note, pages, { pdfText: this.pdfFor(note, pages) }));
+    this.corpus.setNote(note.id, chunkNote(note, pages, { pdfText: this.pdfFor(note, pages), transcripts: this.transcriptsFor(note, pages) }));
     this.pending.add(note.id);
     this.version++;
     this.changed();
@@ -109,10 +113,39 @@ export class AppMemory implements MemorySearchHost {
   }
 
   clear(): void {
+    // A rebuild (e.g. after sync) may bring new transcripts: read them again.
+    this.transcripts.clear();
+    this.transcriptsQueued.clear();
     this.corpus.clear();
     this.pending.clear();
     this.version++;
     this.changed();
+  }
+
+  // ---- Transcripts -------------------------------------------------------------------------------
+
+  /** Known transcripts of the note's recordings; the first time, loads them and re-chunks the note. */
+  private transcriptsFor(note: NoteMeta, pages: readonly PageInk[]): RecordingTranscript[] {
+    if (!note.recordings?.length) return [];
+    const have = this.transcripts.get(note.id);
+    if (have) return have.filter((t) => note.recordings!.some((c) => c.id === t.clip.id));
+    if (!this.transcriptsQueued.has(note.id)) {
+      this.transcriptsQueued.add(note.id);
+      void loadNoteTranscripts(this.vault, note).then((list) => {
+        this.transcripts.set(note.id, list);
+        if (list.length) this.update(note, pages);
+      }).catch((e) => console.warn('Transcripts unavailable', e));
+    }
+    return [];
+  }
+
+  /** A transcript was written: re-index the note with it. */
+  setTranscripts(noteId: string, list: RecordingTranscript[]): void {
+    this.transcripts.set(noteId, list);
+    this.transcriptsQueued.add(noteId);
+    void this.vault.vault.readNote(noteId).then(async (note) => {
+      if (note && note.trashedAt == null) this.update(note, await this.vault.vault.readPages(note));
+    });
   }
 
   // ---- PDF text layers ----------------------------------------------------------------------------
@@ -287,6 +320,7 @@ export function toHit(r: RankedChunk): MemoryHit {
     text: c.text,
     score: r.score,
     ...(c.rect ? { rect: { x: c.rect.minX, y: c.rect.minY, width: c.rect.maxX - c.rect.minX, height: c.rect.maxY - c.rect.minY } } : {}),
+    ...(c.source === 'speech' && c.clipId ? { said: { clipId: c.clipId, startMs: c.startMs ?? 0, endMs: c.endMs ?? c.startMs ?? 0 } } : {}),
   };
 }
 

@@ -13,6 +13,7 @@ import {
   getProviderInfo,
   modelRef,
   pickVariant,
+  recommendAsr,
   recommendLocal,
   remoteEmbed,
   runnableModels,
@@ -51,6 +52,8 @@ export interface LocalPrefs {
   embeddings: EmbeddingPreference;
   /** Embedding model name at the user's provider (when embeddings = 'provider'). */
   embedProviderModel: string;
+  /** Chosen speech-to-text model id; null = the recommended one for this device and language. */
+  asrModel: string | null;
 }
 
 export interface DownloadState {
@@ -74,7 +77,7 @@ interface LocalState extends LocalPrefs {
 }
 
 const KEY = 'inkstone.localai.v1';
-const DEFAULT_PREFS: LocalPrefs = { assistant: 'auto', chatModel: null, embedModel: null, embeddings: 'device', embedProviderModel: '' };
+const DEFAULT_PREFS: LocalPrefs = { assistant: 'auto', chatModel: null, embedModel: null, embeddings: 'device', embedProviderModel: '', asrModel: null };
 
 function loadPrefs(): LocalPrefs {
   try {
@@ -98,7 +101,7 @@ export const useLocalAI = create<LocalState>((set, get) => ({
   setPrefs: (p) => {
     set(p);
     const s = get();
-    const prefs: LocalPrefs = { assistant: s.assistant, chatModel: s.chatModel, embedModel: s.embedModel, embeddings: s.embeddings, embedProviderModel: s.embedProviderModel };
+    const prefs: LocalPrefs = { assistant: s.assistant, chatModel: s.chatModel, embedModel: s.embedModel, embeddings: s.embeddings, embedProviderModel: s.embedProviderModel, asrModel: s.asrModel };
     safeStorage.set(KEY, JSON.stringify(prefs));
     listeners.forEach((l) => l());
   },
@@ -187,6 +190,16 @@ export function embedChoice(): ModelChoice | null {
   return choice(s.embedModel, s.rec?.embed);
 }
 
+/**
+ * The speech-to-text model in use on this device (chosen, or recommended for its tier and the
+ * speech language: Moonshine for English, Whisper otherwise).
+ */
+export function asrChoice(language: string = (typeof navigator !== 'undefined' && navigator.language) || 'en'): ModelChoice | null {
+  const s = useLocalAI.getState();
+  const hw = s.hardware;
+  return choice(s.asrModel, hw ? recommendAsr(hw, language) : null);
+}
+
 export const refOf = (c: ModelChoice): ModelRef => modelRef(c.spec, c.variant as ModelChoice['variant'] & { device: 'webgpu' | 'wasm' });
 
 export function isInstalled(c: ModelChoice | null): boolean {
@@ -197,7 +210,7 @@ export function isInstalled(c: ModelChoice | null): boolean {
 export async function refreshInstalled(): Promise<void> {
   const s = useLocalAI.getState();
   if (!s.hardware) return;
-  const all = [...runnableModels(s.hardware, 'chat'), ...runnableModels(s.hardware, 'embed')];
+  const all = [...runnableModels(s.hardware, 'chat'), ...runnableModels(s.hardware, 'embed'), ...runnableModels(s.hardware, 'asr')];
   const installed: Record<string, boolean> = {};
   const onDevice: Record<string, number> = {};
   for (const c of all) {

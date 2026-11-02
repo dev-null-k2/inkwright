@@ -31,6 +31,7 @@ import { speak, useVoicePrefs } from '../lib/agent/voice.ts';
 import { AgentMenuButton, MicButton, PanelAgentView, PanelWaiting } from './agent/panel.tsx';
 import type { AgentViewId } from './agent/shared.tsx';
 import { LocalAISetup } from './LocalAISetup.tsx';
+import { linkLiveCitations, liveAskContext, useListen } from '../lib/listen/session.ts';
 
 export type AIRequest = { kind: 'selection'; pageIndex: number; strokeIds: string[]; textIds: string[]; at: number };
 
@@ -111,6 +112,8 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
   const patch = (id: string, p: Partial<Item>) => setItems((x) => x.map((i) => (i.id === id ? { ...i, ...p } : i)));
 
   const pageIndex = engine.currentPageIndex;
+  const recordingHere = useListen((s) => s.noteId === doc.meta.id && s.status === 'listening');
+  useListen((s) => s.segments.length); // re-link [m:ss] citations as the transcript grows
 
   const noteContext = () => {
     const parts = doc.pages.map((p, i) => `--- Page ${i + 1} ---\n${pageText(p) || (p.strokes.length ? '(handwriting not yet transcribed)' : '(blank)')}`);
@@ -215,7 +218,9 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
     const toolItems = new Map<string, string>();
     try {
       // Note tools (logged for undo), skills, memory and connected apps — shared with routines.
-      prep = await prepareAgentRun({ ai: a, vault, source: 'assistant', label: 'Assistant', prompt: q, openDoc: doc, notes: 'write', skills: true, remember: true, mcp: 'all', context: noteContext() });
+      // While recording, the live transcript so far (with times to cite) joins the note context.
+      const live = liveAskContext(doc.meta.id, engine.currentPageIndex, doc.pages[engine.currentPageIndex]);
+      prep = await prepareAgentRun({ ai: a, vault, source: 'assistant', label: 'Assistant', prompt: q, openDoc: doc, notes: 'write', skills: true, remember: true, mcp: 'all', context: live ? `${noteContext()}\n\n${live}` : noteContext() });
       const res = await runAgent({
         provider: a.provider,
         model: a.model,
@@ -311,7 +316,7 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
             </ul>
           </div>
         )}
-        {items.map((it) => <Message key={it.id} item={it} />)}
+        {items.map((it) => <Message key={it.id} item={it.role === 'assistant' ? { ...it, text: linkLiveCitations(it.text, doc.meta.id) } : it} />)}
         {busy && <div className="ai-typing" aria-live="polite"><span /><span /><span /></div>}
       </div>
       <PanelWaiting onOpen={setView} />
@@ -322,7 +327,7 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
         </div>
       )}
       <form className="ai-input" onSubmit={(e) => { e.preventDefault(); void send(); }}>
-        <textarea value={input} rows={1} placeholder={ai ? 'Ask, or tell it what to do with your notes' : 'Connect an AI to chat'} disabled={!ai}
+        <textarea value={input} rows={1} placeholder={ai ? (recordingHere ? 'Ask about what was just said' : 'Ask, or tell it what to do with your notes') : 'Connect an AI to chat'} disabled={!ai}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } e.stopPropagation(); }} />
         {!busy && <MicButton disabled={!ai} onPartial={setInput} onText={(t) => { setInput(t); void send(t); }} />}

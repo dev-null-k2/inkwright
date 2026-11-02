@@ -154,10 +154,27 @@ export async function removeStored(ref: ModelRef): Promise<void> {
     await (await root()).removeEntry(dirName(ref.repo), { recursive: true });
     return;
   }
-  const prefix = fileName(`onnx/${ref.onnxBase}`);
-  const suffix = ref.dtype === 'fp32' ? '.onnx' : `_${ref.dtype}.onnx`;
+  // Delete this variant's weights, keeping files another variant's manifest still lists (an
+  // encoder–decoder speech model's variants can share one of their ONNX files).
+  const manifestFiles = async (name: string): Promise<string[] | null> => {
+    try {
+      const m = JSON.parse(await (await (await dir.getFileHandle(name)).getFile()).text()) as { files: RepoFile[] };
+      return m.files.map((f) => fileName(f.path));
+    } catch {
+      return null;
+    }
+  };
+  const shared = new Set<string>();
+  for (const o of others) for (const f of (await manifestFiles(o)) ?? []) shared.add(f);
+  const mine = await manifestFiles(manifestName(ref));
+  const prefixes = (ref.moduleDtypes ? Object.keys(ref.moduleDtypes) : [ref.onnxBase]).map((m) => fileName(`onnx/${m}`));
+  const ownWeights = (name: string) => {
+    if (mine) return mine.includes(name) && name.startsWith(fileName('onnx/'));
+    const suffix = ref.dtype === 'fp32' ? '.onnx' : `_${ref.dtype}.onnx`;
+    return prefixes.some((p) => name.startsWith(p) && name.slice(p.length).startsWith(suffix));
+  };
   for await (const [name] of (dir as any).entries() as AsyncIterable<[string, FileSystemHandle]>) {
-    if (name === manifestName(ref) || (name.startsWith(prefix) && name.slice(prefix.length).startsWith(suffix))) await dir.removeEntry(name);
+    if (name === manifestName(ref) || (ownWeights(name) && !shared.has(name))) await dir.removeEntry(name);
   }
 }
 
