@@ -10,6 +10,20 @@ import { VERSION } from './version.ts';
 const log = (msg: string) => process.stderr.write(`[inkstone-mcp] ${msg}\n`);
 
 async function main(): Promise<void> {
+  if (process.argv[2] === 'keys') {
+    // `inkstone-mcp keys create|list|revoke` — REST API keys (api/keys-cli.ts).
+    const { keysCli, KEYS_USAGE } = await import('./api/keys-cli.ts');
+    try {
+      await keysCli(process.argv.slice(3));
+    } catch (e) {
+      if (e instanceof CliError) {
+        process.stderr.write(`${e.message}\n\n${KEYS_USAGE}`);
+        process.exit(2);
+      }
+      throw e;
+    }
+    return;
+  }
   let opts;
   try {
     opts = parseCli(process.argv.slice(2));
@@ -54,8 +68,8 @@ async function main(): Promise<void> {
     log(`Vault ${ctx.root}${ctx.readOnly ? ' (read-only)' : ''}`);
     closeAll = async () => {
       services.tasks.close();
-      await services.activity.flush();
       await http.close();
+      await services.activity.flush();
     };
     return;
   }
