@@ -214,7 +214,7 @@ describe('routine scheduler', () => {
 
 describe('templates and validation', () => {
   it('ships four templates that validate', () => {
-    expect(ROUTINE_TEMPLATES.map((t) => t.name)).toEqual(['File my notes', 'To-dos to tasks', 'Flashcards before exams', 'Draft the email I scribbled']);
+    expect(ROUTINE_TEMPLATES.map((t) => t.name)).toEqual(['File my notes', 'To-dos to tasks', 'Flashcards before exams', 'Draft the email I scribbled', 'Compile my wiki', 'Follow-ups from today\'s meetings']);
     for (const t of ROUTINE_TEMPLATES) expect(validateRoutine(t.build(0))).toEqual([]);
     expect(validateRoutine({ name: '', prompt: 'short', triggers: [{ kind: 'daily', time: '25:00' }] })).toHaveLength(3);
   });
