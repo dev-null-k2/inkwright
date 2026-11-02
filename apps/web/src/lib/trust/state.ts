@@ -72,11 +72,16 @@ export function trustServices(): typeof services {
   return services;
 }
 
+/**
+ * An enterprise build (the Docker appliance) sets `VITE_MANAGED_POLICY_URL` (e.g.
+ * `managed-policy.json`, served next to the app); other builds never ask for one.
+ */
 async function fetchManagedPolicy(): Promise<AIPolicy | null> {
-  if (isArtifact || typeof fetch === 'undefined') return null;
+  const env = (import.meta as unknown as { env?: { BASE_URL?: string; VITE_MANAGED_POLICY_URL?: string } }).env;
+  const url = env?.VITE_MANAGED_POLICY_URL;
+  if (!url || isArtifact || typeof fetch === 'undefined') return null;
   try {
-    const base = (import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/';
-    const r = await fetch(`${base}managed-policy.json`, { cache: 'no-cache' });
+    const r = await fetch(/^https?:\/\//.test(url) ? url : `${env?.BASE_URL ?? '/'}${url.replace(/^\//, '')}`, { cache: 'no-cache' });
     if (!r.ok || !(r.headers.get('content-type') ?? '').includes('json')) return null;
     const { policy, errors } = parsePolicy(await r.text());
     if (errors.length) console.warn('Managed AI policy has problems:', errors);

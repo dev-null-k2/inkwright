@@ -22,7 +22,7 @@ import {
 } from '@inkstone/ai';
 import { useSettings } from '../../state/settings.ts';
 import { CLAUDE_BUILTIN_ID, activeFromConfig, builtinActiveAI, type AICallOptions, type ActiveAI } from '../ai.ts';
-import { localActiveAI } from '../localai.ts';
+import { readyDeviceAI } from '../localai.ts';
 import { currentPolicy, labelForMeta, trustServices } from './state.ts';
 
 /** Before the vault opens (and in tests without one): defaults, nothing persisted. */
@@ -38,10 +38,8 @@ const toRoute = (a: ActiveAI): Route => ({ provider: a.provider, model: a.model,
 
 /** An AI that runs on this device, if there is one. */
 export async function deviceAI(): Promise<ActiveAI | null> {
-  for (const kind of ['native', 'chrome', 'device'] as const) {
-    const a = localActiveAI(kind);
-    if (a) return { ...a, local: true, budgetKey: 'device' };
-  }
+  const a = await readyDeviceAI().catch(() => null);
+  if (a) return { ...a, local: true, budgetKey: 'device' };
   for (const cfg of useSettings.getState().ai.providers) {
     if (cfg.id === CLAUDE_BUILTIN_ID) continue;
     const a = await activeFromConfig(cfg).catch(() => null);
