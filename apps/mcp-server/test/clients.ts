@@ -42,13 +42,13 @@ export async function appConnection(services: ServerServices, onElicit?: ElicitH
 }
 
 /** JSON in a tool result's first text block. */
-export function resultJson(r: { content?: unknown }): any {
-  const c = (r.content as Array<{ type: string; text?: string }> | undefined)?.find((x) => x.type === 'text');
+export function resultJson(r: unknown): any {
+  const c = ((r as { content?: unknown }).content as Array<{ type: string; text?: string }> | undefined)?.find((x) => x.type === 'text');
   return JSON.parse(c?.text ?? 'null');
 }
 
-export function resultText(r: { content?: unknown }): string {
-  return ((r.content as Array<{ type: string; text?: string }> | undefined) ?? []).filter((x) => x.type === 'text').map((x) => x.text).join('\n');
+export function resultText(r: unknown): string {
+  return (((r as { content?: unknown }).content as Array<{ type: string; text?: string }> | undefined) ?? []).filter((x) => x.type === 'text').map((x) => x.text).join('\n');
 }
 
 /** Polls until `fn` returns a truthy value (or throws after `ms`). */

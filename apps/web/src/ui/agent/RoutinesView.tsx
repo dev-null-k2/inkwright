@@ -2,7 +2,7 @@
  * Routines: background agents with a prompt, the AI to use, the tools allowed and triggers.
  * The copy is explicit that routines only run while Inkstone is open (and catch up once on open).
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pencil, Play, Plus, Square, Trash2, X } from 'lucide-react';
 import {
   DAY_NAMES,
@@ -10,6 +10,7 @@ import {
   describeTrigger,
   newRoutine,
   nextSlot,
+  routineLeaseHeldByOther,
   validateRoutine,
   type Routine,
   type RoutineTrigger,
@@ -29,6 +30,10 @@ export function RoutinesView() {
   const queued = useAgent((s) => s.queuedRoutines);
   const runner = useAgent((s) => s.routinesRunner);
   const [editing, setEditing] = useState<Routine | null>(null);
+  // Check now (the scheduler only looks once a minute) so the screen says who runs routines.
+  useEffect(() => {
+    void routineLeaseHeldByOther(requireHub().vault.fs, Date.now()).then((l) => useAgent.setState({ routinesRunner: l ? l.label : null }), () => {});
+  }, []);
   if (editing) return <RoutineEditor initial={editing} onDone={() => setEditing(null)} />;
   return (
     <div className="ag-screen">

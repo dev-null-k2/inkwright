@@ -76,6 +76,8 @@ export interface AgentHub {
 
 let hub: AgentHub | null = null;
 
+declare const __E2E__: boolean;
+
 /** The hub, once the vault is open (null before). */
 export function agentHub(): AgentHub | null {
   return hub;
@@ -104,6 +106,8 @@ export async function initAgentHub(vault: AppVault): Promise<AgentHub> {
   if (hub?.vault === vault) return hub;
   const fs = vault.fs;
   hub = { vault, activity: new ActivityStore(fs), memory: new MemoryStore(fs), skills: new SkillStore(fs, builtinSkills()), routines: new RoutineStore(fs) };
+  // e2e tests write vault files the way a sync client or the always-on runner would.
+  if (typeof __E2E__ !== 'undefined' && __E2E__) (window as unknown as { __inkstoneHub?: AgentHub }).__inkstoneHub = hub;
   hub.activity.onChange(() => void refreshRuns());
   hub.memory.onChange(() => void refreshMemory());
   hub.skills.onChange(() => void refreshSkills());
