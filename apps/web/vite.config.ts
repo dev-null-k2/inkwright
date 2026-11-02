@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 import type { Plugin } from 'vite';
+import { fileURLToPath } from 'node:url';
 
 /**
  * Content Security Policy for hosted/native builds. Any AI endpoint may be configured by the user
@@ -70,6 +71,8 @@ export default defineConfig(({ mode }) => {
     base: './',
     plugins: [react(), ...(single ? [viteSingleFile({ removeViteModuleLoader: true })] : native ? [csp(true)] : [serviceWorker(), csp(false)])],
     publicDir: single ? false : 'public',
+    // The single-file preview leaves the on-device AI runtime out (see src/ai/spawn-unavailable.ts).
+    resolve: single ? { alias: [{ find: /^\.\.\/ai\/spawn\.ts$/, replacement: fileURLToPath(new URL('./src/ai/spawn-unavailable.ts', import.meta.url)) }] } : undefined,
     define: {
       __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '1.0.0'),
       __BUILD_TARGET__: JSON.stringify(single ? 'single' : 'web'),
