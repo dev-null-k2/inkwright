@@ -48,7 +48,8 @@ import {
   type NoteMeta,
 } from '@inkstone/core';
 import { getActiveAI } from '../lib/ai.ts';
-import { localActiveAI } from '../lib/localai.ts';
+import { initLocalAI, localActiveAI, useLocalAI } from '../lib/localai.ts';
+import { nativeEngineReady } from '../lib/native-ai.ts';
 import { appMemory } from '../lib/memory.ts';
 import { loadNoteTranscripts } from '../lib/listen/transcripts.ts';
 import type { AppVault } from '../lib/vault.ts';
@@ -181,9 +182,15 @@ export function scheduleScan(ms = 3000): void {
   }, ms);
 }
 
-/** The on-device model, if one is installed (the only model background work may use). */
-function deviceAI(): CompilerAI | null {
+/**
+ * The on-device model, if one is ready (the only model background work may use): an Android
+ * engine, a downloaded model, or Chrome's built-in model once Chrome reports it available.
+ */
+async function deviceAI(): Promise<CompilerAI | null> {
+  await initLocalAI().catch(() => {});
+  const ready = { native: nativeEngineReady(), device: true, chrome: useLocalAI.getState().chrome === 'available' };
   for (const kind of ['native', 'device', 'chrome'] as const) {
+    if (!ready[kind]) continue;
     try {
       const l = localActiveAI(kind);
       if (l) return { provider: l.provider, model: l.model, label: l.label, where: 'device' };
@@ -213,7 +220,7 @@ export function scanNow(): Promise<void> {
       const decisions = await s.decisions();
       const scan = config.ledger ? scanLedger(sources, decisions, { threshold: config.threshold }) : { open: [], candidates: [], decided: [], claims: [] };
       let open = scan.open;
-      const ai = config.ledger ? deviceAI() : null;
+      const ai = config.ledger ? await deviceAI() : null;
       if (ai && scan.candidates.length) {
         const ask = scan.candidates.filter((c) => !adjudicated.has(c.id)).slice(0, 4);
         if (ask.length) {

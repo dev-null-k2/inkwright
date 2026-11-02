@@ -82,6 +82,9 @@ export async function makeCards(ai: CompilerAI | null, units: readonly SourceUni
       if (!u || !q || !a) continue;
       const src = wordSet(u.text);
       const aw = wordSet(a);
+      // An answer must say something (words or a number) and say it from its sentence.
+      if (!aw.size && !numbersIn(a).length) continue;
+      if (wordSet(q).size < 1) continue;
       if (aw.size && containment(aw, src) < 0.5) continue;
       const nums = new Set(numbersIn(u.text));
       if (numbersIn(a).some((n) => !nums.has(n))) continue;
