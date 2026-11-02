@@ -208,6 +208,7 @@ describe('study with a model at the edges', () => {
       { q: 'What must latency stay under?', a: '40 ms', source: 'S1' },
       { q: 'Who invented embeddings?', a: 'Alan Turing', source: 'S2' },
       { q: 'Unsourced', a: 'x', source: 'S9' },
+      { q: '…', a: '…', source: 'S1' },
     ] }) }));
     const r = await makeCards({ provider: p, model: 'm', label: 'M' }, units());
     expect(r.byModel).toBe(true);
