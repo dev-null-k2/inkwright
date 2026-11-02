@@ -454,6 +454,22 @@ export class ContextBudgeter {
       this.expanded.add(ref);
       return { ok: true, text: original };
     }
+    if (detectShape(original) === 'json') {
+      const matches: unknown[] = [];
+      // Matching items of the innermost arrays (a note in a list, not the whole list).
+      const walk = (v: unknown, depth: number) => {
+        if (matches.length >= 200 || depth > 6) return;
+        if (Array.isArray(v)) {
+          for (const x of v) {
+            const leaf = x === null || typeof x !== 'object' || !Object.values(x).some((y) => Array.isArray(y) && y.some((z) => z && typeof z === 'object'));
+            if (leaf && score(JSON.stringify(x), terms) > 0) matches.push(x);
+            else if (!leaf) walk(x, depth + 1);
+          }
+        } else if (v && typeof v === 'object') for (const x of Object.values(v)) walk(x, depth + 1);
+      };
+      walk(JSON.parse(original.trim()), 0);
+      if (matches.length) return { ok: true, text: JSON.stringify({ matching: matches.length, items: matches }) };
+    }
     const units = detectShape(original) === 'prose' ? original.split(/\n\s*\n/) : original.split('\n');
     const hits = new Set<number>();
     units.forEach((u, i) => {

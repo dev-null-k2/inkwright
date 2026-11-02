@@ -236,7 +236,7 @@ const RECOGNIZERS: Recognizer[] = [
   {
     kind: 'ip',
     rule: 'ip:v4',
-    re: /(?<![\w.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?![\w.])/g,
+    re: /(?<![\w.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?!\w|\.\d)/g,
     validate: (_v, text, start) => !/\bv(?:ersion)?\s*$/i.test(before(text, start, 9)),
   },
   {
