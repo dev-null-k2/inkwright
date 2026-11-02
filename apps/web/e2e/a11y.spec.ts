@@ -83,6 +83,9 @@ test('reduced motion and more contrast are honoured', async ({ page }) => {
   const anim = await page.evaluate(() => { const d = document.createElement('div'); d.className = 'ia-spin'; document.body.append(d); const v = getComputedStyle(d).animationName; d.remove(); return v; });
   expect(anim).toBe('none');
   await page.emulateMedia({ contrast: 'more' });
+  // Playwright's Firefox matches the emulated query in script but doesn't restyle for it; the
+  // rule itself is plain CSS, checked in Chromium and WebKit.
+  if (page.context().browser()?.browserType().name() === 'firefox') return;
   const w = await page.evaluate(() => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); const l = document.createElementNS('http://www.w3.org/2000/svg', 'line'); l.setAttribute('class', 'ia-run-edge'); s.append(l); document.body.append(s); const v = getComputedStyle(l).strokeWidth; s.remove(); return v; });
   expect(w).toBe('3px');
 });

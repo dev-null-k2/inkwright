@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { newNote, openApp, pen, pointer, word } from './helpers.ts';
+import { modKey, newNote, openApp, pen, pointer, word } from './helpers.ts';
 
 /**
  * Two devices in one test: two browser contexts (separate storage, separate identity keys) in
@@ -9,6 +9,9 @@ import { newNote, openApp, pen, pointer, word } from './helpers.ts';
  * only (a LAN-only setup), and Chromium is told not to hide local addresses behind mDNS names,
  * which two contexts of a headless browser can't resolve for each other.
  */
+// Chromium only: two contexts talking over real WebRTC with host candidates needs a Chromium flag; WebKit/Firefox WebRTC is covered by the unit tests' in-memory link.
+test.skip(({ browserName }) => browserName !== 'chromium', 'Chromium-only launch flags');
+
 test.use({ launchOptions: { args: ['--disable-features=WebRtcHideLocalIpsWithMdns'] } });
 test.describe.configure({ mode: 'serial' });
 test.setTimeout(120_000);
@@ -118,7 +121,7 @@ test('two devices pair by code and sync a note both ways over WebRTC, with no se
   expect(written).toHaveLength(2);
   const title = 'Field notes from the laptop';
   await rename(a, title);
-  await a.keyboard.press('ControlOrMeta+s');
+  await a.keyboard.press(`${await modKey(a)}+s`);
 
   // A syncs with B: the note appears on B.
   await sync(a, b, 'Tablet');
@@ -127,7 +130,7 @@ test('two devices pair by code and sync a note both ways over WebRTC, with no se
 
   // B adds a line; B starts this sync, and the edit comes back to A.
   await pen(b, word(200, 360, 180));
-  await b.keyboard.press('ControlOrMeta+s');
+  await b.keyboard.press(`${await modKey(b)}+s`);
   const onB = await doc(b);
   expect(onB).toHaveLength(3);
   await sync(b, a, 'Laptop');

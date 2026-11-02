@@ -1,12 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
-import { openApp } from './helpers.ts';
+import { modKey, openApp } from './helpers.ts';
 
 /**
  * Sample notebooks: added from the command palette, written in synthesized handwriting, searchable
  * at once. With SHOTS=<dir> it also captures the README / store screenshots from these pages.
  */
-const mod = process.platform === 'darwin' ? 'Meta' : 'Control';
 const shots = process.env.SHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
 async function shot(page: Page, name: string) {
@@ -14,7 +13,7 @@ async function shot(page: Page, name: string) {
 }
 
 async function addSamples(page: Page) {
-  await page.keyboard.press(`${mod}+k`);
+  await page.keyboard.press(`${await modKey(page)}+k`);
   await page.locator('.pal-input').fill('sample notebooks');
   await page.locator('.pal-row', { hasText: 'Add sample notebooks' }).first().click();
   await expect(page.locator('.note-card', { hasText: 'Lecture 7' })).toBeVisible({ timeout: 15_000 });
@@ -38,7 +37,7 @@ test('sample notebooks appear, open with ink, and are searchable', async ({ page
   await shot(page, 'lecture');
 
   // Recognized text is indexed: palette search finds a phrase written in the sample ink.
-  await page.keyboard.press(`${mod}+k`);
+  await page.keyboard.press(`${await modKey(page)}+k`);
   await page.locator('.pal-input').fill('Gibbs');
   await expect(page.locator('.pal-row', { hasText: 'Lecture 7' }).first()).toBeVisible();
   await shot(page, 'search');

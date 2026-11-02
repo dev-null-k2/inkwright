@@ -118,7 +118,15 @@ test('a plugin from the curated list: permission prompt, panel, command, exporte
   await settings(page, 'plugins');
   const card = page.locator('.plg-card', { hasText: 'Word count & reading time' });
   await card.getByRole('button', { name: 'Details' }).click();
-  await card.locator('.plg-perm', { hasText: 'Read your notes' }).getByRole('switch').click({ force: true });
+  const perm = card.locator('.plg-perm', { hasText: 'Read your notes' }).getByRole('switch');
+  await perm.click({ force: true });
+  await expect(perm).not.toBeChecked();
+  // The grant lives in the vault; wait for it to be written before reloading.
+  await expect.poll(() => page.evaluate(async () => {
+    const fs = (window as any).__inkwrightHub?.vault?.fs;
+    if (!fs) return true;
+    return !JSON.stringify(JSON.parse(await fs.readText('plugins/plugins.json'))).includes('"notes:read"');
+  }), SLOW).toBe(true);
   await openApp(page);
   await page.locator('.note-card').first().click();
   await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
