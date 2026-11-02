@@ -163,8 +163,12 @@ export function handwrite(text: string, o: HandwriteOptions): HandwriteResult {
       const cos = Math.cos(rot), sin = Math.sin(rot);
       for (const raw of glyph.p) {
         if (raw.length < 2) continue;
-        // A single point is a dot (i, j, full stop, colon): give it a tiny stroke so it shows.
-        const path = raw.length === 2 ? [raw[0]!, raw[1]!, raw[0]! + 14, raw[1]! - 10] : raw;
+        // A dot (i, j, full stop, colon) is a point or a near-zero segment in the font: give it a
+        // short tick so it reads as a pen dot rather than vanishing.
+        let span = 0;
+        for (let i = 2; i < raw.length; i += 2) span = Math.max(span, Math.hypot(raw[i]! - raw[0]!, raw[i + 1]! - raw[1]!));
+        const dot = span < 30;
+        const path = dot ? [raw[0]!, raw[1]!, raw[0]! + 22, raw[1]! - 16] : raw;
         const pts: InkPoint[] = [];
         const n = path.length / 2;
         // Arc length for pressure and timing.
