@@ -32,6 +32,9 @@ describe('Android manifest', () => {
     expect(exported).toEqual(['.MainActivity']);
     expect(/<provider\b[^>]*>/.exec(manifest)![0]).toMatch(/android:exported="false"/);
     expect(manifest).not.toMatch(/usesCleartextTraffic="true"/);
+    // SR-11: "Open with" takes content:// only; a file:// URI would be read with the app's own
+    // rights, letting another app have Inkwright import its private files.
+    expect(manifest).not.toMatch(/android:scheme="file"/);
     expect(manifest).not.toMatch(/android:debuggable="true"/);
   });
 });
