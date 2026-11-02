@@ -8,9 +8,12 @@ import android.util.Log
 import android.view.Display
 import android.view.InputDevice
 import android.view.KeyEvent
+import android.view.MotionEvent
 import androidx.core.content.ContextCompat
 import app.inkstone.display.DisplayModeInfo
 import app.inkstone.display.RefreshRatePicker
+import app.inkstone.feel.NativePaperFeel
+import app.inkstone.ink.NativeInkTip
 import app.inkstone.input.StylusButtonEvent
 import app.inkstone.input.StylusKeyFilter
 import com.getcapacitor.BridgeActivity
@@ -23,11 +26,17 @@ import ee.forgr.capacitor.social.login.SocialLoginPlugin
  *  - forwards stylus button key events to the web layer (InkstoneNative 'stylusButton');
  *  - asks for the display's highest refresh rate while Inkstone is in front;
  *  - requests unbuffered pointer dispatch so pen samples reach the WebView as they arrive;
+ *  - shows every touch/stylus MotionEvent to the instant ink tip (the newest few ms of a pen stroke
+ *    drawn on a front-buffered overlay above the WebView, InkstoneNative.inkTipBegin) and to the
+ *    native paper-feel engine (writing sound and haptic grain, InkstoneNative.feelBegin) before the
+ *    WebView gets it — read-only, never consumed;
  *  - routes Google authorization results to @capgo/capacitor-social-login (needed for the
  *    Drive scopes the web layer requests).
  */
 class MainActivity : BridgeActivity(), ModifiedMainActivityForSocialLoginPlugin {
     private val stylusKeys = StylusKeyFilter()
+    private var paperFeel: NativePaperFeel? = null
+    private var inkTip: NativeInkTip? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         registerPlugin(InkstoneNativePlugin::class.java)
@@ -65,6 +74,14 @@ class MainActivity : BridgeActivity(), ModifiedMainActivityForSocialLoginPlugin 
         return true
     }
 
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        // Before super, so the ink tip and the feel engine see each sample as early as the WebView
+        // does. The tip goes first: it is the one racing the display.
+        (inkTip ?: findInkTip())?.onTouchEvent(ev)
+        (paperFeel ?: findPaperFeel())?.onTouchEvent(ev, resources.displayMetrics)
+        return super.dispatchTouchEvent(ev)
+    }
+
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         // A release that happens while another window has focus never reaches us.
@@ -77,9 +94,16 @@ class MainActivity : BridgeActivity(), ModifiedMainActivityForSocialLoginPlugin 
     }
 
     private fun emitStylus(event: StylusButtonEvent) {
-        val plugin = bridge?.getPlugin(InkstoneNativePlugin.NAME)?.instance as? InkstoneNativePlugin ?: return
-        plugin.emitStylusButton(event)
+        inkstonePlugin()?.emitStylusButton(event)
     }
+
+    private fun inkstonePlugin(): InkstoneNativePlugin? =
+        bridge?.getPlugin(InkstoneNativePlugin.NAME)?.instance as? InkstoneNativePlugin
+
+    /** Looked up once (the plugin lives as long as this activity's bridge), then cached. */
+    private fun findPaperFeel(): NativePaperFeel? = inkstonePlugin()?.paperFeel?.also { paperFeel = it }
+
+    private fun findInkTip(): NativeInkTip? = inkstonePlugin()?.inkTip?.also { inkTip = it }
 
     private fun preferHighestRefreshRate() {
         val display = currentDisplay() ?: return

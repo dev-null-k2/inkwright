@@ -30,6 +30,22 @@ describe('scratch-out', () => {
   it('a short tick over a word is not a scratch', () => {
     expect(detectScratchOut(stroke('t', polyline([[140, 200], [145, 206], [155, 190]])), page).isScratch).toBe(false);
   });
+  it('shading inside a box you drew keeps the box', () => {
+    const box = stroke('box', polyline([[500, 100], [580, 100], [580, 150], [500, 150], [500, 100]]));
+    const shade = stroke('s', horizontalScribble(503, 577, 103, 147, 12));
+    expect(detectScratchOut(shade, [...page, box]).targetIds.has('box')).toBe(false);
+  });
+  it('a quick back-forth-back over a word still erases it', () => {
+    const r = detectScratchOut(stroke('s', horizontalScribble(95, 205, 192, 208, 3)), page);
+    expect(r.isScratch).toBe(true);
+    expect(r.targetIds.has('hello')).toBe(true);
+  });
+  it('zoomed in, small handwriting is scratched without touching the line below', () => {
+    const small = stroke('small', word(100, 200).map(([x, y]) => [100 + (x - 100) * 0.3, 200 + (y - 200) * 0.3] as [number, number]));
+    const below = stroke('below', word(100, 210).map(([x, y]) => [100 + (x - 100) * 0.3, 210 + (y - 210) * 0.3] as [number, number]));
+    const r = detectScratchOut(stroke('s', horizontalScribble(99, 133, 197, 203, 6)), [small, below], { overInkTolerance: 5 / 3 });
+    expect([...r.targetIds]).toEqual(['small']);
+  });
   it('a scribble covering two words erases both', () => {
     const r = detectScratchOut(stroke('s', horizontalScribble(95, 405, 188, 212, 10)), page);
     expect(r.isScratch).toBe(true);

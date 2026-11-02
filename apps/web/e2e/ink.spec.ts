@@ -143,4 +143,46 @@ test.describe('writing', () => {
     await page.getByRole('button', { name: 'Delete page', exact: true }).last().click();
     await expect(page.locator('.page-item')).toHaveCount(1);
   });
+  test('wet ink is on screen in the same task as the pen sample (no frame wait)', async ({ page }) => {
+    const painted = await page.evaluate(async () => {
+      const el = document.querySelector('.ed-canvas') as HTMLElement;
+      const wet = el.querySelector('canvas.ink-wet') as HTMLCanvasElement;
+      const r = el.getBoundingClientRect();
+      const fire = (type: string, x: number, y: number, ts: number) => el.dispatchEvent(new PointerEvent(type, { pointerId: 9, pointerType: 'pen', isPrimary: true, bubbles: true, cancelable: true, clientX: r.left + x, clientY: r.top + y, pressure: 0.6, buttons: 1, button: type === 'pointermove' ? -1 : 0, timeStamp: ts } as PointerEventInit));
+      fire('pointerdown', 300, 200, 0);
+      // Samples ~5 ms apart, like a 200 Hz pen.
+      for (let i = 1; i <= 9; i++) { fire('pointermove', 300 + i * 8, 200, i); await new Promise((res) => setTimeout(res, 5)); }
+      fire('pointermove', 380, 200, 10);
+      // Read back synchronously, before any animation frame can run: the newest segment must be there.
+      const ctx = wet.getContext('2d')!;
+      const dpr = wet.width / wet.clientWidth;
+      const px = ctx.getImageData(Math.round(375 * dpr), Math.round(200 * dpr), 1, 1).data;
+      fire('pointerup', 380, 200, 11);
+      return px[3]!;
+    });
+    expect(painted).toBeGreaterThan(0);
+  });
+
+  test('writing sound and feel can be adjusted from the editor', async ({ page }) => {
+    const feelBtn = page.getByRole('button', { name: 'Writing feel' });
+    if (await feelBtn.isVisible()) await feelBtn.click();
+    else { await page.getByRole('button', { name: 'More', exact: true }).click(); await page.getByText('Writing sound & feel').click(); }
+    const vol = page.getByRole('slider', { name: 'Writing sound volume' });
+    await expect(vol).toBeVisible();
+    await vol.fill('0.25');
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inkstone.settings.v1') ?? '{}')?.feel?.soundVolume)).toBe(0.25);
+    await page.getByRole('radio', { name: 'Toothy' }).click();
+    await expect.poll(() => page.evaluate(() => (window as any).__inkstone.doc.meta.paper.texture)).toBe('toothy');
+    await page.locator('.feel-panel .row-switch', { hasText: 'Writing sound' }).click();
+    await expect(page.getByRole('slider', { name: 'Writing sound volume' })).toBeDisabled();
+  });
+  test('pen strokes arm the native instant-ink tip; fingers and see-through pens do not', async ({ page }) => {
+    await page.evaluate(() => { const calls: unknown[] = []; (window as any).__tipCalls = calls; (window as any).__inkstone.engine.inkTip = { begin: (o: unknown) => calls.push(['begin', o]), end: (c?: boolean) => calls.push(['end', !!c]) }; });
+    await pen(page, word(200, 220, 160));
+    await pen(page, word(200, 300, 160), { type: 'touch' });
+    const calls = await page.evaluate(() => (window as any).__tipCalls);
+    expect(calls.map((c: any) => c[0])).toEqual(['begin', 'end']);
+    expect(calls[0][1].widthPx).toBeGreaterThan(0);
+    expect(calls[1][1]).toBe(false);
+  });
 });

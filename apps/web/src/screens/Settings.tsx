@@ -1,3 +1,4 @@
+import { FeelPanel } from '../ui/FeelPanel.tsx';
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft, Bot, Check, Cloud, Copy, Download, ExternalLink, FolderOpen, Hand, Info, KeyRound, Palette, PenLine, Plug, Plus, RefreshCw, Trash2, Upload, Vibrate, ScanText,
@@ -87,17 +88,12 @@ function Group({ title, children, note }: { title: string; children: React.React
 
 function WritingSection() {
   const s = useSettings();
-  const f = s.feel;
-  const setFeel = (p: Partial<typeof f>) => s.update((x) => ({ feel: { ...x.feel, ...p } }));
   return (
     <>
       <Group title="Paper feel" note={hasNativePlugin
         ? 'Grain is felt through the phone’s haptic motor as fine ticks spaced by distance, so slow strokes feel like individual paper fibres and fast strokes like a soft buzz. Pick “Toothy” paper for the strongest bite.'
         : 'The haptic grain needs the Inkstone Android app (it drives the phone’s motor directly). The writing sound works everywhere. For physical bite, a matte screen protector adds real friction.'}>
-        <Switch label="Haptic paper grain" hint="Fine vibration ticks as the nib crosses paper fibres" checked={f.haptics} onChange={(v) => setFeel({ haptics: v })} />
-        <Slider label="Grain strength" value={f.hapticStrength} min={0.1} max={1} step={0.05} onChange={(v) => setFeel({ hapticStrength: v })} format={(v) => `${Math.round(v * 100)}%`} />
-        <Switch label="Writing sound" hint="Nib-on-paper sound that follows your speed and pressure" checked={f.sound} onChange={(v) => setFeel({ sound: v })} />
-        <Slider label="Sound volume" value={f.soundVolume} min={0.05} max={1} step={0.05} onChange={(v) => setFeel({ soundVolume: v })} format={(v) => `${Math.round(v * 100)}%`} />
+        <FeelPanel />
       </Group>
       <Group title="Pressure">
         <Slider label="Pressure response" value={s.input.pressureCurve} min={0.5} max={2} step={0.05} onChange={(v) => s.update((x) => ({ input: { ...x.input, pressureCurve: v } }))} format={(v) => (v < 0.9 ? 'Soft' : v > 1.1 ? 'Firm' : 'Natural')} />
@@ -136,6 +132,7 @@ function InputSection() {
       </Group>
       <Group title="Gestures">
         <Switch label="Scribble to erase" hint="Scratch back and forth over ink to delete it" checked={s.input.scratchToErase} onChange={(v) => setInput({ scratchToErase: v })} />
+        {isNative && nativePlatform === 'android' && <Switch label="Instant ink" hint="The newest part of each stroke is drawn natively, straight to the screen, so ink keeps up with the nib. Turn off if the tip ever looks offset." checked={s.input.instantInk} onChange={(v) => setInput({ instantInk: v })} />}
         <Switch label="Hold to perfect shapes" hint="Pause at the end of a line, circle, box or triangle to snap it" checked={s.input.holdToShape} onChange={(v) => setInput({ holdToShape: v })} />
       </Group>
       <Group title="Keyboard shortcuts">

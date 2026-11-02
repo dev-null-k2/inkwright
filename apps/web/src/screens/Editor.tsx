@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft, Camera, CloudUpload, Undo2, Redo2, Download, FileImage, FileText, FileType2, Files, Image as ImageIcon, Layers,
-  Mic, MoreHorizontal, Pause, Play, Sparkles, Square, Tag, Trash2, ZoomIn, ZoomOut, Maximize2, FilePlus2, Copy, Scan,
+  AudioLines, Mic, MoreHorizontal, VolumeX, Pause, Play, Sparkles, Square, Tag, Trash2, ZoomIn, ZoomOut, Maximize2, FilePlus2, Copy, Scan,
 } from 'lucide-react';
 import { newId, PAGE_SIZE_PRESETS, pagePaper, pageSizeOf, type ImageItem, type InkStroke, type TextBox } from '@inkstone/core';
 import { InkEngine, type SelectionInfo, type Tool, type ToolState } from '../canvas/engine.ts';
@@ -11,6 +11,7 @@ import { exportNote, type ExportFormat } from '../lib/exporter.ts';
 import { Recorder, audioExt, formatDuration } from '../lib/audio.ts';
 import { imageSize, setTags, trashNote, duplicateNote } from '../lib/actions.ts';
 import { PaperFeel } from '../platform/feel.ts';
+import { NativeInkTip } from '../platform/inktip.ts';
 import { InkstoneNative, hasNativePlugin } from '../platform/native.ts';
 import { pickFiles } from '../platform/files.ts';
 import { isArtifact, isMac, modKey, safeStorage } from '../platform/env.ts';
@@ -21,6 +22,7 @@ import { SelectionBar } from '../ui/SelectionBar.tsx';
 import { TextOverlay } from '../ui/TextOverlay.tsx';
 import { PagesPanel } from '../ui/PagesPanel.tsx';
 import { PaperPicker } from '../ui/NewNoteSheet.tsx';
+import { FeelPanel } from '../ui/FeelPanel.tsx';
 import { AIPanel, type AIRequest } from '../ui/AIPanel.tsx';
 import { IconButton, Menu, Popover, cx, useMediaQuery } from '../ui/primitives.tsx';
 import { askConfirm, askText } from '../ui/prompts.tsx';
@@ -53,9 +55,10 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   const [panel, setPanel] = useState<'pages' | 'ai' | null>(null);
   const [aiRequest, setAiRequest] = useState<AIRequest | null>(null);
   const [paperOpen, setPaperOpen] = useState(false);
-  const [menu, setMenu] = useState<'export' | 'insert' | 'more' | null>(null);
+  const [menu, setMenu] = useState<'export' | 'insert' | 'more' | 'feel' | null>(null);
   const [, bump] = useState(0);
   const feel = useMemo(() => new PaperFeel(settings.feel), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const inkTip = useMemo(() => new NativeInkTip(), []);
   const recorder = useRef(new Recorder());
   const [recording, setRecording] = useState<number | null>(null);
   const [playback, setPlayback] = useState<{ clipId: string; position: number; playing: boolean } | null>(null);
@@ -63,7 +66,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   // Engine callbacks are bound once; they call through these refs so they always see fresh state.
   const live = useRef<{ seekTo: (t: number) => void; editText: (req: { pageIndex: number; box: TextBox; isNew: boolean }) => void }>(null!);
   const latestText = useRef<TextBox | null>(null);
-  const btn = { paper: useRef<HTMLButtonElement>(null), export: useRef<HTMLButtonElement>(null), insert: useRef<HTMLButtonElement>(null), more: useRef<HTMLButtonElement>(null) };
+  const btn = { paper: useRef<HTMLButtonElement>(null), export: useRef<HTMLButtonElement>(null), insert: useRef<HTMLButtonElement>(null), more: useRef<HTMLButtonElement>(null), feel: useRef<HTMLButtonElement>(null) };
 
   // ---- Open the note ---------------------------------------------------------------------------
   useEffect(() => {
@@ -102,6 +105,10 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
     });
     e.feel = feel;
     feel.setPaper(pagePaper(session.doc.meta, session.doc.page(0)).texture);
+    // Warm the audio path now so the first stroke sounds the instant the nib lands.
+    feel.prepare();
+    e.inkTip = inkTip;
+    void inkTip.prepare(true);
     e.callbacks = {
       onViewport: (v) => setView(v),
       onSelection: setSel,
@@ -118,7 +125,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
     // Test hook (only with ?e2e in the URL): lets end-to-end tests inspect document state.
     if (E2E_BUILD) (window as any).__inkstone = { doc: session.doc, engine: e };
     if (initialPage != null) requestAnimationFrame(() => e.scrollToPage(initialPage));
-    return () => { e.destroy(); setEngine(null); };
+    return () => { e.destroy(); setEngine(null); void inkTip.prepare(false); };
   }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Settings → engine/feel.
@@ -439,6 +446,9 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
           </IconButton>}
           {recording != null && <span className="rec-time">{formatDuration(Date.now() - recording)}</span>}
           {!narrow && <IconButton label="Pages" active={panel === 'pages'} onClick={() => setPanel(panel === 'pages' ? null : 'pages')}><Layers size={19} /></IconButton>}
+          <button ref={btn.feel} type="button" className={cx('icon-btn', narrow && 'is-hidden')} aria-label="Writing feel" title="Writing sound & feel" onClick={() => setMenu('feel')}>
+            {settings.feel.sound ? <AudioLines size={19} /> : <VolumeX size={19} />}
+          </button>
           <button ref={btn.paper} type="button" className={cx('icon-btn', narrow && 'is-hidden')} aria-label="Paper" title="Paper" onClick={() => setPaperOpen(true)}><Files size={19} /></button>
           <button ref={btn.insert} type="button" className={cx('icon-btn', narrow && 'is-hidden')} aria-label="Insert" title="Insert image, photo or PDF pages" onClick={() => setMenu('insert')}><ImageIcon size={19} /></button>
           <button type="button" className={cx('ai-btn', panel === 'ai' && 'is-on')} onClick={() => setPanel(panel === 'ai' ? null : 'ai')} aria-pressed={panel === 'ai'}>
@@ -522,6 +532,14 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
         )}
       </Popover>
 
+      <Popover anchor={narrow ? btn.more.current : btn.feel.current} open={menu === 'feel'} onClose={() => setMenu(null)} title="Writing feel" placement="below" className="feel-pop">
+        <div className="pop-section">
+          <h3 className="pop-title">Writing sound &amp; feel</h3>
+          <FeelPanel feel={feel} texture={doc ? pagePaper(doc.meta, curPage ?? doc.page(0)).texture : undefined}
+            onTexture={(t) => { if (!doc) return; doc.setPaper({ ...doc.meta.paper, texture: t }); doc.pages.forEach((pg, i) => { if (pg.paper) doc.setPageProps(i, { paper: { ...pg.paper, texture: t } }); }); }} />
+        </div>
+      </Popover>
+
       <Popover anchor={btn.insert.current} open={menu === 'insert'} onClose={() => setMenu(null)} title="Insert" placement="below">
         <Menu onClose={() => setMenu(null)} items={[
           { label: 'Image', icon: <FileImage size={16} />, onClick: () => void insertImages() },
@@ -547,6 +565,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
           ...(narrow ? [
             { label: 'Pages', icon: <Layers size={16} />, onClick: () => setPanel('pages') },
             { label: 'Paper', icon: <Files size={16} />, onClick: () => setTimeout(() => setPaperOpen(true), 0) },
+            { label: 'Writing sound & feel', icon: <AudioLines size={16} />, hint: settings.feel.sound ? `${Math.round(settings.feel.soundVolume * 100)}%` : 'Off', onClick: () => setTimeout(() => setMenu('feel'), 0) },
             { label: 'Insert', icon: <ImageIcon size={16} />, onClick: () => setTimeout(() => setMenu('insert'), 0) },
             ...(isArtifact ? [] : [{ label: recording != null ? 'Stop recording' : 'Record audio', icon: <Mic size={16} />, onClick: () => void toggleRecording() }]),
             { label: 'Export and share', icon: <Download size={16} />, onClick: () => setTimeout(() => setMenu('export'), 0) },

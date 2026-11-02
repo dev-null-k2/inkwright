@@ -80,7 +80,11 @@ dependencies {
     implementation project(':capacitor-android')
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$kotlinxCoroutinesVersion"
     implementation "com.google.mlkit:digital-ink-recognition:$mlkitDigitalInkVersion"
+    implementation "androidx.graphics:graphics-core:$androidxGraphicsCoreVersion"
+    implementation "androidx.input:input-motionprediction:$androidxMotionPredictionVersion"
     testImplementation "junit:junit:$junitVersion"
+    // Real org.json for JVM tests (android.jar only has stubs): feel-golden.json fixtures, FeelProfile.fromJson.
+    testImplementation "org.json:json:$orgJsonVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')

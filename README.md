@@ -2,9 +2,10 @@
 
 Handwriting notes that feel like paper, on every device, with your own AI.
 
-- **Paper feel.** Haptic paper grain spaced by distance (Android), a procedural nib-on-paper sound, and pressure- and tilt-aware pens: fountain, ballpoint, textured pencil, brush, marker, highlighter, dashed. Paper comes in three surfaces (smooth, standard, toothy) and nine tints.
+- **Paper feel.** Haptic paper grain spaced by distance (Android), a soft nib-on-paper sound modelled on paper fibres that follows speed and pressure (native low-latency audio on Android), and pressure- and tilt-aware pens: fountain, ballpoint, textured pencil, brush, marker, highlighter, dashed. Adjust sound, grain and paper surface from the editor. Paper comes in three surfaces (smooth, standard, toothy) and nine tints.
+- **Ink that keeps up.** Wet ink is drawn the moment each pen sample arrives, from raw pen events, with prediction. On Android an instant ink tip draws the newest few milliseconds natively, straight to the screen.
 - **Erase like on paper.**
-  - Scribble over ink to delete it.
+  - Scribble over ink to delete it: side to side, up and down, tilted or in loops, at any zoom. Measured on 580 cases: it catches 99.6 % of scribbles and never erased normal writing.
   - Press the pen button once to switch to the eraser and once more to switch back. Hold it to erase only while held.
   - The eraser end works too.
   - Choose a whole-stroke or precise (splitting) eraser.

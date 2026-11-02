@@ -104,3 +104,14 @@ describe('outline & geometry', () => {
     expect(rectWidth(boundsOf(line))).toBe(100);
   });
 });
+
+import { nominalWidth as _nominalWidth } from '../src/index.ts';
+describe('nominalWidth', () => {
+  it('matches what the outline draws: fountain ≈1.41×, brush thin at mid pressure, marker even', () => {
+    expect(_nominalWidth('fountain', 2, 0.5)).toBeCloseTo(2 * 2 * Math.sin(Math.PI / 4), 5);
+    expect(_nominalWidth('brush', 4, 0.5)).toBeCloseTo(2 * 4 * 0.25, 5);
+    expect(_nominalWidth('marker', 6, 0.9)).toBeCloseTo(6, 5);
+    expect(_nominalWidth('fountain', 2, 1)).toBeGreaterThan(_nominalWidth('fountain', 2, 0.1));
+    expect(_nominalWidth('fountain', 2, -1)).toBeCloseTo(_nominalWidth('fountain', 2, 0.5), 5);
+  });
+});

@@ -468,3 +468,12 @@ input[type='range'] { accent-color: var(--ink); width: 100%; }
 .ai-quick .chip { flex: none; white-space: nowrap; }
 .ai-quick { scrollbar-width: none; }
 .ai-quick::-webkit-scrollbar { display: none; }
+
+/* ---- Writing feel panel (editor popover + Settings) ---- */
+.feel-panel { display: flex; flex-direction: column; gap: 4px; }
+.feel-pop .pop-section { min-width: 320px; max-width: min(92vw, 380px); }
+.feel-panel .row-slider.is-dim { opacity: 0.45; }
+.feel-panel .row-slider { grid-template-columns: minmax(96px, auto) 1fr 48px; }
+.feel-surface { display: flex; flex-direction: column; gap: 8px; padding: 8px 0 4px; border-top: 1px solid var(--line); }
+.feel-try { align-self: flex-start; gap: 6px; margin-top: 4px; }
+.set-card > .feel-panel { padding: 6px 0; }
