@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PDFDocument } from 'pdf-lib';
 import { newPage, type NoteMeta, type PageInk } from '@inkstone/core';
-import { clampText, coerce, effectiveValue, fieldsFromAnnotations, humanize, missingRequired, pdfAssetsOf, pdfToPage, placeWidgets, readPdfForm, rectToPage, storageEntries, withFormValue, type PdfField } from './pdfForm.ts';
+import { appendRecognized, clampText, coerce, strokeInField, effectiveValue, fieldsFromAnnotations, humanize, missingRequired, pdfAssetsOf, pdfToPage, placeWidgets, readPdfForm, rectToPage, storageEntries, withFormValue, type PdfField } from './pdfForm.ts';
 import { fillableFixture } from './fixtures.ts';
 
 const pdfjs = (): Promise<any> => import('pdfjs-dist/legacy/build/pdf.mjs');
@@ -120,5 +120,22 @@ describe('field model', () => {
   it('the fixture is a valid PDF for pdf-lib too', async () => {
     const doc = await PDFDocument.load(await fillableFixture());
     expect(doc.getForm().getFields()).toHaveLength(9);
+  });
+});
+
+describe('handwriting into a field', () => {
+  const s = (pts: [number, number][]) => ({ id: 's', pen: 'ballpoint' as const, color: '#FF000000', size: 2, createdAt: 0, points: pts.map(([x, y]) => ({ x, y, t: 0, p: 0.5, tilt: -1, orient: -1 })) });
+  const r = { minX: 100, minY: 100, maxX: 300, maxY: 130 };
+  it('finds the strokes written in the box, tolerating ascenders and descenders', () => {
+    expect(strokeInField(s([[110, 95], [150, 128]]), r)).toBe(true);
+    expect(strokeInField(s([[110, 120], [160, 140]]), r)).toBe(true);
+    expect(strokeInField(s([[310, 110], [360, 120]]), r)).toBe(false);
+    expect(strokeInField(s([]), r)).toBe(false);
+  });
+  it('adds recognized words to what is there, within the field’s limits', () => {
+    expect(appendRecognized({ maxLen: 0, multiline: false }, '', ' Ada  Lovelace ')).toBe('Ada Lovelace');
+    expect(appendRecognized({ maxLen: 0, multiline: false }, 'Ada', 'Lovelace')).toBe('Ada Lovelace');
+    expect(appendRecognized({ maxLen: 5, multiline: false }, '', '75070 TX')).toBe('75070');
+    expect(appendRecognized({ maxLen: 0, multiline: false }, 'keep', '')).toBe('keep');
   });
 });

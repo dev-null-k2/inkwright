@@ -1,4 +1,4 @@
-import type { FormFieldValue, NoteMeta, PageInk } from '@inkstone/core';
+import type { FormFieldValue, InkStroke, NoteMeta, PageInk } from '@inkstone/core';
 
 /**
  * PDF form fields (AcroForm) as Inkstone sees them: what pdf.js reports for each widget, mapped to
@@ -308,4 +308,22 @@ export function withFormValue(meta: NoteMeta, asset: string, name: string, value
   if (Object.keys(values).length) forms[asset] = values;
   else delete forms[asset];
   return { ...meta, forms: Object.keys(forms).length ? forms : undefined };
+}
+
+// ---- Handwriting into fields --------------------------------------------------------------------
+
+/** Whether a stroke was written into a field: its centre lies in the box (a little slack above/below). */
+export function strokeInField(s: InkStroke, r: { minX: number; minY: number; maxX: number; maxY: number }): boolean {
+  if (!s.points.length) return false;
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const p of s.points) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); }
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  return cx >= r.minX && cx <= r.maxX && cy >= r.minY - 6 && cy <= r.maxY + 6;
+}
+
+/** A text field's value after recognized handwriting is added to what it already says. */
+export function appendRecognized(field: Pick<PdfField, 'maxLen' | 'multiline'>, prev: FormFieldValue, recognized: string): string {
+  const text = recognized.replace(/\s+/g, ' ').trim();
+  const before = typeof prev === 'string' ? prev : '';
+  return clampText(field, before && text ? `${before} ${text}` : before || text);
 }

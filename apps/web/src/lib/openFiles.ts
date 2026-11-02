@@ -44,7 +44,20 @@ export function textToPages(text: string, size: PageSize, opts: { fontSize?: num
   const lineH = fontSize * 1.5;
   const perPage = Math.max(4, Math.floor((size.height - margin * 2) / lineH));
   const perLine = Math.max(10, Math.floor(width / (fontSize * 0.55)));
-  const src = text.replace(/\r\n?/g, '\n').replace(/\n+$/, '').split('\n');
+  // A paragraph longer than a page is cut at a word boundary so every page fits.
+  const maxChars = perLine * perPage;
+  const src = text.replace(/\r\n?/g, '\n').replace(/\n+$/, '').split('\n').flatMap((line) => {
+    const parts: string[] = [];
+    let rest = line;
+    while (rest.length > maxChars) {
+      const cut = rest.lastIndexOf(' ', maxChars);
+      const at = cut > maxChars / 2 ? cut : maxChars;
+      parts.push(rest.slice(0, at));
+      rest = rest.slice(at).replace(/^ /, '');
+    }
+    parts.push(rest);
+    return parts;
+  });
   const pages: string[][] = [[]];
   let used = 0;
   for (const line of src) {

@@ -2,6 +2,9 @@ import { expect, test, type Page } from '@playwright/test';
 import { PDFCheckBox, PDFDocument, PDFDropdown, PDFTextField, StandardFonts } from 'pdf-lib';
 import { openApp } from './helpers.ts';
 
+/** PDF rendering and form reading run in the background; give them time on a busy machine. */
+const SLOW = { timeout: 15_000 };
+
 /** A one-page form: a printed label, a text field, a checkbox, a dropdown and a signature line. */
 async function formPdf(): Promise<Buffer> {
   const pdf = await PDFDocument.create();
@@ -47,9 +50,9 @@ test('fill a PDF form, sign it and export a filled PDF', async ({ page }) => {
 
   // A quiet chip offers to fill in the form.
   const chip = page.locator('.fill-chip');
-  await expect(chip).toContainText('3 fields');
+  await expect(chip).toContainText('3 fields', SLOW);
   await chip.getByRole('button', { name: 'Fill in' }).click();
-  await expect(page.getByRole('toolbar', { name: 'Fill and sign' })).toBeVisible();
+  await expect(page.getByRole('toolbar', { name: 'Fill and sign' })).toBeVisible(SLOW);
 
   // Type, tick and choose.
   const name = page.locator('.fill-field[data-field="name"]');
@@ -58,7 +61,7 @@ test('fill a PDF form, sign it and export a filled PDF', async ({ page }) => {
   await page.locator('.fill-field[data-field="agree"]').click();
   await expect(page.locator('.fill-field[data-field="agree"]')).toHaveAttribute('aria-checked', 'true');
   await page.locator('.fill-field[data-field="state"]').selectOption('NJ');
-  await expect.poll(() => page.evaluate(() => Object.values((window as any).__inkstone.doc.meta.forms ?? {})[0])).toEqual({ name: 'Ada Lovelace', agree: true, state: 'NJ' });
+  await expect.poll(() => page.evaluate(() => Object.values((window as any).__inkstone.doc.meta.forms ?? {})[0]), SLOW).toEqual({ name: 'Ada Lovelace', agree: true, state: 'NJ' });
 
   // Draw a signature once, then place it on the signature line.
   await page.getByRole('toolbar', { name: 'Fill and sign' }).getByRole('button', { name: 'Sign' }).click();
@@ -75,7 +78,7 @@ test('fill a PDF form, sign it and export a filled PDF', async ({ page }) => {
   // Just above the printed line (PDF y 560pt → page units (792 − 560) × 4/3).
   const [sx, sy] = await pagePoint(page, 0, 150, (792 - 560) * (4 / 3) - 12);
   await page.mouse.click(sx, sy);
-  await expect.poll(() => page.evaluate(() => (window as any).__inkstone.doc.page(0).strokes.length)).toBeGreaterThan(before);
+  await expect.poll(() => page.evaluate(() => (window as any).__inkstone.doc.page(0).strokes.length), SLOW).toBeGreaterThan(before);
   // It sits on the line: the ink's lowest point is near the line.
   const bottom = await page.evaluate(() => Math.max(...(window as any).__inkstone.doc.page(0).strokes.flatMap((s: any) => s.points.map((p: any) => p.y))));
   expect(Math.abs(bottom - (792 - 560) * (4 / 3))).toBeLessThan(14);
@@ -102,19 +105,58 @@ test('fill a PDF form, sign it and export a filled PDF', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+/** Dark pixels on the page canvas inside a client-space rectangle. */
+async function inkIn(page: Page, r: { x: number; y: number; width: number; height: number }): Promise<number> {
+  return page.evaluate((r) => {
+    const c = document.querySelector('.ink-base') as HTMLCanvasElement;
+    const cr = c.getBoundingClientRect();
+    const k = c.width / cr.width;
+    const d = c.getContext('2d')!.getImageData(Math.round((r.x - cr.left + 4) * k), Math.round((r.y - cr.top + 3) * k), Math.round((r.width - 8) * k), Math.round((r.height - 6) * k)).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i]! + d[i + 1]! + d[i + 2]! < 300) n++;
+    return n;
+  }, r);
+}
+
 test('values are kept when the note is opened again, and the canvas shows them', async ({ page }) => {
   await openForm(page);
   await page.locator('.fill-chip').getByRole('button', { name: 'Fill in' }).click();
-  await page.locator('.fill-field[data-field="name"]').fill('Grace Hopper');
-  await page.locator('.fill-field[data-field="name"]').press('Enter');
+  const field = page.locator('.fill-field[data-field="name"]');
+  const rect = (await field.boundingBox())!;
+  await page.getByRole('button', { name: 'Done' }).click();
+  expect(await inkIn(page, rect)).toBe(0); // an empty field on the page
+  await page.getByRole('button', { name: 'More', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Fill & sign' }).click();
+  await field.fill('Grace Hopper');
+  await field.press('Enter');
   await page.getByRole('button', { name: 'Done' }).click();
   await expect(page.locator('.fill-field')).toHaveCount(0);
+  // pdf.js draws the value into the page, like a viewer would.
+  await expect.poll(() => inkIn(page, rect), SLOW).toBeGreaterThan(20);
   await page.getByRole('button', { name: 'Back to library' }).click();
   await page.locator('.note-card', { hasText: 'Membership' }).locator('.note-open').click();
   await page.waitForFunction(() => !!(window as any).__inkstone?.doc);
   await page.getByRole('button', { name: 'More', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Fill & sign' }).click();
   await expect(page.locator('.fill-field[data-field="name"]')).toHaveValue('Grace Hopper');
+});
+
+test('writing with the pen over a field lays down ink (it stays ink without a recognizer)', async ({ page }) => {
+  await openForm(page);
+  await page.locator('.fill-chip').getByRole('button', { name: 'Fill in' }).click();
+  const r = (await page.locator('.fill-field[data-field="name"]').boundingBox())!;
+  await page.evaluate((r) => {
+    const field = document.querySelector('.fill-field[data-field="name"]') as HTMLElement;
+    const canvas = document.querySelector('.ed-canvas') as HTMLElement;
+    const ev = (type: string, x: number, y: number) => new PointerEvent(type, { pointerId: 9, pointerType: 'pen', isPrimary: true, bubbles: true, cancelable: true, clientX: x, clientY: y, pressure: type === 'pointerup' ? 0 : 0.5, buttons: type === 'pointerup' ? 0 : 1 });
+    // The pen lands on the field (which hands it to the canvas); the rest of the stroke goes to
+    // the canvas, as pointer capture does on a device.
+    field.dispatchEvent(ev('pointerdown', r.x + 10, r.y + r.height / 2));
+    for (let i = 1; i <= 20; i++) canvas.dispatchEvent(ev('pointermove', r.x + 10 + i * 6, r.y + r.height / 2 + 4 * Math.sin(i)));
+    canvas.dispatchEvent(ev('pointerup', r.x + 130, r.y + r.height / 2));
+  }, r);
+  await expect.poll(() => page.evaluate(() => (window as any).__inkstone.doc.page(0).strokes.length), SLOW).toBe(1);
+  await expect(page.locator('.fill-field[data-field="name"]')).not.toBeFocused(SLOW);
 });
 
 test('flat PDF: typed text snaps onto the printed line; a checkmark is real ink', async ({ page }) => {
@@ -133,7 +175,7 @@ test('flat PDF: typed text snaps onto the printed line; a checkmark is real ink'
   const lineY = (792 - 700) * (4 / 3);
   const [x, y] = await pagePoint(page, 0, 300, lineY - 10);
   await page.mouse.click(x, y);
-  await expect(page.locator('.text-edit textarea')).toBeFocused();
+  await expect(page.locator('.text-edit textarea')).toBeFocused(SLOW);
   await page.keyboard.type('Ada');
   await page.keyboard.press('Escape');
   const t = await page.evaluate(() => (window as any).__inkstone.doc.page(0).texts?.[0]);
@@ -144,7 +186,7 @@ test('flat PDF: typed text snaps onto the printed line; a checkmark is real ink'
   await bar.getByRole('button', { name: 'Check' }).click();
   const [cx, cy] = await pagePoint(page, 0, 500, 500);
   await page.mouse.click(cx, cy);
-  await expect.poll(() => page.evaluate(() => (window as any).__inkstone.doc.page(0).strokes.length)).toBe(1);
+  await expect.poll(() => page.evaluate(() => (window as any).__inkstone.doc.page(0).strokes.length), SLOW).toBe(1);
 });
 
 test('open text and Markdown files; drop a file onto the library', async ({ page }) => {
