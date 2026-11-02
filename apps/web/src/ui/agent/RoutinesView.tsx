@@ -27,11 +27,13 @@ export function RoutinesView() {
   const routines = useAgent((s) => s.routines);
   const running = useAgent((s) => s.runningRoutine);
   const queued = useAgent((s) => s.queuedRoutines);
+  const runner = useAgent((s) => s.routinesRunner);
   const [editing, setEditing] = useState<Routine | null>(null);
   if (editing) return <RoutineEditor initial={editing} onDone={() => setEditing(null)} />;
   return (
     <div className="ag-screen">
       <p className="ag-lead">Routines are tasks the assistant does for you on a schedule or when something happens. They run while Inkstone is open; if it was closed at the scheduled time, the routine runs once the next time you open Inkstone.</p>
+      {runner && <p className="ag-lead" data-testid="routines-runner">{runner} is running your routines, even when Inkstone is closed. Its changes show up in Activity.</p>}
       <Section title="Your routines" action={<button type="button" className="btn btn-sm" onClick={() => setEditing(newRoutine({ name: '', prompt: '', triggers: [{ kind: 'daily', time: '18:00' }] }))}><Plus size={14} /> New routine</button>}>
         {!routines.length && <p className="ag-empty">No routines yet. Start from one below or write your own.</p>}
         <ul className="ag-list">

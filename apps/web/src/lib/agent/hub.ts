@@ -47,6 +47,8 @@ interface AgentState {
   /** Routine currently running, and its abort controller. */
   runningRoutine: string | null;
   queuedRoutines: string[];
+  /** Label of the always-on runner holding the routines lease (it runs automatic triggers), if any. */
+  routinesRunner: string | null;
   approvals: Approval[];
   elicitations: Elicitation[];
 }
@@ -59,6 +61,7 @@ export const useAgent = create<AgentState>(() => ({
   routines: [],
   runningRoutine: null,
   queuedRoutines: [],
+  routinesRunner: null,
   approvals: [],
   elicitations: [],
 }));
