@@ -23,6 +23,7 @@ async function audit(page: Page, label: string, opts: { exclude?: string[] } = {
 }
 
 test('library, editor and settings have no serious or critical axe violations', async ({ page }) => {
+  test.setTimeout(150_000); // ten full-page axe passes; slow on a busy machine
   await openApp(page);
   await audit(page, 'Library');
   await newNote(page);
