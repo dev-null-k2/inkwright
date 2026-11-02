@@ -77,7 +77,7 @@ export function Library() {
   const sidebar = (
     <nav className="lib-nav" aria-label="Library">
       <div className="lib-brand">
-        <BrandMark />
+        <BrandMark size={32} />
         <span className="lib-brand-name">Inkstone</span>
         {!wide && <IconButton label="Close" onClick={() => setDrawer(false)}><X size={18} /></IconButton>}
       </div>
@@ -110,7 +110,7 @@ export function Library() {
           ) : (
             <>
               <span className="avatar is-empty"><Cloud size={15} /></span>
-              <span className="lib-account-text"><span>Sign in to sync</span><span className="muted">Google Drive, folder or WebDAV</span></span>
+              <span className="lib-account-text"><span>Sign in to sync</span><span className="muted">Drive, folder or WebDAV</span></span>
             </>
           )}
         </button>

@@ -1,36 +1,48 @@
 /*
- * Inkstone design tokens.
- * Materials of the calligrapher's desk: slate inkstone, sumi ink, washi paper, the cinnabar seal.
- * The chrome is cool stone so that paper — the content — is the warmest, brightest thing on screen.
+ * Inkstone design tokens — "Duan".
+ *
+ * Named after the Duan inkstone: a dark aubergine slate, flecked with jade "stone eyes", the most
+ * prized stone a calligrapher can own. The chrome is that stone (pale dust by day, the slate itself
+ * by night) and dissolves into the desk; paper is the only bright thing on screen. One accent, the
+ * jade stone-eye, means "you are here" and nothing else. Cinnabar is kept for recording and delete.
  */
 :root {
   color-scheme: light;
   /* Surfaces */
-  --desk: #dde2e6;          /* the stone desk the pages lie on */
-  --desk-grain: #d3d9de;
-  --chrome: #f3f5f6;        /* panels, bars */
-  --chrome-2: #e9edf0;      /* pressed / hovered chrome */
-  --raised: #ffffff;        /* menus, popovers */
+  --desk: #e8e5ea;          /* stone dust: the desk the pages lie on */
+  --desk-grain: #e0dce2;
+  --chrome: #f1eff3;        /* menus' quiet fills */
+  --chrome-2: #dfdae2;      /* hovered / pressed */
+  --raised: #fbfafc;        /* popovers, dialogs */
   /* Ink */
-  --ink: #1c232b;           /* sumi: primary text and primary buttons */
-  --ink-2: #4b5864;
-  --ink-3: #7d8a96;
-  --ink-inverse: #f3f5f6;
-  --line: rgba(28, 35, 43, 0.12);
-  --line-strong: rgba(28, 35, 43, 0.22);
+  --ink: #2b2330;           /* Duan slate: text and primary actions */
+  --ink-2: #5f5666;
+  --ink-3: #8a8190;
+  --ink-inverse: #f6f3f7;
+  --line: rgba(43, 35, 48, 0.11);
+  --line-strong: rgba(43, 35, 48, 0.2);
   /* Accents */
-  --seal: #b8432f;          /* cinnabar seal: active tool, recording, brand */
-  --seal-soft: #f4ded8;
-  --iron: #2f5d8a;          /* iron-gall blue: links, focus, selection */
-  --iron-soft: rgba(47, 93, 138, 0.14);
-  --moss: #3d7a5a;          /* success */
-  --ochre: #b07d1c;         /* warning */
-  /* Paper shadow: a sheet resting on stone */
-  --sheet-shadow: 0 0.5px 0 rgba(20, 30, 40, 0.10), 0 1px 2px rgba(20, 30, 40, 0.10), 0 10px 24px -14px rgba(20, 30, 40, 0.38);
-  --float-shadow: 0 1px 2px rgba(20, 30, 40, 0.08), 0 12px 32px -10px rgba(20, 30, 40, 0.28);
+  --iron: #356b53;          /* stone-eye jade (text-safe): links, focus, selection, "you are here" */
+  --iron-soft: rgba(53, 107, 83, 0.13);
+  --eye: #5e9c7e;           /* the stone-eye ring (decoration only) */
+  --eye-core: #2b2330;
+  --seal: #b3412f;          /* cinnabar: recording and destructive actions only */
+  --seal-soft: #f3ddd8;
+  --moss: #3e7a57;          /* success */
+  --ochre: #a87518;         /* warning */
+  /* The carved stone pen tray (the one bold object) */
+  --stone: #2e2533;
+  --stone-hi: rgba(255, 255, 255, 0.07);
+  --stone-rim: rgba(255, 255, 255, 0.1);
+  --stone-ink: rgba(246, 243, 247, 0.74);
+  --stone-ink-strong: #f6f3f7;
+  /* Paper resting on stone */
+  --sheet-shadow: 0 0.5px 0 rgba(43, 30, 50, 0.08), 0 1px 2px rgba(43, 30, 50, 0.09), 0 14px 28px -18px rgba(43, 30, 50, 0.45);
+  --float-shadow: 0 1px 2px rgba(43, 30, 50, 0.07), 0 18px 40px -16px rgba(43, 30, 50, 0.32);
+  --tray-shadow: inset 0 1px 0 var(--stone-hi), 0 2px 4px rgba(43, 30, 50, 0.18), 0 18px 34px -16px rgba(43, 30, 50, 0.55);
   /* Type */
   --font-ui: 'Hanken Grotesk Variable', 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-title: 'Newsreader Variable', 'Newsreader', 'Iowan Old Style', Georgia, serif;
+  --font-title: 'Brygada 1918 Variable', 'Brygada 1918', 'Iowan Old Style', Georgia, serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, Menlo, monospace;
   --font-hand: 'Caveat Variable', 'Caveat', 'Segoe Print', cursive;
   --t-xs: 12px;
@@ -39,11 +51,12 @@
   --t-lg: 17px;
   --t-xl: 21px;
   --t-2xl: 28px;
-  --t-3xl: 40px;
-  /* Shape: crisp paper, soft hands-on controls */
+  --t-3xl: 44px;
+  /* Shape: crisp paper, soft hands-on controls, a rounded carved tray */
   --r-sheet: 2px;
-  --r-control: 10px;
-  --r-panel: 16px;
+  --r-control: 12px;
+  --r-panel: 18px;
+  --r-tray: 24px;
   --r-pill: 999px;
   /* Space */
   --s-1: 4px;
@@ -61,50 +74,67 @@
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+/* Night: the Duan slate itself. Kept in one place and applied twice (explicit and system). */
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --desk: #14181c;
-  --desk-grain: #181d22;
-  --chrome: #1d2227;
-  --chrome-2: #262c33;
-  --raised: #272e35;
-  --ink: #e7ebee;
-  --ink-2: #b2bcc5;
-  --ink-3: #85919c;
-  --ink-inverse: #14181c;
-  --line: rgba(231, 235, 238, 0.12);
-  --line-strong: rgba(231, 235, 238, 0.22);
-  --seal: #e0644d;
-  --seal-soft: rgba(224, 100, 77, 0.18);
-  --iron: #7fb0e0;
-  --iron-soft: rgba(127, 176, 224, 0.18);
-  --moss: #6fbf93;
+  --desk: #1a161c;
+  --desk-grain: #1e1a21;
+  --chrome: #231e26;
+  --chrome-2: #2e2833;
+  --raised: #2a2430;
+  --ink: #eee8f0;
+  --ink-2: #b9afbe;
+  --ink-3: #8d8392;
+  --ink-inverse: #1a161c;
+  --line: rgba(238, 232, 240, 0.1);
+  --line-strong: rgba(238, 232, 240, 0.19);
+  --iron: #8cc4a8;
+  --iron-soft: rgba(140, 196, 168, 0.16);
+  --eye: #8cc4a8;
+  --eye-core: #1a161c;
+  --seal: #e06a55;
+  --seal-soft: rgba(224, 106, 85, 0.18);
+  --moss: #79c49a;
   --ochre: #e0b155;
-  --sheet-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 12px 28px -12px rgba(0, 0, 0, 0.7);
-  --float-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 16px 40px -12px rgba(0, 0, 0, 0.7);
+  --stone: #2b2431;
+  --stone-hi: rgba(255, 255, 255, 0.08);
+  --stone-rim: rgba(255, 255, 255, 0.2);
+  --stone-ink: rgba(238, 232, 240, 0.72);
+  --stone-ink-strong: #eee8f0;
+  --sheet-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), 0 16px 32px -14px rgba(0, 0, 0, 0.75);
+  --float-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 18px 44px -14px rgba(0, 0, 0, 0.75);
+  --tray-shadow: inset 0 1px 0 var(--stone-hi), 0 0 0 1px rgba(0, 0, 0, 0.35), 0 18px 36px -14px rgba(0, 0, 0, 0.8);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
-    --desk: #14181c;
-    --desk-grain: #181d22;
-    --chrome: #1d2227;
-    --chrome-2: #262c33;
-    --raised: #272e35;
-    --ink: #e7ebee;
-    --ink-2: #b2bcc5;
-    --ink-3: #85919c;
-    --ink-inverse: #14181c;
-    --line: rgba(231, 235, 238, 0.12);
-    --line-strong: rgba(231, 235, 238, 0.22);
-    --seal: #e0644d;
-    --seal-soft: rgba(224, 100, 77, 0.18);
-    --iron: #7fb0e0;
-    --iron-soft: rgba(127, 176, 224, 0.18);
-    --moss: #6fbf93;
+    --desk: #1a161c;
+    --desk-grain: #1e1a21;
+    --chrome: #231e26;
+    --chrome-2: #2e2833;
+    --raised: #2a2430;
+    --ink: #eee8f0;
+    --ink-2: #b9afbe;
+    --ink-3: #8d8392;
+    --ink-inverse: #1a161c;
+    --line: rgba(238, 232, 240, 0.1);
+    --line-strong: rgba(238, 232, 240, 0.19);
+    --iron: #8cc4a8;
+    --iron-soft: rgba(140, 196, 168, 0.16);
+    --eye: #8cc4a8;
+    --eye-core: #1a161c;
+    --seal: #e06a55;
+    --seal-soft: rgba(224, 106, 85, 0.18);
+    --moss: #79c49a;
     --ochre: #e0b155;
-    --sheet-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 12px 28px -12px rgba(0, 0, 0, 0.7);
-    --float-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 16px 40px -12px rgba(0, 0, 0, 0.7);
+    --stone: #2b2431;
+    --stone-hi: rgba(255, 255, 255, 0.08);
+    --stone-rim: rgba(255, 255, 255, 0.2);
+    --stone-ink: rgba(238, 232, 240, 0.72);
+    --stone-ink-strong: #eee8f0;
+    --sheet-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), 0 16px 32px -14px rgba(0, 0, 0, 0.75);
+    --float-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 18px 44px -14px rgba(0, 0, 0, 0.75);
+    --tray-shadow: inset 0 1px 0 var(--stone-hi), 0 0 0 1px rgba(0, 0, 0, 0.35), 0 18px 36px -14px rgba(0, 0, 0, 0.8);
   }
 }

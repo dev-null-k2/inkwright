@@ -135,7 +135,8 @@ test.describe('writing', () => {
   });
 
   test('pages can be added, navigated and deleted', async ({ page }) => {
-    await page.getByRole('button', { name: 'Pages' }).click();
+    await page.getByRole('button', { name: 'More', exact: true }).click();
+    await page.getByRole('menuitem', { name: /Pages/ }).click();
     await page.getByRole('button', { name: /Add page after/ }).click();
     await expect(page.locator('.page-item')).toHaveCount(2);
     await pen(page, word(200, 220, 120));

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft, Camera, CloudUpload, Undo2, Redo2, Download, FileImage, FileText, FileType2, Files, Image as ImageIcon, Layers,
-  AudioLines, Mic, MoreHorizontal, VolumeX, Pause, Play, Sparkles, Square, Tag, Trash2, ZoomIn, ZoomOut, Maximize2, FilePlus2, Copy, Scan,
+  AudioLines, Mic, MoreHorizontal, Pause, Play, Sparkles, Square, Tag, Trash2, Maximize2, FilePlus2, Copy, Scan,
 } from 'lucide-react';
 import { newId, PAGE_SIZE_PRESETS, pagePaper, pageSizeOf, type ImageItem, type InkStroke, type TextBox } from '@inkstone/core';
 import { InkEngine, type SelectionInfo, type Tool, type ToolState } from '../canvas/engine.ts';
@@ -63,10 +63,12 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   const [recording, setRecording] = useState<number | null>(null);
   const [playback, setPlayback] = useState<{ clipId: string; position: number; playing: boolean } | null>(null);
   const audioEl = useRef<HTMLAudioElement | null>(null);
+  const root = useRef<HTMLDivElement>(null);
+  const calmTimer = useRef(0);
   // Engine callbacks are bound once; they call through these refs so they always see fresh state.
   const live = useRef<{ seekTo: (t: number) => void; editText: (req: { pageIndex: number; box: TextBox; isNew: boolean }) => void }>(null!);
   const latestText = useRef<TextBox | null>(null);
-  const btn = { paper: useRef<HTMLButtonElement>(null), export: useRef<HTMLButtonElement>(null), insert: useRef<HTMLButtonElement>(null), more: useRef<HTMLButtonElement>(null), feel: useRef<HTMLButtonElement>(null) };
+  const btn = { more: useRef<HTMLButtonElement>(null) };
 
   // ---- Open the note ---------------------------------------------------------------------------
   useEffect(() => {
@@ -120,6 +122,15 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
       onButtonToggle: () => setLatched(e.buttonLatched),
       onSeek: (createdAt) => live.current.seekTo(createdAt),
       onViewportSaved: (v) => safeStorage.set(vpKey, JSON.stringify(v)),
+      // Calm chrome: the top bar steps back while ink flows and returns shortly after the pen lifts.
+      // Toggled on the DOM directly so writing never causes a React render.
+      onWriting: (active) => {
+        const el = root.current;
+        if (!el) return;
+        clearTimeout(calmTimer.current);
+        if (active) el.classList.add('is-writing');
+        else calmTimer.current = window.setTimeout(() => el.classList.remove('is-writing'), 1100);
+      },
     };
     setEngine(e);
     // Test hook (only with ?e2e in the URL): lets end-to-end tests inspect document state.
@@ -426,7 +437,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   const sidePanel = panel && doc && engine && vault;
 
   return (
-    <div className={cx('editor', wide && 'is-wide', panel && 'has-panel')}>
+    <div ref={root} className={cx('editor', wide && 'is-wide', panel && 'has-panel')}>
       <header className="ed-top">
         <IconButton label="Back to library" onClick={() => navigate({ name: 'library' })}><ArrowLeft size={20} /></IconButton>
         <button type="button" className="ed-title" onClick={async () => { if (!doc) return; const t = await askText('Rename note', 'Title', doc.meta.title, 'Rename'); if (t) doc.rename(t); }}>
@@ -438,23 +449,14 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
         <div className="ed-top-actions">
           {narrow && <IconButton label="Undo" onClick={() => engine?.undo()} disabled={!doc?.canUndo}><Undo2 size={19} /></IconButton>}
           {narrow && <IconButton label="Redo" onClick={() => engine?.redo()} disabled={!doc?.canRedo}><Redo2 size={19} /></IconButton>}
-          {wide && <IconButton label="Zoom out" shortcut={`${modKey}−`} onClick={() => engine?.zoomBy(0.8)}><ZoomOut size={18} /></IconButton>}
-          {wide && <button type="button" className="zoom-pill" onClick={() => engine?.fitWidth()} title={`Fit width (${modKey}0)`}>{Math.round(view.zoom * 100)}%</button>}
-          {wide && <IconButton label="Zoom in" shortcut={`${modKey}+`} onClick={() => engine?.zoomBy(1.25)}><ZoomIn size={18} /></IconButton>}
+          {wide && <button type="button" className="zoom-pill" onClick={() => engine?.fitWidth()} title={`Zoom: pinch, ${modKey}+ / ${modKey}− (tap to fit width)`}>{Math.round(view.zoom * 100)}%</button>}
           {(!narrow || recording != null) && !isArtifact && <IconButton label={recording != null ? 'Stop recording' : 'Record audio'} tone={recording != null ? 'seal' : undefined} active={recording != null} onClick={() => void toggleRecording()}>
             {recording != null ? <Square size={16} fill="currentColor" /> : <Mic size={19} />}
           </IconButton>}
           {recording != null && <span className="rec-time">{formatDuration(Date.now() - recording)}</span>}
-          {!narrow && <IconButton label="Pages" active={panel === 'pages'} onClick={() => setPanel(panel === 'pages' ? null : 'pages')}><Layers size={19} /></IconButton>}
-          <button ref={btn.feel} type="button" className={cx('icon-btn', narrow && 'is-hidden')} aria-label="Writing feel" title="Writing sound & feel" onClick={() => setMenu('feel')}>
-            {settings.feel.sound ? <AudioLines size={19} /> : <VolumeX size={19} />}
-          </button>
-          <button ref={btn.paper} type="button" className={cx('icon-btn', narrow && 'is-hidden')} aria-label="Paper" title="Paper" onClick={() => setPaperOpen(true)}><Files size={19} /></button>
-          <button ref={btn.insert} type="button" className={cx('icon-btn', narrow && 'is-hidden')} aria-label="Insert" title="Insert image, photo or PDF pages" onClick={() => setMenu('insert')}><ImageIcon size={19} /></button>
           <button type="button" className={cx('ai-btn', panel === 'ai' && 'is-on')} onClick={() => setPanel(panel === 'ai' ? null : 'ai')} aria-pressed={panel === 'ai'}>
             <Sparkles size={17} /><span>AI</span>
           </button>
-          <button ref={btn.export} type="button" className={cx('icon-btn', narrow && 'is-hidden')} aria-label="Export and share" title="Export and share" onClick={() => setMenu('export')}><Download size={19} /></button>
           <button ref={btn.more} type="button" className="icon-btn" aria-label="More" title="More" onClick={() => setMenu('more')}><MoreHorizontal size={19} /></button>
         </div>
       </header>
@@ -515,7 +517,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
         )}
       </div>
 
-      <Popover anchor={btn.paper.current} open={paperOpen} onClose={() => setPaperOpen(false)} title="Paper" placement="below" className="paper-pop">
+      <Popover anchor={btn.more.current} open={paperOpen} onClose={() => setPaperOpen(false)} title="Paper" placement="below" className="paper-pop">
         {doc && curPage && (
           <div className="pop-section">
             <h3 className="pop-title">Paper for {doc.pageCount > 1 ? 'this note' : 'this page'}</h3>
@@ -532,7 +534,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
         )}
       </Popover>
 
-      <Popover anchor={narrow ? btn.more.current : btn.feel.current} open={menu === 'feel'} onClose={() => setMenu(null)} title="Writing feel" placement="below" className="feel-pop">
+      <Popover anchor={btn.more.current} open={menu === 'feel'} onClose={() => setMenu(null)} title="Writing feel" placement="below" className="feel-pop">
         <div className="pop-section">
           <h3 className="pop-title">Writing sound &amp; feel</h3>
           <FeelPanel feel={feel} texture={doc ? pagePaper(doc.meta, curPage ?? doc.page(0)).texture : undefined}
@@ -540,7 +542,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
         </div>
       </Popover>
 
-      <Popover anchor={btn.insert.current} open={menu === 'insert'} onClose={() => setMenu(null)} title="Insert" placement="below">
+      <Popover anchor={btn.more.current} open={menu === 'insert'} onClose={() => setMenu(null)} title="Insert" placement="below">
         <Menu onClose={() => setMenu(null)} items={[
           { label: 'Image', icon: <FileImage size={16} />, onClick: () => void insertImages() },
           { label: 'Photo from camera', icon: <Camera size={16} />, onClick: () => void insertImages(true) },
@@ -551,7 +553,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
         ]} />
       </Popover>
 
-      <Popover anchor={btn.export.current} open={menu === 'export'} onClose={() => setMenu(null)} title="Export" placement="below">
+      <Popover anchor={btn.more.current} open={menu === 'export'} onClose={() => setMenu(null)} title="Export" placement="below">
         <Menu onClose={() => setMenu(null)} items={[
           { label: 'PDF', icon: <FileType2 size={16} />, hint: 'All pages, vector', onClick: () => void doExport('pdf') },
           { label: 'PNG image', icon: <FileImage size={16} />, hint: 'This page', onClick: () => void doExport('png') },
@@ -562,15 +564,13 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
 
       <Popover anchor={btn.more.current} open={menu === 'more'} onClose={() => setMenu(null)} title="More" placement="below">
         <Menu onClose={() => setMenu(null)} items={[
-          ...(narrow ? [
-            { label: 'Pages', icon: <Layers size={16} />, onClick: () => setPanel('pages') },
-            { label: 'Paper', icon: <Files size={16} />, onClick: () => setTimeout(() => setPaperOpen(true), 0) },
-            { label: 'Writing sound & feel', icon: <AudioLines size={16} />, hint: settings.feel.sound ? `${Math.round(settings.feel.soundVolume * 100)}%` : 'Off', onClick: () => setTimeout(() => setMenu('feel'), 0) },
-            { label: 'Insert', icon: <ImageIcon size={16} />, onClick: () => setTimeout(() => setMenu('insert'), 0) },
-            ...(isArtifact ? [] : [{ label: recording != null ? 'Stop recording' : 'Record audio', icon: <Mic size={16} />, onClick: () => void toggleRecording() }]),
-            { label: 'Export and share', icon: <Download size={16} />, onClick: () => setTimeout(() => setMenu('export'), 0) },
-            'sep' as const,
-          ] : []),
+          { label: 'Pages', icon: <Layers size={16} />, hint: doc && doc.pageCount > 1 ? `${doc.pageCount}` : undefined, onClick: () => setPanel('pages') },
+          { label: 'Paper', icon: <Files size={16} />, onClick: () => setTimeout(() => setPaperOpen(true), 0) },
+          { label: 'Writing sound & feel', icon: <AudioLines size={16} />, hint: settings.feel.sound ? `${Math.round(settings.feel.soundVolume * 100)}%` : 'Off', onClick: () => setTimeout(() => setMenu('feel'), 0) },
+          { label: 'Insert', icon: <ImageIcon size={16} />, onClick: () => setTimeout(() => setMenu('insert'), 0) },
+          ...(narrow && !isArtifact ? [{ label: recording != null ? 'Stop recording' : 'Record audio', icon: <Mic size={16} />, onClick: () => void toggleRecording() }] : []),
+          { label: 'Export and share', icon: <Download size={16} />, onClick: () => setTimeout(() => setMenu('export'), 0) },
+          'sep' as const,
           { label: 'Tags', icon: <Tag size={16} />, hint: meta?.tags.join(', ') || 'None', onClick: async () => { if (!doc) return; const t = await askText('Tags', 'Comma-separated', doc.meta.tags.join(', ')); if (t != null) { doc.setTags(t.split(',')); await session?.flush(); await setTags(doc.meta.id, doc.meta.tags); } } },
           { label: 'Fit to width', icon: <Maximize2 size={16} />, hint: `${modKey}0`, onClick: () => engine?.fitWidth() },
           { label: 'Duplicate note', icon: <Copy size={16} />, onClick: async () => { await session?.flush(); await duplicateNote(noteId); toast({ text: 'Duplicated', tone: 'success' }); } },
