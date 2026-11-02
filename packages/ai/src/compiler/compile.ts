@@ -5,7 +5,7 @@
  *          ──validate──► claims with anchors ──diff vs the page now──► a proposal
  *
  * Nothing is written to a note by `compileWiki`: it produces a *proposal* (a file in
- * `ai/compiler/proposals/`) the user reviews claim by claim. `applyProposal` then writes the
+ * `ai/compiler/proposals/`) the user reviews claim by claim. `applyWikiProposal` then writes the
  * accepted changes through a `WikiTarget` and logs every one as an activity op, so the whole
  * accept can be undone from AI activity like any agent change. Provenance for each page is
  * written next to it (`assets/provenance.json`).
@@ -241,7 +241,7 @@ export interface ApplyResult {
  * Applies the user's choices: accepted items are written (and logged through `record`), rejected
  * ones are remembered so the same change is not proposed again until its sources change.
  */
-export async function applyProposal(proposal: WikiProposal, choice: ProposalChoice, deps: { store: CompilerStore; target: WikiTarget; record: (op: NewActivityOp) => void; now?: number }): Promise<ApplyResult> {
+export async function applyWikiProposal(proposal: WikiProposal, choice: ProposalChoice, deps: { store: CompilerStore; target: WikiTarget; record: (op: NewActivityOp) => void; now?: number }): Promise<ApplyResult> {
   const now = deps.now ?? Date.now();
   const { store, target } = deps;
   const config = await store.config();

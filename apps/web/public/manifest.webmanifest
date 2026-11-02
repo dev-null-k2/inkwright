@@ -20,6 +20,9 @@
   "file_handlers": [
     { "action": "./", "accept": { "application/pdf": [".pdf"], "image/*": [".png", ".jpg", ".jpeg", ".webp", ".heic", ".heif"], "text/plain": [".txt"], "text/markdown": [".md", ".markdown"] } }
   ],
+  "protocol_handlers": [
+    { "protocol": "web+inkstone", "url": "./?link=%s" }
+  ],
   "share_target": {
     "action": "./share-target",
     "method": "POST",

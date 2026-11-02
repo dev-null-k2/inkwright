@@ -8,6 +8,7 @@
  * exporter and the MCP server agree on exactly what counts as a link or a tag.
  */
 import type { InkLink, NoteMeta, NotebookMeta, PageInk, RecognizedLine } from './model.ts';
+import { codeLinkLabel, isCodeTarget, parseCodeTarget } from './dev/codelinks.ts';
 
 export interface WikiLink {
   /** The whole match, brackets included (`![[Note#Page 2|alias]]`). */
@@ -56,6 +57,9 @@ export function parseWikiLinks(text: string): WikiLink[] {
 
 /** What a link shows on the page: its alias, else `Title › Page 2`, else the title. */
 export function linkLabel(l: Pick<WikiLink, 'title' | 'subpath' | 'alias'>): string {
+  // Code links (`[[code:src/a.ts#fn]]`, dev/codelinks.ts) read as the symbol's name.
+  const code = isCodeTarget(l.title) ? parseCodeTarget(l.subpath ? `${l.title}#${l.subpath}` : l.title) : null;
+  if (code) return codeLinkLabel(code, l.alias);
   if (l.alias) return l.alias;
   if (l.subpath) return l.title ? `${l.title} › ${l.subpath}` : l.subpath;
   return l.title;
@@ -415,6 +419,8 @@ export function suggestNotes(query: string, notes: readonly NoteMeta[], opts: { 
 
 export type LinkTrigger =
   | { kind: 'note'; query: string; start: number }
+  /** `[[code:` — a link to a symbol in a mounted code source; `query` is what follows `code:`. */
+  | { kind: 'code'; query: string; start: number }
   | { kind: 'page'; title: string; query: string; start: number }
   | { kind: 'tag'; query: string; start: number };
 
@@ -426,6 +432,7 @@ export function linkTrigger(textBefore: string): LinkTrigger | null {
   const m = /\[\[([^[\]\n|]*)$/.exec(textBefore);
   if (m) {
     const inner = m[1]!;
+    if (isCodeTarget(inner)) return { kind: 'code', query: inner.trim().slice(5), start: m.index };
     const hash = inner.indexOf('#');
     if (hash >= 0) return { kind: 'page', title: inner.slice(0, hash), query: inner.slice(hash + 1), start: m.index };
     return { kind: 'note', query: inner, start: m.index };

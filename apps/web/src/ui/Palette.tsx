@@ -8,6 +8,7 @@ import { matchScore, type RankedChunk } from '@inkstone/core';
 import { useApp } from '../state/app.ts';
 import { useSettings } from '../state/settings.ts';
 import { getActiveAI } from '../lib/ai.ts';
+import { aiCanSee, noteLabelOf } from '../lib/trust/state.ts';
 import { anchorOf, askNotes, sourceKindLabel, toSources, type AskSource } from '../lib/ask.ts';
 import { openAnchor } from '../lib/focus.ts';
 import { appMemory, useMemoryStatus } from '../lib/memory.ts';
@@ -271,11 +272,12 @@ function AskPanel({ query, handle }: { query: string; handle: React.MutableRefOb
     abort.current?.abort();
     const ac = new AbortController();
     abort.current = ac;
-    const ai = await getActiveAI().catch(() => null);
+    const ai = await getActiveAI({ task: 'chat', source: 'ask' }).catch(() => null);
     if (!ai) { setSt({ phase: 'needs-ai' }); return; }
     setSt({ phase: 'working', question: q, sources: [], answer: '', label: ai.label });
     try {
-      const r = await askNotes(q, { search: (x, o) => mem.search(x, o), ai, updatedAt: (id) => notes.find((n) => n.id === id)?.updatedAt }, {
+      const saw = (ids: string[]) => ids.forEach((id) => { const l = noteLabelOf(id); if (l) ai.trust?.see(l); });
+      const r = await askNotes(q, { search: (x, o) => mem.search(x, o), ai, updatedAt: (id) => notes.find((n) => n.id === id)?.updatedAt, canSee: aiCanSee, saw }, {
         signal: ac.signal,
         onSources: (sources) => setSt((s) => (s.phase === 'working' ? { ...s, sources } : s)),
         onDelta: (answer) => setSt((s) => (s.phase === 'working' ? { ...s, answer } : s)),

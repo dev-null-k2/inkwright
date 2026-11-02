@@ -11,6 +11,8 @@ against your folder, with the AI you choose.
 | **A2A agent** (`inkstone-mcp --a2a`) | Inkstone's own agent behind an Agent Card, so other agents can hand it note work | Any A2A v1.0 or v0.3 client or agent framework |
 | **Always-on runner** (`inkstone-agent run`) | Runs your routines on schedule even when the app is closed | You, as a background service |
 
+The same HTTP port also serves a REST API for programs (`/api/v1`, see [API.md](API.md)).
+
 Every change any of them makes shows up in the app under **Settings › AI › Activity**, where it
 can be undone. Moving a note to Trash always waits for a person's OK.
 
@@ -39,7 +41,8 @@ What clients get:
   `get_recent_handwriting`, `list_notebooks`, `create_note`, `append_to_note`, `update_note`,
   `create_notebook`, `trash_note`, `restore_note`, and the long-running `summarize_notebook`,
   `transcribe_pages`, `run_routine` (plus `list_routines`), and `list_pending_approvals` /
-  `decide_approval`.
+  `decide_approval`. With code scanned into the vault (docs/DEVELOPERS.md): `code_search`,
+  `code_symbol`, `drift_report`, `get_runbook` and `validate_diagram` (all read-only).
 - **Tasks** (extension `io.modelcontextprotocol/tasks`): clients that support it get a task
   for the long-running tools at once, with progress in the task's status message, approvals as
   `input_required`, and cancel. Other clients get the same work done inline.
@@ -290,6 +293,26 @@ Any provider Inkstone supports works:
 `--ai-model` picks the model (default: the provider's default). Handwriting transcription needs a
 vision model. `--ai-key-env NAME` reads the key from another variable. Keys never belong in
 command lines or service files.
+
+## Trust: the AI policy, dry run and the audit trail
+
+The server, the A2A agent and the runner follow the vault's AI policy (`ai/policy.json`, edited in
+Settings › AI › Routing & privacy; docs/TRUST.md):
+
+- Notebooks and tags set to **hidden**, and notes that **stay on the device**, don't exist for
+  MCP clients or the server's agent; **read-only** notes can't be changed, moved or trashed.
+- With **Outside agents: Propose**, MCP write tools record a proposal you approve in the app's
+  Activity instead of changing notes.
+- Reads and writes by every client, and every call the server's own AI makes, go into the signed
+  audit trail (`ai/audit/srv-…/`). Check it with `node apps/mcp-server/dist/agent.js audit
+  --vault "…"` (exit code 1 if anything was changed after it was written).
+- The server's AI goes through the same router, privacy firewall and budget as the app's; pass
+  `--ai-on-premises` when it runs inside your network so local-only routes may use it.
+- `--policy <file>` adds a managed policy users can only tighten; `--audit-key <file>` signs the
+  audit trail with a key you control. Every option also has an environment variable
+  (`inkstone-mcp --help`); `GET /healthz` answers without credentials for health checks.
+
+For a self-hosted, no-egress deployment with Docker, see docs/ENTERPRISE.md.
 
 ## Troubleshooting
 

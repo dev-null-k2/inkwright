@@ -27,13 +27,24 @@ reference implementation is `packages/core/src/codec.ts` + `vault.ts`.
   templates/<templateId>/assets/<name>  files a template's pages use
   ai/leases/routines.json               which always-on runner runs routines automatically
   ai/approvals/<id>.json                actions an unattended agent is waiting for your OK on
+  ai/lessons.json                       lessons proposed from coding-agent sessions (see "Code sources")
+  code/sources/<sourceId>/source.json   a mounted repository: where it came from, last scan (see "Code sources")
+  code/sources/<sourceId>/graph.json    its code graph: symbols with signature hashes, edges
   notes/<noteId>/assets/provenance.json where each AI-written sentence of the note came from (see "Context compiler")
   ai/compiler/config.json, state.json   context compiler: sources, settings, compiled pages
   ai/compiler/proposals/<id>.json       compiled-wiki changes waiting for review (and decided ones)
   ai/ledger/<conflictId>.json           contradictions the user dismissed or resolved
   ai/study/<deckId>.json                flashcard decks with FSRS state
   ai/packs/<id>/pack.md, pack.json      saved context packs (served by the MCP server)
+  plugins/plugins.json                  installed plugins: enable switch, granted permissions, source (see "Plugins")
+  plugins/<pluginId>/manifest.json, …   a plugin's files exactly as published (code, docs, images)
+  plugins/<pluginId>/data.json          a plugin's private storage and its settings
+  api/keys.json                         REST API keys, as SHA-256 hashes only (see "API keys")
   ai/evals/memory.json                  the latest "Does my memory help?" report
+  ai/policy.json                        AI policy: routing, notebook/tag permissions, budgets, privacy, retention
+  ai/proposals/<id>.json                changes agents proposed (dry run), waiting for approval
+  ai/usage/<YYYY-MM>/<device>.json      AI usage meter: tokens, cost and savings per day and provider
+  ai/audit/<device>/<YYYY-MM>.jsonl     audit trail: signed, hash-chained record of what AI saw and did
 ```
 
 Rules
@@ -129,7 +140,16 @@ don't understand.
 { "type": "graph", "id", "x", "y", "createdAt", "width": 320, "height": 220,
   "functions": [{ "expr": "x^2-4", "color": "#FF2F6FB5", "label": "y" }],
   "view": { "xMin": -10, "xMax": 10, "yMin": -6, "yMax": 30 }, "origin": "solver" }
+
+{ "type": "diagram", "id", "x", "y", "createdAt", "width": 520, "height": 340,
+  "ir": { "title?", "direction?": "TB|LR", "nodes": [ … ], "edges": [ … ], "groups?": [ … ], "acyclic?", "layout?" },
+  "color": "#FF1B1F24", "origin?": "ai" }
 ```
+
+**Diagrams** are verified architecture diagrams: `ir` is the typed diagram IR (docs/DEVELOPERS.md
+§ 4), valid when written, and the picture is laid out from it (`layoutDiagram` in
+`packages/core/src/dev/diagram.ts`) and scaled to `width` × `height`. Tools that change the IR must
+keep it valid (`validateDiagram`); readers that don't draw diagrams can show `ir` as text.
 
 **Tables.** `cells` is always `rows.length × cols.length`. A cell's `text` is what was typed into
 it; `recognized` is what was read from the ink written in it (typed text wins when both exist).
@@ -184,6 +204,12 @@ and never saved. Writers must keep overlays they don't draw, like any object.
 ```
 
 `lock` is present while the note is locked with a passcode (see "Locked notes").
+
+`codeRefs` (optional) holds, per code link in the note (`[[code:path#Symbol]]` typed or recognized,
+or an ink link whose `target` starts with `code:`), what the link was written or last reviewed
+against: `{ "src/auth.ts#createSession": { "hash", "signature", "sourceId?", "linkedAt", "reviewedAt?" } }`.
+A scan whose signature hash differs makes the link *drifted* (see "Code sources"). Keys of links no
+longer in the note may remain; they are ignored.
 
 `certificate` points at the note's latest signed authorship certificate in `assets/` (format in
 [AUTHORSHIP.md](AUTHORSHIP.md)).
@@ -372,7 +398,7 @@ Sync engines (Google Drive, WebDAV, local folder) mirror this tree file-for-file
 images/objects are unioned by id with deletions honoured from either side; authorship chain events
 are unioned and ordered by time; scalar metadata takes the most
 recent `updatedAt`. `forms` merges per PDF and per field (filling different fields on two devices
-keeps both; the newer note wins a field both changed). Transcripts merge too: within the same `run`,
+keeps both; the newer note wins a field both changed). `codeRefs` merges per link the same way. Transcripts merge too: within the same `run`,
 segments are unioned by id (one-sided edits and deletions honoured, the newer file wins a segment
 both changed) and `complete` is true if either side finished; different runs (one device
 transcribed the recording again) are not mixed — the newer file's run wins whole. The lecture
@@ -468,7 +494,111 @@ addedPage?}` → remove that text box (and the page, if it was added and is now 
 pageId, text}` (the MCP server's `transcribe_pages`) → clear the page's recognized text if it is
 still that text; `text_replaced {noteId, pageId, textId, before, after}` (an accepted compiled-wiki
 update) → put `before` back if the text box still holds `after`; `external {server, detail?}` —
-a change in a connected app, listed only. The newest 300 runs are kept.
+a change in a connected app, listed only. The newest 300 runs are kept (and fewer days when the
+AI policy's `retention.activityDays` says so; none are removed under legal hold).
+
+**AI policy** — `ai/policy.json`, written by Settings › AI › Routing & privacy (or by hand). Only
+fields that differ from the defaults are present; every field is optional and readers fill in the
+defaults. The full schema and defaults are in docs/TRUST.md › The policy file:
+
+```jsonc
+{ "version": 1,
+  "routes": { "background|chat|heavy|vision": "auto|device|off|provider:<provider config id>" },
+  "notebooks": { "<notebookId>": { "access?": "none|read|read-write", "localOnly?": true } },
+  "tags": { "<tag, lower case, no #>": { "access?": "…", "localOnly?": true } },
+  "budgets": { "<provider config id or provider id>": { "monthlyUsd": 20, "onExceed": "device|block" } },
+  "privacy": { "mode": "redact|off", "kinds": { "<email|phone|card|iban|gov_id|secret|address|name|ip>": "redact|block|allow" }, "allowList?": [] },
+  "compression": { "enabled", "minTokens", "deviceSummaries" },
+  "injection": { "spotlight", "confirmWritesAfterSuspicious", "confirmWritesAfterAnyRead?" },
+  "tools": { "deny": ["<tool name or * pattern>"], "allowOnly?": [] },
+  "agentWrites": { "assistant|routine|external": "apply|propose" },
+  "retention": { "activityDays", "auditDays", "historyDays", "legalHold" },
+  "prices": { "<model pattern>": { "input", "output", "cachedInput?" } } }
+```
+
+A field with a mistake is reported and keeps its default (so a typo never weakens protection).
+Sync treats it as a whole file like the rest of `ai/`.
+
+**Proposals** — `ai/proposals/<id>.json`, a change an agent proposed under dry run:
+
+```jsonc
+{ "id", "createdAt", "source": "assistant|routine|external", "label", "noteId?", "noteTitle?",
+  "summary", "before", "after",
+  "op": { "op": "createNote", "args": { "title", "text", "notebookId?", "tags?" } }
+      | { "op": "appendText", "noteId", "text", "pageIndex?" } | { "op": "updateNote", "noteId", "patch" }
+      | { "op": "createNotebook", "name", "parentId?" } | { "op": "trashNote", "noteId" },
+  "status": "pending|applied|rejected|failed", "decidedAt?", "outcome?" }
+```
+
+Approving applies `op` through the same recorded host as a live agent (so it lands in Activity).
+Decided proposals are removed after 30 days.
+
+**Usage** — `ai/usage/<YYYY-MM>/<device>.json`, one file per device and month (so devices never
+write the same file): `{ "version": 1, "device", "month", "rows": [ { "day": "YYYY-MM-DD",
+"provider", "label", "model", "local", "calls", "inputTokens", "outputTokens",
+"uncompressedInputTokens", "costUsd": number|null, "savedUsd": number|null, "redactions",
+"blocked" } ] }`. Budgets sum every device's rows for the month.
+
+**Audit trail** — `ai/audit/<device>/<YYYY-MM>.jsonl`, one JSON object per line, append-only, one
+hash chain per device (`<device>` is the short authorship-key fingerprint in the app, `srv-<hash>`
+for a server). Each event: `{ "v": 1, "seq", "at", "dev", "prev", "kind", …fields, "hash",
+"sig?" }` where `hash` is SHA-256 (hex) of the canonical JSON (sorted keys, no whitespace) of the
+event without `hash` and `sig`, `prev` is the previous event's hash (`genesis:<dev>` for the
+first), and `sig` is an ES256 signature (base64url) over the 32 hash bytes by the key declared in
+the latest `key` event (`data.publicJwk`; each month file starts with one). Kinds and fields are
+listed in docs/TRUST.md › Audit trail. Retention removes whole months and then records a
+`retention` event whose `data.prunedHead` is the hash the remaining chain starts after.
+
+**Runbook runs** (docs/DEVELOPERS.md § 5) are activity runs with `source: "external"`, `label:
+"Runbook"` and one `external` op (`server: "Runbook"`, `tool: "run_http|run_sql|run_js"`, the
+outcome in `summary`, the block's first 300 characters in `detail`); status `cancelled` when the
+user declined a request. They change nothing in the notes, so there is nothing to undo.
+
+## Code sources (`code/`)
+
+Repositories the developer module has read (docs/DEVELOPERS.md). Written by the app, the
+`inkstone scan` CLI or any tool; each source is its own folder, synced as whole files. Ids match
+`^[0-9A-Za-z_-]{1,64}$`. The reference is `CodeStore` in `packages/core/src/dev/codegraph.ts`.
+
+```jsonc
+// code/sources/<id>/source.json
+{ "id": "shop", "name": "shop", "kind": "folder|zip|tarball|cli|graphify|generic",
+  "origin": "shop-main.zip", "createdAt", "scannedAt",
+  "stats": { "files": 42, "symbols": 310, "edges": 512, "skipped?": 3 }, "formatVersion": 1 }
+
+// code/sources/<id>/graph.json (compact JSON)
+{ "formatVersion": 1, "sourceId": "shop", "name": "shop", "scannedAt",
+  "generator": "inkstone-tree-sitter/1",            // or "graphify/<version>", "generic-json"
+  "files": [ { "path": "src/auth.ts", "language": "typescript", "hash": "<16 hex>", "size": 812 } ],
+  "symbols": [ {
+      "id": "src/auth.ts#SessionStore.put",           // path#qualified: exactly what a code link names
+      "name": "put", "qualified": "SessionStore.put",
+      "kind": "function|method|class|interface|type|enum|const|struct|trait|route|module",
+      "file": "src/auth.ts", "line": 14, "endLine": 18,
+      "signature": "put(s: Session): void",           // the declaration without its body
+      "hash": "<16 hex>",                              // SHA-256 of the normalised signature
+      "bodyHash?": "<16 hex>", "exported?": true, "doc?": "First doc-comment line",
+      "source?": "<first 80 lines>", "route?": { "method": "GET", "path": "/health" } } ],
+  "edges": [ { "from": "<symbol id or file path>", "to": "<symbol id, file path, Go package folder, or module:<name>>",
+               "kind": "calls|imports|contains|extends|implements|references|handles",
+               "confidence?": "extracted|inferred|ambiguous" } ],
+  "skipped?": 3, "warnings?": ["…"] }
+```
+
+The signature is normalised before hashing: whitespace collapsed, spaces around punctuation
+removed, trailing commas dropped — so reformatting never reads as a change. Writers sort files,
+symbols and edges (by path, line, id) so the same code always gives the same file.
+
+**Lesson proposals** — `ai/lessons.json`:
+
+```jsonc
+{ "version": 1, "items": [
+  { "id", "text": "Run migrations with --dry-run first", "why?", "noteId?", "noteTitle?",
+    "status": "proposed|accepted|dismissed", "createdAt", "decidedAt?" } ] }
+```
+
+Accepted lessons are appended to the `AGENTS.md` note as text; decided ones stay (newest 300) so
+the same lesson is not proposed twice.
 
 ## Context compiler
 
@@ -540,3 +670,63 @@ MCP server lists them as `inkstone://packs/{id}`. **Memory eval** — `ai/evals/
 last report (questions, per-condition results, accuracy, citation accuracy, tokens, McNemar
 comparisons).
 
+
+## Plugins (`plugins/`)
+
+Third-party plugins (docs/PLUGINS.md). The files of a plugin are stored exactly as published
+under `plugins/<id>/` (`id` = the manifest's id); only code, JSON, CSS, Markdown, text and image
+files are kept, at most 5 MB. `plugins/<id>/data.json` is the plugin's own storage
+(`{"settings": {…}, "storage": {…}}`); it survives updates and is removed on uninstall.
+
+```jsonc
+// plugins/plugins.json
+{
+  "formatVersion": 1,
+  "plugins": [
+    {
+      "id": "app.inkstone.examples.word-count",
+      "version": "1.0.0",
+      "enabled": true,
+      "granted": ["notes:read", "editor:read", "events"],   // a subset of the manifest's permissions
+      "source": { "kind": "catalog", "catalogId": "app.inkstone.examples.word-count" },  // or url | zip | folder
+      "installedAt": 1730000000000,
+      "updatedAt": 1730000000000                            // bumped on every change to the record
+    }
+  ]
+}
+```
+
+Readers ignore unknown fields and records without `id`/`version`. A plugin whose files are
+missing (half-synced) or whose manifest no longer validates is listed but never run.
+
+## API keys (`api/keys.json`)
+
+Keys for the REST API of `inkstone-mcp --http` (docs/API.md). Only hashes are stored: a key is
+`ink_<id>_<secret>` with a 10-character public id and 32 random bytes (base64url); `hash` is the
+hex SHA-256 of the whole key.
+
+```jsonc
+{
+  "formatVersion": 1,
+  "keys": [
+    { "id": "k3v9x0aq1m", "name": "Shortcuts", "prefix": "ink_k3v9x0aq1m", "hash": "9f2c…(64 hex)",
+      "scopes": ["notes:read", "notes:write"], "createdAt": 1730000000000, "updatedAt": 1730000000000,
+      "createdBy": "app", "expiresAt": 1760000000000, "revokedAt": 1740000000000 }
+  ]
+}
+```
+
+Scopes: `notes:read`, `notes:write`, `routines:run`, `webhooks`, `admin`. Records with a hash that
+is not 64 hex characters are ignored, so a plaintext key can never be accepted.
+
+### Sync
+
+- `plugins/plugins.json` merges per plugin id: when both devices changed a record the newer
+  `updatedAt` wins; a plugin uninstalled on one device and untouched on the other stays
+  uninstalled, but one updated meanwhile survives.
+- `api/keys.json` unions keys by id and never drops one (a stale copy must not resurrect a
+  deleted key as valid); `revokedAt` set on either side wins.
+- `plugins/<id>/*` and `data.json` follow the default newest-wins rule.
+
+Webhook subscriptions and their signing secrets are not in the vault: the server keeps them in
+its state folder (`--state-dir`), so secrets never sync to a cloud drive.

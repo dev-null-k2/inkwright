@@ -20,6 +20,16 @@ export interface PaletteAction {
 
 const sources = new Map<string, () => PaletteAction[]>();
 
+/**
+ * Hides actions that belong to switched-off modules (set by the module registry; actions name
+ * their module through `contributes.paletteActions`). Kept as a hook so this file has no
+ * dependency on the registry.
+ */
+let actionFilter: (id: string) => boolean = () => true;
+export function setPaletteActionFilter(f: (id: string) => boolean): void {
+  actionFilter = f;
+}
+
 /** Registers a screen's actions (a function, so they are read fresh each time the palette opens). */
 export function registerPaletteActions(source: string, actions: () => PaletteAction[]): () => void {
   sources.set(source, actions);
@@ -36,7 +46,7 @@ export function usePaletteActions(source: string, actions: PaletteAction[]): voi
 /** Actions matching a query, screen actions first. Empty query: everything, in registration order. */
 export function findActions(query: string, limit = 8): PaletteAction[] {
   const all: PaletteAction[] = [];
-  for (const [, get] of [...sources].reverse()) for (const a of get()) if (!all.some((x) => x.id === a.id)) all.push(a);
+  for (const [, get] of [...sources].reverse()) for (const a of get()) if (actionFilter(a.id) && !all.some((x) => x.id === a.id)) all.push(a);
   if (!query.trim()) return all.slice(0, limit);
   return all
     .map((a) => ({ a, s: matchScore(query, a.label) * 2 + matchScore(query, `${a.label} ${a.keywords ?? ''}`) }))

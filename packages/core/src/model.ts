@@ -382,6 +382,12 @@ export interface NoteMeta {
   certificate?: { asset: string; signedAt: number };
   /** Set while the note is locked with a passcode (see `NoteLock`). */
   lock?: NoteLock;
+  /**
+   * Code links (`[[code:path#Symbol]]`, typed or on ink) and the signature each was written or
+   * last reviewed against, keyed `path#Symbol`. A re-scan whose signature differs flags drift
+   * (packages/core/src/dev/drift.ts). Optional; see docs/VAULT_FORMAT.md › Code sources.
+   */
+  codeRefs?: Record<string, CodeRefBaseline>;
   formatVersion: number;
 }
 
@@ -391,6 +397,20 @@ export interface NoteMeta {
  * export values of a multi-select list.
  */
 export type FormFieldValue = string | boolean | string[];
+
+/** What a code link was written (or last reviewed) against: see `NoteMeta.codeRefs`. */
+export interface CodeRefBaseline {
+  /** The symbol's signature hash then (`CodeSymbol.hash`). */
+  hash: string;
+  /** The signature then, so drift can show old and new side by side. */
+  signature: string;
+  /** The code source it resolved in. */
+  sourceId?: string;
+  /** When the link was first seen with this symbol (epoch ms). */
+  linkedAt: number;
+  /** When the user last marked the link reviewed after a change. */
+  reviewedAt?: number;
+}
 
 export interface NotebookMeta {
   id: string;

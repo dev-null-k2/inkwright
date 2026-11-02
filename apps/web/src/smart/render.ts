@@ -1,5 +1,6 @@
 import { PAPER_TINTS, argbToCss, cellRect, pagePaper, type NoteMeta, colEdges, formatMathNumber, graphGeometry, mathWidth, rowEdges, type GraphObject, type MathObject, type PageInk, type TableObject } from '@inkstone/core';
 import { FONT_FAMILIES } from '../canvas/render.ts';
+import { drawDiagram } from '../dev/diagramRender.ts';
 
 /** Draws a page's objects for a note (graphs adapt to dark paper). Cheap when there are none. */
 export function drawPageObjectsFor(ctx: CanvasRenderingContext2D, note: NoteMeta, page: PageInk) {
@@ -17,6 +18,7 @@ export function drawPageObjects(ctx: CanvasRenderingContext2D, page: Pick<PageIn
     if (o.type === 'table') drawTable(ctx, o);
     else if (o.type === 'math') drawMath(ctx, o);
     else if (o.type === 'graph') drawGraph(ctx, o, !!opts.dark);
+    else if (o.type === 'diagram') drawDiagram(ctx, o, { dark: opts.dark, font: FONT_FAMILIES.sans });
     ctx.restore();
   }
 }

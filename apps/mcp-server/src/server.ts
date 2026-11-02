@@ -4,6 +4,7 @@ import type { ServerContext } from './context.ts';
 import { dailyReviewArgs, dailyReviewPrompt, summarizeNoteArgs, summarizeNotePrompt, todosFromNotesArgs, todosFromNotesPrompt } from './prompts.ts';
 import { NOTE_TEMPLATE, PACK_TEMPLATE, PAGE_SVG_TEMPLATE, listNoteResources, listPackResources, readNoteResource, readPackResource, readPageSvgResource } from './resources.ts';
 import { TOOLS, type ToolDef } from './tools.ts';
+import { DEV_TOOLS } from './dev/tools.ts';
 import { ActivitySessions } from './activity.ts';
 import { registerAgentTools, ownerOf } from './agent-tools.ts';
 import { ApprovalStore } from './approvals.ts';
@@ -11,6 +12,7 @@ import type { AgentAI } from './agent/ai.ts';
 import { TASKS_EXTENSION, TaskRegistry } from './tasks.ts';
 import { SEARCH_UI, UI_MIME, UI_RESOURCES, UI_RESOURCE_META, uiToolMeta } from './ui.ts';
 import { VERSION } from './version.ts';
+import { notesTouched, proposalFor, type ServerTrust } from './trust.ts';
 
 const INSTRUCTIONS = `Inkstone is the user's handwriting notebook app. This server reads and writes their notes vault (plain files synced across their devices).
 - Find notes with search_notes (searches recognized handwriting too) or list_notes; read one with read_note; show a page as the user wrote it with show_note_page.
@@ -18,7 +20,8 @@ const INSTRUCTIONS = `Inkstone is the user's handwriting notebook app. This serv
 - "What did I write today?" -> get_recent_handwriting.
 - Writes (create_note, append_to_note, update_note, create_notebook, trash_note) appear in the app on all devices and can be undone there (Settings › AI › Activity). Never trash notes without the user's go-ahead; trash is reversible with restore_note.
 - Long jobs (summarize_notebook, transcribe_pages, run_routine) may run as background tasks.
-- Background routines sometimes wait for the user's OK: list_pending_approvals shows them. Only approve (decide_approval) when the user says so.`;
+- Background routines sometimes wait for the user's OK: list_pending_approvals shows them. Only approve (decide_approval) when the user says so.
+- Code: code_search / code_symbol read repositories scanned into the vault; notes link code as [[code:path#Symbol]]; drift_report lists notes whose linked code changed; validate_diagram checks a diagram IR; get_runbook reads a runbook note's runnable blocks.`;
 
 /** OAuth scopes the server understands (OAuth mode). */
 export interface Scopes {
@@ -45,15 +48,18 @@ export interface ServerServices {
   legacyClients: Map<string, { name: string; title?: string }>;
   /** Set in OAuth mode: write tools then require the write scope (step-up challenge). */
   scopes?: Scopes | null;
+  /** Audit trail, usage meter and proposals (docs/TRUST.md). */
+  trust: ServerTrust;
 }
 
 export function createServices(ctx: ServerContext, o: { ai?: AgentAI | null; transport: 'stdio' | 'http'; scopes?: Scopes | null; tasks?: TaskRegistry }): ServerServices {
-  return { ctx, tasks: o.tasks ?? new TaskRegistry({ clock: ctx.clock }), activity: new ActivitySessions(ctx), legacyClients: new Map(), approvals: new ApprovalStore(ctx.fs, ctx.clock), ai: o.ai ?? null, transport: o.transport, scopes: o.scopes ?? null };
+  const trust = ctx.trust;
+  return { ctx, tasks: o.tasks ?? new TaskRegistry({ clock: ctx.clock }), activity: new ActivitySessions(ctx), legacyClients: new Map(), approvals: new ApprovalStore(ctx.fs, ctx.clock), ai: o.ai ?? null, transport: o.transport, scopes: o.scopes ?? null, trust };
 }
 
 /** Write tools available for this context (none in read-only mode). */
 export function activeTools(ctx: ServerContext): ToolDef[] {
-  return TOOLS.filter((t) => !t.write || !ctx.readOnly);
+  return [...TOOLS, ...DEV_TOOLS].filter((t) => !t.write || !ctx.readOnly);
 }
 
 function errorResult(e: unknown): CallToolResult {
@@ -125,11 +131,29 @@ export function createMcpServer(services: ServerServices, rc?: McpRequestContext
         ...(tool.write && writeChallenge ? { scopeChallenge: writeChallenge } : {}),
       },
       async (args: unknown) => {
+        const a = (args ?? {}) as Record<string, any>;
+        const actor = { source: 'external', label: clientLabel() };
         try {
-          if (tool.write) return await activity().record(tool.name, (args ?? {}) as Record<string, any>, () => tool.handler(ctx, args ?? {}));
-          const r = await tool.handler(ctx, args ?? {});
+          if (tool.write) {
+            await ctx.refresh();
+            // Dry run for outside agents: the change becomes a proposal the user approves in the app.
+            if (ctx.policy.current.agentWrites.external === 'propose') {
+              const p = await proposalFor(ctx.vault, tool.name, a);
+              if (p) {
+                const made = await services.trust.proposals.create({ ...p, source: 'external', label: clientLabel() });
+                services.trust.audit.record({ kind: 'proposal', actor, tool: tool.name, summary: `Proposed: ${p.summary}`, ...(p.noteId ? { notes: [{ id: p.noteId, ...(p.noteTitle ? { title: p.noteTitle } : {}) }] } : {}) });
+                return { content: [{ type: 'text', text: JSON.stringify({ proposed: true, proposalId: made.id, summary: p.summary, message: 'The user reviews changes from agents before they apply: this one is waiting for their approval in Inkstone (Settings › AI › Activity). Tell them it is proposed, not done.' }) }] };
+              }
+            }
+            const r = await activity().record(tool.name, a, () => tool.handler(ctx, a));
+            if (!r.isError) services.trust.audit.record({ kind: 'write', actor, tool: tool.name, notes: notesTouched(a, (r.content?.[0] as { text?: string })?.text) });
+            return r;
+          }
+          const r = await tool.handler(ctx, a);
+          if (!r.isError) services.trust.audit.record({ kind: 'read', actor, tool: tool.name, notes: notesTouched(a, (r.content?.[0] as { text?: string })?.text) });
           return isSearch ? withSearchStructure(r) : r;
         } catch (e) {
+          if ((e as { code?: string })?.code === 'policy_blocked') services.trust.audit.record({ kind: 'blocked', actor, tool: tool.name, summary: (e as Error).message, outcome: 'blocked' });
           return errorResult(e);
         }
       },
