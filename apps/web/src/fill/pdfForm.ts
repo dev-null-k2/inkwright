@@ -242,19 +242,23 @@ export interface PdfFormInfo {
  */
 export async function readPdfForm(bytes: Uint8Array, pdfjs: any): Promise<PdfFormInfo> {
   const task = pdfjs.getDocument({ data: bytes.slice(), isEvalSupported: false });
-  const doc = await task.promise;
   try {
-    const pages: PdfFormInfo['pages'] = [];
-    const annots: { pageNumber: number; annotations: AnnotationLike[] }[] = [];
-    for (let i = 1; i <= doc.numPages; i++) {
-      const page = await doc.getPage(i);
-      pages.push({ view: [...page.view], rotate: page.rotate ?? 0 });
-      annots.push({ pageNumber: i, annotations: await page.getAnnotations({ intent: 'display' }) });
-    }
-    return { fields: fieldsFromAnnotations(annots), pages };
+    return await readPdfFormFromDoc(await task.promise);
   } finally {
-    await (task.destroy?.() ?? doc.destroy?.());
+    await task.destroy?.();
   }
+}
+
+/** Same as `readPdfForm` for an already loaded pdf.js document (shared with rendering). */
+export async function readPdfFormFromDoc(doc: any): Promise<PdfFormInfo> {
+  const pages: PdfFormInfo['pages'] = [];
+  const annots: { pageNumber: number; annotations: AnnotationLike[] }[] = [];
+  for (let i = 1; i <= doc.numPages; i++) {
+    const page = await doc.getPage(i);
+    pages.push({ view: [...page.view], rotate: page.rotate ?? 0 });
+    annots.push({ pageNumber: i, annotations: await page.getAnnotations({ intent: 'display' }) });
+  }
+  return { fields: fieldsFromAnnotations(annots), pages };
 }
 
 /** A widget placed on a note page: which field, which page of the note, where (page units). */

@@ -48,7 +48,16 @@ export interface InkstoneNativePlugin {
   prepareRecognizer(opts: { language: string }): Promise<{ state: 'ready' | 'downloading' | 'failed' | 'unsupported' }>;
   recognize(opts: { language: string; lines: { strokes: { x: number[]; y: number[]; t: number[] }[]; width: number; height: number; preContext: string }[] }): Promise<{ lines: string[] }>;
   addListener(event: 'stylusButton', cb: (e: { pressed: boolean; keyCode: number }) => void): Promise<PluginListenerHandle>;
+  /**
+   * Files Android handed to Inkstone ("Open with", share sheet) that the web layer hasn't taken
+   * yet. Each was copied into the app's cache; `path` is a file:// URI for Capacitor Filesystem.
+   */
+  takeSharedFiles(): Promise<{ files: SharedFile[] }>;
+  /** A file arrived while Inkstone was running (the same files are not returned by takeSharedFiles). */
+  addListener(event: 'sharedFiles', cb: (e: { files: SharedFile[] }) => void): Promise<PluginListenerHandle>;
 }
+
+export interface SharedFile { name: string; mimeType: string; path: string }
 
 export const InkstoneNative = registerPlugin<InkstoneNativePlugin>('InkstoneNative');
 

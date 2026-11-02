@@ -4,7 +4,7 @@ import { newPage, type NoteMeta, type PageInk } from '@inkstone/core';
 import { clampText, coerce, effectiveValue, fieldsFromAnnotations, humanize, missingRequired, pdfAssetsOf, pdfToPage, placeWidgets, readPdfForm, rectToPage, storageEntries, withFormValue, type PdfField } from './pdfForm.ts';
 import { fillableFixture } from './fixtures.ts';
 
-const pdfjs = () => import('pdfjs-dist/legacy/build/pdf.mjs');
+const pdfjs = (): Promise<any> => import('pdfjs-dist/legacy/build/pdf.mjs');
 const byName = (fields: PdfField[], n: string) => fields.find((f) => f.name === n)!;
 
 describe('reading AcroForm fields with pdf.js', () => {
