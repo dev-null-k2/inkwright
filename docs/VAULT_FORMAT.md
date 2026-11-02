@@ -30,6 +30,9 @@ reference implementation is `packages/core/src/codec.ts` + `vault.ts`.
   ai/lessons.json                       lessons proposed from coding-agent sessions (see "Code sources")
   code/sources/<sourceId>/source.json   a mounted repository: where it came from, last scan (see "Code sources")
   code/sources/<sourceId>/graph.json    its code graph: symbols with signature hashes, edges
+  dev/shell/runners/<runnerId>.json     a computer offering to run runbook shell blocks (see "Runbook shell blocks")
+  dev/shell/requests/<id>.json          a signed approval to run one shell block there
+  dev/shell/results/<id>.json           what happened: status, exit code, shortened output
   notes/<noteId>/assets/provenance.json where each AI-written sentence of the note came from (see "Context compiler")
   ai/compiler/config.json, state.json   context compiler: sources, settings, compiled pages
   ai/compiler/proposals/<id>.json       compiled-wiki changes waiting for review (and decided ones)
@@ -620,7 +623,8 @@ Repositories the developer module has read (docs/DEVELOPERS.md). Written by the 
 // code/sources/<id>/source.json
 { "id": "shop", "name": "shop", "kind": "folder|zip|tarball|cli|graphify|generic",
   "origin": "shop-main.zip", "createdAt", "scannedAt",
-  "stats": { "files": 42, "symbols": 310, "edges": 512, "skipped?": 3 }, "formatVersion": 1 }
+  "stats": { "files": 42, "symbols": 310, "edges": 512, "skipped?": 3 }, "formatVersion": 1,
+  "head?": { "ref": "refs/heads/main", "commit": "<sha>" } }   // the git commit scanned (runner's HEAD watch); optional
 
 // code/sources/<id>/graph.json (compact JSON)
 { "formatVersion": 1, "sourceId": "shop", "name": "shop", "scannedAt",
@@ -655,6 +659,35 @@ symbols and edges (by path, line, id) so the same code always gives the same fil
 
 Accepted lessons are appended to the `AGENTS.md` note as text; decided ones stay (newest 300) so
 the same lesson is not proposed twice.
+
+### Runbook shell blocks (`dev/shell/`)
+
+The app and the always-on runner talk through these files (protocol and checks:
+`packages/core/src/dev/shellrun.ts`, docs/DEVELOPERS.md › Runbooks). Nothing here is enough to
+run a command: the runner also needs the approving device's fingerprint in its own, local
+configuration. Each file is whole-file, last writer wins in sync; they never conflict, since
+each id is written by one side.
+
+```jsonc
+// dev/shell/runners/<runnerId>.json — written by a runner every minute while it runs
+{ "v": 1, "id": "sh-<hash of computer and vault>", "label": "Ana's MacBook", "platform": "darwin",
+  "allow": ["/Users/ana/code"], "shells": ["sh", "bash", "zsh"], "timeoutSeconds": 120,
+  "trusted": ["<fingerprint>"], "heartbeatAt": 1730000000000 }
+
+// dev/shell/requests/<id>.json — written by the app when the person approves a run (deleted once answered)
+{ "v": 1, "id": "<24 base64url>", "runner": "sh-…", "command": "systemctl --user restart shop",
+  "dialect": "sh|bash|zsh|pwsh", "cwd?": "~/code/shop",
+  "note": { "id", "title" }, "block": { "line": 3, "codeHash": "<32 hex: SHA-256 of the command>" },
+  "requestedAt", "expiresAt",                      // at most 5 minutes apart
+  "device": { "publicJwk": { "kty": "EC", "crv": "P-256", "x", "y" }, "fingerprint", "name?" },
+  "sig": "<base64url ECDSA P-256 SHA-256 over 'inkwright-shell-run/1\n' + canonical JSON of the rest>" }
+
+// dev/shell/results/<id>.json — written by the runner ("running" first, so a request runs once)
+{ "v": 1, "id", "runner", "status": "running|done|failed|timeout|refused", "reason?",
+  "exitCode?", "signal?", "startedAt?", "finishedAt?", "cwd?",
+  "output?": "<stdout and stderr, shortened like a log when long>", "outputBytes?", "shortened?",
+  "originalRef?": "<16 hex: the full output, kept on the runner's computer>" }
+```
 
 ## Context compiler
 
