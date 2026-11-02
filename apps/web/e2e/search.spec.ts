@@ -1,11 +1,9 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
-import { newNote, openApp, pen, word } from './helpers.ts';
-
-const mod = process.platform === 'darwin' ? 'Meta' : 'Control';
+import { modKey, newNote, openApp, pen, word } from './helpers.ts';
 
 async function openPalette(page: Page) {
-  await page.keyboard.press(`${mod}+k`);
+  await page.keyboard.press(`${await modKey(page)}+k`);
   await expect(page.locator('.palette')).toBeVisible();
 }
 
