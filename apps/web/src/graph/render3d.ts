@@ -64,9 +64,10 @@ const EYE_FS = /* glsl */ `
     float band = smoothstep(0.38, 0.44, r) * (1.0 - smoothstep(0.58, 0.64, r));
     float centre = 1.0 - smoothstep(0.3, 0.36, r);
     vec3 col = mix(ring, core, centre);
-    float a = max(max(band, centre * 0.92), halo);
+    float a = max(band, centre * 0.92);
+    if (a < halo) { col = ring; a = halo; }
     if (a < 0.01) discard;
-    gl_FragColor = vec4(mix(col, ring, halo > band ? 1.0 : 0.0), a);
+    gl_FragColor = vec4(col, a);
   }
 `;
 
@@ -178,7 +179,7 @@ export class Graph3D implements GraphRenderer {
 
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
-    geo.setAttribute('size', new THREE.BufferAttribute(new Float32Array(g.nodes.map((d) => d.size * 2.4)), 1));
+    geo.setAttribute('size', new THREE.BufferAttribute(new Float32Array(g.nodes.map((d) => d.size * 2.9)), 1));
     geo.setAttribute('alpha', new THREE.BufferAttribute(new Float32Array(n), 1));
     geo.setAttribute('seed', new THREE.BufferAttribute(new Float32Array(g.nodes.map((d, i) => ((d.id.charCodeAt(d.id.length - 1) * 31 + i * 7) % 97) / 97)), 1));
     geo.setAttribute('tint', new THREE.BufferAttribute(new Float32Array(g.nodes.flatMap((d) => d.color)), 3));
@@ -228,7 +229,7 @@ export class Graph3D implements GraphRenderer {
     if (i == null || !this.layout) return;
     const to = this.nodePos(i);
     const dir = this.camera.position.clone().sub(this.controls.target).normalize();
-    const camTo = to.clone().add(dir.multiplyScalar(Math.max(70, Math.min(160, this.camera.position.distanceTo(this.controls.target)))));
+    const camTo = to.clone().add(dir.multiplyScalar(Math.max(130, Math.min(240, this.camera.position.distanceTo(this.controls.target)))));
     this.controls.autoRotate = false;
     if (!animate || this.reduced) {
       this.controls.target.copy(to);
@@ -243,7 +244,7 @@ export class Graph3D implements GraphRenderer {
     if (!this.layout || !this.g) return;
     let r = 30;
     for (let i = 0; i < this.g.nodes.length; i++) if (this.target[i]! > 0.05) r = Math.max(r, Math.hypot(this.layout.x[i]!, this.layout.y[i]!, this.layout.z[i]!));
-    const dist = (r * 1.15) / Math.sin((this.camera.fov * Math.PI) / 360);
+    const dist = (r * 0.9) / Math.sin((this.camera.fov * Math.PI) / 360);
     const dir = this.camera.position.clone().sub(this.controls.target).normalize();
     const camTo = dir.multiplyScalar(dist);
     if (!animate || this.reduced) { this.controls.target.set(0, 0, 0); this.camera.position.copy(camTo); this.controls.update(); return; }
@@ -267,7 +268,7 @@ export class Graph3D implements GraphRenderer {
       const p = this.project(i);
       if (!p) continue;
       const depth = this.camera.position.distanceTo(this.nodePos(i));
-      const radius = Math.max(9, (this.g.nodes[i]!.size * 2.4 * scale) / depth / 2 / (window.devicePixelRatio || 1) + 4);
+      const radius = Math.max(9, (this.g.nodes[i]!.size * 2.9 * scale) / depth / 2 / (window.devicePixelRatio || 1) + 4);
       const d = Math.hypot(p.x - clientX, p.y - clientY);
       if (d < radius && d - radius * 0.25 < bestD) { bestD = d; best = i; }
     }
@@ -338,7 +339,7 @@ export class Graph3D implements GraphRenderer {
       ep.setXYZ(0, l.x[this.selected]!, l.y[this.selected]!, l.z[this.selected]!);
       ep.needsUpdate = true;
       const es = this.eye.geometry.getAttribute('size') as THREE.BufferAttribute;
-      es.setX(0, g.nodes[this.selected]!.size * 2.4 * 2.3);
+      es.setX(0, g.nodes[this.selected]!.size * 2.9 * 2.3);
       es.needsUpdate = true;
     } else this.eye.visible = false;
     return moving;

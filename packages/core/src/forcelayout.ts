@@ -185,7 +185,7 @@ export class ForceLayout {
     }
 
     // Weak gravity toward the origin, then integrate.
-    const g = 0.012 * a;
+    const g = 0.03 * a;
     let mx = 0, my = 0, mz = 0;
     for (let i = 0; i < n; i++) {
       vx[i]! -= x[i]! * g; vy[i]! -= y[i]! * g; if (three) vz[i]! -= z[i]! * g;
