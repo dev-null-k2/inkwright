@@ -3,22 +3,25 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const src = readFileSync(new URL('../dist-single/index.html', import.meta.url), 'utf8');
-const take = (open, close) => {
-  const out = [];
-  let i = 0;
-  for (;;) {
-    const a = src.indexOf(open, i);
-    if (a < 0) break;
-    const b = src.indexOf(close, a);
-    if (b < 0) break;
-    out.push(src.slice(a, b + close.length));
-    i = b + close.length;
-  }
-  return out;
-};
-const title = take('<title>', '</title>')[0] ?? '<title>Inkwright</title>';
-const styles = take('<style', '</style>');
-const scripts = take('<script', '</script>');
+// Top-level <style> and <script> elements in document order. Scanning sequentially (and skipping
+// over each element's body) matters: bundled code contains strings like "<style:master-page" (ODS
+// XML in SheetJS) and HTML templates with their own tags, which must not be mistaken for elements.
+const blocks = { style: [], script: [] };
+for (let i = 0; ; ) {
+  const m = /<(style|script)[\s>]/g;
+  m.lastIndex = i;
+  const hit = m.exec(src);
+  if (!hit) break;
+  const close = `</${hit[1]}>`;
+  const end = src.indexOf(close, hit.index);
+  if (end < 0) break;
+  blocks[hit[1]].push(src.slice(hit.index, end + close.length));
+  i = end + close.length;
+}
+const titleMatch = /<title>[^<]*<\/title>/.exec(src);
+const title = titleMatch ? titleMatch[0] : '<title>Inkwright</title>';
+const styles = blocks.style;
+const scripts = blocks.script;
 const page = [
   title,
   '<meta name="description" content="Inkwright — handwriting notes that feel like paper, with your own AI.">',
