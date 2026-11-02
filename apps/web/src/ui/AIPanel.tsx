@@ -25,6 +25,7 @@ import { askConfirm, askText } from './prompts.tsx';
 import { IconButton, cx } from './primitives.tsx';
 import { prepareAgentRun, type PreparedRun } from '../lib/agent/assistant.ts';
 import { describeMcpToolName } from '../lib/agent/mcp.ts';
+import { hostAgentViews, hostPromptInput } from '../lib/agent/hub.ts';
 import { undoActivityRun } from '../lib/agent/undo.ts';
 import { speak, useVoicePrefs } from '../lib/agent/voice.ts';
 import { AgentMenuButton, MicButton, PanelAgentView, PanelWaiting } from './agent/panel.tsx';
@@ -75,11 +76,9 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
   const scroll = useRef<HTMLDivElement>(null);
   const [attach, setAttach] = useState<{ label: string; parts: ContentPart[] } | null>(null);
   const [view, setView] = useState<AgentViewId | null>(null);
-  useEffect(() => {
-    const open = (e: Event) => setView((e as CustomEvent<AgentViewId>).detail);
-    window.addEventListener('inkstone:open-agent-view', open);
-    return () => window.removeEventListener('inkstone:open-agent-view', open);
-  }, []);
+  useEffect(() => hostAgentViews((v) => setView(v as AgentViewId)), []);
+  // A connected app's prompt was picked: put it in the input to review and send.
+  useEffect(() => hostPromptInput((text) => { setView(null); setInput(text); }), []);
 
   useEffect(() => { void getActiveAI().then(setAi).catch(() => setAi(null)); }, [aiSettings]);
   useEffect(() => { scroll.current?.scrollTo({ top: scroll.current.scrollHeight, behavior: 'smooth' }); }, [items]);

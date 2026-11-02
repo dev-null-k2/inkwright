@@ -42,6 +42,9 @@ export interface McpRuntime {
   errorKind?: string;
   info?: McpServerInfo;
   tools: Array<{ name: string; title?: string; description?: string; readOnly: boolean; destructive: boolean }>;
+  /** Prompts the server offers (templates the user picks). */
+  prompts?: Array<{ name: string; title?: string; description?: string; arguments?: Array<{ name: string; description?: string; required?: boolean }> }>;
+  resourceCount?: number;
   /** A sign-in that needs a click to open (popups need a user gesture). */
   pendingAuthUrl?: string;
 }
@@ -103,6 +106,8 @@ function runtimeFrom(c: McpConnection): Partial<McpRuntime> {
     errorKind: c.error?.kind,
     info: c.info ?? undefined,
     tools: c.tools.map((t) => ({ name: t.name, title: t.title ?? t.annotations?.title, description: t.description, readOnly: t.annotations?.readOnlyHint === true, destructive: t.annotations?.destructiveHint !== false && t.annotations?.readOnlyHint !== true })),
+    prompts: c.prompts.map((p) => ({ name: p.name, title: p.title, description: p.description, arguments: p.arguments })),
+    resourceCount: c.resources.length,
   };
 }
 
@@ -320,6 +325,23 @@ export function describeMcpToolName(name: string): { server: string; tool: strin
   const slug = name.slice(0, i);
   const s = useMcp.getState().servers.find((x) => x.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 16) === slug);
   return s ? { server: s.name, tool: name.slice(i + 2) } : null;
+}
+
+/** A server prompt filled in with arguments, as text for the assistant's input. */
+export async function promptText(serverId: string, name: string, args: Record<string, string>): Promise<string> {
+  let c = connections.get(serverId);
+  if (!c || c.status !== 'connected') c = (await connectServer(serverId)) ?? undefined;
+  if (!c || c.status !== 'connected') throw new Error('That app is not connected.');
+  const r = await c.getPrompt(name, args);
+  return r.messages
+    .map((m) => {
+      const content = m.content as { type: string; text?: string; resource?: { text?: string; uri?: string } };
+      if (content.type === 'text') return content.text ?? '';
+      if (content.type === 'resource') return content.resource?.text ?? `[${content.resource?.uri ?? 'resource'}]`;
+      return '';
+    })
+    .filter(Boolean)
+    .join('\n\n');
 }
 
 // ---- Background tasks --------------------------------------------------------------------------

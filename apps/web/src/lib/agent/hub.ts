@@ -126,6 +126,61 @@ export function requestApproval(a: Omit<Approval, 'id' | 'at' | 'resolve'>): Pro
   });
 }
 
+// ---- Opening an assistant screen from anywhere ---------------------------------------------------
+
+const VIEW_EVENT = 'inkstone:open-agent-view';
+let viewHosts = 0;
+let pendingView: string | null = null;
+
+/**
+ * Shows an assistant screen (e.g. Activity from a routine's toast): in the AI panel or Settings
+ * if one is open, otherwise by opening Settings › AI, which picks the request up when it mounts.
+ */
+export function openAgentView(view: string): void {
+  if (viewHosts > 0) {
+    window.dispatchEvent(new CustomEvent(VIEW_EVENT, { detail: view }));
+    return;
+  }
+  pendingView = view;
+  void import('../../state/app.ts').then(({ useApp }) => useApp.getState().navigate({ name: 'settings', section: 'ai' }));
+}
+
+/** Registers a screen that can show assistant views; `show` is called with requested views. */
+export function hostAgentViews(show: (view: string) => void): () => void {
+  viewHosts++;
+  const on = (e: Event) => show((e as CustomEvent<string>).detail);
+  window.addEventListener(VIEW_EVENT, on);
+  if (pendingView) {
+    const v = pendingView;
+    pendingView = null;
+    queueMicrotask(() => show(v));
+  }
+  return () => {
+    viewHosts--;
+    window.removeEventListener(VIEW_EVENT, on);
+  };
+}
+
+const PROMPT_EVENT = 'inkstone:assistant-prompt';
+let promptHosts = 0;
+
+/** Puts text into the assistant's input. Returns false when no assistant panel is open. */
+export function sendToAssistantInput(text: string): boolean {
+  if (!promptHosts) return false;
+  window.dispatchEvent(new CustomEvent(PROMPT_EVENT, { detail: text }));
+  return true;
+}
+
+export function hostPromptInput(set: (text: string) => void): () => void {
+  promptHosts++;
+  const on = (e: Event) => set((e as CustomEvent<string>).detail);
+  window.addEventListener(PROMPT_EVENT, on);
+  return () => {
+    promptHosts--;
+    window.removeEventListener(PROMPT_EVENT, on);
+  };
+}
+
 /** Queues a question from a connected app and waits for the answer. */
 export function requestElicitation(e: Omit<Elicitation, 'id' | 'resolve'>): Promise<Parameters<Elicitation['resolve']>[0]> {
   return new Promise((resolve) => {

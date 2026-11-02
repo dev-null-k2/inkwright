@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ChevronRight } from 'lucide-react';
-import { useAgent } from '../../lib/agent/hub.ts';
+import { hostAgentViews, useAgent } from '../../lib/agent/hub.ts';
 import { useMcp } from '../../lib/agent/mcp.ts';
 import { browserSpeechSupported, providerTranscriber, speechOutputSupported, useVoicePrefs } from '../../lib/agent/voice.ts';
 import { Switch } from '../primitives.tsx';
@@ -13,11 +13,7 @@ import { AGENT_VIEWS, AgentView, type AgentViewId } from './shared.tsx';
 export function AgentSettings() {
   const [open, setOpen] = useState<AgentViewId | null>(null);
   const counts = useCounts();
-  useEffect(() => {
-    const on = (e: Event) => setOpen((e as CustomEvent<AgentViewId>).detail);
-    window.addEventListener('inkstone:open-agent-view', on);
-    return () => window.removeEventListener('inkstone:open-agent-view', on);
-  }, []);
+  useEffect(() => hostAgentViews((v) => setOpen(v as AgentViewId)), []);
   if (open) {
     const v = AGENT_VIEWS.find((x) => x.id === open)!;
     return (

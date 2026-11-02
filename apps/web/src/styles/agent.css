@@ -142,3 +142,7 @@
 /* Inline actions on a tool line in the chat ("2 changes logged · Undo · Review"). */
 .ai-tool-act { border: 0; background: transparent; padding: 2px 6px; border-radius: 6px; font-size: var(--t-xs); font-weight: 600; color: var(--ink); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 2px; }
 .ai-tool-act:hover { background: var(--chrome-2); }
+
+/* Prompts a connected app offers. */
+.ag-prompts { display: flex; flex-direction: column; gap: 6px; padding: 4px 0; }
+.ag-prompt { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); font-size: var(--t-sm); }

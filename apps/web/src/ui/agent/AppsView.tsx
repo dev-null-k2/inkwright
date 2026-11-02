@@ -12,6 +12,7 @@ import {
   cancelTask,
   connectServer,
   dismissTask,
+  promptText,
   removeServer,
   setServerEnabled,
   setToolSettings,
@@ -23,7 +24,8 @@ import {
 } from '../../lib/agent/mcp.ts';
 import { useApp } from '../../state/app.ts';
 import { IconButton, Segmented, cx, relativeTime } from '../primitives.tsx';
-import { askConfirm } from '../prompts.tsx';
+import { askConfirm, askText } from '../prompts.tsx';
+import { sendToAssistantInput } from '../../lib/agent/hub.ts';
 import { Section, StatusDot } from './shared.tsx';
 
 export function AppsView() {
@@ -81,6 +83,8 @@ function ServerRow({ cfg }: { cfg: McpServerConfig }) {
       </div>
       {rt?.error && rt.status !== 'connected' && <p className={cx('ag-server-error', rt.errorKind === 'cors' && 'is-cors')}>{rt.error}</p>}
       {open && rt?.tools.length ? <ToolList cfg={cfg} rt={rt} /> : null}
+      {open && rt?.prompts?.length ? <PromptList cfg={cfg} prompts={rt.prompts} /> : null}
+      {open && rt?.resourceCount ? <p className="muted small">Shares {rt.resourceCount} {rt.resourceCount === 1 ? 'resource' : 'resources'} the assistant can read.</p> : null}
       {open && (
         <div className="ag-server-foot">
           {cfg.auth === 'oauth' && rt?.status === 'connected' && <button type="button" className="btn btn-sm btn-ghost" onClick={() => void signOut(cfg.id)}>Sign out</button>}
@@ -113,6 +117,46 @@ function ToolList({ cfg, rt }: { cfg: McpServerConfig; rt: McpRuntime }) {
         })}
       </tbody>
     </table>
+  );
+}
+
+/**
+ * Prompts are templates the user picks (not the model): fill in their arguments, then the text
+ * goes into the assistant's input to review and send.
+ */
+function PromptList({ cfg, prompts }: { cfg: McpServerConfig; prompts: NonNullable<McpRuntime['prompts']> }) {
+  const toast = useApp((s) => s.toast);
+  const use = async (p: (typeof prompts)[number]) => {
+    const args: Record<string, string> = {};
+    for (const a of p.arguments ?? []) {
+      const v = await askText(p.title ?? p.name, `${a.description ?? a.name}${a.required ? '' : ' (optional)'}`, '', 'Next');
+      if (v == null && a.required) return;
+      if (v) args[a.name] = v;
+    }
+    try {
+      const text = await promptText(cfg.id, p.name, args);
+      if (sendToAssistantInput(text)) return;
+      await navigator.clipboard?.writeText(text);
+      toast({ text: 'Copied. Open the assistant in a note and paste it.' });
+    } catch (e) {
+      toast({ text: (e as Error).message, tone: 'error' });
+    }
+  };
+  return (
+    <div className="ag-prompts">
+      <span className="ag-tool-name">Prompts</span>
+      <ul className="ag-list">
+        {prompts.map((p) => (
+          <li key={p.name} className="ag-prompt">
+            <div className="ag-item-main">
+              <span>{p.title ?? p.name}</span>
+              {p.description && <span className="ag-tool-desc">{p.description.slice(0, 160)}</span>}
+            </div>
+            <button type="button" className="btn btn-sm" onClick={() => void use(p)}>Use</button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
