@@ -9,7 +9,7 @@
   "types": "./src/index.ts",
   "dependencies": {
     "perfect-freehand": "^1.2.3",
-    "ts-fsrs": "^5.4.2"
+    "ts-fsrs": "^6.0.0"
   },
   "license": "Apache-2.0",
   "devDependencies": {
