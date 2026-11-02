@@ -1,5 +1,5 @@
 import type { Rect } from './geometry.ts';
-import type { InkPoint, InkStroke } from './model.ts';
+import type { ContentOrigin, InkPoint, InkStroke } from './model.ts';
 import { strokeBounds, translateStroke } from './gestures.ts';
 import { argbToHexOpacity } from './ids.ts';
 import { formatNumber as f, outlineToSvgPath, penLook, strokeOutline, centerlineSvgPath } from './outline.ts';
@@ -22,6 +22,8 @@ interface OverlayBase {
   x: number;
   y: number;
   createdAt: number;
+  /** Set when the overlay was not made by hand (a result an executable canvas step wrote). */
+  origin?: ContentOrigin;
 }
 
 export interface StickyObject extends OverlayBase {

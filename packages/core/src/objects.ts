@@ -46,6 +46,22 @@ export interface TableObject extends ObjectBase {
   lineWidth: number;
   /** The first row is a header row (typed text drawn bold, a heavier rule under it). */
   header?: boolean;
+  /**
+   * Set on tables that show data (the data sandbox): the full dataset is a note asset in the
+   * shared data-attachment format (CSV/TSV/JSON, one table per file, named by `sqlIdent`), and
+   * the grid shows its first rows. `query` is the SQL that produced a result table.
+   */
+  data?: TableData;
+}
+
+export interface TableData {
+  /** Note asset holding the full data. */
+  asset: string;
+  /** SQL table name. */
+  table: string;
+  rowCount: number;
+  columns: { name: string; type: string }[];
+  query?: string;
 }
 
 /** A solved equation or evaluated expression, shown next to the handwriting it came from. */

@@ -17,7 +17,7 @@
   /* Ink */
   --ink: #2b2330;           /* Duan slate: text and primary actions */
   --ink-2: #5f5666;
-  --ink-3: #8a8190;
+  --ink-3: #6a636e;          /* 4.6:1 on the desk: secondary text meets WCAG AA */
   --ink-inverse: #f6f3f7;
   --line: rgba(43, 35, 48, 0.11);
   --line-strong: rgba(43, 35, 48, 0.2);
@@ -28,8 +28,8 @@
   --eye-core: #2b2330;
   --seal: #b3412f;          /* cinnabar: recording and destructive actions only */
   --seal-soft: #f3ddd8;
-  --moss: #3e7a57;          /* success */
-  --ochre: #a87518;         /* warning */
+  --moss: #2f6345;          /* success (4.5:1 on chrome-2, for small text) */
+  --ochre: #7a5410;         /* warning (4.5:1 on chrome-2, for small text) */
   /* The carved stone pen tray (the one bold object) */
   --stone: #2e2533;
   --stone-hi: rgba(255, 255, 255, 0.07);

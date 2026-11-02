@@ -59,7 +59,7 @@ export function InkLinkLayer({ doc, engine, host, version, editingTextId, onFoll
   void version;
   const box = host.getBoundingClientRect();
   return (
-    <div className="ink-links" aria-label="Links on this page">
+    <div className="ink-links" role="group" aria-label="Links on this page">
       {placedOnPage.map((l) => {
         const s = engine.pageRectToScreen(l.pageIndex, l.rect);
         if (s.x > box.width + 40 || s.y > box.height + 40 || s.x + s.w < -40 || s.y + s.h < -40) return null;
