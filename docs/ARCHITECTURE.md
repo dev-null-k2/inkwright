@@ -127,6 +127,30 @@ Every agent run — a chat in the panel or a routine — is assembled by `prepar
   transcription endpoint through the `Transcriber` interface (add on-device engines there).
   Spoken replies use `speechSynthesis`, off by default.
 
+## Knowledge base (`packages/core/src/{links,knowledge,daily,templates,graph,forcelayout,obsidian,yaml}.ts`, `apps/web/src/lib/{knowledge,docLinks,related,obsidian}.ts`, `apps/web/src/ui/knowledge/`, `apps/web/src/graph/`)
+
+- **Links.** `links.ts` parses, resolves, renames and suggests `[[links]]` and `#tags`. Typed links
+  get `[[` autocomplete (`ui/knowledge/LinkSuggest.tsx`, fuzzy titles with notebook, pages after
+  `#`, tags after `#`). Lassoed ink becomes an `InkLink` ("Link" in the selection bar); recognized
+  handwriting containing `[[…]]` becomes one automatically (the recognizer reports which strokes
+  wrote each line). `InkLinkLayer` draws a jade dotted thread under every link and a small arrow
+  to follow it — only the arrow takes taps, so writing over linked ink is unaffected.
+- **Index.** `KnowledgeIndex` (in `AppVault.knowledge`, updated wherever search is) answers
+  backlinks with the linking line, unlinked mentions (typed and handwritten), outgoing links, tags
+  and keyword relatedness. The Links panel (••• › Links) shows them and links a mention in one tap.
+- **Related notes** go through `RelatedNotesProvider` (`lib/related.ts`): a registered provider,
+  else the on-device semantic memory (mean of each note's passage embeddings, `AppMemory.noteVector`),
+  else shared keywords/tags. The panel and the graph never know which.
+- **Graph.** `buildGraph` makes nodes (notes, tags, notebooks) and edges (links, tags, notebook
+  membership, related); `ForceLayout` places them deterministically in 2D or 3D (Barnes–Hut above
+  220 nodes, notebook clusters, seeded from ids so the map is stable). `graph/GraphView.tsx` is
+  lazy-loaded; three.js only loads for the 3D view (`render3d.ts`: ink-drop point shader, threads
+  with per-vertex alpha, suminagashi ring clouds per notebook, the stone-eye on the selection, depth
+  fog in the desk colour); `render2d.ts` is the canvas fallback. Colours come from the CSS
+  variables, so every palette and night mode apply. Reduced motion: no auto-rotate, no tweens,
+  the layout settles before it is shown.
+- **Daily notes, templates, Obsidian**: `daily.ts`, `templates.ts`, `obsidian.ts` + docs/OBSIDIAN.md.
+
 ## Platforms
 
 | Platform | How | Native extras |

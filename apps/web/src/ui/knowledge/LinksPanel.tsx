@@ -53,7 +53,9 @@ export function LinksPanel({ doc, onClose }: { doc: NoteDocument; onClose: () =>
   };
 
   const outgoing = (data?.outgoing ?? []).filter((o, i, all) => all.findIndex((x) => (x.note?.id ?? x.occ.title.toLowerCase()) === (o.note?.id ?? o.occ.title.toLowerCase())) === i && o.note?.id !== id);
-  const relatedNotes = (related ?? []).map((r) => ({ ...r, note: notes.find((n) => n.id === r.id) })).filter((r) => r.note && r.score > 0.05).slice(0, 5);
+  // Related: notes not already connected by a link either way.
+  const linked = new Set([...(data?.backlinks ?? []).map((b) => b.noteId), ...outgoing.map((o) => o.note?.id).filter(Boolean)]);
+  const relatedNotes = (related ?? []).map((r) => ({ ...r, note: notes.find((n) => n.id === r.id) })).filter((r) => r.note && r.score > 0.05 && !linked.has(r.id)).slice(0, 5);
 
   return (
     <aside className="side-panel links-panel" aria-label="Links">

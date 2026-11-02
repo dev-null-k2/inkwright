@@ -11,6 +11,7 @@ import './fill/fill.css';
 import './styles/agent.css';
 import './styles/palettes.css';
 import './styles/localai.css';
+import './styles/knowledge.css';
 import { App } from './App.tsx';
 import { BUILD_TARGET, isNative } from './platform/env.ts';
 import { handleOAuthRedirect } from './lib/agent/oauth-callback.ts';

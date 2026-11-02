@@ -113,9 +113,11 @@ export async function renameNoteKeepingLinks(noteId: string, newTitle: string): 
   const doc = openDoc(noteId);
   if (doc) doc.rename(newTitle);
   else await v.vault.updateNote(noteId, (x) => ({ ...x, title: newTitle.trim() }));
-  const changed = await updateLinksAfterRename(noteId, note.title, newTitle.trim(), sources);
+  // Links inside the renamed note itself ([[Old#Page 2]]) are kept right too, without counting them.
+  await updateLinksAfterRename(noteId, note.title, newTitle.trim(), [noteId]);
+  const changed = await updateLinksAfterRename(noteId, note.title, newTitle.trim(), sources.filter((id) => id !== noteId));
   if (!doc) await noteChanged(noteId);
-  if (changed > (sources.includes(noteId) ? 1 : 0)) app().toast({ text: `Updated links in ${changed} ${changed === 1 ? 'note' : 'notes'}`, tone: 'success' });
+  if (changed) app().toast({ text: `Updated links in ${changed} ${changed === 1 ? 'note' : 'notes'}`, tone: 'success' });
 }
 
 // ---- Turning things into links ---------------------------------------------------------------
