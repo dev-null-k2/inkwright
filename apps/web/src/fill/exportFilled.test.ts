@@ -6,7 +6,7 @@ import { fillPdfForm } from './formWriter.ts';
 import { pdfToPage, readPdfForm } from './pdfForm.ts';
 import { fillableFixture } from './fixtures.ts';
 
-const pdfjs = () => import('pdfjs-dist/legacy/build/pdf.mjs');
+const pdfjs = (): Promise<any> => import('pdfjs-dist/legacy/build/pdf.mjs');
 
 function ink(id: string, pts: [number, number][]): InkStroke {
   return { id, pen: 'ballpoint', color: '#FF1B3A8C', size: 2, createdAt: 1, points: pts.map(([x, y], i) => ({ x, y, t: i * 8, p: 0.5, tilt: -1, orient: -1 })) };

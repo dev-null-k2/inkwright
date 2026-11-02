@@ -4,6 +4,7 @@ import { useSettings } from '../state/settings.ts';
 import { askConfirm, askText } from '../ui/prompts.tsx';
 import { inspectPdf } from '../canvas/assets.ts';
 import { scheduleSync } from './sync.ts';
+import { classifyFile, isHeic, readText, textToPages } from './openFiles.ts';
 
 const app = () => useApp.getState();
 
@@ -20,6 +21,9 @@ async function after(id?: string) {
   await app().refresh();
   scheduleSync();
 }
+
+/** Re-indexes a note written outside these actions (e.g. "Extract pages") and refreshes the library. */
+export const noteChanged = (id: string) => after(id);
 
 export async function createNote(opts: { title?: string; kind?: NoteKind; paper?: PaperSpec; pageSize?: PageSize; notebookId?: string } = {}): Promise<string | null> {
   const v = app().vault;
@@ -148,14 +152,23 @@ export async function importFiles(files: File[], notebookId?: string): Promise<s
   const images: File[] = [];
   for (const f of files) {
     try {
-      if (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)) {
+      const kind = classifyFile(f);
+      if (kind === 'pdf') {
         app().toast({ text: `Importing ${f.name}…` });
         const id = await importPdf(f, notebookId);
         first ??= id;
-      } else if (f.type.startsWith('image/')) images.push(f);
-      else if (/\.zip$/i.test(f.name)) {
+      } else if (kind === 'image') {
+        // HEIC opens only where the browser can decode it (Safari); say so instead of failing later.
+        if (isHeic(f)) {
+          try { (await createImageBitmap(f)).close(); } catch { app().fail(`${f.name}: this browser can't open HEIC photos. Save it as JPEG, or open it on a device that can.`); continue; }
+        }
+        images.push(f);
+      } else if (kind === 'text') {
+        const id = await importText(await readText(f), f.name.replace(/\.(txt|md|markdown|text)$/i, ''), notebookId);
+        first ??= id;
+      } else if (kind === 'backup') {
         await importBackup(f);
-      } else app().fail(`${f.name} isn't a PDF, image or Inkstone backup.`);
+      } else app().fail(`${f.name} isn't a PDF, image, text file or Inkstone backup.`);
     } catch (e) {
       console.error(e);
       app().fail(`Couldn't import ${f.name}: ${(e as Error).message}`);
@@ -166,6 +179,18 @@ export async function importFiles(files: File[], notebookId?: string): Promise<s
     first ??= id;
   }
   return first;
+}
+
+/** Plain text or Markdown becomes a typed note: the text flows over as many pages as it needs. */
+export async function importText(text: string, title: string, notebookId?: string): Promise<string> {
+  const v = app().vault!;
+  const s = useSettings.getState();
+  const { note, pages } = await v.vault.createNote({ title: title.trim() || 'Text', paper: s.defaultPaper, pageSize: s.defaultPageSize, notebookId });
+  const boxes = textToPages(text, note.pageSize);
+  const out: PageInk[] = boxes.map((texts, i) => ({ ...(i === 0 ? pages[0]! : newPage(newId())), texts }));
+  await v.vault.saveNote({ ...note, pageIds: out.map((p) => p.id) }, out);
+  await after(note.id);
+  return note.id;
 }
 
 async function importPdf(f: File, notebookId?: string): Promise<string> {
