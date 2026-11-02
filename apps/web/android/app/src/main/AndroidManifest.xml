@@ -77,7 +77,6 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:scheme="content" />
-                <data android:scheme="file" />
                 <data android:mimeType="application/pdf" />
                 <data android:mimeType="image/*" />
                 <data android:mimeType="text/plain" />
