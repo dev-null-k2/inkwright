@@ -21,7 +21,28 @@ env.backends.onnx.wasm.wasmPaths = { wasm: new URL(ortWasmUrl, scope.location.hr
 env.backends.onnx.wasm.numThreads = scope.crossOriginIsolated ? Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1)) : 1;
 
 /** Synchronous access handles (workers only) make in-place, resumable writes possible. */
-const canWriteOpfs = opfsAvailable() && typeof FileSystemFileHandle !== 'undefined' && 'createSyncAccessHandle' in FileSystemFileHandle.prototype;
+const hasOpfsApi = opfsAvailable() && typeof FileSystemFileHandle !== 'undefined' && 'createSyncAccessHandle' in FileSystemFileHandle.prototype;
+
+/**
+ * Whether OPFS really opens here. Feature detection is not enough: WebKit exposes the API in
+ * Safari private windows and ephemeral sessions but rejects getDirectory() ("UnknownError"), which
+ * used to surface as "null is not an object (evaluating 'e.getFileHandle')" when downloading a
+ * model. Probed once; when it fails, models go through transformers.js's own cache instead.
+ */
+let opfsProbe: Promise<boolean> | null = null;
+function canWriteOpfs(): Promise<boolean> {
+  opfsProbe ??= hasOpfsApi
+    ? navigator.storage.getDirectory().then(() => true, () => false).then((ok) => {
+      if (ok) {
+        env.useBrowserCache = false;
+        env.useCustomCache = true;
+        env.customCache = opfsCache;
+      }
+      return ok;
+    })
+    : Promise.resolve(false);
+  return opfsProbe;
+}
 
 function abortError(): Error {
   return Object.assign(new Error('Cancelled'), { name: 'AbortError' });
@@ -83,11 +104,6 @@ const opfsCache = {
   },
 };
 
-if (canWriteOpfs) {
-  env.useBrowserCache = false;
-  env.useCustomCache = true;
-  env.customCache = opfsCache;
-}
 
 /** Streams one file into OPFS from `have` bytes on (HTTP Range), reporting each chunk. */
 async function fetchInto(dir: FileSystemDirectoryHandle, repo: string, file: { path: string; size: number }, report: (delta: number) => void, signal?: AbortSignal): Promise<void> {
@@ -174,7 +190,7 @@ function load(ref: ModelRef): Promise<Loaded> {
 }
 
 async function requireInstalled(ref: ModelRef) {
-  if (!canWriteOpfs) return; // transformers.js manages its own cache here
+  if (!(await canWriteOpfs())) return; // transformers.js manages its own cache here
   if (!(await storedStatus(ref)).installed) throw new Error('This on-device model is not downloaded yet. Download it in Settings › AI.');
 }
 
@@ -185,13 +201,13 @@ const CONTROL = /<\|[^|>]{1,40}\|>/g;
 
 const engine: LocalEngine = {
   async status(ref: ModelRef): Promise<ModelStatus> {
-    if (canWriteOpfs) return storedStatus(ref);
+    if (await canWriteOpfs()) return storedStatus(ref);
     const installed = await (T as any).ModelRegistry.is_cached(ref.repo, { dtype: ref.dtype, device: ref.device }).catch(() => false);
     return { installed, bytesOnDevice: installed ? ref.bytes : 0 };
   },
 
   async download(ref: ModelRef, onProgress?: (p: DownloadProgress) => void, signal?: AbortSignal) {
-    if (!canWriteOpfs) {
+    if (!(await canWriteOpfs())) {
       // No OPFS writes (e.g. a private window): let transformers.js fetch into Cache Storage.
       const m = await load({ ...ref });
       void m;
@@ -226,7 +242,7 @@ const engine: LocalEngine = {
 
   async remove(ref: ModelRef) {
     for (const k of [...loaded.keys()]) if (k.startsWith(`${ref.id}:`)) await disposeLoaded(k);
-    if (canWriteOpfs) await removeStored(ref);
+    if (await canWriteOpfs()) await removeStored(ref);
     else await (T as any).ModelRegistry.clear_cache(ref.repo, { dtype: ref.dtype, device: ref.device }).catch(() => {});
   },
 
