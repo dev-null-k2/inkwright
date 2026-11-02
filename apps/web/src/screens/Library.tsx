@@ -15,6 +15,7 @@ import { LockedCover } from '../studio/LockedCover.tsx';
 import { syncNow, useSync } from '../lib/sync.ts';
 import { OPENABLE, useFileDrop } from '../lib/openFiles.ts';
 import { GraphNavItem, TodayNavItem } from '../ui/knowledge/LibraryParts.tsx';
+import { LibraryInkActions, PapersNavItem } from '../inkactions/LibraryParts.tsx';
 import { openPalette, usePaletteActions } from '../lib/palette.ts';
 import { isModuleOn, useModules } from '../modules/registry.ts';
 
@@ -112,6 +113,7 @@ export function Library() {
       <NavItem icon={<Clock size={17} />} label="This week" on={filter.kind === 'recent'} onClick={() => { setFilter({ kind: 'recent' }); setDrawer(false); }} />
       <NavItem icon={<Inbox size={17} />} label="Unfiled" on={filter.kind === 'unfiled'} onClick={() => { setFilter({ kind: 'unfiled' }); setDrawer(false); }} />
       {isModuleOn('graph', mods) && <GraphNavItem />}
+      <PapersNavItem onDone={() => setDrawer(false)} />
       <div className="lib-nav-head">
         <span>Notebooks</span>
         <IconButton label="New notebook" onClick={async () => { const nb = await createNotebook(); if (nb) setFilter({ kind: 'notebook', id: nb.id }); }}><Plus size={16} /></IconButton>
@@ -149,6 +151,7 @@ export function Library() {
   return (
     <div ref={setLibEl} className={cx('library', wide && 'is-wide')}>
       {dropping && <div className="drop-hint" aria-live="polite"><FileUp size={22} /> Drop to open</div>}
+      <LibraryInkActions />
       {wide ? sidebar : drawer && (
         <>
           <div className="drawer-scrim" onClick={() => setDrawer(false)} />

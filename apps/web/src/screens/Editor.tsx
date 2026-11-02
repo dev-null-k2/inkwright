@@ -45,6 +45,7 @@ import { useCompilerEditor } from '../compiler/ui/EditorParts.tsx';
 import { LockGate } from '../studio/LockDialogs.tsx';
 import { useDevEditor } from '../dev/DevEditor.tsx';
 import { isModuleOn, useModules } from '../modules/registry.ts';
+import { useInkActions } from '../inkactions/EditorParts.tsx';
 import { useEditorBridge } from '../plugins/editorBridge.ts';
 import { useEditorPlugins } from '../plugins/EditorPlugins.tsx';
 
@@ -488,6 +489,8 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   useEditorBridge(doc, engine, sel);
   const plugins = useEditorPlugins({ noteId, anchor: btn.more.current, onPanelOpen: () => setPanel(null) });
   const compiler = useCompilerEditor({ doc, engine, host: host.current, view });
+  // Ink that does things (inkactions/): answers in ink, runnable diagrams, data, photo to ink, reading, papers.
+  const ink = useInkActions({ doc, engine, vault, host: host.current, view, sel });
   // [[Wiki links]]: open the note with that title (at its page), or create it (like Obsidian).
   const openWikiLink = (title: string) => kb.follow(title);
 
@@ -546,7 +549,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
               onAsk={askAboutSelection} onConvert={() => void convertSelection()} onEditText={editSelectedText}
               links={kb.selectionLinks()}
               onOpenLink={(title) => void openWikiLink(title)} onLink={kb.canLinkSelection() ? kb.linkSelection : undefined} onUnlink={kb.selectionHasInkLink() ? kb.unlinkSelection : undefined}
-              extra={on('smart-ink') ? <SmartSelectionActions engine={engine} api={smartApi} strokes={sel.strokes} /> : undefined} />
+              extra={<>{on('smart-ink') && <SmartSelectionActions engine={engine} api={smartApi} strokes={sel.strokes} />}{ink.selectionActions}</>} />
           )}
           {editingText && editingScreen && engine && (
             <TextOverlay key={editingText.box.id} box={editingText.box} screen={editingScreen} zoom={engine.zoom} noteId={doc?.meta.id} onChange={(b) => { latestText.current = b; }} onDone={commitText} />
@@ -562,6 +565,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
           )}
           {studio.parts}
           {dev.parts}
+          {ink.parts}
           {on('compiler') && compiler.parts}
           {dropping && <div className="drop-hint" aria-live="polite"><FileUp size={22} /> Drop to add to this note</div>}
           {latched && <div className="latch-pill" role="status">{settings.input.buttonAction === 'lasso' ? 'Lasso' : settings.input.buttonAction === 'highlighter' ? 'Highlighter' : 'Eraser'} on — press the pen button to switch back</div>}
@@ -677,6 +681,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
           { label: 'Insert', icon: <ImageIcon size={16} />, onClick: () => setTimeout(() => setMenu('insert'), 0) },
           ...(on('studio') ? studio.menuItems : []),
           ...dev.menuItems,
+          ...ink.menuItems,
           ...(on('compiler') ? compiler.menuItems : []),
           ...plugins.menuItems,
           ...(narrow && !isArtifact ? [{ label: recording != null ? 'Stop recording' : 'Record audio', icon: <Mic size={16} />, onClick: () => void toggleRecording() }] : []),
