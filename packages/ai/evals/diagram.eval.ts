@@ -12,7 +12,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { validateDiagram, type CodeGraph, type DiagramIR } from '@inkstone/core';
 import {
   createCodeTools, createDiagramTool, createScriptedProvider, runAgent, codeRefResolver,
-  type AgentResult, type DevToolHost, type Provider, type ScriptStep,
+  type AgentResult, type DevToolHost, type Provider, type ScriptStep, type ScriptedTurn,
 } from '../src/index.ts';
 import { liveConfig, printReport } from './harness.ts';
 
@@ -46,7 +46,7 @@ interface DiagramCase {
   expect: { placed: number; maxCalls?: number; minRejections?: number };
 }
 
-const call = (diagram: unknown): ScriptStep => ({ toolCalls: [{ name: 'create_diagram', arguments: { diagram } }] });
+const call = (diagram: unknown): ScriptedTurn => ({ toolCalls: [{ name: 'create_diagram', arguments: { diagram } }] });
 const base = {
   nodes: [{ id: 'web', label: 'Web', kind: 'client' }, { id: 'api', label: 'API', kind: 'service' }, { id: 'db', label: 'Orders DB', kind: 'database' }],
   edges: [{ from: 'web', to: 'api' }, { from: 'api', to: 'db', kind: 'data' }],
