@@ -15,14 +15,11 @@
  *   collab.ink      both ways      { from, sid, page, pen, color, size, at, pts, done? }
  */
 import { create } from 'zustand';
-import { CollabReplica, newId, newNote, pagesFromSnapshot, newPage, type CollabOp, type CollabSnapshot, type ItemAuthor, type NoteDocument, type NoteMeta, type PenType } from '@inkstone/core';
-import type { CollabPermission, PeerLink } from '@inkstone/sync';
+import { CollabReplica, fromBase64Url, newId, newNote, newPage, pagesFromSnapshot, type CollabOp, type CollabSnapshot, type ItemAuthor, type NoteDocument, type NoteMeta, type PenType } from '@inkstone/core';
+import { isOffer, keyFingerprint, type CollabPermission, type PeerLink } from '@inkstone/sync';
 import { useApp } from '../state/app.ts';
 import { answerConnection, readCode, startConnection, type Connected, type PendingOffer } from './connect.ts';
 import { deviceIdentity, shortKeyId } from './identity.ts';
-import { isOffer } from '@inkstone/sync';
-import { keyFingerprint } from '@inkstone/sync';
-import { fromBase64Url } from '@inkstone/core';
 
 /** A collaborator as shown: who, their colour slot, and what they are doing. */
 export interface LivePeer {

@@ -62,6 +62,8 @@ Sync (`@inkstone/sync`) compares content hashes with the last-synced state and r
 - Each file is pushed, pulled, deleted or merged.
 - Ink and note files merge three-way by item id, so two devices editing offline never lose strokes.
 - A safety check refuses runs that would delete most of a vault.
+- Paired devices can also sync directly over an encrypted WebRTC link, with the same engine
+  ([COLLABORATION.md](COLLABORATION.md)).
 
 ## Fill & sign and opening files (`apps/web/src/fill/`, `lib/openFiles.ts`)
 
@@ -335,6 +337,25 @@ Notes that maintain themselves and can be trusted (details: [COMPILER.md](COMPIL
   (`openapi.ts`). Writes reuse the MCP tool handlers and the Activity log. `events.ts` scans the
   vault for changes; `webhooks.ts` delivers them per Standard Webhooks with a persisted retry
   queue. `@inkstone/sdk` is generated from the document. See docs/API.md.
+
+## Devices, live sharing, time travel and branches (`packages/sync/src/peer/`, `core/{collab,timeline,branches}.ts`, `apps/web/src/{peer,timeline}/`)
+
+See [COLLABORATION.md](COLLABORATION.md) for the protocol and threat model.
+
+- **Peer link** (`packages/sync/src/peer/`): X25519 identity + ephemeral keys (Noise KK) with the
+  QR code's one-time secret, HKDF over the handshake transcript, AES-256-GCM per message with
+  counter nonces, 16 KiB framing, RPC and events. Transport-agnostic: WebRTC data channels in the
+  app (`peer/webrtc.ts`, non-trickle so one code each way is enough), an in-memory pipe in tests.
+- **Device sync**: `PeerRemote` makes the other device's vault a `Remote`, so the ordinary
+  `SyncEngine` merges and guards exactly as with Drive or WebDAV; the other side serves its vault
+  through `servePeerVault`. Optional signalling through `inkstone-mcp --signal-token`.
+- **Live sharing**: `CollabReplica` turns `NoteDocument` edits into LWW-register ops with
+  fractional positions and applies others' ops as commits with an `author`; the editor streams
+  strokes in progress (`engine.liveStroke`) and cursors (`engine.pageAtScreen`).
+- **Time travel**: `AsOfFS` is a read-only VaultFS of the past built from version history;
+  swapping it in as the app's vault makes the library, search and graph show that moment.
+- **Branches**: `BranchStore` + `OverlayFS` keep proposals' changes as shadow copies (blobs shared
+  with version history); `mergeBranchNote` (sync) merges them back three-way.
 
 ## Platforms
 

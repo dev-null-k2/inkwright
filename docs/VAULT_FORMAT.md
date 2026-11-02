@@ -45,6 +45,7 @@ reference implementation is `packages/core/src/codec.ts` + `vault.ts`.
   ai/proposals/<id>.json                changes agents proposed (dry run), waiting for approval
   ai/usage/<YYYY-MM>/<device>.json      AI usage meter: tokens, cost and savings per day and provider
   ai/audit/<device>/<YYYY-MM>.jsonl     audit trail: signed, hash-chained record of what AI saw and did
+  branches/<branchId>.json              a branch of proposed changes: per note its base and head (see "Branches")
 ```
 
 Rules
@@ -71,9 +72,10 @@ Rules
       "origin": "ai",                       // optional: ai | solver | recognized | import — not handwriting
       "nib": 40,                            // optional, calligraphy pen only: nib angle in degrees
       "layer": "drawing",                   // optional: the drawing layer (absent = writing layer)
+      "author": { "id": "3f2a9c1b", "name": "Grace" },  // optional: written by a live collaborator (below)
       "points": [[x, y, t, p?, tilt?, orient?], …] }   // t = ms since stroke start; p 0..1; radians
   ],
-  "texts":  [{ "id", "x", "y", "width", "text" /* Markdown */, "fontSize", "color", "font": "sans|serif|mono|hand", "createdAt", "origin?" }],
+  "texts":  [{ "id", "x", "y", "width", "text" /* Markdown */, "fontSize", "color", "font": "sans|serif|mono|hand", "createdAt", "origin?", "author?" }],
   "images": [{ "id", "x", "y", "width", "height", "asset", "rotation", "createdAt", "origin?" }],
   "objects": [ … ],                                                            // optional: tables, solved results, graphs, sticky notes, tape (below)
   "layers": { "drawing": { "hidden": true, "locked": true } },                 // optional: layer state (below)
@@ -117,6 +119,14 @@ tilt / orientation are omitted from the point array (or `-1` when a later field 
 `input` and `origin` (strokes, texts, images) say how content was made; see
 [AUTHORSHIP.md](AUTHORSHIP.md). Absent `origin` means made by the user in the app. Readers that
 don't know them ignore them; writers keep them when they rewrite an item.
+
+`author` (strokes and text boxes, optional) marks an item a live collaborator wrote or changed on
+this page ([COLLABORATION.md](COLLABORATION.md)): `id` is the first 8 hex digits of their device
+key's fingerprint, `name` the name they gave (shown, never trusted). It is stamped by the device
+that *received* the edit, never taken from the sender, and is part of the item's content (its
+authorship digest covers it), so such an item never counts as the vault owner's handwriting.
+Authorship chain events for collaborators' edits carry `"by": "<author id>"`. Each device keeps its
+own point of view: a stroke Grace wrote has `author` in Ada's vault and none in Grace's.
 
 ### Page objects (`objects`, "ink that does things")
 
@@ -387,6 +397,50 @@ form values with the snapshot's, through ordinary edits (so the authorship chain
 undo steps back), after taking a "restore" snapshot of the current state. A single page can instead
 be copied into the note with fresh ids.
 
+## Time travel and branches
+
+**Time travel** ("show my notes as of a date") adds nothing to the vault: a reader assembles the
+past from version history (`AsOfFS` in `packages/core/src/timeline.ts`). For a time `t`, a note
+created after `t` is absent; a note unchanged since (`updatedAt <= t`) is shown as it is (in the
+trash only if `trashedAt <= t`); a note changed since is shown from its newest snapshot taken at or
+before `t`; a note changed since with no snapshot that old is left out and reported, never shown
+with content it did not have then. Notebooks and assets are shown as they are now.
+
+### Branches (`branches/<branchId>.json`)
+
+A branch holds changes proposed by an agent (dry run, docs/TRUST.md) as a shadow copy of only
+the notes they touch, to compare with the notes and then merge or discard. Reference:
+`BranchStore` in `packages/core/src/branches.ts`.
+
+```jsonc
+{ "v": 1, "id": "01J…", "name": "Assistant tidy-up",
+  "createdAt": 1730000000000, "updatedAt": 1730000100000,
+  "status": "open|merged|discarded", "decidedAt": 1730000200000,      // decidedAt once decided
+  "origin": { "source": "assistant", "label": "Assistant" },
+  "proposals": ["<proposalId>", …],                                   // ai/proposals applied on it, in order
+  "notes": {
+    "<noteId>": {
+      "title": "Plan (tidied)",
+      "base": { "meta": { /* NoteMeta, no lock */ }, "pageIds": ["…"], "blobs": ["<hash>", …] },  // null: made on the branch
+      "head": { "meta": { … }, "pageIds": ["…"], "blobs": ["<hash>", …] }
+    } } }
+```
+
+`base` is the note as it was in the vault when the branch first changed it; `head` is the branch's
+version. Page contents are blobs in `notes/<noteId>/history/blobs/<hash>.json`, named exactly like
+version history's (first 40 hex digits of SHA-256 of the page JSON), so a page a branch did not
+change is the same file as the history's and costs nothing. Version-history pruning keeps blobs
+that open branches use; discarding a branch deletes the folders of notes that exist only on it.
+Locked notes are never put on a branch. Branch files sync like other files (newest wins); their
+blobs are write-once.
+
+**Merging** a branch is a three-way merge per note — base, the note now, the branch's head — with
+the same rules sync uses for `note.json` and pages (`mergeBranchNote` in
+`packages/sync/src/branch-merge.ts`): what changed in the note since the branch started is kept,
+items and fields both sides changed take the branch's version. The result is applied as one
+ordinary edit (version history snapshots the note first; the authorship chain records the change),
+and everything the agent wrote carries `origin: "ai"`.
+
 ## NotebookMeta (`notebook.json`)
 
 `{ "id", "name", "color", "parentId?", "createdAt", "formatVersion" }` — notebooks nest via `parentId`.
@@ -396,7 +450,8 @@ be copied into the note with fresh ids.
 Sync engines (Google Drive, WebDAV, local folder) mirror this tree file-for-file. Conflicts on
 `*.ink.json` and `note.json` are merged three-way against the last-synced base: strokes/texts/
 images/objects are unioned by id with deletions honoured from either side; authorship chain events
-are unioned and ordered by time; scalar metadata takes the most
+are unioned and ordered by time (including collaborators' events with `by`; an item's `author`
+is part of its content, so it merges like any other field); scalar metadata takes the most
 recent `updatedAt`. `forms` merges per PDF and per field (filling different fields on two devices
 keeps both; the newer note wins a field both changed). `codeRefs` merges per link the same way. Transcripts merge too: within the same `run`,
 segments are unioned by id (one-sided edits and deletions honoured, the newer file wins a segment

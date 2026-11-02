@@ -264,6 +264,20 @@ the recorded operation through the normal permission-checked, recorded host — 
 Activity and can be undone — and both decisions are audited. The API is five names
 (`Proposal`, `ProposalStore`, `ProposingNoteToolHost`, `applyProposal`, `lineDiff`).
 
+### Branches: try a proposal before it touches your notes
+
+A pending proposal can also be **tried on a branch** (*Try on a branch* in Activity): a named
+shadow copy of just the notes it touches (`branches/<id>.json`, docs/VAULT_FORMAT.md "Branches").
+`applyProposalToBranch` (`packages/ai/src/trust/branch.ts`) runs the recorded operation through
+the reference note host on a copy-on-write view of the vault (`OverlayFS`) in which the branch's
+earlier changes are already applied, so several proposals stack on one branch; everything the
+agent added gets `origin: "ai"`. Nothing in your notes changes. Activity then lists open branches:
+*Compare* shows each note beside the branch's version, line by line, and *Merge into my notes*
+three-way merges each note (what you changed since the branch started is kept) and applies it as
+one ordinary edit — version history snapshots the note first and the authorship chain records it.
+*Discard* throws the branch away. Trying, merging and discarding are all in the audit trail.
+Storage stays small: page contents are content-addressed blobs shared with version history.
+
 ## Notebook permissions on every surface
 
 | Surface | Enforced by |
