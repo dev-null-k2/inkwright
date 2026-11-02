@@ -19,3 +19,4 @@ export * from './scheduler.ts';
 export * from './zip.ts';
 export * from './merge-platform.ts';
 export * from './peer/index.ts';
+export * from './branch-merge.ts';
