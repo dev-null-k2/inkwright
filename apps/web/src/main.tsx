@@ -8,6 +8,7 @@ import '@fontsource-variable/jetbrains-mono';
 import './styles/tokens.css';
 import './styles/app.css';
 import './fill/fill.css';
+import './smart/smart.css';
 import './styles/agent.css';
 import './styles/palettes.css';
 import './styles/localai.css';

@@ -4,7 +4,7 @@ import type { SelectionInfo } from '../canvas/engine.ts';
 import { INK_PALETTE } from '../state/settings.ts';
 import { Popover, cx } from './primitives.tsx';
 
-export function SelectionBar({ sel, onDelete, onDuplicate, onCopy, onCut, onRecolor, onAsk, onConvert, onEditText, aiReady, links = [], onOpenLink, onLink, onUnlink }: {
+export function SelectionBar({ sel, onDelete, onDuplicate, onCopy, onCut, onRecolor, onAsk, onConvert, onEditText, aiReady, links = [], onOpenLink, onLink, onUnlink, extra }: {
   sel: SelectionInfo;
   onDelete: () => void;
   onDuplicate: () => void;
@@ -22,6 +22,8 @@ export function SelectionBar({ sel, onDelete, onDuplicate, onCopy, onCut, onReco
   onLink?: () => void;
   /** Remove the links riding on the selected ink. */
   onUnlink?: () => void;
+  /** More actions for the selection (smart ink: Solve, Dates & links, Table). */
+  extra?: React.ReactNode;
 }) {
   const [colors, setColors] = useState(false);
   const colorBtn = useRef<HTMLButtonElement>(null);
@@ -38,6 +40,7 @@ export function SelectionBar({ sel, onDelete, onDuplicate, onCopy, onCut, onReco
         {sel.strokes > 0 && <button type="button" className="sel-btn" onClick={onConvert} title="Turn handwriting into typed text"><Type size={16} /><span>To text</span></button>}
         {onLink && <button type="button" className="sel-btn" onClick={onLink} title="Link to note…"><Link2 size={16} /><span>Link</span></button>}
         {onUnlink && <button type="button" className="sel-icon" aria-label="Remove link" title="Remove link" onClick={onUnlink}><Link2Off size={17} /></button>}
+        {extra}
         <button type="button" className={cx('sel-btn', !aiReady && 'is-dim')} onClick={onAsk} title="Ask AI about this"><Sparkles size={16} /><span>Ask AI</span></button>
         <span className="sel-sep" />
         <button ref={colorBtn} type="button" className="sel-icon" aria-label="Change colour" onClick={() => setColors(true)}><Palette size={17} /></button>
