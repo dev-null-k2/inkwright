@@ -71,7 +71,7 @@ class AiBridge(context: Context, private val scope: CoroutineScope, private val 
             models.put(JSObject()
                 .put("id", m.id).put("label", m.label).put("bytes", m.bytes).put("licence", m.licence).put("params", m.params)
                 .put("blurb", m.blurb).put("contextTokens", m.contextTokens).put("minRamGb", m.minRamGb)
-                .put("state", EngineState.forModelFile(installed, downloads["litert:${m.id}"]?.isActive == true, m.fits(ram)).wire)
+                .put("state", EngineState.forModelFile(installed, downloads["litert:${m.id}"]?.isActive == true, litert.fits(m)).wire)
                 .put("partialBytes", if (installed) m.bytes else litert.partialBytes(m))
                 .put("loaded", litert.loadedModelId == m.id).apply { litert.backend?.takeIf { litert.loadedModelId == m.id }?.let { put("backend", it) } })
         }
@@ -80,7 +80,7 @@ class AiBridge(context: Context, private val scope: CoroutineScope, private val 
             .put("engines", engines)
             .put("tasks", tasksJson)
             .put("models", models)
-            .put("recommendedModel", LiteRtModels.recommend(ram)?.id)
+            .put("recommendedModel", if (litert.supported) LiteRtModels.recommend(ram)?.id else null)
             .put("ramGb", ram)
             .put("speech", JSObject().put("available", sp.available).put("onDevice", sp.onDevice).put("fileInput", sp.fileInput))
     }
@@ -115,7 +115,7 @@ class AiBridge(context: Context, private val scope: CoroutineScope, private val 
                     }
                     target.startsWith("litert:") -> {
                         val model = LiteRtModels.byId(target.removePrefix("litert:")) ?: throw AiException("bad-request", "Unknown model.")
-                        if (!model.fits(litert.ramGb)) throw AiException("memory", "${model.label} needs more memory than this phone has.")
+                        if (!litert.fits(model)) throw AiException("memory", "${model.label} needs more memory than this phone has.")
                         litert.downloader.download(model) { phase, l, t -> progress(phase, l, t) }
                     }
                     else -> throw AiException("bad-request", "Unknown download.")

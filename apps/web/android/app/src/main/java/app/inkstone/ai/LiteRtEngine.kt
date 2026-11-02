@@ -2,6 +2,7 @@ package app.inkstone.ai
 
 import android.app.ActivityManager
 import android.content.Context
+import android.os.Build
 import android.util.Log
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Content
@@ -43,6 +44,12 @@ class LiteRtEngine(private val context: Context) {
         val info = ActivityManager.MemoryInfo().also(am::getMemoryInfo)
         info.totalMem / 1_073_741_824.0
     }
+
+    /** LiteRT-LM ships native code for arm64-v8a and x86_64 only; 32-bit-only phones can't run it. */
+    val supported: Boolean = Build.SUPPORTED_ABIS.any { it == "arm64-v8a" || it == "x86_64" }
+
+    /** The model can run here: a 64-bit ABI and enough memory. */
+    fun fits(model: LiteRtModel) = supported && model.fits(ramGb)
 
     fun isInstalled(model: LiteRtModel) = downloader.isInstalled(model)
     fun partialBytes(model: LiteRtModel) = downloader.partialBytes(model)
@@ -97,7 +104,7 @@ class LiteRtEngine(private val context: Context) {
         closeLoaded()
         val file = downloader.fileFor(model)
         if (!downloader.isInstalled(model)) throw AiException("not-downloaded", "${model.label} isn’t downloaded yet.")
-        if (!model.fits(ramGb)) throw AiException("memory", "${model.label} needs more memory than this phone has. Choose a smaller model in Settings › AI.")
+        if (!fits(model)) throw AiException("memory", "${model.label} needs more memory than this phone has. Choose a smaller model in Settings › AI.")
         val cache = File(context.cacheDir, "litert").apply { mkdirs() }.path
         for ((name, backend) in listOf("gpu" to Backend.GPU(), "cpu" to Backend.CPU())) {
             try {

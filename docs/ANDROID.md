@@ -75,8 +75,9 @@ allprojects {
 | versionName / versionCode | `1.0.0` / `1`. Bump `versionCode` for every Play upload. |
 | minSdk | 26 (Android 8.0). Capacitor 8's default is 24; 26 gives vector adaptive icons and `VibrationEffect`. Rich haptic primitives need Android 11+ (LOW_TICK: 12+) and fall back below that. |
 | target/compileSdk | 36 |
-| Toolchain | AGP 8.13.0, Gradle 8.14.3, Kotlin 2.2.20, Java 21 (Capacitor 8 defaults) |
-| ML Kit | `com.google.mlkit:digital-ink-recognition:19.0.0` |
+| Toolchain | AGP 8.13.0, Gradle 8.14.3, Kotlin 2.4.21, Java 21. Kotlin is newer than Capacitor 8's default (2.2) because LiteRT-LM 0.19 and ML Kit GenAI Prompt beta5 ship Kotlin 2.4 metadata, which a 2.2 compiler refuses to read. |
+| ML Kit | `com.google.mlkit:digital-ink-recognition:19.0.0`; GenAI: `genai-prompt:1.0.0-beta5`, `genai-summarization`, `genai-proofreading`, `genai-rewriting`, `genai-image-description` `1.0.0-beta1` |
+| LiteRT-LM | `com.google.ai.edge.litertlm:litertlm-android:0.19.0` (adds about 23 MB of native code on arm64-v8a, 27 MB on x86_64; none for 32-bit ABIs, where the open models are reported unavailable) |
 
 ## Install on the Razr Fold
 
@@ -134,6 +135,100 @@ there; Inkstone never reads or writes the calendar itself, so no calendar permis
 **Permissions**: `INTERNET`, `VIBRATE`, `RECORD_AUDIO` and `MODIFY_AUDIO_SETTINGS`. Capacitor's `BridgeWebChromeClient` asks for both when the page calls `getUserMedia({ audio })` and grants only if both are granted, so the second is required. There is no `CAMERA` permission on purpose: `<input capture>` opens the system camera app, which needs no permission while the app does not declare `CAMERA`. Libraries add a few more (WorkManager from ML Kit, Credential Manager from Google sign-in).
 
 **Google sign-in** (Drive sync) uses `@capgo/capacitor-social-login`. Requesting Drive scopes needs the activity to forward authorization results, so `MainActivity` implements `ModifiedMainActivityForSocialLoginPlugin` and passes those results to `onActivityResult`. Only the Google provider is bundled (`capacitor.config.ts` → `SocialLogin.providers`). In Google Cloud Console, create an **Android** OAuth client for package `app.inkstone` for each signing key's SHA-1: debug, upload key, and Play App Signing key. The web client ID is the one the app passes as `webClientId`.
+
+## On-device AI (no API key, nothing leaves the phone)
+
+The app runs its assistant, summaries and voice input on the phone's own NPU/GPU through three
+native engines, all in `app/inkstone/ai/` and reached through `InkstoneNativePlugin`'s `ai*` and
+`speech*` methods (the wire format is documented on `AiBridge`). The web side is
+`apps/web/src/ai/native/` (bridge) and `apps/web/src/lib/native-ai.ts` (status, downloads,
+choice), which registers the engines as `NativeLLM`s; `pickAssistant` prefers a ready native
+engine over the in-WebView model (docs/LOCAL_AI.md). Settings › AI › On this device shows each
+engine with its status and download button.
+
+| Engine | What it is | Which phones | Download |
+|---|---|---|---|
+| **Gemini Nano** (ML Kit GenAI Prompt API) | Google's model inside Android's AICore, shared by all apps, run on the NPU | AICore phones only (table below). AICore answers `unavailable` everywhere else, including the emulator | Done by Android once (AICore reports the size when it starts and the app shows progress), started from Settings or the assistant's offer |
+| **Writing tools** (ML Kit GenAI summarization, proofreading, rewriting, image description) | Gemini Nano with task-tuned adapters | Same phones as Gemini Nano. Summaries: English, Japanese, Korean; proofreading/rewriting: also German, French, Italian, Spanish; image descriptions: English | Small adapters, by Android |
+| **Open model** (LiteRT-LM 0.19) | Gemma 4 E2B / E4B or Qwen3 1.7B / 0.6B, `.litertlm`, on the GPU (OpenCL) with CPU fallback | Any arm64 phone with enough memory (the model list disables models above the phone's memory) | From Hugging Face, pinned to a commit, SHA-256-checked, resumable |
+| **Voice input** (`SpeechRecognizer`) | Android's on-device recognizer (Android 12+ where installed), else the default recognizer with "prefer offline" | Most phones; on-device where Google's offline speech is installed | Language packs by Android |
+
+How each behaves:
+
+- **Status** comes from `checkStatus()` / `checkFeatureStatus()` and maps to `available`,
+  `downloadable`, `downloading`, `unavailable` (`EngineState`). AICore errors become stable codes
+  with plain messages (`GenAiErrors`): `busy` (another app is using it, or the per-app quota),
+  `quota` (daily battery quota), `background` (AICore only runs for the app on screen), `update`
+  (AICore too old), `unsupported`, `too-large`.
+- **Generation** streams: each chunk goes to the web layer as an `aiDelta` event, batched to one
+  event per ~60 ms or 24 characters (`StreamAssembler`, which also copes with engines that resend
+  the whole text). `aiCancel` cancels the coroutine; ML Kit's flow and LiteRT-LM's
+  `cancelProcess()` stop decoding. Requests run on `Dispatchers.Default`/`IO`; only
+  `SpeechRecognizer` calls hop to the main thread, as Android requires.
+- **Prompts**: the web layer sends system + turns (already budgeted). `ChatPromptBuilder` merges
+  same-role turns, drops a leading assistant turn, refuses a conversation that doesn't end with the
+  person, and trims to the engine's context. Gemini Nano gets a system instruction when AICore
+  supports one (else it is folded into the first turn) and multi-turn contents, falling back to a
+  single flattened message if an AICore version rejects that shape. LiteRT-LM gets a fresh
+  conversation per request with `enable_thinking: false` (Qwen3 otherwise thinks first).
+- **Open-model downloads** go to `noBackupFilesDir/models/litert/<file>.part` (2 GB must not count
+  against Android's backup quota), resume with an HTTP `Range` request after a drop or an app
+  restart, check free space first (keeping 512 MB spare), verify the SHA-256 and only then rename
+  the file and write a `.ok` marker. The web layer asks before downloading, showing the size and
+  licence. Models are pinned to a Hugging Face commit because litert-community re-exports files
+  under the same name for newer runtimes (`LiteRtModels.kt`).
+- **Memory**: one LiteRT engine is loaded at a time and stays loaded between questions; switching
+  or deleting the model unloads it. The default model follows `ActivityManager` total memory:
+  Gemma 4 E2B from ~7 GB (an "8 GB" phone), Qwen3 1.7B from 5 GB, Qwen3 0.6B from 3 GB. Gemma 4 E4B
+  is offered on 12 GB+ phones but never the default.
+- **NPU for open models** is not used: LiteRT-LM's NPU backend needs a model compiled for one
+  specific chip plus the vendor's dispatch libraries bundled in the APK. Gemini Nano already uses
+  the NPU on AICore phones.
+- **GPU** needs the vendor's OpenCL library, which apps targeting Android 12+ may only load when
+  declared: the manifest has `<uses-native-library android:name="libOpenCL.so" android:required="false"/>`
+  (and `libvndksupport.so`). Without it the engine falls back to the CPU (slower, more memory).
+- **Voice**: live push-to-talk (`speechStart`/`speechStop`) uses segmented sessions on Android 13+
+  so pauses don't end it, with partial results as `speechPartial` events. Recordings are
+  transcribed with `speechTranscribe` (16 kHz mono PCM through `EXTRA_AUDIO_SOURCE`, Android 13+,
+  on-device recognizer only) — that is the web layer's `Transcriber`. The first live session asks
+  for the microphone permission if the WebView hasn't already.
+
+### Device support (ML Kit GenAI, November 2026)
+
+From Google's ML Kit GenAI device list. AICore decides at run time; the app never assumes.
+
+| Gemini Nano version | Phones (Prompt API) |
+|---|---|
+| nano-v4 | Pixel 11 series; Galaxy Z Flip8, Z Fold8, Z Fold8 Ultra |
+| nano-v3 | Pixel 9 and 10 series (incl. Pro Fold); Galaxy S26 series; Motorola Signature; OnePlus 15/15R; OPPO Find X8/X9 series; vivo X200/X300 series; Sony Xperia 1 VIII; others |
+| nano-v2 | Motorola Razr 60 Ultra / Razr Ultra 2025; Galaxy Z Fold7, Z TriFold; OnePlus 13/13s; Xiaomi 15/17 series; Honor Magic 7/V5; others |
+
+The writing tools (summarization, proofreading, rewriting, image description) additionally run on
+the Galaxy S25 series and a few others that have no Prompt API.
+
+**Razr Fold and the Razr 2026 line:** not on Google's list as of November 2026, so Gemini Nano
+(and the writing tools) should be expected to be **unavailable** there; Settings says so and offers
+the open model instead. The Razr Fold (Snapdragon 8 Gen 5, 16 GB in the 512 GB model) gets Gemma 4 E2B by default
+on the GPU, with E4B as a choice. If a system update adds AICore support, the app picks it up
+without an update (status is read at run time). This has not been verified on a Razr Fold.
+
+### What only a real phone can verify
+
+The JVM tests cover the pure logic (status and error mapping, prompt building, stream assembly,
+download/resume bookkeeping, the catalog, task options, transcript assembly) and the web tests and
+e2e flows cover the protocol with a scripted plugin. Not exercised here, because the build machine
+has no AICore phone and no GPU emulator image:
+
+- Gemini Nano status/download/generation and the writing tools on an AICore phone (Pixel 9+,
+  Galaxy S25/S26, Razr 60 Ultra) — including whether the multi-turn shape is accepted;
+- LiteRT-LM loading each pinned model on a real GPU (OpenCL) and the CPU fallback, speed and
+  memory, and `cancelProcess()` stopping promptly;
+- a full 0.5–3.7 GB download from Hugging Face on the phone, with a network drop and resume;
+- `SpeechRecognizer` on-device sessions, segmented sessions and `EXTRA_AUDIO_SOURCE` file input
+  (behaviour differs between Google's recognizer versions);
+- the microphone permission prompt from `speechStart`.
+
+Logs: `adb logcat -s InkstoneAI GeminiNano LiteRtEngine`.
 
 ## The Moto Pen Ultra's buttons
 
