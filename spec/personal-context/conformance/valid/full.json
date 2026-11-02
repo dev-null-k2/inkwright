@@ -1,0 +1,103 @@
+{
+ "$schema": "https://dev-null-k2.github.io/inkwright/spec/personal-context/v1.schema.json",
+ "format": "inkwright-context-pack/1",
+ "id": "launch-plan-mh0x1y2z",
+ "title": "Launch plan",
+ "createdAt": "2026-11-02T09:00:00+01:00",
+ "memory": {
+  "instructions": [
+   "Answer in British English."
+  ],
+  "facts": [
+   "Works on the beta launch."
+  ]
+ },
+ "compiled": [
+  {
+   "title": "Launch",
+   "kind": "topic",
+   "claims": [
+    {
+     "text": "The beta ships on Friday.",
+     "tag": "EXTRACTED",
+     "confidence": 0.94,
+     "sources": [
+      {
+       "noteId": "LAUNCH",
+       "note": "Launch plan",
+       "page": 1,
+       "rect": {
+        "minX": 120,
+        "minY": 96,
+        "maxX": 540,
+        "maxY": 130
+       },
+       "link": "#mem/LAUNCH/1/120,96,420,34"
+      }
+     ]
+    },
+    {
+     "text": "Pricing was discussed in the call.",
+     "tag": "INFERRED",
+     "sources": [
+      {
+       "noteId": "LAUNCH",
+       "page": 2,
+       "recording": "clip1",
+       "ms": 61000,
+       "link": "#mem/LAUNCH/2@clip1:61000"
+      }
+     ]
+    },
+    {
+     "text": "The price is either $9 or $12.",
+     "tag": "AMBIGUOUS",
+     "confidence": 0.5,
+     "sources": [
+      "LAUNCH/2#3"
+     ]
+    }
+   ]
+  }
+ ],
+ "notes": [
+  {
+   "id": "LAUNCH",
+   "title": "Launch plan",
+   "notebook": "Work / Projects",
+   "tags": [
+    "work",
+    "launch"
+   ],
+   "updatedAt": "2026-11-01T17:30:00Z",
+   "summary": "Beta launch on Friday.",
+   "pages": [
+    {
+     "index": 0,
+     "text": "Launch the beta on Friday"
+    },
+    {
+     "index": 1,
+     "text": "Price at $12?"
+    }
+   ]
+  }
+ ],
+ "images": [
+  {
+   "name": "ink-LAUNCH-2.png",
+   "noteId": "LAUNCH",
+   "page": 2,
+   "alt": "A sketch of the pricing table",
+   "mediaType": "image/png",
+   "base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+  }
+ ],
+ "truncated": [
+  "Old meeting notes"
+ ],
+ "x-producer": {
+  "name": "example",
+  "version": "1.0"
+ }
+}

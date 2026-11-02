@@ -12,3 +12,4 @@ export * from './wiki.ts';
 export * from './study.ts';
 export * from './packs.ts';
 export * from './attribute.ts';
+export * from './packspec.ts';

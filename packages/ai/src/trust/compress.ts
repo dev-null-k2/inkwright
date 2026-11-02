@@ -104,6 +104,12 @@ export class MemoryContentStore implements ContentStore {
 export type ContentShape = 'json' | 'table' | 'log' | 'prose';
 
 const LOG_LINE = /^(?:\[?\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}|\[?\d{2}:\d{2}:\d{2}|(?:DEBUG|INFO|WARN|WARNING|ERROR|TRACE|FATAL)\b|\s+at\s+\S+\s+\()/;
+/**
+ * Line-oriented output of developer tools, which agents read most: test runners (`PASS`, `FAIL`,
+ * `ok`, `✓`), grep and compiler diagnostics (`src/a.ts:12:`, `a.ts(12,3):`), package managers
+ * (`npm ERR!`), Python tracebacks and one-line git logs. Shortened like logs.
+ */
+const TOOL_LINE = /^(?:\s*(?:PASS|FAIL|ok|not ok|SKIP|TODO|✓|✔|✗|✘|×|√)\s|[\w./@-]+\.\w{1,8}(?::\d+){1,2}[:\s-]|[\w./@-]+\.\w{1,8}\(\d+,\d+\):|(?:npm|pnpm|yarn) (?:ERR!|WARN)|\s*File "[^"]+", line \d+|[0-9a-f]{7,40} \S)/;
 const TABLE_ROW = /^\s*\|.*\|\s*$/;
 
 export function detectShape(text: string): ContentShape {
@@ -123,7 +129,7 @@ export function detectShape(text: string): ContentShape {
     if (commas[0]! >= 2 && commas.filter((c) => c === commas[0]).length / lines.length > 0.8) return 'table';
     const tabs = lines.map((l) => (l.match(/\t/g) ?? []).length);
     if (tabs[0]! >= 1 && tabs.filter((c) => c === tabs[0]).length / lines.length > 0.8) return 'table';
-    if (lines.filter((l) => LOG_LINE.test(l)).length / lines.length > 0.5) return 'log';
+    if (lines.filter((l) => LOG_LINE.test(l) || TOOL_LINE.test(l)).length / lines.length > 0.5) return 'log';
   }
   return 'prose';
 }
@@ -470,7 +476,11 @@ export class ContextBudgeter {
       walk(JSON.parse(original.trim()), 0);
       if (matches.length) return { ok: true, text: JSON.stringify({ matching: matches.length, items: matches }) };
     }
-    const units = detectShape(original) === 'prose' ? original.split(/\n\s*\n/) : original.split('\n');
+    // Prose in paragraphs is matched by paragraph; anything else (and "prose" that is really one
+    // line per entry, like a build log without timestamps) line by line.
+    const paras = original.split(/\n\s*\n/);
+    const byParagraph = detectShape(original) === 'prose' && paras.length >= 4;
+    const units = byParagraph ? paras : original.split('\n');
     const hits = new Set<number>();
     units.forEach((u, i) => {
       if (score(u, terms) > 0) for (let j = i - 1; j <= i + 1; j++) if (j >= 0 && j < units.length) hits.add(j);
@@ -479,7 +489,7 @@ export class ContextBudgeter {
       this.expanded.add(ref);
       return { ok: true, text: `Nothing in the original mentions ${terms.join(', ')}; here it is in full:\n${original}` };
     }
-    const sep = detectShape(original) === 'prose' ? '\n\n' : '\n';
+    const sep = byParagraph ? '\n\n' : '\n';
     return { ok: true, text: [...hits].sort((a, b) => a - b).map((i) => units[i]).join(sep) };
   }
 }

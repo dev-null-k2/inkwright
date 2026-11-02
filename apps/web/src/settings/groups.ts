@@ -15,7 +15,7 @@ export type SectionId =
   | 'appearance' | 'reading'
   | 'ai' | 'ink-actions'
   | 'sync' | 'devices' | 'desktop'
-  | 'knowledge' | 'recall' | 'journal'
+  | 'knowledge' | 'import' | 'recall' | 'journal'
   | 'trust' | 'authorship'
   | 'modules' | 'plugins' | 'agents' | 'code' | 'developer'
   | 'about';
@@ -35,7 +35,7 @@ export const GROUPS: readonly SettingsGroup[] = [
   { id: 'appearance', label: 'Appearance', hint: 'Theme, paper, reading', sections: ['appearance', 'reading'] },
   { id: 'ai', label: 'AI', hint: 'Models, keys, assistant, ink actions', sections: ['ai', 'ink-actions'] },
   { id: 'sync', label: 'Sync & devices', hint: 'Google Drive, WebDAV, backup, pairing, desktop app', sections: ['sync', 'devices', 'desktop'] },
-  { id: 'knowledge', label: 'Knowledge', hint: 'Links, daily notes, Obsidian, memory timeline, journal', sections: ['knowledge', 'recall', 'journal'] },
+  { id: 'knowledge', label: 'Knowledge', hint: 'Links, daily notes, import, memory timeline, journal', sections: ['knowledge', 'import', 'recall', 'journal'] },
   { id: 'privacy', label: 'Privacy & trust', hint: 'What AI may see, usage, audit, authorship', sections: ['trust', 'authorship'] },
   { id: 'extend', label: 'Extend', hint: 'Modules, plugins, agents, developer tools', sections: ['modules', 'plugins', 'agents', 'code', 'developer'] },
   { id: 'about', label: 'About', hint: 'Version, your data, check this device', sections: ['about'] },
@@ -53,6 +53,7 @@ export const SECTION_LABELS: Record<SectionId, string> = {
   sync: 'Sync & backup',
   devices: 'Devices & sharing',
   knowledge: 'Notes & links',
+  import: 'Import & clip',
   recall: 'Memory timeline',
   journal: 'Journal',
   desktop: 'Desktop app',

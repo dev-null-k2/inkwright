@@ -3,7 +3,7 @@ import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import { CliError, USAGE, parseCli } from './cli.ts';
 import { createContext } from './context.ts';
 import { applyServerRetention, logPolicy, trustedAI } from './trust.ts';
-import { aiFromOptions, serveHttp } from './serve.ts';
+import { aiFromOptionsAsync, featuresFromOptions, serveHttp } from './serve.ts';
 import { createMcpServer, createServices } from './server.ts';
 import { VERSION } from './version.ts';
 
@@ -11,6 +11,20 @@ import { VERSION } from './version.ts';
 const log = (msg: string) => process.stderr.write(`[inkwright-mcp] ${msg}\n`);
 
 async function main(): Promise<void> {
+  if (process.argv[2] === 'creds' || process.argv[2] === 'proxy') {
+    // `inkwright-mcp creds …` — the credential executor (creds/cli.ts); `proxy` — the context-saving proxy (proxy/cli.ts).
+    const sub = process.argv[2] === 'creds' ? await import('./creds/cli.ts') : await import('./proxy/cli.ts');
+    try {
+      await ('credsCli' in sub ? sub.credsCli : sub.proxyCli)(process.argv.slice(3));
+    } catch (e) {
+      if (e instanceof CliError) {
+        process.stderr.write(`${e.message}\n\n${'CREDS_USAGE' in sub ? sub.CREDS_USAGE : sub.PROXY_USAGE}`);
+        process.exit(2);
+      }
+      throw e;
+    }
+    return;
+  }
   if (process.argv[2] === 'keys') {
     // `inkwright-mcp keys create|list|revoke` — REST API keys (api/keys-cli.ts).
     const { keysCli, KEYS_USAGE } = await import('./api/keys-cli.ts');
@@ -48,12 +62,12 @@ async function main(): Promise<void> {
     process.exit(2);
   }
 
-  const ctx = await createContext({ root: opts.vault, readOnly: opts.readOnly, watch: opts.watch, ...(opts.policyFile ? { managedPolicyFile: opts.policyFile } : {}), ...(opts.auditKey ? { auditKeyFile: opts.auditKey } : {}) });
+  const ctx = await createContext({ root: opts.vault, readOnly: opts.readOnly, watch: opts.watch, features: await featuresFromOptions(opts, log), ...(opts.policyFile ? { managedPolicyFile: opts.policyFile } : {}), ...(opts.auditKey ? { auditKeyFile: opts.auditKey } : {}) });
   if (ctx.createdVault) log(`No inkwright.json found; initialized a new vault at ${ctx.root}`);
   logPolicy(ctx, log);
   if (!ctx.readOnly) void applyServerRetention(ctx).catch((e) => log(`Retention: ${(e as Error).message}`));
   // The server's AI goes through the trust layer (routing, privacy firewall, meter, audit).
-  const ai = trustedAI(aiFromOptions(opts, log), ctx.trust);
+  const ai = trustedAI(await aiFromOptionsAsync(opts, log), ctx.trust);
   let shuttingDown = false;
   let closeAll: () => Promise<void> = async () => {};
   const shutdown = (code = 0) => {

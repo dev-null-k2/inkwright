@@ -5,14 +5,16 @@
  *   inkwright mcp [options]            start the MCP server (same options as inkwright-mcp)
  *   inkwright scan <repo> --vault <v>  scan a repository into the vault's code graph
  *   inkwright drift <vault>            list notes whose linked code changed since they were written
+ *   inkwright context validate <file>  check a context pack against the open format
+ *                                      (spec/personal-context/v1.md)
  *
  * `scan` and `drift` need no AI and never change a note: scan writes only
  * `code/sources/<id>/`, drift only reads. Exit codes: 0 ok, 1 drift found with --check, 2 usage.
  */
-import { statSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import * as path from 'node:path';
 import { parseArgs } from 'node:util';
-import { Vault, VaultLayout, describeDrift, type DriftItem } from '@inkwright/core';
+import { Vault, VaultLayout, describeDrift, validateContextPackText, type DriftItem } from '@inkwright/core';
 import { expandHome } from './cli.ts';
 import { scanFolderIntoVault, vaultDrift } from './dev/repo.ts';
 import { NodeFS } from './nodefs.ts';
@@ -26,6 +28,10 @@ Usage:
                                                       Scan a repository's code into the vault
   inkwright drift <vault> [--json] [--check]           Code links whose code changed since the note
                                                       was written; --check exits 1 when there are any
+  inkwright context validate <file> [--json] [--strict]
+                                                      Check a context pack (JSON, or a folder with
+                                                      pack.json) against spec/personal-context/v1.md;
+                                                      --strict also fails on warnings
   inkwright --version | --help
 
 Scanning parses TypeScript, JavaScript, Python, Go, Rust and Java with tree-sitter (no AI, no
@@ -83,6 +89,29 @@ async function drift(argv: string[], out: (s: string) => void): Promise<number> 
   return values.check && items.length ? 1 : 0;
 }
 
+async function context(argv: string[], out: (s: string) => void): Promise<number> {
+  const [sub, ...rest] = argv;
+  if (sub !== 'validate') throw new UsageError(sub ? `Unknown context command: ${sub}` : 'context needs a command: validate <file>.');
+  const { values, positionals } = parseArgs({ args: rest, allowPositionals: true, options: { json: { type: 'boolean' }, strict: { type: 'boolean' } } });
+  const target = positionals[0];
+  if (!target) throw new UsageError('context validate needs a file.');
+  const p = path.resolve(expandHome(target));
+  const st = statSync(p, { throwIfNoEntry: false });
+  if (!st) throw new UsageError(`No such file: ${target}`);
+  // A saved pack (ai/packs/<id>/) holds pack.json next to pack.md.
+  const file = st.isDirectory() ? path.join(p, 'pack.json') : p;
+  const r = validateContextPackText(readFileSync(file, 'utf8'));
+  const failed = !r.ok || (values.strict === true && r.issues.length > 0);
+  if (values.json) out(JSON.stringify({ file, valid: !failed, format: r.format, issues: r.issues }, null, 2));
+  else {
+    for (const i of r.issues) out(`${i.level === 'error' ? 'error' : 'warning'} ${i.path || '/'}: ${i.message}`);
+    const errors = r.issues.filter((i) => i.level === 'error').length;
+    const warnings = r.issues.length - errors;
+    out(failed ? `${file}: not a valid context pack (${errors} error${errors === 1 ? '' : 's'}, ${warnings} warning${warnings === 1 ? '' : 's'}).` : `${file}: valid ${r.format}${warnings ? ` (${warnings} warning${warnings === 1 ? '' : 's'})` : ''}.`);
+  }
+  return failed ? 1 : 0;
+}
+
 /** Runs the CLI; returns the exit code (the `mcp` command keeps running and never returns). */
 export async function runInkwrightCli(argv: string[], out: (s: string) => void = (s) => process.stdout.write(`${s}\n`), err: (s: string) => void = (s) => process.stderr.write(`${s}\n`)): Promise<number> {
   const [cmd, ...rest] = argv;
@@ -90,6 +119,7 @@ export async function runInkwrightCli(argv: string[], out: (s: string) => void =
     switch (cmd) {
       case 'scan': return await scan(rest, out);
       case 'drift': return await drift(rest, out);
+      case 'context': return await context(rest, out);
       case 'mcp': {
         // The MCP server is its own entry (index.ts); it reads process.argv when imported.
         process.argv = [process.argv[0]!, process.argv[1]!, ...rest];

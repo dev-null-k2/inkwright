@@ -2,6 +2,27 @@
 
 All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org).
 
+## Unreleased
+
+### Agents and the server
+- Credential executor: provider keys and connector tokens held by a separate process that makes
+  calls with them, policy-checked and audited, and never hands a key out (docs/CREDENTIALS.md).
+- Context-saving proxy for other tools (`inkwright-mcp proxy`), with `compress_and_store` and
+  `retrieve_original` over MCP; savings show on the AI usage page (docs/PROXY.md).
+- Team search across teammates' own servers: `team_search`, `/api/v1/federated/*`, the
+  `federation:search` key scope (docs/FEDERATION.md).
+- An open format for context packs with a JSON Schema, a conformance suite and
+  `inkwright context validate` (spec/personal-context/v1.md).
+- The runner can re-scan repositories when their git HEAD moves, and run runbook shell blocks
+  approved and signed in the app (docs/DEVELOPERS.md).
+
+### Notes from other apps
+- Importers for Notion, Evernote, OneNote and GoodNotes/Notability PDFs, and a web clipper
+  bookmarklet (docs/IMPORTERS.md); OpenClaw and pi transcripts in agent session import.
+
+### Fixes
+- REST keyword search no longer returns notes the AI policy hides from agents.
+
 ## 1.0.0 — first public release
 
 ### Getting around

@@ -41,7 +41,7 @@ export interface ApiRouter {
   openapi(): Record<string, unknown>;
 }
 
-const ALL_SCOPES: ApiScope[] = ['notes:read', 'notes:write', 'routines:run', 'webhooks', 'admin'];
+const ALL_SCOPES: ApiScope[] = ['notes:read', 'notes:write', 'routines:run', 'webhooks', 'admin', 'federation:search'];
 
 interface Compiled {
   route: RouteDef;

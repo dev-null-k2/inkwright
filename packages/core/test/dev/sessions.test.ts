@@ -43,7 +43,7 @@ describe('agent session transcripts', () => {
     expect(detectSessionTool(CODEX)).toBe('codex');
     expect(detectSessionTool(GEMINI)).toBe('gemini');
     expect(detectSessionTool('{"hello":1}')).toBeNull();
-    expect(() => parseAgentSession('x.jsonl', 'nonsense')).toThrow(/not a Claude Code, Codex CLI or Gemini CLI session/);
+    expect(() => parseAgentSession('x.jsonl', 'nonsense')).toThrow(/not a Claude Code, Codex CLI, Gemini CLI or OpenClaw session/);
   });
 
   it('reads Claude Code JSONL: summary title, commands, tool results, no sidechains or meta, torn last line', () => {

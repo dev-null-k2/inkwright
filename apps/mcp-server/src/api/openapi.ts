@@ -17,6 +17,7 @@ const SCOPE_TEXT: Record<(typeof API_SCOPES)[number], string> = {
   'routines:run': 'Run routines.',
   webhooks: 'Manage webhook subscriptions.',
   admin: 'Manage API keys.',
+  'federation:search': 'For a teammate’s server: search only the notes this server shares with the team (titles and snippets).',
 };
 
 const ref = (schema: z.ZodType): Json => {
@@ -130,6 +131,7 @@ export function buildOpenApi(routes: RouteDef[], opts: OpenApiOptions): Json {
       { name: 'Automation', description: 'Activity and routines.' },
       { name: 'Webhooks', description: 'Signed event deliveries (Standard Webhooks).' },
       { name: 'Keys', description: 'API keys (admin scope).' },
+      { name: 'Team', description: 'Federated search across teammates’ servers (docs/FEDERATION.md); off unless the server has a team file.' },
     ],
     paths,
     components: {

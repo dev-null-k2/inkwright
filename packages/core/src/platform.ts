@@ -67,8 +67,11 @@ export const encodePluginsConfig = (c: PluginsConfig) => `${JSON.stringify(c, nu
 
 // ---- API keys --------------------------------------------------------------------------------
 
-/** What an API key may do. `admin` manages keys and webhooks. */
-export const API_SCOPES = ['notes:read', 'notes:write', 'routines:run', 'webhooks', 'admin'] as const;
+/**
+ * What an API key may do. `admin` manages keys and webhooks; `federation:search` is for a
+ * teammate's server: only the shared-notes search (docs/FEDERATION.md), nothing else.
+ */
+export const API_SCOPES = ['notes:read', 'notes:write', 'routines:run', 'webhooks', 'admin', 'federation:search'] as const;
 export type ApiScope = (typeof API_SCOPES)[number];
 
 export interface ApiKeyRecord {

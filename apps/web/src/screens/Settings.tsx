@@ -39,6 +39,7 @@ import { MemoryEvalSection } from '../compiler/ui/MemoryEvalSection.tsx';
 import { InkActionsSettings, ReadingSettings } from '../inkactions/Settings.tsx';
 import { DevicesSection } from '../peer/DevicesSection.tsx';
 import { History, Monitor, NotebookPen } from 'lucide-react';
+import { ImportSettings } from '../importers/ImportSettings.tsx';
 import { RecallSettings } from '../recall/RecallSettings.tsx';
 import { JournalSettings } from '../journal/JournalSettings.tsx';
 import { DesktopSettings } from '../desktop/DesktopSettings.tsx';
@@ -73,6 +74,7 @@ function renderSection(id: SectionId) {
     case 'recall': return <RecallSettings />;
     case 'journal': return <JournalSettings />;
     case 'desktop': return <DesktopSettings />;
+    case 'import': return <ImportSettings />;
     case 'about': return <AboutSection />;
   }
 }

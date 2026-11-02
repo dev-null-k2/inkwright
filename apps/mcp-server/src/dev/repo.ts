@@ -50,7 +50,7 @@ export interface ScanResult {
 }
 
 /** Scans `repo` and writes its graph into the vault as a code source (replacing an earlier scan of it). */
-export async function scanFolderIntoVault(fs: VaultFS, repo: string, o: { id?: string; name?: string; limits?: ScanLimits; onProgress?: (p: ScanProgress) => void; now?: number } = {}): Promise<ScanResult> {
+export async function scanFolderIntoVault(fs: VaultFS, repo: string, o: { id?: string; name?: string; limits?: ScanLimits; onProgress?: (p: ScanProgress) => void; now?: number; head?: { ref: string | null; commit: string } } = {}): Promise<ScanResult> {
   const abs = path.resolve(repo);
   const st = await stat(abs).catch(() => null);
   if (!st?.isDirectory()) throw new Error(`Repository folder not found: ${repo}`);
@@ -61,7 +61,7 @@ export async function scanFolderIntoVault(fs: VaultFS, repo: string, o: { id?: s
   const { files, skipped } = await readRepoFolder(abs, o.limits);
   const graph = await scanRepository(files, nodeCodeParser(), { sourceId: id, name, now: o.now, limits: o.limits, onProgress: o.onProgress });
   if (skipped) graph.skipped = (graph.skipped ?? 0) + skipped;
-  const source = await store.save({ id, name, kind: 'cli', origin: abs, createdAt: prev?.createdAt ?? graph.scannedAt }, graph);
+  const source = await store.save({ id, name, kind: 'cli', origin: abs, createdAt: prev?.createdAt ?? graph.scannedAt, ...(o.head ? { head: o.head } : {}) }, graph);
   return { source, graph };
 }
 

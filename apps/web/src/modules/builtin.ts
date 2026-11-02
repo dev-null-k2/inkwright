@@ -9,6 +9,7 @@ import { useApp } from '../state/app.ts';
 import { registerModule, registerPreset, type ModuleDefinition } from './registry.ts';
 import { INK_ACTION_MODULES } from '../inkactions/modules.ts';
 import { MEMORY_MODULES, OPT_IN_ONLY } from '../recall/modules.ts';
+import { IMPORT_MODULES } from '../importers/modules.ts';
 
 export const BUILTIN_MODULES: ModuleDefinition[] = [
   {
@@ -254,6 +255,8 @@ export const BUILTIN_MODULES: ModuleDefinition[] = [
     defaultEnabled: true,
     contributes: { panels: ['Check this device'] },
   },
+  // Notes from other apps, the web clipper, and runbook shell blocks on a computer.
+  ...IMPORT_MODULES,
 ];
 
 // Presets never switch on modules that only you should turn on (screen capture, journal drafts).

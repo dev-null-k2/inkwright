@@ -31,7 +31,7 @@ export interface ApiKey {
   id: string;
   name: string;
   prefix: string;
-  scopes: Array<"notes:read" | "notes:write" | "routines:run" | "webhooks" | "admin">;
+  scopes: Array<"notes:read" | "notes:write" | "routines:run" | "webhooks" | "admin" | "federation:search">;
   /** RFC 3339 date-time */
   createdAt: string;
   expiresAt: string | null;
@@ -40,7 +40,7 @@ export interface ApiKey {
 
 export interface ApiKeyCreate {
   name: string;
-  scopes: Array<"notes:read" | "notes:write" | "routines:run" | "webhooks" | "admin">;
+  scopes: Array<"notes:read" | "notes:write" | "routines:run" | "webhooks" | "admin" | "federation:search">;
   expiresInDays?: number;
 }
 
@@ -48,7 +48,7 @@ export interface ApiKeyCreated {
   id: string;
   name: string;
   prefix: string;
-  scopes: Array<"notes:read" | "notes:write" | "routines:run" | "webhooks" | "admin">;
+  scopes: Array<"notes:read" | "notes:write" | "routines:run" | "webhooks" | "admin" | "federation:search">;
   /** RFC 3339 date-time */
   createdAt: string;
   expiresAt: string | null;
@@ -80,6 +80,24 @@ export interface DeliveryList {
   data: WebhookDelivery[];
   /** Pass as `cursor` to get the next page; null on the last page. */
   nextCursor: string | null;
+}
+
+export interface FederatedHit {
+  noteId: string;
+  title: string;
+  /** At most 300 characters around the match. */
+  snippet: string;
+  notebook: string | null;
+  tags: string[];
+  updatedAt: string;
+  score: number;
+}
+
+export interface FederatedSearchResult {
+  query: string;
+  /** The name this server’s owner goes by on the team. */
+  server: string;
+  data: FederatedHit[];
 }
 
 export interface Graph {
@@ -230,6 +248,15 @@ export interface PageList {
   nextCursor: string | null;
 }
 
+export interface PeerStatus {
+  name: string;
+  url: string;
+  status: "ok" | "timeout" | "unauthorized" | "unavailable" | "error";
+  results: number;
+  ms: number;
+  error?: string;
+}
+
 export interface Problem {
   /** URI identifying the problem type (a link to its documentation). */
   type: string;
@@ -309,6 +336,28 @@ export interface TagList {
   nextCursor: string | null;
 }
 
+export interface TeamSearchHit {
+  /** Whose note it is. */
+  person: string;
+  /** The server that answered; "local" for your own. */
+  server: string;
+  noteId: string;
+  title: string;
+  snippet: string;
+  notebook: string | null;
+  tags: string[];
+  updatedAt: string;
+  score: number;
+  /** Score relative to the best result from the same source (0–1); the merge order. */
+  relevance: number;
+}
+
+export interface TeamSearchResult {
+  query: string;
+  data: TeamSearchHit[];
+  peers: PeerStatus[];
+}
+
 export interface Transcript {
   clipId: string;
   engine: string;
@@ -381,6 +430,8 @@ export interface WebhookList {
 }
 
 const listActivityOp: Operation = {"method":"GET","path":"/activity","pathParams":[],"queryParams":["limit","cursor","source"],"hasBody":false,"idempotent":false,"response":"json"};
+const federatedSearchOp: Operation = {"method":"GET","path":"/federated/search","pathParams":[],"queryParams":["q","limit"],"hasBody":false,"idempotent":false,"response":"json"};
+const teamSearchOp: Operation = {"method":"GET","path":"/federated/team-search","pathParams":[],"queryParams":["q","limit"],"hasBody":false,"idempotent":false,"response":"json"};
 const getGraphOp: Operation = {"method":"GET","path":"/graph","pathParams":[],"queryParams":["tags","notebooks","tag"],"hasBody":false,"idempotent":false,"response":"json"};
 const listApiKeysOp: Operation = {"method":"GET","path":"/keys","pathParams":[],"queryParams":[],"hasBody":false,"idempotent":false,"response":"json"};
 const createApiKeyOp: Operation = {"method":"POST","path":"/keys","pathParams":[],"queryParams":[],"hasBody":true,"idempotent":false,"response":"json"};
@@ -436,6 +487,38 @@ export class InkwrightClient extends BaseClient {
       source?: string;
     }, options?: RequestOptions): Promise<ActivityList> {
     return this.request<ActivityList>(listActivityOp, args ?? {}, options);
+  }
+
+  /**
+   * Search what this server shares with the team
+   *
+   * For teammates’ servers. Returns only notes in the notebooks and tags the owner shares (team file), minus anything the AI policy hides from agents or keeps on the device, as titles and snippets. Never asks other servers. 404 when team search is off.
+   *
+   * `GET /federated/search` — scope `federation:search`
+   */
+  federatedSearch(args: {
+      /** What to look for. */
+      q: string;
+      /** Results (default 10, at most 50). */
+      limit?: number;
+    }, options?: RequestOptions): Promise<FederatedSearchResult> {
+    return this.request<FederatedSearchResult>(federatedSearchOp, args, options);
+  }
+
+  /**
+   * Search your notes and your teammates’ at once
+   *
+   * Asks every peer in the team file in parallel (each with its own timeout), merges the results by relevance and labels each with whose it is. Peers that did not answer are listed in `peers`; nothing is cached. 404 when team search is off.
+   *
+   * `GET /federated/team-search` — scope `notes:read`
+   */
+  teamSearch(args: {
+      /** What to look for. */
+      q: string;
+      /** Results (default 20, at most 100). */
+      limit?: number;
+    }, options?: RequestOptions): Promise<TeamSearchResult> {
+    return this.request<TeamSearchResult>(teamSearchOp, args, options);
   }
 
   /**

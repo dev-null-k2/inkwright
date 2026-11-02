@@ -14,10 +14,27 @@
  * - **Gemini CLI** — `~/.gemini/tmp/<project>/chats/session-*.json`: one JSON document
  *   `{sessionId, startTime, lastUpdated, messages: [{type: user|gemini|info|error|warning,
  *   content, toolCalls?: [{name, args, result?, status?}], timestamp}]}`.
+ * - **OpenClaw** (and pi, the agent core it is built on) — transcript JSONL as pi writes it
+ *   (pi-coding-agent docs/session.md, session format v3; OpenClaw docs/reference/
+ *   session-management-compaction): a header `{type: "session", version, id, timestamp, cwd}`,
+ *   then tree entries `{type, id, parentId, timestamp}` — `message` (`message.role` user |
+ *   assistant | toolResult | bashExecution; assistant content blocks `text`, `thinking`,
+ *   `toolCall {id, name, arguments}`; tool results `{toolCallId, toolName, content, isError}`),
+ *   `compaction {summary}`, `branch_summary {summary}`, `session_info {name}`, `model_change
+ *   {modelId}`, `custom`, `custom_message {customType, content, display}`, `label`, and
+ *   OpenClaw's `reset {firstKeptEntryId?}` (only the latest reset window is shown, as OpenClaw's
+ *   own history readers do). Checked against pi-coding-agent 0.73.1 `docs/session-format.md` and
+ *   OpenClaw 2026.10.9 `docs/reference/session-management-compaction/schema.md`. OpenClaw keeps
+ *   live transcripts in its per-agent SQLite store (`~/.openclaw/agents/<agent>/agent/
+ *   openclaw-agent.sqlite`), which is not read; the JSONL files it leaves in
+ *   `~/.openclaw/agents/<agent>/sessions/` (pre-SQLite history, reset and deletion archives;
+ *   `.jsonl.zst` ones need `zstd -d` first) and pi's `~/.pi/agent/sessions/--<cwd>--/*.jsonl`
+ *   are what can be imported. Only the active branch is shown: the path from the last entry back
+ *   through `parentId`.
  */
 import type { VaultFS } from '../fs.ts';
 
-export type SessionTool = 'claude-code' | 'codex' | 'gemini';
+export type SessionTool = 'claude-code' | 'codex' | 'gemini' | 'openclaw';
 
 export interface SessionTurn {
   role: 'user' | 'assistant' | 'tool';
@@ -38,7 +55,7 @@ export interface AgentSession {
   turns: SessionTurn[];
 }
 
-export const SESSION_TOOL_NAMES: Record<SessionTool, string> = { 'claude-code': 'Claude Code', codex: 'Codex CLI', gemini: 'Gemini CLI' };
+export const SESSION_TOOL_NAMES: Record<SessionTool, string> = { 'claude-code': 'Claude Code', codex: 'Codex CLI', gemini: 'Gemini CLI', openclaw: 'OpenClaw' };
 
 type J = Record<string, unknown>;
 const isObj = (v: unknown): v is J => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -63,6 +80,7 @@ export function detectSessionTool(text: string): SessionTool | null {
     try { const d = JSON.parse(text); if (isObj(d) && Array.isArray(d.messages)) return 'gemini'; } catch { /* JSONL */ }
   }
   const lines = jsonLines(text.slice(0, 200_000)).slice(0, 50);
+  if (lines[0]?.type === 'session' && typeof lines[0].id === 'string' && lines.slice(1).every((l) => typeof l.type === 'string' && !('payload' in l))) return 'openclaw';
   if (lines.some((l) => 'payload' in l && typeof l.type === 'string') || lines.some((l) => l.type === 'message' && 'role' in l)) return 'codex';
   if (lines.some((l) => (l.type === 'user' || l.type === 'assistant') && isObj(l.message))) return 'claude-code';
   if (lines.some((l) => l.type === 'summary' && 'leafUuid' in l)) return 'claude-code';
@@ -196,6 +214,83 @@ function parseGemini(text: string, fallbackId: string): AgentSession {
   return s;
 }
 
+/**
+ * OpenClaw / pi JSONL (see the module comment). Entries form a tree; the transcript shown is the
+ * active branch, from the last entry back to the root, so abandoned branches don't interleave.
+ */
+function parseOpenClaw(text: string, fallbackId: string): AgentSession {
+  const all = jsonLines(text);
+  const head = all[0]?.type === 'session' ? all.shift()! : {};
+  const s: AgentSession = { tool: 'openclaw', id: str(head.id) ?? fallbackId, title: '', turns: [], startedAt: time(head.timestamp), cwd: str(head.cwd) };
+  const byId = new Map<string, J>();
+  for (const e of all) if (typeof e.id === 'string') byId.set(e.id, e);
+  // The active branch: walk back from the last entry that has an id.
+  const path: J[] = [];
+  const seen = new Set<string>();
+  let cur: J | undefined = [...all].reverse().find((e) => typeof e.id === 'string');
+  while (cur && !seen.has(cur.id as string)) {
+    seen.add(cur.id as string);
+    path.unshift(cur);
+    cur = typeof cur.parentId === 'string' ? byId.get(cur.parentId) : undefined;
+  }
+  let entries = path.length ? path : all;
+  // OpenClaw's `reset` starts a fresh history window; readers show only the latest window, plus
+  // the messages it explicitly keeps (from `firstKeptEntryId`).
+  const lastReset = entries.map((e) => e.type).lastIndexOf('reset');
+  if (lastReset >= 0) {
+    const kept = entries[lastReset]!.firstKeptEntryId;
+    const from = typeof kept === 'string' ? entries.findIndex((e) => e.id === kept) : -1;
+    entries = from >= 0 && from < lastReset ? [...entries.slice(from, lastReset), ...entries.slice(lastReset + 1)] : entries.slice(lastReset + 1);
+  }
+  const calls = new Map<string, SessionTurn>();
+  let name = '';
+  for (const e of entries) {
+    const at = time(e.timestamp);
+    if (at) { s.startedAt ??= at; s.endedAt = at; }
+    if (e.type === 'session_info' && typeof e.name === 'string') { name = e.name; continue; }
+    if (e.type === 'model_change') { s.model = str(e.modelId) ?? s.model; continue; }
+    if ((e.type === 'compaction' || e.type === 'branch_summary') && typeof e.summary === 'string') {
+      s.turns.push({ role: 'assistant', text: `${e.type === 'compaction' ? 'Summary of the earlier conversation' : 'Summary of another branch'}: ${e.summary}`, at });
+      continue;
+    }
+    if (e.type === 'custom_message' && e.display === true) {
+      // Extension messages shown in the TUI (they enter the model's context too).
+      const t = contentText(e.content).trim();
+      if (t) s.turns.push({ role: 'assistant', text: `${str(e.customType) ?? 'Extension'}: ${t}`, at });
+      continue;
+    }
+    if (e.type !== 'message' || !isObj(e.message)) continue;
+    const m = e.message;
+    const role = str(m.role);
+    if (role === 'user') {
+      const t = contentText(m.content).trim();
+      if (t && !NOISE.test(t)) s.turns.push({ role: 'user', text: t, at });
+    } else if (role === 'assistant') {
+      s.model ??= str(m.model);
+      for (const b of Array.isArray(m.content) ? m.content : []) {
+        if (!isObj(b)) continue;
+        if (b.type === 'text' && typeof b.text === 'string' && b.text.trim()) s.turns.push({ role: 'assistant', text: b.text, at });
+        else if (b.type === 'toolCall') {
+          const args = isObj(b.arguments) && 'command' in b.arguments ? b.arguments.command : b.arguments;
+          const turn: SessionTurn = { role: 'tool', text: '', at, tool: { name: str(b.name) ?? 'tool', input: short(args) } };
+          s.turns.push(turn);
+          if (typeof b.id === 'string') calls.set(b.id, turn);
+        }
+      }
+      if (m.stopReason === 'error' && typeof m.errorMessage === 'string') s.turns.push({ role: 'assistant', text: `Error: ${m.errorMessage}`, at });
+    } else if (role === 'toolResult') {
+      const t = typeof m.toolCallId === 'string' ? calls.get(m.toolCallId) : undefined;
+      const output = short(contentText(m.content));
+      if (t?.tool) { t.tool.output = output; if (m.isError === true) t.tool.error = true; }
+      else s.turns.push({ role: 'tool', text: '', at, tool: { name: str(m.toolName) ?? 'tool', output, ...(m.isError === true ? { error: true } : {}) } });
+    } else if (role === 'bashExecution') {
+      s.turns.push({ role: 'tool', text: '', at, tool: { name: 'bash', input: short(m.command), output: short(m.output), ...(typeof m.exitCode === 'number' && m.exitCode !== 0 ? { error: true } : {}) } });
+    }
+  }
+  s.title = name || firstUserLine(s) || 'OpenClaw session';
+  return s;
+}
+
 function firstUserLine(s: AgentSession): string {
   const t = s.turns.find((x) => x.role === 'user' && x.text.trim())?.text.trim().split('\n')[0] ?? '';
   return t.length > 80 ? `${t.slice(0, 77)}…` : t;
@@ -206,9 +301,10 @@ export function parseAgentSession(fileName: string, text: string): AgentSession 
   const id = fileName.replace(/^.*[\\/]/, '').replace(/\.(jsonl|json)$/i, '');
   const tool = detectSessionTool(text);
   if (tool === 'gemini') return parseGemini(text, id);
+  if (tool === 'openclaw') return parseOpenClaw(text, id);
   if (tool === 'codex') return parseCodex(text, id);
   if (tool === 'claude-code') return parseClaude(text, id);
-  throw new Error(`${fileName} is not a Claude Code, Codex CLI or Gemini CLI session transcript.`);
+  throw new Error(`${fileName} is not a Claude Code, Codex CLI, Gemini CLI or OpenClaw session transcript.`);
 }
 
 const day = (t?: number) => (t ? new Date(t).toISOString().slice(0, 16).replace('T', ' ') : '');

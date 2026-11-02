@@ -39,6 +39,7 @@ import type { KeyStore } from './keys.ts';
 import type { SemanticSearch } from './semantic.ts';
 import type { VaultEvents } from './events.ts';
 import type { WebhookService } from './webhooks.ts';
+import { federationRoutes } from './federation.ts';
 
 /** What handlers can reach. */
 export interface ApiDeps {
@@ -469,7 +470,10 @@ export function createRoutes(d: ApiDeps): RouteDef[] {
         const q = req.query;
         if (q.mode === 'keyword') {
           await ctx.refresh();
-          const hits = (await ctx.searchIndex()).search(q.q, { limit: q.limit });
+          // The index holds every note; only those the AI policy lets agents see are answered.
+          const all = (await ctx.searchIndex()).search(q.q, { limit: q.limit });
+          const hits = [];
+          for (const h of all) if (await ctx.vault.readNote(h.noteId)) hits.push(h);
           return { status: 200, body: { query: q.q, mode: q.mode, data: hits.map((h) => ({ noteId: h.noteId, title: h.title, page: h.pageIndex + 1, snippet: h.snippet, score: Math.round(h.score * 1000) / 1000, source: 'note' as const })) } };
         }
         if (!d.semantic) throw new ApiError('not_implemented', 'Semantic search needs an embedding model: start the server with --embeddings-model (and --embeddings-url for a provider other than OpenAI). Keyword search works without one.');
@@ -717,6 +721,7 @@ export function createRoutes(d: ApiDeps): RouteDef[] {
         return { status: 200, body: keyOut(r) };
       },
     }),
+    ...federationRoutes(d),
   ];
 }
 
