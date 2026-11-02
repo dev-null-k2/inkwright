@@ -1,0 +1,16 @@
+# Actions are pinned to commit SHAs (docs/SECURITY_REVIEW.md, SR-09); Dependabot proposes the new
+# SHA (and updates the version comment) when an action releases, so pins don't go stale.
+# npm updates are grouped weekly; security updates still come at once.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      actions: { patterns: ['*'] }
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch: { update-types: [minor, patch] }

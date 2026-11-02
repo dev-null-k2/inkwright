@@ -125,8 +125,12 @@ time — is returned to the caller and appended to the note's `data-queries.json
 history in the panel.
 
 **Read-only.** Only one `SELECT`/`WITH` statement runs; writes, `ATTACH`, `COPY`, `INSTALL`,
-`PRAGMA` and file-reading functions (`read_csv`, `read_parquet`, …) are refused before the
-engine sees them, so a model can't read local files through SQL.
+`PRAGMA`, file-reading functions (`read_csv`, `read_parquet`, `query`, …), quoted function names
+and file names in table position (`FROM 'x.csv'`) are refused before the engine sees them. That
+filter is a convenience; the boundary is DuckDB itself, which starts with external access off:
+only the datasets registered for this note can be read, no URL can be fetched and no extension
+loaded, and the setting is locked (security review SR-02). A model can't read files or send data
+out through SQL.
 
 **Limits.** Data is loaded into memory: comfortable to a few hundred thousand rows. The page table
 shows at most 8 rows × 6 columns (the panel shows 200 rows). Charts are bar or line with up to four

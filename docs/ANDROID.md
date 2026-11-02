@@ -247,6 +247,18 @@ We have not verified on a Razr Fold which of these the current Moto software doe
 
 `capacitor.config.ts` sets `android.captureInput: false`, so text fields keep the WebView's full editor connection: predictive text, autocorrect, glide typing, non-Latin IMEs and Android's **"Write in text fields"** stylus handwriting all work. Setting it to `true` makes Capacitor substitute a plain `BaseInputConnection` (raw key events, but none of the above); only do that if you need raw keys, then run `npx cap sync android`.
 
+## Backups
+
+The app opts out of Android's cloud backup (`android:allowBackup="false"`,
+`res/xml/data_extraction_rules.xml`, `res/xml/backup_rules.xml`). Everything Inkwright keeps is in
+the WebView's storage, and the key that encrypts API keys and MCP sign-ins sits in the same
+IndexedDB files as the ciphertexts: "non-extractable" stops scripts from reading it, not a copy of
+the files. A Google Drive backup of the app would therefore carry the API keys in effect in the
+clear (security review SR-03). Notes reach other devices through the app's own sync; on Android 12+,
+setting up a new phone from the old one (device-to-device transfer) still moves everything.
+`src/platform/android-manifest.test.ts` fails if a change brings cloud backup back or exports a
+component.
+
 ## Release on Google Play
 
 1. **Create an upload key** once, and keep it and its passwords somewhere safe (a password manager plus an offline backup). Losing it means asking Google to reset the upload key.

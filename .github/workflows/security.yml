@@ -18,44 +18,52 @@ jobs:
     runs-on: ubuntu-latest
     permissions: { contents: read, security-events: write, actions: read }
     steps:
-      - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with: { persist-credentials: false }
+      - uses: github/codeql-action/init@4bfa242aa49c5f7c6770b98670d354a7dfac05f8 # v3.39.1
         with:
           languages: javascript-typescript
           queries: security-extended
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@4bfa242aa49c5f7c6770b98670d354a7dfac05f8 # v3.39.1
 
   semgrep:
     runs-on: ubuntu-latest
     permissions: { contents: read, security-events: write }
     container: { image: semgrep/semgrep:1.95.0 }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with: { persist-credentials: false }
       - run: semgrep scan --config p/owasp-top-ten --config p/nodejs --config p/typescript --config p/secrets --sarif --output semgrep.sarif --metrics off --exclude 'packages/ai/evals/fixtures' --exclude '**/*.test.ts' --error --severity ERROR
-      - uses: github/codeql-action/upload-sarif@v3
+      - uses: github/codeql-action/upload-sarif@4bfa242aa49c5f7c6770b98670d354a7dfac05f8 # v3.39.1
         if: always()
         with: { sarif_file: semgrep.sarif }
 
   dependencies:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with: { persist-credentials: false }
+      - name: Actions are pinned to commit SHAs
+        # docs/SECURITY_REVIEW.md, SR-09: a tag can be moved by the action's owner, a SHA can't.
+        run: |
+          unpinned="$(grep -rhE '^[[:space:]]*(-[[:space:]]+)?uses:' .github/workflows | sed -E 's/^[[:space:]]*(-[[:space:]]+)?uses:[[:space:]]*([^[:space:]]+).*/\2/' | grep -vE '@[0-9a-f]{40}$' || true)"
+          if [ -n "$unpinned" ]; then echo "Pin these actions to a commit SHA:"; echo "$unpinned"; exit 1; fi
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with: { node-version: 22, cache: npm }
       - run: npm ci --ignore-scripts
         env: { ONNXRUNTIME_NODE_INSTALL: skip }
       - run: node scripts/audit-deps.mjs --level high
       - name: SBOM (CycloneDX)
         run: npx --yes @cyclonedx/cyclonedx-npm@4.0.0 --omit dev --output-format JSON --output-file sbom.cdx.json --spec-version 1.6
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with: { name: sbom-cyclonedx, path: sbom.cdx.json }
 
   secrets:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with: { fetch-depth: 0, persist-credentials: false }
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml

@@ -23,8 +23,8 @@ object IncomingFiles {
     /** Whether this intent carries files (or text) for Inkwright. */
     fun isIncoming(intent: Intent?): Boolean = when (intent?.action) {
         // inkwright:// deep links are VIEW intents too; Capacitor's App plugin hands those to the
-        // web layer (appUrlOpen), so only content:// and file:// data are files.
-        Intent.ACTION_VIEW -> intent.data?.scheme == "content" || intent.data?.scheme == "file"
+        // web layer (appUrlOpen), so only content:// data are files.
+        Intent.ACTION_VIEW -> intent.data?.scheme == "content"
         Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE -> true
         else -> false
     }
@@ -72,17 +72,22 @@ object IncomingFiles {
         else intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)) ?: emptyList()
 
     private fun copy(context: Context, uri: Uri, dir: File, fallbackType: String?): Incoming {
+        // Only content:// URIs, which the sending app grants. A file:// URI is read with
+        // Inkwright's own rights, so any app could name a file in Inkwright's private storage
+        // (the WebView's IndexedDB with the vault and keys) and have it imported as a note; and our
+        // own FileProvider is not a source either (security review SR-11).
+        require(uri.scheme == "content") { "Only content:// URIs are accepted" }
+        require(uri.authority != "${context.packageName}.fileprovider") { "Inkwright's own files are not a share source" }
         val resolver = context.contentResolver
         val mime = resolver.getType(uri) ?: fallbackType ?: "application/octet-stream"
         val name = displayName(context, uri) ?: "Shared file"
         val target = uniqueFile(dir, name)
-        val input = if (uri.scheme == "file") File(requireNotNull(uri.path)).inputStream() else resolver.openInputStream(uri)
+        val input = resolver.openInputStream(uri)
         requireNotNull(input) { "No data" }.use { src -> target.outputStream().use { dst -> src.copyTo(dst) } }
         return Incoming(target.name, mime, Uri.fromFile(target).toString())
     }
 
     private fun displayName(context: Context, uri: Uri): String? {
-        if (uri.scheme == "file") return uri.lastPathSegment
         return try {
             context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
                 if (c.moveToFirst()) c.getString(0) else null
