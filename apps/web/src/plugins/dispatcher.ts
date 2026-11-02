@@ -112,6 +112,20 @@ async function visible(env: HostEnv, caller: Caller, id: unknown): Promise<Backe
 }
 
 /**
+ * The editor's state if the open note is one the caller may see, else null — so a note outside
+ * a plugin's scope (or a locked note, shown decrypted while open) looks exactly like "no note is
+ * open" to the editor methods. A note the backend doesn't know yet (made a moment ago) is only
+ * visible to callers without a scope, since nothing can be said about its tags or notebook.
+ */
+async function visibleEditor(env: HostEnv, caller: Caller): Promise<EditorState | null> {
+  const s = env.editor.state();
+  if (!s) return null;
+  const n = await env.notes.get(s.noteId);
+  if (!n) return caller.noteScope ? null : s;
+  return n.locked || !noteInScope(caller.noteScope, n) ? null : s;
+}
+
+/**
  * Runs one API call for `caller`. Throws `PluginApiError` (with a stable code) for refusals and
  * bad input; anything else thrown is reported as `internal`.
  */
@@ -192,12 +206,12 @@ export async function dispatch(env: HostEnv, caller: Caller, method: unknown, pa
     }
 
     case 'editor.current':
-      return env.editor.state();
+      return visibleEditor(env, caller);
     case 'editor.selection':
-      return env.editor.selection();
+      return (await visibleEditor(env, caller)) ? env.editor.selection() : '';
     case 'editor.insertText': {
       const text = str(p[0], 'text');
-      if (!env.editor.state()) throw new PluginApiError('unavailable', 'No note is open.');
+      if (!(await visibleEditor(env, caller))) throw new PluginApiError('unavailable', 'No note is open.');
       env.editor.insertText(text, caller.label);
       return null;
     }
@@ -233,8 +247,7 @@ export async function dispatch(env: HostEnv, caller: Caller, method: unknown, pa
       env.toast(`${str(p[0], 'text', 300)}`, p[1] === 'error' || p[1] === 'success' ? p[1] : 'info');
       return null;
     case 'ui.openNote': {
-      const n = await env.notes.get(str(p[0], 'id', 64));
-      if (!n || n.locked) throw new PluginApiError('not_found', `There is no note ${String(p[0])}.`);
+      const n = await visible(env, caller, p[0]);
       env.openNote(n.id, typeof p[1] === 'number' ? p[1] : undefined);
       return null;
     }

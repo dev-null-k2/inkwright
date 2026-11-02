@@ -23,13 +23,18 @@ import { editorState, insertTextInEditor, onNoteOpened, onSelectionChanged, open
 import { PluginFrame } from './sandbox.ts';
 import { PluginStore, type PluginData, type PluginPackage } from './store.ts';
 import { packageFromUrl, updateSourceOf } from './install.ts';
+import { NEEDS_REVIEW, consentCovers, consentFor, forgetConsent, pluginFingerprint, recordConsent } from './consent.ts';
 import { CATALOG } from './catalog.ts';
 
 export interface LoadedPlugin {
   record: InstalledPlugin;
   manifest: PluginManifest | null;
-  /** Why it can't run (missing files, invalid manifest, needs a newer app). */
+  /** Why it can't run (missing files, invalid manifest, needs a newer app, needs a review). */
   error: string | null;
+  /** Waits for the person on this device to approve its code and permissions (consent.ts). */
+  needsReview?: boolean;
+  /** Fingerprint of its manifest and entry script, as loaded (what a review approves). */
+  fingerprint?: string;
 }
 
 export interface PluginLogLine {
@@ -96,7 +101,12 @@ export async function reloadPlugins(): Promise<void> {
     const m = await s.manifest(record.id);
     if ('error' in m) out.push({ record, manifest: null, error: m.error });
     else if (compareVersions(APP_VERSION, m.manifest.minAppVersion) < 0) out.push({ record, manifest: m.manifest, error: `Needs Inkwright ${m.manifest.minAppVersion} or later.` });
-    else out.push({ record, manifest: m.manifest, error: null });
+    else {
+      // Only code and permissions approved on this device run (consent.ts, security review SR-01).
+      const fingerprint = await pluginFingerprint((await s.readText(record.id, 'manifest.json')) ?? '', (await s.code(record.id, m.manifest.entry)) ?? '');
+      const ok = consentCovers(consentFor(record.id), fingerprint, record.granted);
+      out.push({ record, manifest: m.manifest, error: ok ? null : NEEDS_REVIEW, fingerprint, ...(ok ? {} : { needsReview: true }) });
+    }
   }
   usePlugins.setState({ plugins: out });
   // Stop what may no longer run, or was updated (it restarts on next use).
@@ -148,7 +158,10 @@ function callerFor(id: string, extra: { setHeight?: (px: number) => void } = {})
           allowed: (note) => {
             const p = live();
             if (!isRunnable(p) || !grantedPermissions(p).has('events')) return false;
-            return !note || (!note.locked && (!p.manifest.noteScope || scopeAllows(p, note)));
+            // An event about no particular note is fine; one about a note nobody could look up
+            // is not delivered to a scoped plugin (it can't be shown to be inside the scope).
+            if (!note) return !p.manifest.noteScope;
+            return !note.locked && (!p.manifest.noteScope || scopeAllows(p, note));
           },
           deliver: (name, data) => {
             frames.get(id)?.event(name, data);
@@ -426,10 +439,34 @@ export function hostEnv(): HostEnv {
 
 // ---- Managing plugins ------------------------------------------------------------------------------
 
+/** Records that the person on this device approved the plugin as it is stored now (consent.ts). */
+async function consentToStored(id: string, granted: readonly string[]): Promise<void> {
+  const s = store();
+  const m = await s.manifest(id);
+  if ('error' in m) return;
+  recordConsent(id, await pluginFingerprint((await s.readText(id, 'manifest.json')) ?? '', (await s.code(id, m.manifest.entry)) ?? ''), granted);
+}
+
 export async function installPackage(pkg: PluginPackage, granted: Permission[]): Promise<void> {
   stopPlugin(pkg.manifest.id);
-  await store().install(pkg, granted);
+  const rec = await store().install(pkg, granted);
   dataCache.delete(pkg.manifest.id);
+  // Installed (or updated) here, with the permissions just approved here.
+  await consentToStored(rec.id, rec.granted);
+  await reloadPlugins();
+}
+
+/**
+ * Approves, on this device, a plugin that was installed, updated or granted more elsewhere
+ * (`needsReview`): the code as it was loaded and shown, with the permissions the person ticked.
+ * If the files changed again in the meantime, the fingerprint no longer matches and it asks again.
+ */
+export async function approvePlugin(id: string, granted: Permission[]): Promise<void> {
+  const p = findPlugin(id);
+  if (!p?.manifest || !p.fingerprint) return;
+  const allowed = granted.filter((g) => p.manifest!.permissions.includes(g));
+  await store().updateRecord(id, (r) => ({ ...r, granted: allowed }));
+  recordConsent(id, p.fingerprint, allowed);
   await reloadPlugins();
 }
 
@@ -443,11 +480,16 @@ export async function setPluginEnabled(id: string, enabled: boolean): Promise<vo
 export async function setPermission(id: string, permission: Permission, granted: boolean): Promise<void> {
   await store().updateRecord(id, (r) => ({ ...r, granted: granted ? [...new Set([...r.granted, permission])] : r.granted.filter((g) => g !== permission) }));
   if (!granted) stopPlugin(id);
+  // A switch flipped here is consent given (or taken back) here — but it never approves code
+  // that is still waiting for a review.
+  const c = consentFor(id);
+  if (c && (!granted || !findPlugin(id)?.needsReview)) recordConsent(id, c.fp, granted ? [...c.granted, permission] : c.granted.filter((g) => g !== permission));
   await reloadPlugins();
 }
 
 export async function uninstallPlugin(id: string): Promise<void> {
   stopPlugin(id);
+  forgetConsent(id);
   await store().uninstall(id);
   dataCache.delete(id);
   await reloadPlugins();
@@ -496,7 +538,9 @@ export async function checkForUpdate(id: string): Promise<UpdateCheck> {
 /** Applies an update, keeping what was granted and adding what the user approved now. */
 export async function applyUpdate(id: string, pkg: PluginPackage, newlyGranted: Permission[]): Promise<void> {
   const p = findPlugin(id);
-  const keep = p ? p.record.granted.filter((g) => pkg.manifest.permissions.includes(g as Permission)) : [];
+  // Keep only what this device approved: grants added elsewhere and not yet reviewed don't carry over.
+  const approved = p?.needsReview ? consentFor(id)?.granted ?? [] : null;
+  const keep = p ? p.record.granted.filter((g) => pkg.manifest.permissions.includes(g as Permission) && (!approved || approved.includes(g))) : [];
   await installPackage(pkg, [...new Set([...(keep as Permission[]), ...newlyGranted])]);
 }
 
@@ -561,15 +605,29 @@ export function startPluginHost(): () => void {
       });
     }));
   }
+  // Editor events carry the note they are about, so scope and lock checks apply to them like to
+  // vault events (security review SR-04: they used to reach every subscriber).
+  const editorNote = async (noteId: string): Promise<BackendNote | undefined> => {
+    const v = useApp.getState().vault;
+    if (!v) return undefined;
+    const open = openDocument();
+    const meta = open?.meta.id === noteId ? open.meta : await v.vault.readNote(noteId);
+    return meta ? toBackend(meta, await v.listNotebooks()) : undefined;
+  };
   disposers.push(onNoteOpened((noteId, title) => {
     // A note made in the library (no vault event yet) is new to plugins when it is first opened.
-    if (vaultKnown && !vaultKnown.has(noteId)) {
-      vaultKnown.set(noteId, false);
-      emit('note.created', { id: noteId, title });
-    }
-    emit('note.opened', { id: noteId, title });
+    const isNew = !!vaultKnown && !vaultKnown.has(noteId);
+    if (isNew) vaultKnown!.set(noteId, false);
+    if (!sinks.size) return;
+    void editorNote(noteId).then((b) => {
+      if (isNew) emit('note.created', { id: noteId, title }, b);
+      emit('note.opened', { id: noteId, title }, b);
+    });
   }));
-  disposers.push(onSelectionChanged((noteId, text) => emit('selection.changed', { noteId, text })));
+  disposers.push(onSelectionChanged((noteId, text) => {
+    if (!sinks.size) return;
+    void editorNote(noteId).then((b) => emit('selection.changed', { noteId, text }, b));
+  }));
 
   return () => {
     for (const d of disposers) d();
