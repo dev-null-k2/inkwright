@@ -99,6 +99,14 @@
 .dock.is-right-edge .pen.is-on svg { transform: translate(-42%, -50%) rotate(-90deg); }
 .dock.is-right-edge .pen:hover:not(.is-on) svg { transform: translate(-28%, -50%) rotate(-90deg); }
 
+/* ---------- Fit fixes found by e2e/fit.spec.ts ---------- */
+/* Side panels end above the gesture bar on every width (narrow sheets already did). */
+.side-panel { padding-bottom: var(--safe-bottom); }
+/* The AI panel as a sheet on a folded phone: the set-up card shrinks and scrolls so the quick
+   actions and the message field stay on screen. */
+.ai-panel .ai-setup { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.ai-panel .ai-log { min-height: 0; }
+
 /* ---------- Device check (devicecheck/DeviceCheck.tsx) ---------- */
 .dc-test { display: flex; flex-direction: column; gap: 12px; }
 .dc-test p { margin: 0; }
