@@ -15,6 +15,8 @@ import { createRoutes, type ApiDeps } from './routes.ts';
 import { SemanticSearch, type EmbeddingSettings } from './semantic.ts';
 import { WebhookService } from './webhooks.ts';
 
+import { buildOpenApi } from './openapi.ts';
+
 export { API_PREFIX } from './core.ts';
 export { buildOpenApi } from './openapi.ts';
 export { createRoutes } from './routes.ts';
@@ -36,6 +38,16 @@ export interface ApiOptions {
   eventIntervalMs?: number;
   fetch?: typeof globalThis.fetch;
   log?: (msg: string) => void;
+}
+
+/**
+ * The OpenAPI document without a running server (for the SDK generator and docs). Route
+ * handlers are never called, so they get dependencies that refuse to be used.
+ */
+export function describeApi(serverUrl = 'http://127.0.0.1:8765/api/v1'): Record<string, unknown> {
+  const refuse = new Proxy({}, { get: () => { throw new Error('describeApi() routes cannot handle requests.'); } });
+  const deps = { ctx: { fs: refuse }, services: refuse, keys: refuse, webhooks: refuse, events: refuse, semantic: null } as unknown as ApiDeps;
+  return buildOpenApi(createRoutes(deps), { serverUrl });
 }
 
 export interface RunningApi {

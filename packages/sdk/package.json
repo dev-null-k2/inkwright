@@ -7,7 +7,7 @@
   "types": "./src/index.ts",
   "files": ["src", "examples", "README.md"],
   "scripts": {
-    "generate": "tsx scripts/generate.ts"
+    "generate": "tsx --import ../../apps/mcp-server/scripts/raw-hooks.mjs scripts/generate.ts"
   },
   "license": "Apache-2.0"
 }
