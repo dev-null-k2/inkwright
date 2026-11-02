@@ -6,6 +6,9 @@ import { defineConfig, devices } from '@playwright/test';
 
 process.env.PLAYWRIGHT_BROWSERS_PATH ??= '/opt/pw-browsers';
 
+// Headless WebKit and Firefox are slower than Chromium on small CI machines; give tests more time.
+const SLOW = 90_000;
+
 /**
  * WebKit (Safari on macOS, and every browser on iPhone/iPad, including the Capacitor iOS shell) and
  * Firefox. Opt-in with INKSTONE_ENGINES=all (`npm run e2e:all`, which also installs the engines),
@@ -14,11 +17,11 @@ process.env.PLAYWRIGHT_BROWSERS_PATH ??= '/opt/pw-browsers';
  * Chromium foldable/phone projects.
  */
 const otherEngines = [
-  { name: 'webkit-desktop', use: { ...devices['Desktop Safari'], viewport: { width: 1280, height: 860 } } },
+  { name: 'webkit-desktop', timeout: SLOW, use: { ...devices['Desktop Safari'], viewport: { width: 1280, height: 860 } } },
   // iPadOS Safari reports a Mac user agent by default; only the touch points give it away.
-  { name: 'webkit-ipad', use: { ...devices['iPad Pro 11'], userAgent: devices['Desktop Safari'].userAgent }, testMatch: /layout|touch/ },
-  { name: 'webkit-iphone', use: { ...devices['iPhone 15'] }, testMatch: /layout|touch/ },
-  { name: 'firefox-desktop', use: { ...devices['Desktop Firefox'], viewport: { width: 1280, height: 860 } } },
+  { name: 'webkit-ipad', timeout: SLOW, use: { ...devices['iPad Pro 11'], userAgent: devices['Desktop Safari'].userAgent }, testMatch: /layout|touch/ },
+  { name: 'webkit-iphone', timeout: SLOW, use: { ...devices['iPhone 15'] }, testMatch: /layout|touch/ },
+  { name: 'firefox-desktop', timeout: SLOW, use: { ...devices['Desktop Firefox'], viewport: { width: 1280, height: 860 } } },
 ];
 
 /**

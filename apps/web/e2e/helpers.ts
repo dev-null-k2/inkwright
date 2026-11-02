@@ -2,8 +2,21 @@ import { expect, type Page } from '@playwright/test';
 
 export type Pt = [number, number];
 
+/**
+ * Playwright's Linux WebKit plays Web Audio through GStreamer, and in a container without a sound
+ * server starting the writing-sound AudioWorklet (which opening a note does) sometimes blocks the
+ * page's main thread for good: tests then time out at random (about one note in eight under load).
+ * Without an AudioContext the app simply runs silent. Safari on Apple devices (Core Audio) is not
+ * affected, and Chromium and Firefox keep their audio.
+ */
+async function withoutLinuxWebKitAudio(page: Page) {
+  if (process.platform !== 'linux' || page.context().browser()?.browserType().name() !== 'webkit') return;
+  await page.addInitScript(() => { delete (window as any).AudioContext; delete (window as any).webkitAudioContext; });
+}
+
 /** Opens the app with the test hook enabled and waits for the library. */
 export async function openApp(page: Page) {
+  await withoutLinuxWebKitAudio(page);
   await page.goto('/?e2e');
   await expect(page.locator('.library')).toBeVisible();
 }
@@ -76,8 +89,12 @@ export const modKey = (page: Page) =>
   page.evaluate(() => (/Macintosh|Mac OS X|iPhone|iPad|iPod/.test(navigator.userAgent) ? 'Meta' : 'Control'));
 
 /**
- * Console messages browsers print about our markup that are not app errors. Safari reports the
- * viewport meta's `interactive-widget` key (Chromium on Android honours it to keep the editor above
- * the on-screen keyboard) as unrecognised, and ignores it.
+ * Console messages browsers print that are not app errors. Safari reports the viewport meta's
+ * `interactive-widget` key (Chromium on Android honours it to keep the editor above the on-screen
+ * keyboard) as unrecognised, and ignores it. Firefox logs every CSP-blocked eval as an error, even
+ * the one a library (zod) makes inside try/catch to detect whether eval is allowed; our CSP blocking
+ * it is intended.
  */
-export const isEngineNoise = (text: string) => /Viewport argument key "interactive-widget" not recognized/.test(text);
+export const isEngineNoise = (text: string) =>
+  /Viewport argument key "interactive-widget" not recognized/.test(text) ||
+  /Content-Security-Policy: The page.s settings blocked a JavaScript eval/.test(text);

@@ -20,7 +20,12 @@ async function serveFakeMcp(context: BrowserContext) {
     const req = route.request();
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
     const url = new URL(req.url());
-    if (url.pathname === '/authorize') return route.fulfill({ status: 302, headers: { location: fake.approve(url).toString() } });
+    if (url.pathname === '/authorize') {
+      // Consent, then back to the app. Playwright's WebKit cannot fulfill a route with a redirect
+      // status, so the redirect is a page that navigates (same result for the app's popup).
+      const to = fake.approve(url).toString();
+      return route.fulfill({ status: 200, contentType: 'text/html', body: `<!doctype html><script>location.replace(${JSON.stringify(to)})</script>` });
+    }
     const headers = { ...(await req.allHeaders()) };
     delete headers['content-length'];
     const res = await fake.fetch(new Request(req.url(), { method: req.method(), headers, body: req.method() === 'GET' ? undefined : (req.postData() ?? undefined) }));
