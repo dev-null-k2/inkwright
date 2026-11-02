@@ -175,7 +175,7 @@ export class AppNoteToolHost implements NoteToolHost {
     if (!n) throw new Error(`No note with id "${noteId}"`);
     const pages = await this.pagesOf(n);
     // Version history: the note as it was before the assistant changed it.
-    await snapshotBeforeAgentEdit(this.vault, noteId);
+    snapshotBeforeAgentEdit(this.vault, n, pages);
     const i = Math.max(0, Math.min(pages.length - 1, pageIndex ?? pages.length - 1));
     const page = pages[i]!;
     const b = contentBounds(page);

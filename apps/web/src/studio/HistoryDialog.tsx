@@ -64,7 +64,8 @@ export function HistoryDialog({ open, onClose, doc, vault, versioning, currentPa
     if (!snap || !versioning) return;
     const when = new Date(snap.info.takenAt).toLocaleString();
     if (!(await askConfirm('Restore this version?', `The note goes back to how it was on ${when}. How it is now is kept in its history.`, 'Restore'))) return;
-    await versioning.take('restore');
+    // Always recorded (even if identical to an earlier version) so "Before restoring" is easy to find.
+    await versioning.take('restore', true);
     doc.restoreVersion(snap.meta, snap.pages);
     await versioning.session.flush();
     toast({ text: `Restored the version from ${when}`, tone: 'success' });
