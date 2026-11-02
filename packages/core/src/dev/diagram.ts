@@ -589,8 +589,8 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 export interface DiagramColors {
   /** Lines and text (`#RRGGBB` or `#AARRGGBB`). */
   ink: string;
-  /** Node fill: the paper. */
-  paper: string;
+  /** Node fill: the paper. Absent: nodes are see-through (edges never enter them), for any paper colour. */
+  paper?: string;
 }
 
 const css = (c: string) => (/^#[0-9a-f]{8}$/i.test(c) ? argbToHexOpacity(c) : { rgb: c, opacity: 1 });
@@ -598,13 +598,13 @@ const css = (c: string) => (/^#[0-9a-f]{8}$/i.test(c) ? argbToHexOpacity(c) : { 
 /** The scene as SVG elements (a `<g>`), scaled by `scale` and placed at (x, y). */
 export function diagramSvgGroup(scene: DiagramScene, o: { x?: number; y?: number; scale?: number; colors: DiagramColors; font?: string }): string {
   const ink = css(o.colors.ink);
-  const paper = css(o.colors.paper);
+  const paper = o.colors.paper ? css(o.colors.paper) : null;
   const font = o.font ?? "Inter, 'Helvetica Neue', Arial, sans-serif";
   const out: string[] = [`<g class="diagram" transform="translate(${o.x ?? 0} ${o.y ?? 0}) scale(${o.scale ?? 1})" font-family="${esc(font)}">`];
   for (const p of scene.prims) {
     const op = (p.muted ? 0.62 : 1) * ink.opacity;
     if (p.t === 'path') {
-      const fill = p.fill === 'paper' ? `fill="${paper.rgb}"` : p.fill === 'ink' ? `fill="${ink.rgb}" fill-opacity="${op}"` : p.fill === 'wash' ? `fill="${ink.rgb}" fill-opacity="0.035"` : 'fill="none"';
+      const fill = p.fill === 'paper' ? (paper ? `fill="${paper.rgb}"` : 'fill="none"') : p.fill === 'ink' ? `fill="${ink.rgb}" fill-opacity="${op}"` : p.fill === 'wash' ? `fill="${ink.rgb}" fill-opacity="0.035"` : 'fill="none"';
       const stroke = p.stroke ? ` stroke="${ink.rgb}" stroke-opacity="${op}" stroke-width="${p.width ?? 1.2}" stroke-linejoin="round" stroke-linecap="round"${p.dash ? ' stroke-dasharray="5 4"' : ''}` : '';
       out.push(`<path d="${p.d}" ${fill}${stroke}/>`);
     } else {
@@ -658,7 +658,7 @@ export function makeDiagramObject(ir: DiagramIR, o: { id: string; x: number; y: 
 }
 
 /** SVG of a placed diagram (page SVG export, the vault's derived `pages/*.svg`). */
-export function diagramObjectSvg(d: DiagramObject, paper = '#FFFFFF'): string {
+export function diagramObjectSvg(d: DiagramObject): string {
   const scene = layoutDiagram(d.ir);
-  return diagramSvgGroup(scene, { x: d.x, y: d.y, scale: d.width / scene.width, colors: { ink: d.color, paper } });
+  return diagramSvgGroup(scene, { x: d.x, y: d.y, scale: d.width / scene.width, colors: { ink: d.color } });
 }
