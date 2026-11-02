@@ -2,6 +2,7 @@ import { argbToHexOpacity } from './ids.ts';
 import { formatMathNumber, graphGeometry } from './mathexpr.ts';
 import { cellText, colEdges, rowEdges, type GraphObject, type MathObject, type PageObject, type TableObject } from './objects.ts';
 import { formatNumber as f } from './outline.ts';
+import { diagramObjectSvg } from './dev/diagram.ts';
 
 /**
  * SVG for page objects (tables, solved results, graphs) — used by the page SVG export, the
@@ -21,6 +22,7 @@ export function objectsSvg(objects: readonly PageObject[] | undefined): string {
     if (o.type === 'table') parts.push(tableSvg(o));
     else if (o.type === 'math') parts.push(mathSvg(o));
     else if (o.type === 'graph') parts.push(graphSvg(o));
+    else if (o.type === 'diagram') parts.push(diagramObjectSvg(o));
   }
   parts.push('</g>');
   return parts.join('\n');

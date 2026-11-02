@@ -4,6 +4,7 @@ import type { ServerContext } from './context.ts';
 import { dailyReviewArgs, dailyReviewPrompt, summarizeNoteArgs, summarizeNotePrompt, todosFromNotesArgs, todosFromNotesPrompt } from './prompts.ts';
 import { NOTE_TEMPLATE, PACK_TEMPLATE, PAGE_SVG_TEMPLATE, listNoteResources, listPackResources, readNoteResource, readPackResource, readPageSvgResource } from './resources.ts';
 import { TOOLS, type ToolDef } from './tools.ts';
+import { DEV_TOOLS } from './dev/tools.ts';
 import { ActivitySessions } from './activity.ts';
 import { registerAgentTools, ownerOf } from './agent-tools.ts';
 import { ApprovalStore } from './approvals.ts';
@@ -19,7 +20,8 @@ const INSTRUCTIONS = `Inkstone is the user's handwriting notebook app. This serv
 - "What did I write today?" -> get_recent_handwriting.
 - Writes (create_note, append_to_note, update_note, create_notebook, trash_note) appear in the app on all devices and can be undone there (Settings › AI › Activity). Never trash notes without the user's go-ahead; trash is reversible with restore_note.
 - Long jobs (summarize_notebook, transcribe_pages, run_routine) may run as background tasks.
-- Background routines sometimes wait for the user's OK: list_pending_approvals shows them. Only approve (decide_approval) when the user says so.`;
+- Background routines sometimes wait for the user's OK: list_pending_approvals shows them. Only approve (decide_approval) when the user says so.
+- Code: code_search / code_symbol read repositories scanned into the vault; notes link code as [[code:path#Symbol]]; drift_report lists notes whose linked code changed; validate_diagram checks a diagram IR; get_runbook reads a runbook note's runnable blocks.`;
 
 /** OAuth scopes the server understands (OAuth mode). */
 export interface Scopes {
@@ -57,7 +59,7 @@ export function createServices(ctx: ServerContext, o: { ai?: AgentAI | null; tra
 
 /** Write tools available for this context (none in read-only mode). */
 export function activeTools(ctx: ServerContext): ToolDef[] {
-  return TOOLS.filter((t) => !t.write || !ctx.readOnly);
+  return [...TOOLS, ...DEV_TOOLS].filter((t) => !t.write || !ctx.readOnly);
 }
 
 function errorResult(e: unknown): CallToolResult {

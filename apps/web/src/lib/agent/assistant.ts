@@ -163,6 +163,12 @@ export async function prepareAgentRun(o: PrepareOptions): Promise<PreparedRun> {
     }
   }
 
+  // Developer module (dev/agent.ts): verified diagrams and the code graph, when it is on.
+  if (o.notes === 'write') {
+    const dev = await import('../../dev/agent.ts').then((m) => m.devAgentTools({ vault: o.vault, openDoc: o.openDoc ?? null, host })).catch(() => null);
+    if (dev) { tools.push(...dev.tools); sections.push(dev.prompt); }
+  }
+
   if (o.remember) {
     tools.push(createRememberTool(hub.memory));
     sections.push('When the user tells you a lasting preference or fact about themselves, you may call remember to propose saving it; they approve it in the app.');

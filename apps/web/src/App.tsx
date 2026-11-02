@@ -18,6 +18,7 @@ import { startCompiler } from './compiler/service.ts';
 import { CompilerDialogs } from './compiler/ui/dialogs.tsx';
 import { AgentDialogs } from './ui/agent/shared.tsx';
 import { useKnowledgeShortcuts } from './ui/knowledge/shortcuts.ts';
+import { DevGlobal } from './dev/DevGlobal.tsx';
 
 // The graph (three.js) loads only when opened, so it never slows the library or the editor.
 const GraphView = lazy(() => import('./graph/GraphView.tsx'));
@@ -121,6 +122,7 @@ export function App() {
       <Palette />
       <Prompts />
       <AgentDialogs />
+      <DevGlobal />
       <CompilerDialogs />
       <Toasts />
     </>

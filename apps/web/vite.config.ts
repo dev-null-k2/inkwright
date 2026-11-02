@@ -89,7 +89,11 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), ...(single ? [viteSingleFile({ removeViteModuleLoader: true })] : native ? [csp(true)] : [serviceWorker(), csp(false)])],
     publicDir: single ? false : 'public',
     // The single-file preview leaves the on-device AI runtime out (see src/ai/spawn-unavailable.ts).
-    resolve: single ? { alias: [{ find: /^\.\.\/ai\/spawn\.ts$/, replacement: fileURLToPath(new URL('./src/ai/spawn-unavailable.ts', import.meta.url)) }] } : undefined,
+    // It also leaves out the developer module's grammars and SQLite (src/dev/wasm-assets-unavailable.ts).
+    resolve: single ? { alias: [
+      { find: /^\.\.\/ai\/spawn\.ts$/, replacement: fileURLToPath(new URL('./src/ai/spawn-unavailable.ts', import.meta.url)) },
+      { find: /^\.\/wasm-assets\.ts$/, replacement: fileURLToPath(new URL('./src/dev/wasm-assets-unavailable.ts', import.meta.url)) },
+    ] } : undefined,
     define: {
       __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '1.0.0'),
       __BUILD_TARGET__: JSON.stringify(single ? 'single' : 'web'),

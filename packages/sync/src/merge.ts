@@ -303,7 +303,7 @@ export function mergePage(base: PageInk | null, local: PageInk, remote: PageInk,
 
 // ---- Notes -------------------------------------------------------------------------------------
 
-const NOTE_SPECIAL = new Set(['id', 'pageIds', 'tags', 'recordings', 'trashedAt', 'createdAt', 'updatedAt', 'formatVersion', 'forms']);
+const NOTE_SPECIAL = new Set(['id', 'pageIds', 'tags', 'recordings', 'trashedAt', 'createdAt', 'updatedAt', 'formatVersion', 'forms', 'codeRefs']);
 
 export function mergeNote(base: NoteMeta | null, local: NoteMeta, remote: NoteMeta, opts: MergeOptions = {}): NoteMeta {
   const eq = new Eq();
@@ -345,6 +345,14 @@ export function mergeNote(base: NoteMeta | null, local: NoteMeta, remote: NoteMe
       if (Object.keys(values).length) forms[asset] = values;
     }
     out.forms = forms;
+  }
+
+  // Code-link baselines (docs/DEVELOPERS.md) merge per link: reviewing one link on a device and
+  // another elsewhere keeps both reviews; the newer note wins a link both changed.
+  if (local.codeRefs !== undefined || remote.codeRefs !== undefined) {
+    const refs: Record<string, unknown> = {};
+    mergeFields(eq, base ? ((base.codeRefs ?? {}) as Record<string, unknown>) : null, (local.codeRefs ?? {}) as Record<string, unknown>, (remote.codeRefs ?? {}) as Record<string, unknown>, new Set(), newer, refs);
+    if (Object.keys(refs).length) out.codeRefs = refs;
   }
 
   // Trash: a one-sided trash/restore wins. Without a base we can't tell a restore from "never

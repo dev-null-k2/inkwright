@@ -1,7 +1,8 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState, type KeyboardEvent, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
-import { FilePlus2, FileText, Hash } from 'lucide-react';
-import { fuzzyScore, linkTrigger, suggestNotes, type LinkTrigger, type NoteMeta } from '@inkstone/core';
+import { Code2, FilePlus2, FileText, Hash } from 'lucide-react';
+import { formatCodeLink, fuzzyScore, linkTrigger, suggestNotes, type CodeSymbol, type LinkTrigger, type NoteMeta } from '@inkstone/core';
+import { suggestCode } from '../../dev/suggest.ts';
 import { useApp } from '../../state/app.ts';
 import { argbCss } from './color.ts';
 import { cx } from '../primitives.tsx';
@@ -15,7 +16,8 @@ type Item =
   | { kind: 'note'; note: NoteMeta; notebook?: { name: string; color: string } }
   | { kind: 'create'; title: string }
   | { kind: 'page'; note: NoteMeta; page: number }
-  | { kind: 'tag'; tag: string; count: number; isNew?: boolean };
+  | { kind: 'tag'; tag: string; count: number; isNew?: boolean }
+  | { kind: 'code'; symbol: CodeSymbol };
 
 /** Caret position inside a textarea, in viewport px, via a mirror element styled like it. */
 export function caretPoint(ta: HTMLTextAreaElement, pos: number): { x: number; y: number; h: number } {
@@ -86,6 +88,7 @@ export const LinkSuggest = forwardRef<SuggestHandle, { taRef: RefObject<HTMLText
       if (q && !notes.some((n) => n.title.trim().toLowerCase() === q.toLowerCase())) out.push({ kind: 'create', title: q });
       return out;
     }
+    if (t.kind === 'code') return suggestCode(t.query).map((symbol) => ({ kind: 'code' as const, symbol }));
     if (t.kind === 'page') {
       const target = notes.find((n) => n.title.trim().toLowerCase() === t.title.trim().toLowerCase());
       if (!target) return [];
@@ -111,6 +114,7 @@ export const LinkSuggest = forwardRef<SuggestHandle, { taRef: RefObject<HTMLText
     let insert: string;
     if (it.kind === 'tag') insert = `#${it.tag} `;
     else if (it.kind === 'page') insert = `[[${it.note.title}#Page ${it.page}]]`;
+    else if (it.kind === 'code') insert = formatCodeLink({ path: it.symbol.file, symbol: it.symbol.qualified });
     else insert = `[[${it.kind === 'note' ? it.note.title : it.title}]]`;
     const rest = it.kind !== 'tag' && closes ? after.slice(2) : after;
     const next = value.slice(0, trigger.t.start) + insert + rest;
@@ -134,7 +138,7 @@ export const LinkSuggest = forwardRef<SuggestHandle, { taRef: RefObject<HTMLText
   const flip = below + 280 > window.innerHeight;
   const style = { left: Math.max(8, Math.min(pos.x - 8, window.innerWidth - 328)), ...(flip ? { bottom: window.innerHeight - pos.y + 6 } : { top: below }) };
   return createPortal(
-    <div className="link-suggest" role="listbox" aria-label={trigger.t.kind === 'tag' ? 'Tags' : 'Link to note'} style={style} onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+    <div className="link-suggest" role="listbox" aria-label={trigger.t.kind === 'tag' ? 'Tags' : trigger.t.kind === 'code' ? 'Link to code' : 'Link to note'} style={style} onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}>
       {items.map((it, i) => (
         <button key={i} type="button" role="option" aria-selected={i === active} className={cx('link-suggest-item', i === active && 'is-on')}
           onMouseEnter={() => setActive(i)} onMouseDown={(e) => e.preventDefault()} onClick={() => apply(it)}>
@@ -147,6 +151,7 @@ export const LinkSuggest = forwardRef<SuggestHandle, { taRef: RefObject<HTMLText
           )}
           {it.kind === 'create' && (<><span className="ls-icon"><FilePlus2 size={14} /></span><span className="ls-title">Create “{it.title}”</span><span className="ls-meta">New note</span></>)}
           {it.kind === 'page' && (<><span className="ls-icon"><FileText size={14} /></span><span className="ls-title">Page {it.page}</span><span className="ls-meta">{it.note.title}</span></>)}
+          {it.kind === 'code' && (<><span className="ls-icon"><Code2 size={14} /></span><span className="ls-title">{it.symbol.qualified}</span><span className="ls-meta">{it.symbol.kind} · {it.symbol.file}</span></>)}
           {it.kind === 'tag' && (<><span className="ls-icon"><Hash size={14} /></span><span className="ls-title">{it.tag}</span><span className="ls-meta">{it.count === 1 ? '1 note' : `${it.count} notes`}</span></>)}
         </button>
       ))}

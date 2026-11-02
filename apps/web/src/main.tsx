@@ -15,6 +15,7 @@ import './styles/localai.css';
 import './styles/listen.css';
 import './styles/knowledge.css';
 import './studio/studio.css';
+import './dev/dev.css';
 import './compiler/compiler.css';
 import './styles/trust.css';
 import { App } from './App.tsx';

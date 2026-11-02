@@ -39,7 +39,8 @@ What clients get:
   `get_recent_handwriting`, `list_notebooks`, `create_note`, `append_to_note`, `update_note`,
   `create_notebook`, `trash_note`, `restore_note`, and the long-running `summarize_notebook`,
   `transcribe_pages`, `run_routine` (plus `list_routines`), and `list_pending_approvals` /
-  `decide_approval`.
+  `decide_approval`. With code scanned into the vault (docs/DEVELOPERS.md): `code_search`,
+  `code_symbol`, `drift_report`, `get_runbook` and `validate_diagram` (all read-only).
 - **Tasks** (extension `io.modelcontextprotocol/tasks`): clients that support it get a task
   for the long-running tools at once, with progress in the task's status message, approvals as
   `input_required`, and cancel. Other clients get the same work done inline.
