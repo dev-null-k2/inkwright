@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { circle, line, newNote, openApp, pen, pointer, scribble, strokes, texts, word } from './helpers.ts';
+import { circle, line, modKey, newNote, openApp, pen, pointer, scribble, strokes, texts, word } from './helpers.ts';
 
 test.describe('writing', () => {
   test.beforeEach(async ({ page }) => { await openApp(page); await newNote(page); });
@@ -51,9 +51,10 @@ test.describe('writing', () => {
   test('undo and redo with keyboard shortcuts', async ({ page }) => {
     await pen(page, word(200, 220, 160));
     await pen(page, word(200, 300, 160));
-    await page.keyboard.press('Control+z');
+    const mod = await modKey(page);
+    await page.keyboard.press(`${mod}+z`);
     expect(await strokes(page)).toHaveLength(1);
-    await page.keyboard.press('Control+Shift+z');
+    await page.keyboard.press(`${mod}+Shift+z`);
     expect(await strokes(page)).toHaveLength(2);
   });
 
