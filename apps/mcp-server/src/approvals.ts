@@ -119,7 +119,9 @@ export class ApprovalStore {
 /** Approver for unattended runs: records the question as a pending approval and moves on. */
 export function deferringApprover(store: ApprovalStore, onDeferred?: (a: PendingApproval) => void): Approver {
   return async (req) => {
-    onDeferred?.(await store.add(req));
+    // (Not `onDeferred?.(await store.add(req))`: an optional call skips evaluating its arguments.)
+    const a = await store.add(req);
+    onDeferred?.(a);
     return 'deferred';
   };
 }
