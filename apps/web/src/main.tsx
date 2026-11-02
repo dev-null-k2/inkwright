@@ -21,6 +21,7 @@ import './styles/platform.css';
 import './styles/trust.css';
 import './inkactions/ink-actions.css';
 import './peer/peer.css';
+import './styles/polish.css';
 import { App } from './App.tsx';
 import { BUILD_TARGET, isNative } from './platform/env.ts';
 import { handleOAuthRedirect } from './lib/agent/oauth-callback.ts';

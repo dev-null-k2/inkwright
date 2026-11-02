@@ -1,0 +1,21 @@
+/*
+ * Polish pass: the editor's ••• menu with sub-sheets, Settings groups and search, the welcome
+ * flow and the device check. Duan tokens only; motion stays small and stops for reduced motion.
+ */
+
+/* ---------- Menu with sub-sheets (ui/MenuTree.tsx) ---------- */
+.more-pop { min-width: 268px; }
+.menu-tree { animation: menu-level-in 0.16s var(--ease-out); }
+.menu-tree.is-sub { animation-name: menu-sub-in; }
+@keyframes menu-level-in { from { opacity: 0.4; transform: translateX(-6px); } }
+@keyframes menu-sub-in { from { opacity: 0.4; transform: translateX(8px); } }
+.menu-chevron { display: grid; place-items: center; color: var(--ink-3); margin-right: -4px; }
+.menu-item.is-branch .menu-hint { max-width: 110px; }
+.menu-back { color: var(--ink-2); min-height: 40px; }
+.menu-back + .menu-item { margin-top: 2px; }
+.menu-back .menu-icon { color: var(--ink-3); }
+.menu-sheet-title { font-family: var(--font-title); font-weight: 520; font-size: var(--t-lg); color: var(--ink); }
+.menu-tree.is-sub .menu-back { border-bottom: 1px solid var(--line); border-radius: 9px 9px 0 0; margin-bottom: 4px; }
+@media (prefers-reduced-motion: reduce) {
+  .menu-tree, .menu-tree.is-sub { animation: none; }
+}
