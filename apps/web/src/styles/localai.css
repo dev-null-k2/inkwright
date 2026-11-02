@@ -1,0 +1,123 @@
+/* ==========================================================================================
+ * Search everything, Ask, on-device AI. Duan tokens only; jade (--iron) marks "you are here"
+ * (the active result, the flashed region), cinnabar only for errors.
+ * ========================================================================================== */
+
+/* ---- Palette ---------------------------------------------------------------------------- */
+.pal-scrim {
+  position: fixed; inset: 0; z-index: 80;
+  background: color-mix(in srgb, var(--desk) 55%, transparent);
+  backdrop-filter: blur(2px);
+  display: flex; justify-content: center; align-items: flex-start;
+  padding: calc(var(--safe-top) + 10vh) 16px 16px;
+}
+.palette {
+  width: min(680px, 100%); max-height: min(72vh, 680px);
+  display: flex; flex-direction: column;
+  background: var(--raised); color: var(--ink);
+  border-radius: var(--r-panel); box-shadow: var(--float-shadow);
+  overflow: hidden; animation: pop-in 0.14s var(--ease-out);
+}
+.pal-top { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 16px; border-bottom: 1px solid var(--line); color: var(--ink-2); }
+.pal-input {
+  flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink);
+  font: inherit; font-size: var(--t-lg); padding: 8px 0;
+}
+.pal-input::placeholder { color: var(--ink-3); }
+.pal-top .segmented button { min-height: 30px; padding: 0 10px; }
+.pal-close { flex: none; }
+.pal-list { overflow-y: auto; padding: 6px; flex: 1; overscroll-behavior: contain; }
+.pal-group { padding: 10px 10px 4px; font-size: var(--t-xs); font-weight: 650; color: var(--ink-3); letter-spacing: 0.01em; }
+.pal-row, .pal-source {
+  display: flex; align-items: flex-start; gap: 12px; width: 100%; text-align: left;
+  border: 0; background: transparent; color: inherit; font: inherit;
+  padding: 9px 10px; border-radius: 10px; min-height: var(--tap);
+}
+.pal-row.is-active { background: var(--iron-soft); }
+.pal-row:focus-visible, .pal-source:focus-visible { outline: 2px solid var(--iron); outline-offset: -2px; }
+.pal-source:hover { background: var(--chrome); }
+.pal-icon { flex: none; width: 20px; display: grid; place-items: center; color: var(--ink-2); padding-top: 2px; }
+.pal-row.is-active .pal-icon { color: var(--iron); }
+.pal-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pal-title { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-weight: 560; }
+.pal-note { font-family: var(--font-title); font-size: var(--t-md); }
+.pal-page { font-size: var(--t-xs); font-weight: 500; color: var(--ink-3); }
+.pal-detail { font-size: var(--t-sm); color: var(--ink-2); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.pal-hint { flex: none; font-size: var(--t-xs); color: var(--ink-3); padding-top: 3px; }
+.pal-empty { margin: 10px; color: var(--ink-2); font-size: var(--t-sm); }
+.pal-foot {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 8px 16px; border-top: 1px solid var(--line);
+  font-size: var(--t-xs); color: var(--ink-3);
+}
+.pal-keys { margin-left: auto; }
+@media (pointer: coarse) { .pal-keys { display: none; } }
+.link-btn { border: 0; background: none; padding: 0; color: var(--iron); font: inherit; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.link-btn:hover { text-decoration: underline; }
+
+/* Ask */
+.pal-ask { display: flex; flex-direction: column; min-height: 0; flex: 1; overflow-y: auto; }
+.pal-ask-intro { padding: 18px 18px 20px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.pal-ask-intro p { margin: 0; }
+.pal-answer { padding: 16px 18px 6px; }
+.pal-answer-text { margin: 0; white-space: pre-wrap; line-height: 1.55; font-size: var(--t-md); }
+.pal-cite {
+  display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; margin: 0 2px;
+  border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: var(--chrome);
+  color: var(--iron); font: inherit; font-size: 11.5px; font-weight: 700; vertical-align: 2px; cursor: pointer;
+}
+.pal-cite:hover, .pal-cite:focus-visible { background: var(--iron-soft); border-color: var(--iron); outline: 0; }
+.pal-sources { list-style: none; margin: 4px 0 0; padding: 4px 6px 8px; border-top: 1px solid var(--line); }
+.pal-cite-n {
+  flex: none; width: 22px; height: 22px; border-radius: var(--r-pill); display: grid; place-items: center;
+  background: var(--chrome-2); color: var(--ink-2); font-size: 11.5px; font-weight: 700; margin-top: 1px;
+}
+.pal-error { margin: 14px 18px; color: var(--seal); }
+
+@media (max-width: 699px) {
+  .pal-scrim { padding: calc(var(--safe-top) + 8px) 8px 8px; }
+  .palette { max-height: calc(100dvh - var(--safe-top) - 16px); border-radius: 16px; }
+  .pal-top { flex-wrap: wrap; padding-left: 14px; }
+  .pal-top .pal-input { flex-basis: calc(100% - 80px); }
+}
+
+/* ---- Flashed region in the editor (search result / citation) ------------------------------- */
+.ink-flash {
+  position: absolute; pointer-events: none; border-radius: 8px;
+  border: 2px solid var(--iron);
+  background: var(--iron-soft);
+  box-shadow: 0 0 0 6px var(--iron-soft);
+  animation: ink-flash-in 0.5s var(--ease-out) 2;
+  transition: opacity 0.45s ease;
+}
+.ink-flash.is-fading { opacity: 0; }
+@keyframes ink-flash-in { 0% { box-shadow: 0 0 0 0 var(--iron-soft); } 100% { box-shadow: 0 0 0 10px transparent; } }
+@media (prefers-reduced-motion: reduce) { .ink-flash { animation: none; } }
+
+/* ---- On-device AI: offer card, settings rows ---------------------------------------------- */
+.lai-offer { display: flex; flex-direction: column; gap: 10px; padding: 12px 0 14px; border-bottom: 1px solid var(--line); width: 100%; }
+.lai-offer.is-compact { border-bottom: 0; padding-top: 0; }
+.lai-offer-head { display: flex; gap: 10px; align-items: flex-start; color: var(--ink-2); }
+.lai-offer-head p { margin: 0; }
+.lai-offer-title { font-family: var(--font-title); font-size: var(--t-lg); font-weight: 560; color: var(--ink); }
+.lai-offer-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.lai-offer-actions p { margin: 0; }
+.lai-note { margin: 0 0 8px; }
+.lai-progress { display: flex; align-items: center; gap: 10px; width: 100%; flex-wrap: wrap; }
+.lai-bar { flex: 1; min-width: 120px; height: 6px; border-radius: var(--r-pill); background: var(--chrome-2); overflow: hidden; }
+.lai-bar > span { display: block; height: 100%; background: var(--ink); border-radius: inherit; transition: width 0.2s linear; }
+.lai-progress-text { font-size: var(--t-xs); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.lai-error { margin: 0; color: var(--seal); font-size: var(--t-sm); }
+.lai-device { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--line); color: var(--ink-2); }
+.lai-device p { margin: 0; }
+.lai-device p:first-child { color: var(--ink); font-weight: 560; }
+.lai-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.lai-row:last-child { border-bottom: 0; }
+.lai-row-main { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 6px; }
+.lai-row-main select { max-width: 100%; }
+.lai-row .muted { font-size: var(--t-sm); }
+.lai-ok { display: inline-flex; align-items: center; gap: 4px; font-size: var(--t-sm); color: var(--moss); font-weight: 600; }
+.lai-help { font-size: var(--t-sm); color: var(--ink-2); }
+.lai-row.is-blocked .prov-name::after { content: ' · needs a setting'; font-weight: 500; color: var(--ochre); }
+.lai-who { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 12px 4px 0; }
+.set-card .lai-who { margin: 4px 0 12px; }

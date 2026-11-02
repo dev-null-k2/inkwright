@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft, Camera, CloudUpload, Undo2, Redo2, Download, FileImage, FileText, FileType2, Files, Image as ImageIcon, Layers,
-  AudioLines, Mic, MoreHorizontal, Pause, Play, Sparkles, Square, Tag, Trash2, Maximize2, FilePlus2, Copy, Scan,
+  AudioLines, Mic, MoreHorizontal, Pause, Play, Sparkles, Square, Tag, Trash2, Maximize2, FilePlus2, Copy, Scan, Search,
+  Signature, FileUp,
 } from 'lucide-react';
 import { newId, PAGE_SIZE_PRESETS, pagePaper, pageSizeOf, type ImageItem, type InkStroke, type TextBox } from '@inkstone/core';
 import { InkEngine, type SelectionInfo, type Tool, type ToolState } from '../canvas/engine.ts';
@@ -27,6 +28,10 @@ import { AIPanel, type AIRequest } from '../ui/AIPanel.tsx';
 import { IconButton, Menu, Popover, cx, useMediaQuery } from '../ui/primitives.tsx';
 import { askConfirm, askText } from '../ui/prompts.tsx';
 import { isAIReady, transcribePage } from '../lib/ai.ts';
+import { FillLayer, FilledExportDialog, noteHasPdf } from '../fill/FillLayer.tsx';
+import { insertFilesIntoNote, useFileDrop } from '../lib/openFiles.ts';
+import { useFocusRequests } from '../lib/focus.ts';
+import { openPalette, usePaletteActions } from '../lib/palette.ts';
 
 declare const __E2E__: boolean;
 /** Test builds (`vite build --mode e2e`) expose the document to end-to-end tests; releases never do. */
@@ -69,6 +74,9 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   const live = useRef<{ seekTo: (t: number) => void; editText: (req: { pageIndex: number; box: TextBox; isNew: boolean }) => void }>(null!);
   const latestText = useRef<TextBox | null>(null);
   const btn = { more: useRef<HTMLButtonElement>(null) };
+  // Fill & sign (PDF notes): the form layer and its export dialog.
+  const [fill, setFill] = useState(false);
+  const [fillExport, setFillExport] = useState(false);
 
   // ---- Open the note ---------------------------------------------------------------------------
   useEffect(() => {
@@ -87,6 +95,12 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
 
   const doc = session?.doc ?? null;
   useEffect(() => (doc ? doc.subscribe(() => bump((x) => x + 1)) : undefined), [doc]);
+
+  // Files dropped onto the note go into it (PDF pages, images, text).
+  const [rootEl, setRootEl] = useState<HTMLDivElement | null>(null);
+  const dropping = useFileDrop(rootEl, useCallback((files: File[], e: DragEvent) => {
+    if (vault && doc && engine && host.current) void insertFilesIntoNote(vault, doc, engine, files, { clientX: e.clientX, clientY: e.clientY, host: host.current });
+  }, [vault, doc, engine]));
 
   const toolState = useCallback((t: Tool): ToolState => {
     const s = useSettings.getState();
@@ -208,6 +222,19 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }); // re-bind each render: handlers close over current state
+
+  // Search results and AI citations land here: scroll to the cited words and flash them.
+  useFocusRequests(engine, noteId);
+  usePaletteActions('editor', [
+    { id: 'export-pdf', label: 'Export PDF', keywords: 'save share print', hint: `${modKey}P`, icon: <FileType2 size={16} />, run: () => void doExport('pdf') },
+    { id: 'export-md', label: 'Export Markdown', keywords: 'save share text', icon: <FileText size={16} />, run: () => void doExport('md') },
+    { id: 'export-png', label: 'Export page as image', keywords: 'png picture save share', icon: <FileImage size={16} />, run: () => void doExport('png') },
+    { id: 'feel', label: 'Writing sound & feel', keywords: 'sound haptics volume paper texture', icon: <AudioLines size={16} />, run: () => setTimeout(() => setMenu('feel'), 0) },
+    { id: 'pages', label: 'Pages', keywords: 'thumbnails overview', icon: <Layers size={16} />, run: () => setPanel('pages') },
+    { id: 'assistant', label: 'Open assistant', keywords: 'ai chat help', icon: <Sparkles size={16} />, run: () => setPanel('ai') },
+    { id: 'insert-pdf', label: 'Insert PDF pages', keywords: 'import annotate', icon: <FileType2 size={16} />, run: () => void insertPdfPages() },
+    { id: 'fit', label: 'Fit to width', hint: `${modKey}0`, icon: <Maximize2 size={16} />, run: () => engine?.fitWidth() },
+  ]);
 
   const pasteClipboard = async () => {
     const clip = inkClipboard;
@@ -438,7 +465,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   const sidePanel = panel && doc && engine && vault;
 
   return (
-    <div ref={root} className={cx('editor', wide && 'is-wide', panel && 'has-panel')}>
+    <div ref={(el) => { root.current = el; setRootEl(el); }} className={cx('editor', wide && 'is-wide', panel && 'has-panel')}>
       <header className="ed-top">
         <IconButton label="Back to library" onClick={() => navigate({ name: 'library' })}><ArrowLeft size={20} /></IconButton>
         <button type="button" className="ed-title" onClick={async () => { if (!doc) return; const t = await askText('Rename note', 'Title', doc.meta.title, 'Rename'); if (t) doc.rename(t); }}>
@@ -477,6 +504,11 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
           {editingText && editingScreen && engine && (
             <TextOverlay key={editingText.box.id} box={editingText.box} screen={editingScreen} zoom={engine.zoom} onChange={(b) => { latestText.current = b; }} onDone={commitText} />
           )}
+          {doc && engine && vault && session && host.current && noteHasPdf(doc) && (
+            <FillLayer doc={doc} engine={engine} vault={vault} session={session} host={host.current} active={fill} onActive={setFill}
+              sel={sel} onTool={setTool} onExport={() => setFillExport(true)} view={view} />
+          )}
+          {dropping && <div className="drop-hint" aria-live="polite"><FileUp size={22} /> Drop to add to this note</div>}
           {latched && <div className="latch-pill" role="status">{settings.input.buttonAction === 'lasso' ? 'Lasso' : settings.input.buttonAction === 'highlighter' ? 'Highlighter' : 'Eraser'} on — press the pen button to switch back</div>}
           {clips.length > 0 && (
             <div className="audio-bar" role="region" aria-label="Recordings">
@@ -511,6 +543,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
         </div>
         {sidePanel && panel === 'pages' && (
           <PagesPanel doc={doc!} current={view.pageIndex} assets={vault!.assets} onGo={(i) => engine!.scrollToPage(i)} onClose={() => setPanel(null)}
+            vault={vault!} onOpenNote={(id) => void session?.flush().then(() => navigate({ name: 'editor', noteId: id }))}
             onDelete={async (i) => { if (await askConfirm(`Delete page ${i + 1}?`, 'The page and its ink are removed from this note.', 'Delete page', true)) doc!.deletePage(i); }} />
         )}
         {sidePanel && panel === 'ai' && (
@@ -560,11 +593,16 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
           { label: 'PNG image', icon: <FileImage size={16} />, hint: 'This page', onClick: () => void doExport('png') },
           { label: 'SVG', icon: <FileImage size={16} />, hint: 'This page', onClick: () => void doExport('svg') },
           { label: 'Markdown', icon: <FileText size={16} />, hint: 'Text + recognized handwriting', onClick: () => void doExport('md') },
+          ...(noteHasPdf(doc) ? [{ label: 'Filled form', icon: <Signature size={16} />, hint: 'The original document, filled in', onClick: () => setFillExport(true) }] : []),
         ]} />
       </Popover>
 
+      {doc && vault && session && <FilledExportDialog open={fillExport} onClose={() => setFillExport(false)} doc={doc} vault={vault} session={session} />}
+
       <Popover anchor={btn.more.current} open={menu === 'more'} onClose={() => setMenu(null)} title="More" placement="below">
         <Menu onClose={() => setMenu(null)} items={[
+          ...(noteHasPdf(doc) ? [{ label: fill ? 'Stop filling in' : 'Fill & sign', icon: <Signature size={16} />, onClick: () => setFill(!fill) }] : []),
+          { label: 'Search everything', icon: <Search size={16} />, hint: `${modKey}K`, onClick: () => openPalette({ query: '' }) },
           { label: 'Pages', icon: <Layers size={16} />, hint: doc && doc.pageCount > 1 ? `${doc.pageCount}` : undefined, onClick: () => setPanel('pages') },
           { label: 'Paper', icon: <Files size={16} />, onClick: () => setTimeout(() => setPaperOpen(true), 0) },
           { label: 'Writing sound & feel', icon: <AudioLines size={16} />, hint: settings.feel.sound ? `${Math.round(settings.feel.soundVolume * 100)}%` : 'Off', onClick: () => setTimeout(() => setMenu('feel'), 0) },

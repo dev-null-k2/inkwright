@@ -179,7 +179,7 @@ export class MemoryNoteToolHost implements NoteToolHost {
     return note;
   }
 
-  async appendText(noteId: string, text: string, pageIndex?: number): Promise<{ noteId: string; pageIndex: number }> {
+  async appendText(noteId: string, text: string, pageIndex?: number): Promise<{ noteId: string; pageIndex: number; pageId: string; textId: string; addedPage?: boolean }> {
     const note = await this.note(noteId);
     if (!note) throw new Error(`No note with id "${noteId}". Use search_notes or list_notes to find the right id.`);
     const pages = await this.vault.readPages(note);
@@ -203,7 +203,7 @@ export class MemoryNoteToolHost implements NoteToolHost {
     pages[idx] = updated;
     await this.vault.saveNote(next, pages, { changedPageIds: [updated.id] });
     await this.reindex(note.id);
-    return { noteId: note.id, pageIndex: idx };
+    return { noteId: note.id, pageIndex: idx, pageId: updated.id, textId: box.id, ...(full && pageIndex === undefined ? { addedPage: true } : {}) };
   }
 
   async updateNote(id: string, patch: NotePatch): Promise<NoteInfo | null> {

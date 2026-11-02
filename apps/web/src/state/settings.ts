@@ -16,8 +16,12 @@ export interface AIProviderConfig {
   azureApiVersion?: string;
 }
 
+export type Palette = 'duan' | 'aizome' | 'celadon' | 'sumi';
+
 export interface Settings {
   theme: 'system' | 'light' | 'dark';
+  /** Colour palette: Duan (default), Aizome, Celadon or Sumi (e-ink / high contrast). */
+  palette: Palette;
   feel: { haptics: boolean; hapticStrength: number; sound: boolean; soundVolume: number };
   input: Omit<InputPrefs, 'highlighter'> & { buttonAction: ButtonAction };
   tray: PenPreset[];
@@ -59,6 +63,7 @@ export const HIGHLIGHT_PALETTE = ['#FFFFD54A', '#FF9BE58A', '#FF8FD3F5', '#FFF7A
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
+  palette: 'duan',
   feel: { haptics: true, hapticStrength: 0.8, sound: true, soundVolume: 0.5 },
   input: { fingerAction: 'scroll', buttonAction: 'eraser', scratchToErase: true, holdToShape: true, tapGestures: true, pressureCurve: 1, instantInk: true },
   tray: DEFAULT_TRAY,

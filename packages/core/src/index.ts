@@ -12,3 +12,5 @@ export * from './export.ts';
 export * from './document.ts';
 export * from './feel.ts';
 export * from './search.ts';
+export * from './pagetools.ts';
+export * from './memory.ts';

@@ -9,11 +9,17 @@ import { Settings } from './screens/Settings.tsx';
 import { Prompts } from './ui/prompts.tsx';
 import { Toasts } from './ui/Toasts.tsx';
 import { BrandMark } from './ui/Brand.tsx';
+import { Palette } from './ui/Palette.tsx';
+import { attachMemory } from './lib/memory.ts';
 import { isNative } from './platform/env.ts';
+import { initAgentHub } from './lib/agent/hub.ts';
+import { startAgents } from './lib/agent/routines.ts';
+import { AgentDialogs } from './ui/agent/shared.tsx';
 
 export function App() {
   const { ready, route, error, setVault, refresh, navigate } = useApp();
   const theme = useSettings((s) => s.theme);
+  const palette = useSettings((s) => s.palette);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -22,12 +28,22 @@ export function App() {
   }, [theme]);
 
   useEffect(() => {
+    const root = document.documentElement;
+    if (!palette || palette === 'duan') root.removeAttribute('data-palette');
+    else root.setAttribute('data-palette', palette);
+    // Status bar / browser chrome follows the desk colour.
+    const desk = getComputedStyle(root).getPropertyValue('--desk').trim();
+    if (desk) document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', desk));
+  }, [palette, theme]);
+
+  useEffect(() => {
     let alive = true;
     (async () => {
       try {
         const v = await AppVault.open();
         if (!alive) return;
         setVault(v);
+        attachMemory(v); // before the first index build, so search-everything starts complete
         await refresh();
         if (location.hash === '#new') {
           // App shortcut / home-screen action: start writing immediately.
@@ -35,10 +51,15 @@ export function App() {
           const id = await createNote();
           navigate(id ? { name: 'editor', noteId: id } : { name: 'library' }, { replace: true });
         } else navigate(routeFromHash(location.hash), { replace: true });
+        // Files the system opened Inkstone with (desktop file handler, share target, Android "Open with").
+        void import('./lib/openFiles.ts').then((m) => m.installOpenHandlers());
         if (!v.persistent) useApp.getState().toast({ text: 'This browser blocks storage here, so notes last for this session only. Sign in to sync, or open Inkstone in its own tab.', tone: 'error' });
         await v.buildIndex();
         await v.vault.purgeTrash();
         startSyncLoop();
+        // Assistant: activity log, memory, skills, routines (run while open) and connected apps.
+        // A problem here must never keep the notes from opening.
+        await initAgentHub(v).then(() => { void startAgents(v).catch((e) => console.warn('Routines could not start', e)); }, (e) => console.warn('Assistant features could not start', e));
       } catch (e) {
         console.error(e);
         useApp.setState({ error: (e as Error).message });
@@ -82,7 +103,9 @@ export function App() {
       {route.name === 'library' && <Library />}
       {route.name === 'editor' && <Editor key={route.noteId} noteId={route.noteId} initialPage={route.page} />}
       {route.name === 'settings' && <Settings section={route.section} />}
+      <Palette />
       <Prompts />
+      <AgentDialogs />
       <Toasts />
     </>
   );

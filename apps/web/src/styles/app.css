@@ -489,3 +489,28 @@ input[type='range'] { accent-color: var(--ink); width: 100%; }
 .feel-surface { display: flex; flex-direction: column; gap: 8px; padding: 8px 0 4px; border-top: 1px solid var(--line); }
 .feel-try { align-self: flex-start; gap: 6px; margin-top: 4px; }
 .set-card > .feel-panel { padding: 6px 0; }
+
+/* ---------- Notebook covers (suminagashi) ---------- */
+.nb-cover { display: block; border-radius: 5px; box-shadow: var(--sheet-shadow); }
+.nb-mini { display: grid; place-items: center; width: 18px; flex: none; }
+.nb-mini .nb-cover { border-radius: 2px; box-shadow: 0 0 0 0.5px var(--line-strong); }
+.lib-cover { align-self: center; }
+.lib-cover .nb-cover { border-radius: 3px; }
+.nb-shelf { display: flex; gap: 22px; overflow-x: auto; padding: 4px 4px 18px; margin: -4px -4px 10px; scrollbar-width: none; }
+.nb-shelf::-webkit-scrollbar { display: none; }
+.nb-shelf-item { flex: none; display: flex; flex-direction: column; gap: 4px; width: 104px; border: 0; padding: 0; background: transparent; text-align: left; color: var(--ink); }
+.nb-shelf-item .nb-cover { transition: transform 0.18s var(--ease-out); }
+.nb-shelf-item:hover .nb-cover { transform: translateY(-3px); }
+.nb-shelf-name { margin-top: 6px; font-family: var(--font-title); font-size: var(--t-md); font-weight: 520; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nb-shelf-count { font-size: var(--t-xs); color: var(--ink-3); }
+.ink-ripple { display: block; margin: 0 auto 6px; }
+
+/* ---------- Palette picker ---------- */
+.palette-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; margin: 8px 0 12px; }
+.palette-tile { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 12px 12px; border: 1.5px solid transparent; border-radius: 14px; background: transparent; text-align: left; color: var(--ink); }
+.palette-tile:hover { background: var(--chrome-2); }
+.palette-tile.is-on { border-color: var(--ink); }
+.palette-tile.is-on::after { content: ''; position: absolute; right: 10px; top: 10px; width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle, var(--eye-core) 0 1.7px, var(--eye) 2.2px); }
+.palette-swatches { display: flex; gap: 6px; margin-bottom: 6px; }
+.palette-name { font-family: var(--font-title); font-size: var(--t-lg); font-weight: 520; }
+.palette-hint { font-size: var(--t-xs); color: var(--ink-3); }
