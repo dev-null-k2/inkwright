@@ -7,6 +7,7 @@ import { ArrowLeft, ChevronRight } from 'lucide-react';
 import { hostAgentViews, useAgent } from '../../lib/agent/hub.ts';
 import { useMcp } from '../../lib/agent/mcp.ts';
 import { browserSpeechSupported, providerTranscriber, speechOutputSupported, useVoicePrefs } from '../../lib/agent/voice.ts';
+import { initNativeAI, nativeSpeechAvailable, nativeSpeechOnDevice, useNativeAI } from '../../lib/native-ai.ts';
 import { Switch } from '../primitives.tsx';
 import { AGENT_VIEWS, AgentView, type AgentViewId } from './shared.tsx';
 
@@ -57,7 +58,11 @@ function VoiceSettings() {
   const prefs = useVoicePrefs();
   const [transcriber, setTranscriber] = useState<string | null | undefined>(undefined);
   useEffect(() => { void providerTranscriber().then((t) => setTranscriber(t?.label ?? null)).catch(() => setTranscriber(null)); }, []);
+  useEffect(() => { void initNativeAI(); }, []);
+  useNativeAI((s) => s.status); // re-render once the phone's speech support is known
   const browser = browserSpeechSupported();
+  const phone = nativeSpeechAvailable();
+  const phoneLocal = nativeSpeechOnDevice();
   return (
     <section className="set-group">
       <h2>Voice</h2>
@@ -66,13 +71,14 @@ function VoiceSettings() {
           <span className="row-label">Talk to the assistant with</span>
           <select value={prefs.input} onChange={(e) => prefs.set({ input: e.target.value as typeof prefs.input })}>
             <option value="auto">Automatic</option>
-            <option value="browser" disabled={!browser}>This browser’s speech recognition{browser ? '' : ' (not available)'}</option>
+            {!phone && <option value="browser" disabled={!browser}>This browser’s speech recognition{browser ? '' : ' (not available)'}</option>}
+            {phone && <option value="device">This phone{phoneLocal ? ' (stays on the phone)' : ' (offline when the language is downloaded)'}</option>}
             <option value="provider" disabled={!transcriber}>My AI provider{transcriber ? ` (${transcriber})` : ' (not available)'}</option>
           </select>
         </label>
         {speechOutputSupported() && <Switch label="Read replies aloud" hint="Uses this device’s voices" checked={prefs.speakReplies} onChange={(v) => prefs.set({ speakReplies: v })} />}
       </div>
-      <p className="set-note">Hold the microphone in the assistant to talk. {browser ? 'Browser speech recognition may send audio to the browser maker’s servers.' : ''} {transcriber ? `Without it, audio goes to ${transcriber}.` : 'Choose OpenAI, Groq or Gemini as your AI to transcribe in browsers without speech recognition.'}</p>
+      <p className="set-note">Hold the microphone in the assistant to talk. {phone ? (phoneLocal ? 'This phone recognizes speech itself; audio never leaves it.' : 'Android recognizes speech offline when the language pack is installed, otherwise through Google’s servers.') : browser ? 'Browser speech recognition may send audio to the browser maker’s servers.' : ''} {transcriber ? `Without it, audio goes to ${transcriber}.` : 'Choose OpenAI, Groq or Gemini as your AI to transcribe in browsers without speech recognition.'}</p>
     </section>
   );
 }
