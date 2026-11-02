@@ -67,10 +67,15 @@
   --s-6: 32px;
   --s-7: 48px;
   --tap: 44px;
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-left: env(safe-area-inset-left, 0px);
-  --safe-right: env(safe-area-inset-right, 0px);
+  /* System bars. Browsers report them through env(); the Android app draws edge to edge and
+     Capacitor's SystemBars plugin injects --safe-area-inset-* instead (older WebViews report 0
+     through env()). Take whichever is larger so neither path loses content under the bars. */
+  --safe-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+  --safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+  --safe-left: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px));
+  --safe-right: max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px));
+  /* The height content can really use: the dynamic viewport minus the system bars. */
+  --usable-h: calc(100dvh - var(--safe-top) - var(--safe-bottom));
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 

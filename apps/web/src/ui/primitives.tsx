@@ -91,14 +91,21 @@ export function Popover({ anchor, open, onClose, children, className, placement 
       setSheet(narrow);
       if (narrow || !anchor || !ref.current) return setPos(null);
       const a = anchor.getBoundingClientRect();
-      const r = ref.current.getBoundingClientRect();
+      // Layout size, not getBoundingClientRect: the opening animation scales the box, which would
+      // under-measure it and let the bottom run past the screen.
+      const el = ref.current;
+      const r = { width: el.offsetWidth, height: el.offsetHeight };
+      // The system bars (status bar, gesture bar) are off limits on edge-to-edge Android.
+      const cs = getComputedStyle(document.documentElement);
+      const inset = (side: string) => parseFloat(cs.getPropertyValue(`--safe-area-inset-${side}`)) || 0;
+      const minTop = 8 + inset('top'), maxBottom = window.innerHeight - 8 - inset('bottom');
       let left: number, top: number;
       const p = placement === 'auto' ? (a.left < 120 ? 'right' : a.top > window.innerHeight / 2 ? 'above' : 'below') : placement;
       if (p === 'right') { left = a.right + 10; top = a.top + a.height / 2 - r.height / 2; }
       else if (p === 'above') { left = a.left + a.width / 2 - r.width / 2; top = a.top - r.height - 10; }
       else { left = a.left + a.width / 2 - r.width / 2; top = a.bottom + 10; }
       left = Math.max(8, Math.min(window.innerWidth - r.width - 8, left));
-      top = Math.max(8, Math.min(window.innerHeight - r.height - 8, top));
+      top = Math.max(minTop, Math.min(maxBottom - r.height, top));
       setPos({ left, top });
     };
     place();

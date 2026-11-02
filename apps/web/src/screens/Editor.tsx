@@ -536,7 +536,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
             {recording != null ? <Square size={16} fill="currentColor" /> : <Mic size={19} />}
           </IconButton>}
           {recording != null && <span className="rec-time">{formatDuration(Date.now() - recording)}</span>}
-          {!studio.locked && on('assistant') && <button type="button" className={cx('ai-btn', panel === 'ai' && 'is-on')} onClick={() => setPanel(panel === 'ai' ? null : 'ai')} aria-pressed={panel === 'ai'}>
+          {!studio.locked && on('assistant') && <button type="button" className={cx('ai-btn', panel === 'ai' && 'is-on')} onClick={() => setPanel(panel === 'ai' ? null : 'ai')} aria-pressed={panel === 'ai'} aria-label="AI" title="AI assistant">
             <Sparkles size={17} /><span>AI</span>
           </button>}
           <button ref={btn.more} type="button" className="icon-btn" aria-label="More" title="More" onClick={() => setMenu('more')}><MoreHorizontal size={19} /></button>
