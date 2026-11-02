@@ -1,6 +1,6 @@
 import { detectScratchOut, type ScratchOutOptions } from './gestures.ts';
 import { newId as defaultNewId } from './ids.ts';
-import { newPage, type ImageItem, type InkStroke, type NoteMeta, type PageBackground, type PageInk, type PageSize, type PaperSpec, type TextBox } from './model.ts';
+import { newPage, type ImageItem, type InkStroke, type NoteMeta, type PageBackground, type PageInk, type PageSize, type PaperSpec, type RecognizedLine, type TextBox } from './model.ts';
 import type { PageObject } from './objects.ts';
 import { appendEvents, eventsFor, type ChainCause, type ChainChange } from './authorship.ts';
 
@@ -513,11 +513,16 @@ export class NoteDocument {
   setPaper(paper: PaperSpec) { this.updateMeta((m) => ({ ...m, paper })); }
   setTags(tags: string[]) { this.updateMeta((m) => ({ ...m, tags: [...new Set(tags.map((t) => t.trim()).filter(Boolean))] })); }
 
-  /** Stores recognized text (search/Markdown/agents). Not part of undo history. */
-  setRecognizedText(pageId: string, text: string | undefined, by?: string): void {
+  /**
+   * Stores recognized text (search/Markdown/agents). Not part of undo history. `lines` anchors
+   * each recognized line to its strokes; without it any earlier anchors are dropped, since they
+   * would describe a different transcription.
+   */
+  setRecognizedText(pageId: string, text: string | undefined, by?: string, lines?: RecognizedLine[]): void {
     const i = this.indexOfPage(pageId);
-    if (i < 0 || this.pageList[i]!.recognizedText === text) return;
-    this.pageList[i] = { ...this.pageList[i]!, recognizedText: text, recognizedAt: this.clock(), recognizedBy: by };
+    if (i < 0 || (this.pageList[i]!.recognizedText === text && (!lines || sameLines(this.pageList[i]!.recognizedLines, lines)))) return;
+    const { recognizedLines: _old, ...rest } = this.pageList[i]!;
+    this.pageList[i] = { ...rest, recognizedText: text, recognizedAt: this.clock(), recognizedBy: by, ...(lines?.length ? { recognizedLines: lines } : {}) };
     this.changed.add(pageId);
     this.metaDirty = true;
     this.emit();
@@ -559,4 +564,9 @@ function indexed<T extends Item>(list: readonly T[], ids: Set<string>): Indexed<
   const out: Indexed<T>[] = [];
   list.forEach((x, i) => { if (ids.has(x.id)) out.push({ index: i, item: x }); });
   return out;
+}
+
+function sameLines(a: RecognizedLine[] | undefined, b: RecognizedLine[]): boolean {
+  if (!a || a.length !== b.length) return false;
+  return a.every((l, i) => l.text === b[i]!.text && l.strokeIds.join() === b[i]!.strokeIds.join());
 }

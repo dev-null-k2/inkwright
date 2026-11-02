@@ -20,3 +20,4 @@ export * from './mathexpr.ts';
 export * from './tables.ts';
 export * from './inkcues.ts';
 export * from './objectsvg.ts';
+export * from './memory.ts';

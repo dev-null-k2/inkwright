@@ -22,6 +22,8 @@ import { importFiles } from '../lib/actions.ts';
 import { BrandMark } from '../ui/Brand.tsx';
 import { Fingerprint } from 'lucide-react';
 import { AuthorshipSection } from '../authorship/AuthorshipSection.tsx';
+import { AgentSettings } from '../ui/agent/AgentSettings.tsx';
+import { LocalAISettings } from '../ui/LocalAISettings.tsx';
 
 const SECTIONS = [
   { id: 'writing', label: 'Writing feel', icon: <Vibrate size={17} /> },
@@ -189,6 +191,7 @@ function AISection() {
   const builtin = hasBuiltinClaude();
   return (
     <>
+      <LocalAISettings />
       <Group title="Your AI providers" note={isArtifact
         ? 'This live preview runs inside claude.ai, which only lets it talk to Claude. Keys for other providers work in the installed app and on the web version.'
         : 'Keys are encrypted with a key that never leaves this device and are never synced. Requests go straight from this device to the provider you choose.'}>
@@ -210,6 +213,7 @@ function AISection() {
       <Group title="Safety">
         <Switch label="Ask before the assistant deletes or moves notes" checked={s.ai.confirmDestructive} onChange={(v) => s.update((x) => ({ ai: { ...x.ai, confirmDestructive: v } }))} />
       </Group>
+      <AgentSettings />
     </>
   );
 }

@@ -24,6 +24,8 @@ export type ProviderId =
   | 'azure-openai'
   | 'ollama'
   | 'lmstudio'
+  | 'llamacpp'
+  | 'foundry-local'
   | 'custom';
 
 /** Static metadata the settings UI renders (provider picker, key field, model suggestions). */
@@ -145,6 +147,18 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     hint: 'Start the local server in LM Studio (enable CORS for the web app) and pick a loaded model.',
   },
   {
+    id: 'llamacpp', label: 'llama.cpp server (local)', kind: 'openai-compatible', defaultBaseUrl: 'http://localhost:8080/v1', needsBaseUrl: false, needsKey: false,
+    keyUrl: 'https://github.com/ggml-org/llama.cpp',
+    models: [], defaultModel: '', capabilities: caps({ vision: false }), local: true,
+    hint: 'Start llama-server with --cors "*" so the web app may connect.',
+  },
+  {
+    id: 'foundry-local', label: 'Foundry Local (Windows/macOS)', kind: 'openai-compatible', defaultBaseUrl: 'http://localhost:5272/v1', needsBaseUrl: false, needsKey: false,
+    keyUrl: 'https://github.com/microsoft/Foundry-Local',
+    models: [], defaultModel: '', capabilities: caps({ vision: false }), local: true,
+    hint: 'Fix its port with "foundry service set --port 5272" so Inkstone can find it.',
+  },
+  {
     id: 'custom', label: 'Custom (OpenAI-compatible)', kind: 'openai-compatible', defaultBaseUrl: '', needsBaseUrl: true, needsKey: false,
     models: [], defaultModel: '', capabilities: caps(),
     hint: 'Any server that speaks the OpenAI Chat Completions API (vLLM, llama.cpp, LiteLLM, Jan, …).',
@@ -215,6 +229,8 @@ export function createProvider(config: ProviderConfig): Provider {
       }
       case 'ollama':
       case 'lmstudio':
+      case 'llamacpp':
+      case 'foundry-local':
       case 'custom':
         if (!config.apiKey) oc.auth = 'none';
         break;
