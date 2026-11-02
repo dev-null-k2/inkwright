@@ -523,3 +523,9 @@ input[type='range'] { accent-color: var(--ink); width: 100%; }
 .google-setup-dev summary { cursor: pointer; font-weight: 600; color: var(--ink-2); }
 .google-setup-dev ol { padding-left: 20px; color: var(--ink-2); display: flex; flex-direction: column; gap: 6px; }
 .google-setup-dev code { font: 12.5px var(--font-mono); overflow-wrap: anywhere; }
+
+/* ---------- Menu hints on a hovered or selected row ----------
+   --ink-3 on --chrome-2 is 4.2:1 (light) and 3.9:1 (dark), under WCAG AA's 4.5:1 for small text;
+   --ink-2 is 5.1:1 and 6.8:1. axe flagged it on the editor's ••• menu, whose first row sits under
+   the pointer as the menu opens (e2e/a11y.spec.ts). */
+.menu-item:hover:not(:disabled) .menu-hint, .menu-item.is-on .menu-hint { color: var(--ink-2); }
