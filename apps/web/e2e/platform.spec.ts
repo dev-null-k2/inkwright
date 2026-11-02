@@ -28,5 +28,25 @@ for (const s of shortcuts) {
       await page.keyboard.press(`${s.mod}+Shift+z`);
       expect(await strokes(page)).toHaveLength(2);
     });
+
+    test(`${s.mod}+K opens the command palette and ${s.other}+K does not`, async ({ page }) => {
+      await openApp(page);
+      await page.keyboard.press(`${s.other}+k`);
+      await expect(page.locator('.palette')).toHaveCount(0);
+      await page.keyboard.press(`${s.mod}+k`);
+      await expect(page.locator('.palette')).toBeVisible();
+    });
   });
 }
+
+/**
+ * Firefox asks the user before granting persistent storage and leaves navigator.storage.persist()
+ * pending until they answer; the app must open meanwhile (it used to wait on its start screen).
+ */
+test('the library opens while a persistent-storage prompt is unanswered', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (navigator.storage) Object.defineProperty(navigator.storage, 'persist', { value: () => new Promise(() => {}), configurable: true });
+  });
+  await openApp(page);
+  await expect(page.locator('.note-title').first()).toBeVisible();
+});
