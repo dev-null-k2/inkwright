@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": { "types": ["node"] },
-  "include": ["packages/*/src/**/*.ts", "packages/*/test/**/*.ts", "packages/*/evals/**/*.ts", "apps/mcp-server/src/**/*.ts", "apps/mcp-server/test/**/*.ts"]
+  "include": ["packages/*/src/**/*.ts", "packages/*/test/**/*.ts", "packages/*/evals/**/*.ts", "packages/sdk/scripts/**/*.ts", "packages/sdk/examples/**/*.ts", "apps/mcp-server/src/**/*.ts", "apps/mcp-server/test/**/*.ts"]
 }
