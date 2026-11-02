@@ -77,6 +77,17 @@ export class AppUndoTarget implements UndoTarget {
     return true;
   }
 
+  /** Handwriting recognized by an outside agent (the MCP server's transcribe task). */
+  async clearRecognizedText(noteId: string, pageId: string, expected: string): Promise<'cleared' | 'changed' | 'missing'> {
+    const d = this.open(noteId);
+    if (!d) return this.vaultTarget.clearRecognizedText(noteId, pageId, expected);
+    const i = d.indexOfPage(pageId);
+    if (i < 0) return 'missing';
+    if ((d.page(i).recognizedText ?? '') !== expected) return 'changed';
+    d.setRecognizedText(pageId, undefined);
+    return 'cleared';
+  }
+
   notebookNoteCount(id: string) { return this.vaultTarget.notebookNoteCount(id); }
 
   async deleteNotebook(id: string) {

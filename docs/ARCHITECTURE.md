@@ -20,7 +20,7 @@ packages/ai       @inkstone/ai    providers (OpenAI-compatible family, Anthropic
 packages/sync     @inkstone/sync  storage backends (IndexedDB, File System Access, Capacitor, Node), remotes
                                   (Google Drive, WebDAV, folder), three-way merge, sync engine, zip backup
 apps/web          @inkstone/web   the app: React UI + canvas ink engine; PWA; Capacitor Android/iOS shells
-apps/mcp-server   @inkstone/mcp-server  MCP server exposing a vault folder to AI agents (stdio + HTTP)
+apps/mcp-server   @inkstone/mcp-server  MCP server (2026-07-28, stdio + HTTP), A2A agent and always-on routine runner over a vault folder
 docs/             architecture, vault format, setup, publishing, testing, privacy
 ```
 
@@ -152,7 +152,36 @@ Every agent run — a chat in the panel or a routine — is assembled by `prepar
   weekly times with one catch-up run after the app was closed, a tagged note being saved by the
   user (debounced; agent saves are ignored), a recording ending, or N days before a date written
   in a note. Runs are serialized; background runs ask before every connected-app write and queue
-  approvals in Activity.
+  approvals in Activity. A lease in the vault (`routine-lease.ts`, `ai/leases/routines.json`) lets
+  an always-on runner on a computer take over automatic triggers; the app then defers to it and
+  says so on the Routines screen.
+
+### Outside agents (`apps/mcp-server`, see docs/AGENTS.md)
+
+One Node program set over the vault folder, sharing `@inkstone/core` (files) and `@inkstone/ai`
+(note tools, agent loop, skills, memory, routines, activity) with the app:
+
+- **MCP server** on the official SDK v2 (`@modelcontextprotocol/server`): `serveStdio` and
+  `createMcpHandler` serve protocol 2026-07-28 (stateless requests with a `_meta` envelope,
+  `server/discover`) and fall back to 2025 clients; one MCP server instance per request or
+  connection, with process-wide services (`createServices`: tasks, activity sessions, approvals,
+  AI). Writes are logged per agent in Activity.
+- **Sign-in** (`auth.ts`): loopback only, a bearer token, or an OAuth 2.1 resource server that
+  validates JWTs from the user's own issuer (RFC 9728 metadata, RFC 8707 audience, step-up
+  `insufficient_scope` for the write scope through the SDK's scope challenges).
+- **Tasks** (`tasks.ts`): the server runtime for the `io.modelcontextprotocol/tasks` extension —
+  `summarize_notebook`, `transcribe_pages`, `run_routine` return tasks with progress in
+  `statusMessage`, approvals as `input_required` elicitations, and cooperative cancel.
+- **MCP Apps** (`ui.ts`): self-contained `ui://` views (page viewer, search picker, approval card)
+  speaking the MCP Apps postMessage protocol, with text fallbacks.
+- **A2A** (`a2a.ts`): the same agent behind an Agent Card and JSON-RPC (v1.0 and v0.3) through
+  `@a2a-js/sdk`; destructive steps pause the task in `INPUT_REQUIRED`.
+- **Approvals** (`approvals.ts`): the app's rule everywhere — undoable note writes just happen,
+  moving to Trash waits for a person (an elicitation, an A2A reply, or a pending approval in
+  `ai/approvals/` when nobody can be asked).
+- **Runner** (`runner/`): `inkstone-agent run` drives `RoutineScheduler` over the folder, detects
+  note saves and recordings by scanning, holds the routines lease, and installs as a launchd,
+  systemd or Task Scheduler service (`runner/services.ts`).
 - **Voice.** Push-to-talk uses the Web Speech API when present, otherwise the provider's
   transcription endpoint through the `Transcriber` interface (add on-device engines there).
   Spoken replies use `speechSynthesis`, off by default.
@@ -196,7 +225,7 @@ Every agent run — a chat in the panel or a routine — is assembled by `prepar
 - **A pen:** add it to `PenType`/`PEN_INFO`, give it a `penLook` and `outlineOptions` (core) and a `PenNib` drawing (web).
 - **A paper:** add it to `PaperStyle`, then add a case in `paperElements` (`core/paper.ts`). It renders on screen, in thumbnails, SVG and PDF export automatically.
 - **An AI provider:** add a registry entry in `packages/ai/src/providers/registry.ts`. Most are OpenAI-compatible and need only a base URL.
-- **An agent tool:** add it in `createNoteTools` and implement it in `NoteToolHost`, both for the app (`lib/ai.ts`) and for the MCP server. If it writes, record it in `RecordingNoteToolHost` with an op kind and its inverse in `undoOp`.
+- **An agent tool:** add it in `createNoteTools` and implement it in `NoteToolHost`, both for the app (`lib/ai.ts`) and for the MCP server (`apps/mcp-server/src/agent/host.ts`). If it writes, record it in `RecordingNoteToolHost` with an op kind and its inverse in `undoOp`.
 - **A built-in skill:** add `packages/ai/skills/<name>/SKILL.md` and list it in `builtin-skills.ts`.
 - **A routine template:** add it to `ROUTINE_TEMPLATES` in `packages/ai/src/routines.ts`.
 - **A speech engine:** implement `Transcriber` (`packages/ai/src/transcribe.ts`) and return it from `providerTranscriber` in `lib/agent/voice.ts`.

@@ -1,103 +1,184 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import type { ServerContext } from './context.ts';
-import { createMcpServer } from './server.ts';
+import { createMcpHandler, type McpHttpHandler } from '@modelcontextprotocol/server';
+import type express from 'express';
+import { createAuthGate, isLoopbackHost, type AuthGate, type AuthMode } from './auth.ts';
+import { createMcpServer, type ServerServices } from './server.ts';
 
 export interface HttpOptions {
   /** TCP port; 0 picks a free one. */
   port: number;
-  /** When set, every request must carry `Authorization: Bearer <token>`. */
+  /** Interface to listen on (default 127.0.0.1). Anything else requires a token or OAuth. */
+  host?: string;
+  /** When set, every request must carry `Authorization: Bearer <token>` (shorthand for auth token mode). */
   token?: string;
-  /** Endpoint path (default `/mcp`). */
-  path?: string;
+  /** Full auth mode (overrides `token`). */
+  auth?: AuthMode;
+  /**
+   * The URL clients use to reach this server (behind a tunnel or reverse proxy), e.g.
+   * https://notes.example.com. Used for OAuth resource identifiers and the Agent Card.
+   * Default: http://<host>:<port>.
+   */
+  publicUrl?: string;
+  /** The A2A app (agent card + JSON-RPC), when A2A is on. Built once the public URL is known. */
+  a2a?: (publicUrl: string, gate: AuthGate) => Promise<express.Express> | express.Express;
+  /** Largest request body read for MCP (default 4 MiB). */
+  maxBodyBytes?: number;
 }
 
 export interface RunningHttpServer {
   server: Server;
+  /** The MCP endpoint, e.g. http://127.0.0.1:8765/mcp */
   url: string;
+  /** Base URL (no path). */
+  baseUrl: string;
   port: number;
+  gate: AuthGate;
   close(): Promise<void>;
 }
 
-/** Always loopback: exposing a vault to the network is the job of an explicit tunnel + token. */
+/** Default interface: loopback. Exposing a vault to a network takes a token or OAuth. */
 export const HTTP_HOST = '127.0.0.1';
 
-function digest(s: string): Buffer {
-  return createHash('sha256').update(s).digest();
-}
-
-function sendJson(res: ServerResponse, status: number, message: string, headers: Record<string, string> = {}): void {
+function sendJson(res: ServerResponse, status: number, body: unknown, headers: Record<string, string> = {}): void {
   if (res.headersSent) return;
   res.writeHead(status, { 'content-type': 'application/json', ...headers });
-  res.end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32000, message }, id: null }));
+  res.end(JSON.stringify(body));
+}
+
+const rpcError = (message: string) => ({ jsonrpc: '2.0', error: { code: -32000, message }, id: null });
+
+/** Node request → web Request (body read up to `max` bytes; aborts when the client goes away). */
+async function toWebRequest(req: IncomingMessage, res: ServerResponse, max: number): Promise<Request> {
+  const url = `http://${req.headers.host ?? 'localhost'}${req.url ?? '/'}`;
+  const headers = new Headers();
+  for (const [k, v] of Object.entries(req.headers)) {
+    if (Array.isArray(v)) for (const x of v) headers.append(k, x);
+    else if (v != null) headers.set(k, v);
+  }
+  const ac = new AbortController();
+  res.on('close', () => { if (!res.writableFinished) ac.abort(); });
+  let body: Buffer | undefined;
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    for await (const c of req) {
+      size += (c as Buffer).length;
+      if (size > max) throw Object.assign(new Error('Request body too large'), { status: 413 });
+      chunks.push(c as Buffer);
+    }
+    body = Buffer.concat(chunks);
+  }
+  return new Request(url, { method: req.method, headers, body: body as BodyInit | undefined, signal: ac.signal });
+}
+
+/** Web Response → Node response, streaming SSE bodies as they come. */
+async function sendWebResponse(res: ServerResponse, r: Response): Promise<void> {
+  const headers: Record<string, string | string[]> = {};
+  r.headers.forEach((v, k) => {
+    if (k === 'set-cookie') headers[k] = [...((headers[k] as string[]) ?? []), v];
+    else headers[k] = v;
+  });
+  res.writeHead(r.status, headers);
+  if (!r.body) return void res.end();
+  const reader = r.body.getReader();
+  res.on('close', () => void reader.cancel().catch(() => {}));
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      res.write(value);
+    }
+  } finally {
+    res.end();
+  }
 }
 
 /**
- * Streamable HTTP transport (stateless: one MCP server per request; the vault context and its
- * caches are shared). Bound to 127.0.0.1 only. Without a token, Host/Origin headers must be
- * loopback to block DNS-rebinding attacks from web pages; with a token (e.g. behind a tunnel for
- * ChatGPT) the bearer check is what guards access.
+ * The HTTP face of the server, on one port:
+ *
+ * - `/mcp` — MCP Streamable HTTP via the SDK's `createMcpHandler`: protocol 2026-07-28
+ *   (stateless, per-request `_meta` envelope, `server/discover`) and, for 2025-era clients, the
+ *   SDK's stateless legacy fallback — one MCP server per request either way.
+ * - `/a2a` and `/.well-known/agent-card.json` — the A2A agent (when enabled).
+ * - `/.well-known/oauth-protected-resource[/mcp|/a2a]` — RFC 9728 metadata (OAuth mode).
+ *
+ * Auth is checked here, before any MCP or A2A code runs (see auth.ts for the three modes).
  */
-export async function startHttpServer(ctx: ServerContext, opts: HttpOptions): Promise<RunningHttpServer> {
-  const endpoint = opts.path ?? '/mcp';
-  const tokenDigest = opts.token ? digest(opts.token) : null;
+export async function startHttpServer(services: ServerServices, opts: HttpOptions): Promise<RunningHttpServer> {
+  const host = opts.host ?? HTTP_HOST;
+  const auth: AuthMode = opts.auth ?? (opts.token ? { kind: 'token', token: opts.token } : { kind: 'loopback' });
+  if (auth.kind === 'loopback' && !isLoopbackHost(host.includes(':') && !host.startsWith('[') ? `[${host}]` : host)) {
+    throw new Error(`Listening on ${host} exposes your notes to the network: set a token (--token) or OAuth (--oauth-issuer) first.`);
+  }
+  const max = opts.maxBodyBytes ?? 4 * 1024 * 1024;
   let port = opts.port;
+  let publicUrl = opts.publicUrl?.replace(/\/+$/, '') ?? '';
+  let gate: AuthGate = createAuthGate(auth, { publicUrl: publicUrl || `http://${HTTP_HOST}:${port || 1}`, port: () => port });
+  let a2a: express.Express | null = null;
 
-  const loopbackHost = (host: string | undefined) => {
-    if (!host) return false;
-    const h = host.toLowerCase();
-    return [`127.0.0.1:${port}`, `localhost:${port}`, `[::1]:${port}`].includes(h);
-  };
-  const loopbackOrigin = (origin: string) => /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i.test(origin);
+  const mcp: McpHttpHandler = createMcpHandler((rc) => createMcpServer(services, rc), { legacy: 'stateless', maxRequestBodySize: max, onerror: (e) => { if (process.env.INKSTONE_DEBUG) process.stderr.write(`[inkstone-mcp] ${e.message}\n`); } });
 
   const handle = async (req: IncomingMessage, res: ServerResponse) => {
-    const url = new URL(req.url ?? '/', 'http://localhost');
-    if (url.pathname !== endpoint) return sendJson(res, 404, `Not found. The MCP endpoint is ${endpoint}.`);
-    if (!tokenDigest) {
-      if (!loopbackHost(req.headers.host)) return sendJson(res, 403, 'Forbidden host.');
-      const origin = req.headers.origin;
-      if (origin && !loopbackOrigin(origin)) return sendJson(res, 403, 'Forbidden origin.');
-    } else {
-      // Header preferred; `?token=` is for clients that cannot set headers (e.g. ChatGPT connectors).
-      const m = /^Bearer\s+(.+)$/i.exec((req.headers.authorization ?? '').trim());
-      const given = m?.[1]?.trim() ?? url.searchParams.get('token') ?? '';
-      if (!given || !timingSafeEqual(digest(given), tokenDigest)) {
-        return sendJson(res, 401, 'Unauthorized: missing or wrong bearer token.', { 'www-authenticate': 'Bearer realm="inkstone"' });
-      }
+    const path = new URL(req.url ?? '/', 'http://localhost').pathname;
+    if (path.startsWith('/.well-known/oauth-protected-resource')) {
+      const doc = await gate.resourceMetadata(path);
+      return doc ? sendJson(res, 200, doc, { 'access-control-allow-origin': '*', 'cache-control': 'public, max-age=300' }) : sendJson(res, 404, { error: 'not_found', error_description: 'This server does not use OAuth.' });
     }
-    if (req.method !== 'POST') return sendJson(res, 405, 'Method not allowed. This server is stateless: send JSON-RPC with POST.', { allow: 'POST' });
-
-    const server = createMcpServer(ctx);
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
-    res.on('close', () => {
-      void transport.close();
-      void server.close();
-    });
-    await server.connect(transport);
-    await transport.handleRequest(req, res);
+    if (path === '/.well-known/agent-card.json' || path === '/a2a') {
+      if (!a2a) return sendJson(res, 404, rpcError('A2A is not enabled on this server (start it with --a2a).'));
+      if (path === '/a2a') {
+        const check = await gate.check(new Request(`http://${req.headers.host ?? 'localhost'}${req.url}`, { headers: req.headers as Record<string, string> }), '/a2a');
+        if (!check.ok) return sendWebResponse(res, check.response);
+        (req as IncomingMessage & { inkstoneAuth?: unknown }).inkstoneAuth = check.auth;
+      } else if (gate.mode === 'loopback') {
+        const check = await gate.check(new Request(`http://${req.headers.host ?? 'localhost'}${req.url}`, { headers: req.headers as Record<string, string> }), '/a2a');
+        if (!check.ok) return sendWebResponse(res, check.response);
+      }
+      if (path.startsWith('/.well-known/')) res.setHeader('access-control-allow-origin', '*');
+      return void a2a(req as never, res as never);
+    }
+    if (path !== '/mcp') return sendJson(res, 404, rpcError('Not found. The MCP endpoint is /mcp.'));
+    let request: Request;
+    try {
+      request = await toWebRequest(req, res, max);
+    } catch (e) {
+      return sendJson(res, (e as { status?: number }).status ?? 400, rpcError((e as Error).message));
+    }
+    const check = await gate.check(request, '/mcp');
+    if (!check.ok) return sendWebResponse(res, check.response);
+    const response = await mcp.fetch(request, check.auth ? { authInfo: check.auth } : undefined);
+    await sendWebResponse(res, response);
   };
 
   const server = createServer((req, res) => {
-    handle(req, res).catch((e) => sendJson(res, 500, `Internal error: ${(e as Error).message}`));
+    handle(req, res).catch((e) => sendJson(res, 500, rpcError(`Internal error: ${(e as Error).message}`)));
   });
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
-    server.listen(opts.port, HTTP_HOST, () => {
+    server.listen(opts.port, host, () => {
       server.off('error', reject);
       resolve();
     });
   });
   port = (server.address() as AddressInfo).port;
+  const shownHost = host.includes(':') ? `[${host}]` : host === '0.0.0.0' ? HTTP_HOST : host;
+  const baseUrl = `http://${shownHost}:${port}`;
+  publicUrl ||= baseUrl;
+  gate = createAuthGate(auth, { publicUrl, port: () => port });
+  if (opts.a2a) a2a = await opts.a2a(publicUrl, gate);
   return {
     server,
     port,
-    url: `http://${HTTP_HOST}:${port}${endpoint}`,
-    close: () =>
-      new Promise<void>((resolve) => {
+    baseUrl,
+    url: `${baseUrl}/mcp`,
+    gate,
+    close: async () => {
+      await mcp.close().catch(() => {});
+      await new Promise<void>((resolve) => {
         server.closeAllConnections?.();
         server.close(() => resolve());
-      }),
+      });
+    },
   };
 }
