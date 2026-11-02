@@ -1,6 +1,6 @@
 import { detectScratchOut, type ScratchOutOptions } from './gestures.ts';
 import { newId as defaultNewId } from './ids.ts';
-import { newPage, type ImageItem, type InkStroke, type NoteMeta, type PageInk, type PageSize, type PaperSpec, type TextBox } from './model.ts';
+import { newPage, type ImageItem, type InkStroke, type NoteMeta, type PageBackground, type PageInk, type PageSize, type PaperSpec, type TextBox } from './model.ts';
 
 /** Anything with an id that lives in a page list in z-order. */
 interface Item { id: string }
@@ -399,9 +399,23 @@ export class NoteDocument {
     this.syncPageIds();
   }
 
-  setPageProps(index: number, props: { paper?: PaperSpec; size?: PageSize }): void {
+  setPageProps(index: number, props: { paper?: PaperSpec; size?: PageSize; background?: PageBackground }): void {
     const p = this.pageList[index]!;
     this.pageList[index] = { ...p, ...props };
+    this.touch(p.id);
+  }
+
+  /**
+   * Replaces a page's whole content in place (same id), e.g. after rotating it. Like the other
+   * page operations this is not an undo step, and the page's undo history is dropped: its diffs
+   * refer to items as they were before the replacement.
+   */
+  replacePage(index: number, page: PageInk): void {
+    const p = this.pageList[index];
+    if (!p) return;
+    this.previews.delete(index);
+    this.pageList[index] = { ...page, id: p.id };
+    this.history.forgetPage(p.id);
     this.touch(p.id);
   }
 
