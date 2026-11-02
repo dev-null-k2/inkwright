@@ -234,6 +234,7 @@ function AgentSection({ policy, update }: Props) {
         ))}
         <Switch label="Mark notes and web content as untrusted" hint="The model is told that text from notes, pages and apps is data, never instructions" checked={policy.injection.spotlight} onChange={(v) => update(v ? 'Spotlighting on' : 'Spotlighting off', (p) => { p.injection.spotlight = v; })} />
         <Switch label="Ask before changes after suspicious content" hint="If something the assistant read looks like planted instructions, every change waits for your OK" checked={policy.injection.confirmWritesAfterSuspicious} onChange={(v) => update(v ? 'Confirm after suspicious content on' : 'Confirm after suspicious content off', (p) => { p.injection.confirmWritesAfterSuspicious = v; })} />
+        <Switch label="Ask before every change after reading" hint="Stricter: once the assistant has read a note, page or app result, each change waits for your OK" checked={!!policy.injection.confirmWritesAfterAnyRead} onChange={(v) => update(v ? 'Confirm every change after reading on' : 'Confirm every change after reading off', (p) => { p.injection.confirmWritesAfterAnyRead = v; })} />
         <Switch label="Shorten long context" hint="Long tool results and passages are trimmed; the model can ask for the full text" checked={policy.compression.enabled} onChange={(v) => update(v ? 'Context shortening on' : 'Context shortening off', (p) => { p.compression.enabled = v; })} />
         <label className="field">
           <span className="field-label">Tools agents may never use</span>

@@ -36,18 +36,19 @@ export interface InjectionScan {
 }
 
 const RULES: Array<{ rule: string; re: RegExp; weight: number }> = [
-  { rule: 'override', re: /\b(?:ignore|disregard|forget|override|bypass)\b[^.\n]{0,40}\b(?:previous|prior|above|earlier|all|any|your|the)\b[^.\n]{0,30}\b(?:instructions?|prompts?|rules|directions|guidelines|messages?|context)\b/i, weight: 3 },
+  { rule: 'override', re: /\b(?:ignore|disregard|forget|override|bypass)\b[^.\n]{0,40}\b(?:previous|prior|above|earlier|all|any|your|system)\b[^.\n]{0,30}\b(?:instructions?|prompts?|rules|directions|guidelines|messages?|context)\b/i, weight: 3 },
   { rule: 'override-de-es-fr', re: /\b(?:ignoriere|vergiss)\b.{0,40}\b(?:anweisungen|vorherigen)\b|\bignora\b.{0,40}\binstrucciones\b|\bignore[zr]?\b.{0,40}\b(?:instructions|consignes)\s+pr[ée]c[ée]dentes\b/i, weight: 3 },
   { rule: 'new-instructions', re: /\b(?:new|updated|real|actual|important|urgent)\s+(?:instructions?|task|orders?|directive)\s*(?:for (?:the )?(?:ai|assistant|model|agent))?\s*[:：]/i, weight: 2 },
   { rule: 'addressed-to-ai', re: /\b(?:attention|note to|message to|hey|dear)\s*,?\s*(?:the\s+)?(?:ai|llm|assistant|chatbot|language model|agent|claude|gpt|gemini|copilot)\b[\s,:!-]/i, weight: 2 },
-  { rule: 'role-change', re: /\byou are (?:now|no longer)\b|\bfrom now on,? you\b|\bact as (?:an?|the) (?:unrestricted|jailbroken|different|new)\b|\bpretend (?:to be|you are)\b|\b(?:DAN|developer mode|jailbreak)\b/i, weight: 2 },
+  { rule: 'role-change', re: /\byou are (?:now|no longer)\s+(?:an?\s+|the\s+)?(?:[\w-]+\s+){0,2}(?:assistant|ai|model|bot|agent|admin|developer|DAN)\b|\bfrom now on,? you\b|\bact as (?:an?|the) (?:unrestricted|jailbroken|different|new)\b|\bpretend (?:to be|you are)\b|\b(?:DAN|developer mode|jailbreak)\b/i, weight: 2 },
+  { rule: 'addressed-to-reader', re: /\b(?:to|for)\s+(?:whoever|anyone|the\s+(?:assistant|ai|model|bot|agent|llm))\s+(?:is\s+)?(?:reading|reads|summari[sz](?:es|ing)|processing|processes)\b/i, weight: 2 },
   { rule: 'fake-turn', re: /(?:^|\n)\s*(?:#{1,3}\s*)?(?:system|assistant|tool|developer)\s*(?:message|prompt)?\s*[:：>]|<\/?(?:system|assistant|tool_call|function_call|instructions?)>|\[\/?INST\]|<\|im_(?:start|end)\|>/i, weight: 2 },
   { rule: 'tool-directive', re: /\b(?:call|use|run|invoke|execute|trigger)\s+(?:the\s+)?(?:tool|function)?\s*[`"']?(?:trash_note|delete\w*|update_note|append_to_note|create_note|send\w*|email\w*|post\w*|\w+__\w+)[`"']?/i, weight: 2 },
-  { rule: 'destructive-ask', re: /\b(?:delete|trash|remove|wipe|erase)\s+(?:all|every|each)\s+(?:of\s+)?(?:the\s+|my\s+|your\s+)?(?:notes?|files?|pages?|notebooks?|data)\b/i, weight: 1.5 },
+  { rule: 'destructive-ask', re: /\b(?:delete|trash|remove|wipe|erase)\s+(?:all|every|each)\s+(?:of\s+)?(?:the\s+|my\s+|your\s+)?(?:notes?|files?|pages?|notebooks?|data)\b/i, weight: 2 },
   { rule: 'exfil-markdown', re: /!\[[^\]]*\]\(\s*https?:\/\/[^)\s]*[?&#][^)\s]*(?:\{|%7B|data=|q=|text=|content=|secret|key|token)/i, weight: 3 },
   { rule: 'exfil-instruction', re: /\b(?:send|post|forward|upload|exfiltrate|leak|transmit|email)\b[^.\n]{0,60}\b(?:to|at)\b[^.\n]{0,20}(?:https?:\/\/|\S+@\S+\.\w+)/i, weight: 2 },
   { rule: 'secrecy', re: /\b(?:do not|don't|never)\s+(?:tell|inform|mention|reveal|show)\b[^.\n]{0,30}\b(?:the user|user|anyone|them)\b/i, weight: 2 },
-  { rule: 'prompt-leak', re: /\b(?:reveal|print|output|repeat|show)\b[^.\n]{0,20}\b(?:your|the)\s+(?:system prompt|instructions|hidden prompt|initial prompt)\b/i, weight: 1.5 },
+  { rule: 'prompt-leak', re: /\b(?:reveal|print|output|repeat|show)\b[^.\n]{0,20}\b(?:your|the)\s+(?:system prompt|instructions|hidden prompt|initial prompt)\b/i, weight: 2 },
 ];
 
 const TAG_CHARS = /[\u{E0000}-\u{E007F}]/gu;
@@ -135,12 +136,21 @@ export function spotlightMessages(messages: ChatMessage[], marker: string, opts:
 export class TaintTracker {
   readonly signals: Array<InjectionSignal & { source: string }> = [];
   private seen = new Set<string>();
+  /** Any tool result (note, web page, connected app) has entered the run. */
+  sawUntrusted = false;
+
+  /**
+   * `strict`: every tool result counts as untrusted, whether or not it looks like an attack, so
+   * the guard no longer depends on detection (at the price of asking after every read).
+   */
+  constructor(public strict = false) {}
 
   /** Scans tool results in `messages` that were not scanned before. */
   scan(messages: readonly ChatMessage[]): InjectionSignal[] {
     const fresh: InjectionSignal[] = [];
     for (const m of messages) {
       if (m.role !== 'tool') continue;
+      this.sawUntrusted = true;
       const text = typeof m.content === 'string' ? m.content : m.content.map((p) => (p.type === 'text' ? p.text : '')).join('\n');
       const key = `${m.toolCallId ?? ''}:${text.length}:${text.slice(0, 64)}`;
       if (this.seen.has(key)) continue;
@@ -161,6 +171,6 @@ export class TaintTracker {
   /** Whether a tool call must be confirmed by the user before it runs. */
   needsConfirmation(tool: { readOnly?: boolean; destructive?: boolean }): boolean {
     if (tool.destructive) return true;
-    return this.suspicious && !tool.readOnly;
+    return (this.suspicious || (this.strict && this.sawUntrusted)) && !tool.readOnly;
   }
 }

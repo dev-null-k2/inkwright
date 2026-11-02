@@ -254,7 +254,7 @@ const RECOGNIZERS: Recognizer[] = [
   {
     kind: 'name',
     rule: 'name:introduced',
-    re: new RegExp(`\\b(?:my name is|I am|I'm|this is|name:)\\s+(${CAP}\\s+${CAP}(?:\\s+${CAP})?)`, 'gi'),
+    re: new RegExp(`\\b(?:[Mm]y name is|I am|I'm|[Tt]his is|[Nn]ame:)\\s+(${CAP}\\s+${CAP}(?:\\s+${CAP})?)`, 'g'),
     group: 1,
     validate: (v) => /^[A-Z]/.test(v) && v.split(/\s+/).every((w) => /^[A-Z]/.test(w)) && looksLikeName(v),
   },
@@ -276,7 +276,7 @@ const RECOGNIZERS: Recognizer[] = [
     kind: 'name',
     rule: 'name:with',
     // "meeting with Priya Raman", "call Jonas Weber", "email from Ana Souza": two capitalised words after a people verb.
-    re: new RegExp(`\\b(?:with|from|to|call|called|email|emailed|text|texted|ask|asked|tell|told|met|meet|cc|ping)\\s+(${CAP}\\s+${CAP})\\b`, 'g'),
+    re: new RegExp(`\\b(?:[Ww]ith|[Ff]rom|to|[Cc]all|[Cc]alled|[Ee]mail|[Ee]mailed|[Tt]ext|[Tt]exted|[Aa]sk|[Aa]sked|[Tt]ell|[Tt]old|[Mm]et|[Mm]eet|cc|[Pp]ing)\\s+(${CAP}\\s+${CAP})\\b`, 'g'),
     group: 1,
     validate: (v) => looksLikeName(v),
   },
