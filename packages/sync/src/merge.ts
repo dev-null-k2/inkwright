@@ -1,15 +1,21 @@
 import {
+  decodeDeck,
   decodeNote,
   decodeNotebook,
+  decodeProvenance,
   decodePage,
   decodePageSummaries,
   decodeTranscript,
+  encodeDeck,
   encodeNote,
   encodePageSummaries,
+  encodeProvenance,
   encodeTranscript,
   encodeNotebook,
   encodePage,
   mergeAuthorship,
+  mergeDecks,
+  mergeProvenance,
   type NoteMeta,
   type NotebookMeta,
   type PageInk,
@@ -377,7 +383,7 @@ export function mergeNotebook(base: NotebookMeta | null, local: NotebookMeta, re
 
 // ---- Files -------------------------------------------------------------------------------------
 
-export type MergeKind = 'page' | 'note' | 'notebook' | 'transcript' | 'page-summaries';
+export type MergeKind = 'page' | 'note' | 'notebook' | 'transcript' | 'page-summaries' | 'provenance' | 'study-deck';
 
 /** Which merge applies to a vault path, or null when the file can't be merged structurally. */
 export function mergeKindOf(path: string): MergeKind | null {
@@ -387,6 +393,9 @@ export function mergeKindOf(path: string): MergeKind | null {
   // Recording transcripts and page summaries live next to the recordings (merge-listen.ts).
   if (/^notes\/[^/]+\/assets\/[^/]+\.transcript\.json$/.test(path)) return 'transcript';
   if (/^notes\/[^/]+\/assets\/page-summaries\.json$/.test(path)) return 'page-summaries';
+  // Context compiler (docs/COMPILER.md): provenance of AI text per note, flashcard decks.
+  if (/^notes\/[^/]+\/assets\/provenance\.json$/.test(path)) return 'provenance';
+  if (/^ai\/study\/[^/]+\.json$/.test(path)) return 'study-deck';
   return null;
 }
 
@@ -441,6 +450,18 @@ export function mergeFileBytes(path: string, base: Uint8Array | null, local: Uin
       const r = dec(decodePageSummaries, remote);
       if (!l || !r) return null;
       return utf8Encode(encodePageSummaries(mergePageSummaries(dec(decodePageSummaries, base), l, r)));
+    }
+    case 'provenance': {
+      const l = dec(decodeProvenance, local);
+      const r = dec(decodeProvenance, remote);
+      if (!l || !r) return null;
+      return utf8Encode(encodeProvenance(mergeProvenance(dec(decodeProvenance, base), l, r)));
+    }
+    case 'study-deck': {
+      const l = dec(decodeDeck, local);
+      const r = dec(decodeDeck, remote);
+      if (!l || !r) return null;
+      return utf8Encode(encodeDeck(mergeDecks(dec(decodeDeck, base), l, r)));
     }
   }
 }
