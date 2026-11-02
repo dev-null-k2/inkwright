@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CLIP_LIMITS, MemoryFS, Vault, forMarkdownImport, clipToMarkdown, decodeClip, docxToMarkdown, encodeClip, enexDate, enexToNotes, htmlToMarkdown, importObsidianVault, md5Hex,
-  mhtmlToNote, notesToVaultFiles, notionToVaultFiles, oneNoteToNotes, parseCsv, parseEnex, pdfNotebookApp, planPdfSections, stripNotionIds, uniqueNames, type VaultFile,
+  mhtmlToNote, notesToVaultFiles, notionToVaultFiles, oneNoteToNotes, parseCsvRows, parseEnex, pdfNotebookApp, planPdfSections, stripNotionIds, uniqueNames, type VaultFile,
 } from '../src/index.ts';
 
 const enc = new TextEncoder();
@@ -92,12 +92,16 @@ describe('Evernote (.enex)', () => {
   it('imports into a vault through the Markdown importer', async () => {
     const v = new Vault(new MemoryFS());
     await v.init();
-    const rep = await importObsidianVault(v, forMarkdownImport(notesToVaultFiles(enexToNotes('Travel.enex', enex).items)), { paper: { style: 'blank', tint: 'white', texture: 'standard', spacing: 0 }, pageSize: { name: 'A4', width: 793.7, height: 1122.5 } });
+    const rep = await importObsidianVault(v, forMarkdownImport(notesToVaultFiles(enexToNotes('Travel.enex', enex).items)), { paper: { style: 'blank', tint: 'white', texture: 'standard', spacing: 0 }, pageSize: { name: 'A4', width: 793.7, height: 1122.5 }, origin: 'import' });
     expect(rep.noteIds.length).toBe(2);
     const notes = await v.listNotes();
     expect(notes.map((n) => n.title).sort()).toEqual(['Empty', 'Trip & plans']);
     expect(notes.find((n) => n.title === 'Trip & plans')!.tags).toContain('travel');
     expect((await v.listNotebooks()).map((b) => b.name)).toContain('Travel');
+    const trip = notes.find((n) => n.title === 'Trip & plans')!;
+    const pages = await v.readPages(trip);
+    expect(pages.flatMap((p) => p.texts ?? []).every((t) => t.origin === 'import')).toBe(true);
+    expect(pages.flatMap((p) => p.images ?? []).length).toBeGreaterThan(0);
   });
 });
 
@@ -125,7 +129,7 @@ describe('Notion (Markdown & CSV export)', () => {
     expect(r.files.some((f) => f.path === 'Roadmap/chart.png')).toBe(true);
   });
   it('makes each database a table note from its _all.csv, linking rows that have pages', () => {
-    expect(parseCsv('a,"b ""q""",c\r\n1,2\n')).toEqual([['a', 'b "q"', 'c'], ['1', '2']]);
+    expect(parseCsvRows('a,"b ""q""",c\r\n1,2\n')).toEqual([['a', 'b "q"', 'c'], ['1', '2']]);
     const r = notionToVaultFiles(exportFiles);
     const db = text(r.files, 'Tasks.md');
     expect(db).toContain('2 rows');
@@ -140,8 +144,8 @@ describe('Notion (Markdown & CSV export)', () => {
 });
 
 describe('OneNote exports', () => {
-  const docx = (body: string) => [
-    { path: 'word/document.xml', bytes: enc.encode(`<?xml version="1.0"?><w:document xmlns:w="w"><w:body>${body}</w:body></w:document>`) },
+  const docx = (body: string | string[]) => [
+    { path: 'word/document.xml', bytes: enc.encode(`<?xml version="1.0"?><w:document xmlns:w="w"><w:body>${[body].flat().join("")}</w:body></w:document>`) },
     { path: 'word/_rels/document.xml.rels', bytes: enc.encode('<Relationships><Relationship Id="rId5" Type="image" Target="media/image1.png"/></Relationships>') },
     { path: 'word/media/image1.png', bytes: new Uint8Array([9, 9, 9]) },
   ];

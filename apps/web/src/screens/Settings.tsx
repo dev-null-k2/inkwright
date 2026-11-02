@@ -40,6 +40,8 @@ import { Accessibility } from 'lucide-react';
 import { InkActionsSettings, ReadingSettings } from '../inkactions/Settings.tsx';
 import { MonitorSmartphone } from 'lucide-react';
 import { DevicesSection } from '../peer/DevicesSection.tsx';
+import { FileInput } from 'lucide-react';
+import { ImportSettings } from '../importers/ImportSettings.tsx';
 
 const SECTIONS = [
   { id: 'writing', label: 'Writing feel', icon: <Vibrate size={17} /> },
@@ -52,6 +54,7 @@ const SECTIONS = [
   { id: 'authorship', label: 'Authorship', icon: <Fingerprint size={17} /> },
   { id: 'appearance', label: 'Appearance & paper', icon: <Palette size={17} /> },
   { id: 'knowledge', label: 'Notes, links & Obsidian', icon: <Waypoints size={17} /> },
+  { id: 'import', label: 'Import & clip', icon: <FileInput size={17} /> },
   { id: 'ink-actions', label: 'Ink actions', icon: <PenLine size={17} /> },
   { id: 'reading', label: 'Reading', icon: <Accessibility size={17} /> },
   { id: 'modules', label: 'Modules', icon: <Blocks size={17} /> },
@@ -104,6 +107,7 @@ export function Settings({ section }: { section?: string }) {
             {active === 'authorship' && current && <AuthorshipSection />}
             {active === 'appearance' && <AppearanceSection />}
             {active === 'knowledge' && current && <KnowledgeSettings />}
+            {active === 'import' && <ImportSettings />}
             {active === 'ink-actions' && <InkActionsSettings />}
             {active === 'reading' && current && <ReadingSettings />}
             {active === 'modules' && <ModulesSettings />}

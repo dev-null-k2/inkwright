@@ -8,6 +8,7 @@
 import { useApp } from '../state/app.ts';
 import { registerModule, registerPreset, type ModuleDefinition } from './registry.ts';
 import { INK_ACTION_MODULES } from '../inkactions/modules.ts';
+import { IMPORT_MODULES } from '../importers/modules.ts';
 
 export const BUILTIN_MODULES: ModuleDefinition[] = [
   {
@@ -244,6 +245,8 @@ export const BUILTIN_MODULES: ModuleDefinition[] = [
   },
   // Ink that does things: AI answers in ink, executable diagrams, data, photo to ink, reading, papers.
   ...INK_ACTION_MODULES,
+  // Notes from other apps, the web clipper, and runbook shell blocks on a computer.
+  ...IMPORT_MODULES,
 ];
 
 const ALL = BUILTIN_MODULES.map((m) => m.id);

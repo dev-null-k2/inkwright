@@ -1,0 +1,49 @@
+/* Import & clip (importers/) and runbook shell blocks (dev/shell/). Duan tokens only. */
+
+.clip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.clip-bookmarklet {
+  cursor: grab;
+  border-style: dashed;
+}
+
+.shell-fp {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  user-select: all;
+}
+
+.shell-cmd {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.shell-cmd code {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--chrome-2);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  user-select: all;
+}
+
+.shell-runners {
+  list-style: none;
+  margin: 4px 0 8px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}

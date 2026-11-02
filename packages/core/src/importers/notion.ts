@@ -34,7 +34,7 @@ export function stripNotionIds(path: string): string {
 }
 
 /** Parses CSV (RFC 4180: quotes, doubled quotes, newlines inside quotes, optional BOM). */
-export function parseCsv(text: string): string[][] {
+export function parseCsvRows(text: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let cell = '';
@@ -105,7 +105,7 @@ export function notionToVaultFiles(input: readonly VaultFile[]): NotionImport {
       notes++;
     } else if (/\.csv$/i.test(f.path)) {
       if (!/_all\.csv$/i.test(f.path) && allBase.has(f.path.toLowerCase())) continue;
-      const rows = parseCsv(dec.decode(f.bytes));
+      const rows = parseCsvRows(dec.decode(f.bytes));
       if (!rows.length) continue;
       const dbPath = target.replace(/_all\.csv$/i, '.csv').replace(/\.csv$/i, '');
       const dbName = dbPath.split('/').pop()!;
