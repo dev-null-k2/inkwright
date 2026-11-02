@@ -15,7 +15,7 @@ import { PaperFeel } from '../platform/feel.ts';
 import { NativeInkTip } from '../platform/inktip.ts';
 import { InkstoneNative, hasNativePlugin } from '../platform/native.ts';
 import { pickFiles } from '../platform/files.ts';
-import { isArtifact, isMac, modKey, safeStorage } from '../platform/env.ts';
+import { isArtifact, isIOS, isMac, modKey, safeStorage } from '../platform/env.ts';
 import { useApp } from '../state/app.ts';
 import { activePreset, inputPrefs, useSettings } from '../state/settings.ts';
 import { PenDock } from '../ui/PenDock.tsx';
@@ -210,7 +210,8 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-      const mod = isMac ? e.metaKey : e.ctrlKey;
+      // ⌘ on iPhone/iPad hardware keyboards too (matches the ⌘ shown in menus via modKey).
+      const mod = isMac || isIOS ? e.metaKey : e.ctrlKey;
       const k = e.key.toLowerCase();
       if (mod && k === 'z') { e.preventDefault(); if (e.shiftKey) engine.redo(); else engine.undo(); return; }
       if (mod && k === 'y') { e.preventDefault(); engine.redo(); return; }
