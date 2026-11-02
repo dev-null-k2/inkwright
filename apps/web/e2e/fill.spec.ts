@@ -189,7 +189,7 @@ test('flat PDF: typed text snaps onto the printed line; a checkmark is real ink'
   await expect.poll(() => page.evaluate(() => (window as any).__inkstone.doc.page(0).strokes.length), SLOW).toBe(1);
 });
 
-test('open text and Markdown files; drop a file onto the library', async ({ page }) => {
+test('open text and Markdown files; drop files onto the library and onto a note', async ({ page }) => {
   await openApp(page);
   await page.locator('input[type=file]').first().setInputFiles({ name: 'Groceries.md', mimeType: 'text/markdown', buffer: Buffer.from('# Groceries\n\n- [ ] Rice\n- [ ] Dal\n') });
   await page.waitForFunction(() => (window as any).__inkstone?.doc?.meta.title === 'Groceries', null, { timeout: 20000 });
@@ -203,6 +203,19 @@ test('open text and Markdown files; drop a file onto the library', async ({ page
   });
   await page.waitForFunction(() => (window as any).__inkstone?.doc?.meta.title === 'Dropped', null, { timeout: 20000 });
   expect(await page.evaluate(() => (window as any).__inkstone.doc.page(0).texts[0].text)).toBe('Dropped words');
+  // Dropping a PDF onto the open note adds its pages after the current one.
+  const pdf = await PDFDocument.create();
+  pdf.addPage([612, 792]);
+  pdf.addPage([612, 792]);
+  const bytes = [...await pdf.save()];
+  await page.evaluate((bytes) => {
+    const dt = new DataTransfer();
+    dt.items.add(new File([new Uint8Array(bytes)], 'Two.pdf', { type: 'application/pdf' }));
+    const ed = document.querySelector('.editor')!;
+    for (const type of ['dragenter', 'dragover', 'drop']) ed.dispatchEvent(new DragEvent(type, { dataTransfer: dt, bubbles: true, cancelable: true, clientX: 600, clientY: 400 }));
+  }, bytes);
+  await page.waitForFunction(() => (window as any).__inkstone.doc.pageCount === 3, null, { timeout: 20000 });
+  expect(await page.evaluate(() => (window as any).__inkstone.doc.pages.map((p: any) => p.background?.kind ?? 'paper'))).toEqual(['paper', 'pdf', 'pdf']);
 });
 
 test('pages panel: rotate a PDF page and copy pages to a new note', async ({ page }) => {
