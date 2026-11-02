@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { newNote, openApp } from './helpers.ts';
+import { modKey, newNote, openApp } from './helpers.ts';
 
 /**
  * The platform: modules (Settings › Modules), sandboxed plugins (install, permissions, panels,
@@ -101,7 +101,7 @@ test('a plugin from the curated list: permission prompt, panel, command, exporte
   await expect(frame.locator('[data-k="words"]')).toHaveText('11', SLOW);
 
   // The command, from the search palette.
-  await page.keyboard.press('Control+k');
+  await page.keyboard.press(`${await modKey(page)}+k`);
   await page.locator('.pal-input').fill('count words');
   await page.getByText('Count words in this note').click();
   await expect(page.locator('.toasts')).toContainText('11 words', SLOW);
@@ -122,7 +122,7 @@ test('a plugin from the curated list: permission prompt, panel, command, exporte
   await openApp(page);
   await page.locator('.note-card').first().click();
   await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
-  await page.keyboard.press('Control+k');
+  await page.keyboard.press(`${await modKey(page)}+k`);
   await page.locator('.pal-input').fill('count words');
   await page.getByText('Count words in this note').click();
   await expect(page.locator('.toasts')).toContainText('does not have the “notes:read” permission', SLOW);
@@ -182,13 +182,13 @@ test('plugins are sandboxed: no network, no app access; the webhook plugin posts
 
   await openApp(page);
   await newNote(page);
-  await page.keyboard.press('Control+k');
+  await page.keyboard.press(`${await modKey(page)}+k`);
   await page.locator('.pal-input').fill('probe');
   await page.getByText('Probe the sandbox').click();
   await expect(page.locator('.toasts')).toContainText('fetch blocked, parent blocked, storage blocked, permission_denied', SLOW);
 
   // A plugin importer: each row of a CSV file becomes a note.
-  await page.keyboard.press('Control+k');
+  await page.keyboard.press(`${await modKey(page)}+k`);
   await page.locator('.pal-input').fill('rows as notes');
   const chooser = page.waitForEvent('filechooser');
   await page.getByText('Import: Rows as notes').click();
@@ -200,7 +200,7 @@ test('plugins are sandboxed: no network, no app access; the webhook plugin posts
   await newNote(page);
   await typeText(page, 'Ship the beta on Friday');
   await page.evaluate(() => (window as any).__inkwright.engine.selectAll?.());
-  await page.keyboard.press('Control+k');
+  await page.keyboard.press(`${await modKey(page)}+k`);
   await page.locator('.pal-input').fill('webhook');
   await page.getByText('Send selection to webhook').click();
   await expect(page.locator('.toasts')).toContainText('Sent to hooks.test', SLOW);

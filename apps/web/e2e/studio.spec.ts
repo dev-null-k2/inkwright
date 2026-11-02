@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { line, newNote, openApp, pen, strokes, word, type Pt } from './helpers.ts';
+import { line, modKey, newNote, openApp, pen, strokes, word, type Pt } from './helpers.ts';
 
 /** Canvas-relative screen point of a page point. */
 const toScreen = (page: Page, x: number, y: number, pageIndex = 0) =>
@@ -7,7 +7,7 @@ const toScreen = (page: Page, x: number, y: number, pageIndex = 0) =>
 const pageOf = (page: Page, i = 0) => page.evaluate((i) => (window as any).__inkwright.doc.page(i), i);
 const more = (page: Page) => page.getByRole('button', { name: 'More', exact: true }).click();
 const menuItem = (page: Page, name: RegExp | string) => page.getByRole('menuitem', { name }).click();
-const flush = (page: Page) => page.keyboard.press('Control+s');
+const flush = async (page: Page) => page.keyboard.press(`${await modKey(page)}+s`);
 
 test('selective eraser: long-press the eraser, erase only the highlighter', async ({ page }) => {
   await openApp(page);
@@ -109,7 +109,7 @@ test('sticky notes: add, write and type on one, fold it to an icon and open it a
   await page.getByRole('button', { name: 'Open sticky note' }).click();
   expect((await sticky()).collapsed).toBe(false);
   // Undo goes back through the steps.
-  await page.keyboard.press('Control+z');
+  await page.keyboard.press(`${await modKey(page)}+z`);
   expect((await sticky()).collapsed).toBe(true);
 });
 
@@ -247,7 +247,7 @@ test('lock a note: encrypted cover in the library, passcode to open, kept out of
   // Search doesn't find it any more.
   await page.getByRole('button', { name: 'Back to library' }).click();
   await expect(page.locator('.note-card .locked-cover')).toHaveCount(1);
-  await page.keyboard.press('Control+k');
+  await page.keyboard.press(`${await modKey(page)}+k`);
   await page.locator('.pal-input').fill('zanzibar');
   await expect(page.getByText('Nothing in your notes matches “zanzibar”')).toBeVisible();
   await page.keyboard.press('Escape');
