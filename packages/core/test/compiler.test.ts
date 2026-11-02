@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   agentsMd,
+  attributeAnswer,
+  attributedClaims,
   applyClaimChoice,
   buildContextPack,
   claimFreshness,
@@ -342,5 +344,19 @@ describe('context packs and AGENTS.md', () => {
     expect((pack.json.images as Array<{ base64: string }>)[0]!.base64).toBe('iVBORw==');
     const md = agentsMd({ instructions: ['Use pnpm.'], facts: [], decisions: [{ text: 'We decided to use Postgres.', noteTitle: 'Arch', src: formatAnchor({ noteId: n.meta.id, page: 0, h: 'x1' }) }], createdAt: T0 });
     expect(md).toContain('- We decided to use Postgres. _(Arch, page 1)_');
+  });
+});
+
+describe('explaining answers', () => {
+  it('attributes sentences to the passages that support them, and admits when nothing does', () => {
+    const n = note('Atlas', ['Latency must stay under 50 ms.']);
+    const d = doc(n);
+    const passages = [{ noteId: n.meta.id, title: 'Atlas', pageIndex: 0, text: 'Latency must stay under 50 ms.' }];
+    const s = attributeAnswer(`Latency must stay under 50 ms ([Atlas, p. 1](#mem/${n.meta.id}/1)). Latency has a 50 ms ceiling. Paris is in France.`, passages);
+    expect(s.map((x) => [x.tag, x.cited])).toEqual([['E', true], ['I', false], [null, false]]);
+    expect(s[0]!.text).toBe('Latency must stay under 50 ms.');
+    const claims = attributedClaims(s, (id) => (id === n.meta.id ? d.units : null));
+    expect(claims).toHaveLength(2);
+    expect(claims[0]!.src[0]).toContain(`#${d.units[0]!.hash}`);
   });
 });
