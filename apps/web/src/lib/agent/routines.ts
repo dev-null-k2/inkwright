@@ -119,12 +119,13 @@ async function findDatedNotes(vault: AppVault, keyword: string): Promise<DatedNo
   return out;
 }
 
-/**
- * Starts routines and connected apps once the vault is open. Note saves by the user (not by an
- * agent) and new recordings are watched through vault change events.
- */
 let starting: Promise<void> | null = null;
 
+/**
+ * Starts routines and connected apps once the vault is open (once per app run). Note saves by the
+ * user (not by an agent) and new recordings are watched through vault change events. Missed runs
+ * catch up a moment after opening, once the library is on screen.
+ */
 export function startAgents(vault: AppVault): Promise<void> {
   starting ??= start(vault);
   return starting;
@@ -153,5 +154,6 @@ async function start(vault: AppVault): Promise<void> {
     });
   });
   void startConnectedApps().catch((e) => console.warn('connected apps failed to start', e));
+  await new Promise((r) => setTimeout(r, 2500));
   await scheduler.start();
 }

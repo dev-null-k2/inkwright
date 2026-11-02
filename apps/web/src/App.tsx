@@ -43,8 +43,8 @@ export function App() {
         await v.vault.purgeTrash();
         startSyncLoop();
         // Assistant: activity log, memory, skills, routines (run while open) and connected apps.
-        await initAgentHub(v);
-        void startAgents(v).catch((e) => console.warn('Routines could not start', e));
+        // A problem here must never keep the notes from opening.
+        await initAgentHub(v).then(() => { void startAgents(v).catch((e) => console.warn('Routines could not start', e)); }, (e) => console.warn('Assistant features could not start', e));
       } catch (e) {
         console.error(e);
         useApp.setState({ error: (e as Error).message });
