@@ -9,6 +9,7 @@ import { renderPageStandalone } from '../canvas/engine.ts';
 import type { AppVault } from './vault.ts';
 import { saveFile } from '../platform/files.ts';
 import { canvasBytes } from './canvasBytes.ts';
+import { useSettings } from '../state/settings.ts';
 
 export { canvasBytes };
 
@@ -54,6 +55,15 @@ export async function exportPdf(vault: AppVault, note: NoteMeta, pages: PageInk[
       drawPaperBackground(p, note, page, size, fonts);
     }
     await drawPageItems(pdf, p, page, H, fonts, readAsset);
+  }
+  // Proof of authorship: a signed certificate for the exported pages travels inside the PDF.
+  if (useSettings.getState().authorship.attachToPdf) {
+    try {
+      const { createCertificate, embedInPdf } = await import('../authorship/certificate.ts');
+      await embedInPdf(pdf, await createCertificate(note, pages, indexes));
+    } catch (e) {
+      console.warn('Exported without an authorship certificate', e);
+    }
   }
   return pdf.save();
 }

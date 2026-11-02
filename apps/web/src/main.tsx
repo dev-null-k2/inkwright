@@ -8,6 +8,7 @@ import '@fontsource-variable/jetbrains-mono';
 import './styles/tokens.css';
 import './styles/app.css';
 import './fill/fill.css';
+import './smart/smart.css';
 import './styles/palettes.css';
 import { App } from './App.tsx';
 import { BUILD_TARGET, isNative } from './platform/env.ts';

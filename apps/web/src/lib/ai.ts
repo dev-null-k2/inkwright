@@ -226,7 +226,7 @@ function clean(p: NotePatch): Partial<NoteMeta> {
 }
 
 function textBox(x: number, y: number, width: number, text: string): TextBox {
-  return { id: newId(), x, y, width, text, fontSize: 16, color: '#FF1B1F24', font: 'sans', createdAt: Date.now() };
+  return { id: newId(), x, y, width, text, fontSize: 16, color: '#FF1B1F24', font: 'sans', createdAt: Date.now(), origin: 'ai' };
 }
 
 export { textBoxHeight };

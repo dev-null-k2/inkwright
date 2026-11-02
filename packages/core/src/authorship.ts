@@ -211,6 +211,8 @@ export interface ContentCounts {
   unattested: number;
   typedText: number;
   aiText: number;
+  /** Text boxes brought in from files. */
+  importedText: number;
   recognizedText: number;
   importedImages: number;
   aiImages: number;
@@ -242,7 +244,7 @@ export interface WritingRhythm {
   tiltShare: number;
 }
 
-export const ZERO_COUNTS: ContentCounts = { handwritten: 0, penWithPressure: 0, touch: 0, mouse: 0, copied: 0, aiInk: 0, unattested: 0, typedText: 0, aiText: 0, recognizedText: 0, importedImages: 0, aiImages: 0, importedPages: 0, objects: 0 };
+export const ZERO_COUNTS: ContentCounts = { handwritten: 0, penWithPressure: 0, touch: 0, mouse: 0, copied: 0, aiInk: 0, unattested: 0, typedText: 0, aiText: 0, importedText: 0, recognizedText: 0, importedImages: 0, aiImages: 0, importedPages: 0, objects: 0 };
 
 export function addCounts(a: ContentCounts, b: ContentCounts): ContentCounts {
   const out = { ...a };
@@ -278,6 +280,7 @@ export function classifyPage(page: PageInk): { counts: ContentCounts; handwritte
     if (t.origin === 'ai') c.aiText++;
     else if (t.origin === 'recognized') c.recognizedText++;
     else if (!t.origin) c.typedText++;
+    else if (t.origin === 'import') c.importedText++;
     else c.aiText++;
   }
   for (const im of page.images ?? []) {
@@ -444,7 +447,7 @@ function actionsFor(t: ContentCounts): AuthorshipClaim['actions'] {
   const ai = t.aiInk + t.aiText + t.aiImages;
   if (ai) a.push({ action: 'c2pa.created', digitalSourceType: SOURCE_TYPES.ai, count: ai, description: 'Content made by an AI model' });
   if (t.objects || t.recognizedText) a.push({ action: 'c2pa.created', digitalSourceType: SOURCE_TYPES.solver, count: t.objects + t.recognizedText, description: 'Tables, solved results, graphs and recognized text made by the app' });
-  const imp = t.importedImages + t.importedPages + t.copied + t.unattested;
+  const imp = t.importedImages + t.importedPages + t.importedText + t.copied + t.unattested;
   if (imp) a.push({ action: 'c2pa.placed', digitalSourceType: SOURCE_TYPES.imported, count: imp, description: 'Imported, pasted or unattested content' });
   return a;
 }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft, Camera, CloudUpload, Undo2, Redo2, Download, FileImage, FileText, FileType2, Files, Image as ImageIcon, Layers,
   AudioLines, Mic, MoreHorizontal, Pause, Play, Sparkles, Square, Tag, Trash2, Maximize2, FilePlus2, Copy, Scan,
-  Signature, FileUp,
+  Signature, FileUp, Fingerprint,
 } from 'lucide-react';
 import { newId, PAGE_SIZE_PRESETS, pagePaper, pageSizeOf, type ImageItem, type InkStroke, type TextBox } from '@inkstone/core';
 import { InkEngine, type SelectionInfo, type Tool, type ToolState } from '../canvas/engine.ts';
@@ -30,6 +30,8 @@ import { askConfirm, askText } from '../ui/prompts.tsx';
 import { isAIReady, transcribePage } from '../lib/ai.ts';
 import { FillLayer, FilledExportDialog, noteHasPdf } from '../fill/FillLayer.tsx';
 import { insertFilesIntoNote, useFileDrop } from '../lib/openFiles.ts';
+import { SmartLayer, SmartSelectionActions, type SmartApi } from '../smart/SmartLayer.tsx';
+import { AuthorshipDialog, useAuthorshipDevice } from '../authorship/AuthorshipPanel.tsx';
 
 declare const __E2E__: boolean;
 /** Test builds (`vite build --mode e2e`) expose the document to end-to-end tests; releases never do. */
@@ -75,6 +77,9 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   // Fill & sign (PDF notes): the form layer and its export dialog.
   const [fill, setFill] = useState(false);
   const [fillExport, setFillExport] = useState(false);
+  // Smart ink (tables, solving, dates) and proof of authorship.
+  const smartApi = useRef<SmartApi | null>(null);
+  const [authOpen, setAuthOpen] = useState(false);
 
   // ---- Open the note ---------------------------------------------------------------------------
   useEffect(() => {
@@ -93,6 +98,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
 
   const doc = session?.doc ?? null;
   useEffect(() => (doc ? doc.subscribe(() => bump((x) => x + 1)) : undefined), [doc]);
+  useAuthorshipDevice(doc);
 
   // Files dropped onto the note go into it (PDF pages, images, text).
   const [rootEl, setRootEl] = useState<HTMLDivElement | null>(null);
@@ -280,7 +286,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
       const maxW = (size.width || 800) * 0.7, maxH = (size.height || 800) * 0.6;
       const k = Math.min(1, maxW / dim.width, maxH / dim.height);
       const w = dim.width * k, h = dim.height * k;
-      doc.addImage(pageIndex, { id: newId(), x: c.x - w / 2 + offset, y: c.y - h / 2 + offset, width: w, height: h, asset, rotation: 0, createdAt: Date.now() });
+      doc.addImage(pageIndex, { id: newId(), x: c.x - w / 2 + offset, y: c.y - h / 2 + offset, width: w, height: h, asset, rotation: 0, createdAt: Date.now(), origin: 'import' });
       offset += 24;
     }
     if (files.length) setTool('lasso');
@@ -366,7 +372,8 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
     engine?.setPlayback(null);
   };
 
-  live.current = { seekTo, editText: startTextEdit };
+  // The text tool in a table cell types into the cell.
+  live.current = { seekTo, editText: (req) => { if (req.isNew && smartApi.current?.editCellAt(req.pageIndex, req.box.x, req.box.y + 12)) return; startTextEdit(req); } };
 
   // Leaving the editor stops playback and frees the audio.
   useEffect(() => () => {
@@ -410,7 +417,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
       const text = await transcribePage(vault, doc, items.pageIndex, items.strokes);
       if (!text?.trim()) return toast({ text: 'No text recognized in the selection', tone: 'error' });
       const b = items.strokes.reduce((r, s) => ({ minX: Math.min(r.minX, ...s.points.map((p) => p.x)), minY: Math.min(r.minY, ...s.points.map((p) => p.y)), maxX: Math.max(r.maxX, ...s.points.map((p) => p.x)) }), { minX: Infinity, minY: Infinity, maxX: -Infinity });
-      const box: TextBox = { id: newId(), x: b.minX, y: b.minY, width: Math.max(160, b.maxX - b.minX), text: text.trim(), fontSize: 18, color: items.strokes[0]?.color ?? '#FF1B1F24', font: 'sans', createdAt: Date.now() };
+      const box: TextBox = { id: newId(), x: b.minX, y: b.minY, width: Math.max(160, b.maxX - b.minX), text: text.trim(), fontSize: 18, color: items.strokes[0]?.color ?? '#FF1B1F24', font: 'sans', createdAt: Date.now(), origin: 'recognized' };
       doc.commit(items.pageIndex, {
         label: 'Convert to text',
         strokes: { removed: doc.page(items.pageIndex).strokes.map((s, i) => ({ index: i, item: s })).filter((x) => items.strokes.some((s) => s.id === x.item.id)), added: [] },
@@ -483,7 +490,8 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
               onCut={() => { copySel(); engine.deleteSelection(); }} onRecolor={(c) => engine.recolorSelection(c)}
               onAsk={askAboutSelection} onConvert={() => void convertSelection()} onEditText={editSelectedText}
               links={[...new Set((engine.getSelectionItems()?.texts ?? []).flatMap((t) => [...t.text.matchAll(/\[\[([^\]]+)\]\]/g)].map((m) => m[1]!.trim())))]}
-              onOpenLink={(title) => void openWikiLink(title)} />
+              onOpenLink={(title) => void openWikiLink(title)}
+              extra={<SmartSelectionActions engine={engine} api={smartApi} strokes={sel.strokes} />} />
           )}
           {editingText && editingScreen && engine && (
             <TextOverlay key={editingText.box.id} box={editingText.box} screen={editingScreen} zoom={engine.zoom} onChange={(b) => { latestText.current = b; }} onDone={commitText} />
@@ -491,6 +499,9 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
           {doc && engine && vault && session && host.current && noteHasPdf(doc) && (
             <FillLayer doc={doc} engine={engine} vault={vault} session={session} host={host.current} active={fill} onActive={setFill}
               sel={sel} onTool={setTool} onExport={() => setFillExport(true)} view={view} />
+          )}
+          {doc && engine && vault && host.current && (
+            <SmartLayer doc={doc} engine={engine} vault={vault} host={host.current} tool={tool} view={view} apiRef={smartApi} />
           )}
           {dropping && <div className="drop-hint" aria-live="polite"><FileUp size={22} /> Drop to add to this note</div>}
           {latched && <div className="latch-pill" role="status">{settings.input.buttonAction === 'lasso' ? 'Lasso' : settings.input.buttonAction === 'highlighter' ? 'Highlighter' : 'Eraser'} on — press the pen button to switch back</div>}
@@ -582,6 +593,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
       </Popover>
 
       {doc && vault && session && <FilledExportDialog open={fillExport} onClose={() => setFillExport(false)} doc={doc} vault={vault} session={session} />}
+      {doc && vault && <AuthorshipDialog open={authOpen} onClose={() => setAuthOpen(false)} doc={doc} vault={vault} onVerifyFile={() => { setAuthOpen(false); void session?.flush().then(() => navigate({ name: 'settings', section: 'authorship' })); }} />}
 
       <Popover anchor={btn.more.current} open={menu === 'more'} onClose={() => setMenu(null)} title="More" placement="below">
         <Menu onClose={() => setMenu(null)} items={[
@@ -592,6 +604,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
           { label: 'Insert', icon: <ImageIcon size={16} />, onClick: () => setTimeout(() => setMenu('insert'), 0) },
           ...(narrow && !isArtifact ? [{ label: recording != null ? 'Stop recording' : 'Record audio', icon: <Mic size={16} />, onClick: () => void toggleRecording() }] : []),
           { label: 'Export and share', icon: <Download size={16} />, onClick: () => setTimeout(() => setMenu('export'), 0) },
+          { label: 'Authorship', icon: <Fingerprint size={16} />, hint: doc?.meta.certificate ? 'Signed' : undefined, onClick: () => setAuthOpen(true) },
           'sep' as const,
           { label: 'Tags', icon: <Tag size={16} />, hint: meta?.tags.join(', ') || 'None', onClick: async () => { if (!doc) return; const t = await askText('Tags', 'Comma-separated', doc.meta.tags.join(', ')); if (t != null) { doc.setTags(t.split(',')); await session?.flush(); await setTags(doc.meta.id, doc.meta.tags); } } },
           { label: 'Fit to width', icon: <Maximize2 size={16} />, hint: `${modKey}0`, onClick: () => engine?.fitWidth() },

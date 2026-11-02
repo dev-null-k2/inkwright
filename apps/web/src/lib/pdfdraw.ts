@@ -134,6 +134,11 @@ export async function drawPageItems(pdf: PDFDocument, p: PDFPage, page: PageInk,
       console.warn('image export failed', e);
     }
   }
+  // Tables, solved results and graphs (smart ink) sit under the ink.
+  if (page.objects?.length) {
+    const { drawPageObjectsPdf } = await import('../smart/pdf.ts');
+    await drawPageObjectsPdf(pdf, p, page, H, fonts.sans, await pdf.embedFont(StandardFonts.HelveticaBold));
+  }
   const under = page.strokes.filter((s) => penLook(s.pen).underlay);
   const over = page.strokes.filter((s) => !penLook(s.pen).underlay);
   for (const s of [...under, ...over]) {
