@@ -45,6 +45,23 @@ self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k.startsWith('inkstone-') && k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', (e) => {
   const req = e.request;
+  // Web Share Target: files/text shared to the installed app arrive as a POST; keep them in a
+  // cache for the page (lib/openFiles.ts) and open the app.
+  if (req.method === 'POST' && new URL(req.url).pathname.endsWith('/share-target')) {
+    e.respondWith((async () => {
+      const form = await req.formData();
+      const cache = await caches.open('inkstone-share');
+      let i = 0;
+      for (const f of form.getAll('files')) {
+        if (typeof f === 'string') continue;
+        await cache.put('./__share/' + Date.now() + '-' + (i++), new Response(f, { headers: { 'content-type': f.type || 'application/octet-stream', 'x-name': encodeURIComponent(f.name || 'Shared file') } }));
+      }
+      const text = ['title', 'text', 'url'].map((k) => form.get(k)).filter((v) => typeof v === 'string' && v).join('\\n');
+      if (text) await cache.put('./__share/text', new Response(text));
+      return Response.redirect('./?share=1', 303);
+    })());
+    return;
+  }
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
   if (req.mode === 'navigate') {
     e.respondWith(fetch(req).then((r) => { const copy = r.clone(); caches.open(CACHE).then((c) => c.put('./', copy)); return r; }).catch(() => caches.match('./')));

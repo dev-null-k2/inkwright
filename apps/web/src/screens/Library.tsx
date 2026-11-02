@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BookOpen, ChevronDown, Clock, FileUp, FolderInput, Hash, Inbox, Menu as MenuIcon, MoreHorizontal, NotebookPen, Pin, PinOff,
   Plus, Search, Settings as SettingsIcon, Trash2, X, Copy, Pencil, RotateCcw, Cloud, CloudOff, Image as ImageIcon,
@@ -12,6 +12,7 @@ import { createNote, importFiles, moveNote, renameNote, togglePin, trashNote, re
 import { BrandMark } from '../ui/Brand.tsx';
 import { InkRipple, NotebookCover } from '../ui/Cover.tsx';
 import { syncNow, useSync } from '../lib/sync.ts';
+import { OPENABLE, useFileDrop } from '../lib/openFiles.ts';
 
 export function Library() {
   const { notes, trash, notebooks, filter, setFilter, query, setQuery, navigate, vault } = useApp();
@@ -25,6 +26,12 @@ export function Library() {
   const [hits, setHits] = useState<SearchHit[] | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const sync = useSync();
+  // Drop PDFs, images or text files anywhere on the library to open them.
+  const [libEl, setLibEl] = useState<HTMLDivElement | null>(null);
+  const dropping = useFileDrop(libEl, useCallback(async (files: File[]) => {
+    const id = await importFiles(files, filter.kind === 'notebook' ? filter.id : undefined);
+    if (id) navigate({ name: 'editor', noteId: id });
+  }, [filter, navigate]));
 
   useEffect(() => {
     if (!query.trim() || !vault) return setHits(null);
@@ -121,7 +128,8 @@ export function Library() {
   );
 
   return (
-    <div className={cx('library', wide && 'is-wide')}>
+    <div ref={setLibEl} className={cx('library', wide && 'is-wide')}>
+      {dropping && <div className="drop-hint" aria-live="polite"><FileUp size={22} /> Drop to open</div>}
       {wide ? sidebar : drawer && (
         <>
           <div className="drawer-scrim" onClick={() => setDrawer(false)} />
@@ -145,7 +153,7 @@ export function Library() {
           </div>
         </header>
 
-        <input ref={fileInput} type="file" hidden multiple accept="application/pdf,image/*,.zip" onChange={async (e) => {
+        <input ref={fileInput} type="file" hidden multiple accept={OPENABLE} onChange={async (e) => {
           const files = [...(e.target.files ?? [])];
           e.target.value = '';
           const id = await importFiles(files, filter.kind === 'notebook' ? filter.id : undefined);
@@ -377,9 +385,9 @@ function EmptyState({ filter, onNew, onImport }: { filter: LibraryFilter; onNew:
       <p className="muted">Start a page, or bring in a PDF to write on.</p>
       <div className="empty-actions">
         <button type="button" className="btn btn-primary" onClick={onNew}><NotebookPen size={17} /> New note</button>
-        <button type="button" className="btn" onClick={onImport}><FileUp size={17} /> Import PDF or image</button>
+        <button type="button" className="btn" onClick={onImport}><FileUp size={17} /> Open a file</button>
       </div>
-      <p className="muted small"><ImageIcon size={13} /> PDFs become pages you can annotate. Images go on a new page.</p>
+      <p className="muted small"><ImageIcon size={13} /> PDFs become pages you can annotate, fill in and sign. Images go on a new page; text files become typed notes.</p>
     </div>
   );
 }

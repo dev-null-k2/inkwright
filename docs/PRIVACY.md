@@ -18,6 +18,8 @@ Inkstone is a note-taking app. Your notes stay under your control.
 
 **On-device handwriting recognition** (Android) runs entirely on the phone. Google's language model is downloaded once, and your handwriting never leaves the device.
 
+**Signatures and initials** you save for Fill & sign stay on your device, encrypted, and are never synced. A signature is only copied into a document when you place it there.
+
 **Microphone:** used only while you record an audio note. Recordings are saved with the note.
 
 **Deleting data:** delete notes in the app. Trash empties after 30 days, or right away with "Delete forever". Uninstall the app or clear site data to remove everything stored on the device. Synced copies stay in your Drive or server until you delete them there.

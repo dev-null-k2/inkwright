@@ -1,6 +1,8 @@
 package app.inkstone
 
+import android.content.Intent
 import android.util.Log
+import app.inkstone.files.IncomingFiles
 import app.inkstone.feel.FeelProfile
 import app.inkstone.feel.FeelSettings
 import app.inkstone.feel.HapticGrainEngine
@@ -22,6 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -48,6 +51,9 @@ import org.json.JSONObject
  *  - prepareRecognizer({ language }) → { state: 'ready' | 'downloading' | 'failed' | 'unsupported' }
  *  - recognize({ language, lines }) → { lines: string[] } (ML Kit Digital Ink, on device)
  *  - event 'stylusButton'           → { pressed, keyCode } (forwarded by [MainActivity])
+ *  - takeSharedFiles()              → { files: [{ name, mimeType, path }] } files Android opened or
+ *                                     shared to Inkstone, copied into the cache (see [IncomingFiles])
+ *  - event 'sharedFiles'            → { files } the same, for files arriving while Inkstone runs
  *
  * All feel* and inkTip* methods resolve at once (inkTipPrepare once the overlay's surface is up);
  * the work is posted to the UI thread (see [NativePaperFeel], [NativeInkTip]).
@@ -66,11 +72,47 @@ class InkstoneNativePlugin : Plugin() {
     var inkTip: NativeInkTip? = null
         private set
 
+    /** Incoming files the web layer hasn't taken yet (it wasn't listening when they arrived). */
+    private val pendingFiles = ArrayList<IncomingFiles.Incoming>()
+
     override fun load() {
         haptics = HapticGrainEngine(context.applicationContext)
         recognizer = HandwritingRecognizer(scope)
         paperFeel = NativePaperFeel(context.applicationContext, haptics)
         inkTip = NativeInkTip { bridge?.webView }
+        // Launched by "Open with" / share: the intent that started the activity.
+        activity?.intent?.let(::receive)
+    }
+
+    override fun handleOnNewIntent(intent: Intent) {
+        super.handleOnNewIntent(intent)
+        receive(intent)
+    }
+
+    /** Copies an intent's files off the main thread, then hands them to the web layer. */
+    private fun receive(intent: Intent) {
+        if (!IncomingFiles.isIncoming(intent)) return
+        val copy = Intent(intent)
+        // Consumed: a later re-delivery of the same intent must not import it twice.
+        if (activity?.intent === intent) activity?.intent = Intent(Intent.ACTION_MAIN)
+        scope.launch {
+            val files = withContext(Dispatchers.IO) { IncomingFiles.copyAll(context.applicationContext, copy) }
+            if (files.isEmpty()) return@launch
+            withContext(Dispatchers.Main) {
+                if (hasListeners(EVENT_SHARED_FILES)) notifyListeners(EVENT_SHARED_FILES, JSObject().put("files", filesJson(files)))
+                else synchronized(pendingFiles) { pendingFiles += files }
+            }
+        }
+    }
+
+    @PluginMethod
+    fun takeSharedFiles(call: PluginCall) {
+        val files = synchronized(pendingFiles) { pendingFiles.toList().also { pendingFiles.clear() } }
+        call.resolve(JSObject().put("files", filesJson(files)))
+    }
+
+    private fun filesJson(files: List<IncomingFiles.Incoming>) = JSArray().apply {
+        files.forEach { put(JSObject().put("name", it.name).put("mimeType", it.mimeType).put("path", it.path)) }
     }
 
     override fun handleOnPause() {
@@ -255,6 +297,7 @@ class InkstoneNativePlugin : Plugin() {
     companion object {
         const val NAME = "InkstoneNative"
         const val EVENT_STYLUS_BUTTON = "stylusButton"
+        const val EVENT_SHARED_FILES = "sharedFiles"
         private const val DEFAULT_LANGUAGE = "en-US"
         private const val TAG = "InkstoneNative"
     }

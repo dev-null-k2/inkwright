@@ -285,7 +285,7 @@ export function mergePage(base: PageInk | null, local: PageInk, remote: PageInk,
 
 // ---- Notes -------------------------------------------------------------------------------------
 
-const NOTE_SPECIAL = new Set(['id', 'pageIds', 'tags', 'recordings', 'trashedAt', 'createdAt', 'updatedAt', 'formatVersion']);
+const NOTE_SPECIAL = new Set(['id', 'pageIds', 'tags', 'recordings', 'trashedAt', 'createdAt', 'updatedAt', 'formatVersion', 'forms']);
 
 export function mergeNote(base: NoteMeta | null, local: NoteMeta, remote: NoteMeta, opts: MergeOptions = {}): NoteMeta {
   const eq = new Eq();
@@ -313,6 +313,20 @@ export function mergeNote(base: NoteMeta | null, local: NoteMeta, remote: NoteMe
       eq,
       compare: byTime((r) => r.startedAt),
     });
+  }
+
+  // PDF form values merge per PDF and per field, so filling different fields on two devices keeps both.
+  if (local.forms !== undefined || remote.forms !== undefined) {
+    const forms: Record<string, unknown> = {};
+    const lf = (local.forms ?? {}) as Record<string, Record<string, unknown>>;
+    const rf = (remote.forms ?? {}) as Record<string, Record<string, unknown>>;
+    const bf = base ? ((base.forms ?? {}) as Record<string, Record<string, unknown>>) : null;
+    for (const asset of new Set([...Object.keys(lf), ...Object.keys(rf)])) {
+      const values: Record<string, unknown> = {};
+      mergeFields(eq, bf ? (bf[asset] ?? {}) : null, lf[asset] ?? {}, rf[asset] ?? {}, new Set(), newer, values);
+      if (Object.keys(values).length) forms[asset] = values;
+    }
+    out.forms = forms;
   }
 
   // Trash: a one-sided trash/restore wins. Without a base we can't tell a restore from "never

@@ -655,9 +655,7 @@ export class InkEngine {
     if (page.background && pageRect) {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, pageRect.maxX, pageRect.maxY);
-      const bmp = page.background.kind === 'pdf'
-        ? this.assets.pdfPage(note.id, page.background.asset, page.background.pageNumber ?? 1, dc.scale)
-        : this.assets.image(note.id, page.background.asset);
+      const bmp = this.assets.background(note, page.background, dc.scale);
       if (bmp) ctx.drawImage(bmp, 0, 0, pageRect.maxX, pageRect.maxY);
     } else {
       drawPaper(dc, paper, pageRect, region);
@@ -1625,7 +1623,7 @@ export async function renderPageStandalone(doc: Pick<NoteDocument, 'meta' | 'pag
     ctx.fillRect(rect.minX, rect.minY, w, h);
     // Wait for a sharp render.
     for (let i = 0; i < 40; i++) {
-      const bmp = page.background.kind === 'pdf' ? assets.pdfPage(note.id, page.background.asset, page.background.pageNumber ?? 1, k) : assets.image(note.id, page.background.asset);
+      const bmp = assets.background(note, page.background, k, true);
       if (bmp) { ctx.drawImage(bmp, 0, 0, w, h); break; }
       await new Promise((r) => setTimeout(r, 100));
     }
