@@ -5,7 +5,7 @@
 **Un cuaderno de escritura a mano que se siente como papel, piensa con cualquier IA y te responde con tinta.**<br>
 Local primero · Trae tu propio modelo (o ninguno) · Código abierto · Sin servidores nuestros
 
-[Abrir la app](https://karthikkasukurti.github.io/inkwright/app/) · [Descargar para Android](https://github.com/karthikkasukurti/inkwright/releases/latest) · [English](../../README.md)
+[Abrir la app](https://dev-null-k2.github.io/inkwright/app/) · [Descargar para Android](https://github.com/dev-null-k2/inkwright/releases/latest) · [English](../../README.md)
 
 </div>
 
@@ -36,7 +36,7 @@ Inkwright empieza por la pluma. La tinta aparece bajo la punta antes del siguien
 ## Empezar
 
 ```sh
-git clone https://github.com/karthikkasukurti/inkwright && cd inkwright
+git clone https://github.com/dev-null-k2/inkwright && cd inkwright
 npm install
 npm run dev
 ```

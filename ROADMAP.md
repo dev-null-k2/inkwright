@@ -1,6 +1,6 @@
 # Roadmap
 
-Inkwright ships in small, tested steps. This page lists what is next and what is deliberately out of scope. Ideas and votes go to [Discussions](https://github.com/karthikkasukurti/inkwright/discussions).
+Inkwright ships in small, tested steps. This page lists what is next and what is deliberately out of scope. Ideas and votes go to [Discussions](https://github.com/dev-null-k2/inkwright/discussions).
 
 ## Next
 

@@ -7,4 +7,4 @@ In short:
 - Critique the work, not the person.
 - No harassment of any kind.
 
-To report a problem, email the maintainer privately through the address on [github.com/karthikkasukurti](https://github.com/karthikkasukurti). Reports are handled confidentially.
+To report a problem, email the maintainer privately through the address on [github.com/dev-null-k2](https://github.com/dev-null-k2). Reports are handled confidentially.

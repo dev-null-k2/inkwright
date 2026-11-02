@@ -5,7 +5,7 @@
 **紙のように書けて、どんな AI とも考え、インクで答えてくれる手書きノート。**<br>
 ローカルファースト · 好きなモデルを（使わなくても）· オープンソース · 私たちのサーバーは一切不要
 
-[アプリを開く](https://karthikkasukurti.github.io/inkwright/app/) · [Android 版をダウンロード](https://github.com/karthikkasukurti/inkwright/releases/latest) · [English](../../README.md)
+[アプリを開く](https://dev-null-k2.github.io/inkwright/app/) · [Android 版をダウンロード](https://github.com/dev-null-k2/inkwright/releases/latest) · [English](../../README.md)
 
 </div>
 
@@ -26,7 +26,7 @@ Inkwright はペンから始まります。インクは次のフレームより�
 ## はじめる
 
 ```sh
-git clone https://github.com/karthikkasukurti/inkwright && cd inkwright
+git clone https://github.com/dev-null-k2/inkwright && cd inkwright
 npm install
 npm run dev
 ```
