@@ -99,7 +99,7 @@
 .smart-graph:active { cursor: grabbing; }
 .smart-graph.is-on { outline: 1.5px solid var(--iron); outline-offset: 2px; }
 .smart-graph-bar {
-  position: absolute; top: -44px; right: 0; display: flex; gap: 2px; padding: 3px;
+  position: absolute; bottom: -44px; right: 0; display: flex; gap: 2px; padding: 3px;
   background: var(--raised); border: 1px solid var(--line); border-radius: var(--r-pill); box-shadow: var(--float-shadow);
 }
 .smart-steps ol { margin: 8px 0 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }

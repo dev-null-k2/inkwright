@@ -112,11 +112,11 @@ export function SmartLayer({ doc, engine, vault, host, tool, apiRef }: SmartLaye
         const auto = await canReadAutomatically();
         if (auto) {
           const c = await readForActions(ctx, pageIndex, enc.enclosedIds, auto === 'ai').catch(() => null);
-          if (c && (c.event || c.links.length || c.tasks)) setCard(c);
+          if (c && (c.event || c.links.length || c.tasks)) setCard({ ...c, anchor: enc.rect });
         } else if (await canRead()) {
           offer({ key, pageIndex, anchor: enc.rect, label: 'Read circled writing', icon: 'read', run: () => run('Reading…', async () => {
             const c = await readForActions(ctx, pageIndex, enc.enclosedIds, true);
-            if (c) setCard(c);
+            if (c) setCard({ ...c, anchor: enc.rect });
           }) });
         }
       })();

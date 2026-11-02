@@ -51,6 +51,20 @@ describe('solving maths', () => {
   });
 });
 
+describe('reading maths with an AI (strict prompt)', () => {
+  it('asks for JSON in solver syntax with the image, and parses fenced replies', async () => {
+    const { readMathSkill, readTableSkill } = await import('./read.ts');
+    const p = readMathSkill.build({ image: { mediaType: 'image/jpeg', data: 'AAA' } });
+    expect(p.json).toBe(true);
+    expect(p.system).toContain('"plain"');
+    expect(JSON.stringify(p.messages)).toContain('"type":"image"');
+    const r = readMathSkill.parse('```json\n{"plain":"x^2 = 9","latex":"x^2=9","steps":["Take roots"," "],"answer":"x = ±3"}\n```', { image: { mediaType: '', data: '' } });
+    expect(r).toEqual({ plain: 'x^2 = 9', latex: 'x^2=9', steps: ['Take roots'], answer: 'x = ±3' });
+    expect(() => readMathSkill.parse('I think the answer is 3', { image: { mediaType: '', data: '' } })).toThrow();
+    expect(readTableSkill.parse('{"cells":[["a","b"],["c"]]}', { image: { mediaType: '', data: '' }, rows: 2, cols: 2 })).toEqual([['a', 'b'], ['c', '']]);
+  });
+});
+
 describe('dates, links and tasks in handwriting', () => {
   const ref = new Date(2026, 10, 1, 9, 0); // Sun 1 Nov 2026
   it('reads a date and time into an event with a title', () => {
