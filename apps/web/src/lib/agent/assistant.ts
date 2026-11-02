@@ -9,6 +9,7 @@ import {
   RecordingNoteToolHost,
   RunRecorder,
   createNoteTools,
+  createMemoryTools,
   createRememberTool,
   createSkillTools,
   memoryPromptSection,
@@ -29,6 +30,7 @@ import { AppNoteToolHost, type ActiveAI } from '../ai.ts';
 import { activeSession } from '../session.ts';
 import type { AppVault } from '../vault.ts';
 import { requireHub } from './hub.ts';
+import { appMemory } from '../memory.ts';
 import { mcpAgentTools, useMcp } from './mcp.ts';
 
 /** Notes an agent changed recently: their saves are not "the user saved a note" (routine triggers). */
@@ -99,6 +101,9 @@ export async function prepareAgentRun(o: PrepareOptions): Promise<PreparedRun> {
   const noteTools = createNoteTools(host, o.notes === 'read' ? { include: READ_ONLY_NOTE_TOOLS.filter((t) => vision || t !== 'get_page_image') } : vision ? {} : { exclude: ['get_page_image'] });
   const tools: AgentTool[] = [...noteTools];
   const sections: string[] = [];
+  // Semantic memory over everything written (search_memory), cited to exact places.
+  const searchMemory = appMemory();
+  if (searchMemory) tools.push(...createMemoryTools(searchMemory));
 
   const memory = await hub.memory.load().catch(() => []);
   const mem = memoryPromptSection(memory);

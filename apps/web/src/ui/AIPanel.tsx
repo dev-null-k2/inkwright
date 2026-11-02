@@ -30,6 +30,7 @@ import { undoActivityRun } from '../lib/agent/undo.ts';
 import { speak, useVoicePrefs } from '../lib/agent/voice.ts';
 import { AgentMenuButton, MicButton, PanelAgentView, PanelWaiting } from './agent/panel.tsx';
 import type { AgentViewId } from './agent/shared.tsx';
+import { LocalAISetup } from './LocalAISetup.tsx';
 
 export type AIRequest = { kind: 'selection'; pageIndex: number; strokeIds: string[]; textIds: string[]; at: number };
 
@@ -56,6 +57,7 @@ const TOOL_LABELS: Record<string, string> = {
   read_skill_resource: 'Read a skill file',
   remember: 'Suggested something to remember',
   check_background_task: 'Checked a background task',
+  search_memory: 'Searched everything you wrote',
 };
 
 /** Label for a tool row: note tools by name, connected-app tools as "Used X in App". */
@@ -122,7 +124,7 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
     const ys = [...page.strokes.flatMap((s) => s.points.map((p) => p.y)), ...(page.texts ?? []).map((t) => t.y + 60)];
     const y = ys.length ? Math.max(...ys) + 32 : 96;
     const width = (doc.meta.pageSize.width || 794) - 128;
-    const box: TextBox = { id: newId(), x: 64, y, width, text, fontSize: 16, color: '#FF1B1F24', font: 'sans', createdAt: Date.now() };
+    const box: TextBox = { id: newId(), x: 64, y, width, text, fontSize: 16, color: '#FF1B1F24', font: 'sans', createdAt: Date.now(), origin: 'ai' };
     doc.upsertText(i, box, 'AI text');
     toast({ text: 'Added to the page', action: { label: 'Undo', run: () => engine.undo() } });
   };
@@ -287,6 +289,7 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
       </header>
       {ai === null && (
         <div className="ai-setup">
+          <LocalAISetup onReady={() => void getActiveAI().then(setAi)} />
           <p className="ai-setup-lead">Use any AI with your notes.</p>
           <p className="muted">Add a key from OpenAI, Anthropic, Google Gemini, OpenRouter, Groq, Mistral, xAI or DeepSeek, or point Inkstone at a local model in Ollama or LM Studio. Keys stay encrypted on this device.</p>
           <button type="button" className="btn btn-primary" onClick={onOpenSettings}>Connect an AI</button>

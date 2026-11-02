@@ -38,14 +38,17 @@ export function decodePoint(a: unknown): InkPoint {
   return { x: Number(a[0]), y: Number(a[1]), t: Number(a[2]), p: n(3), tilt: n(4), orient: n(5) };
 }
 
-function encodeStroke(s: InkStroke): unknown {
+/** A stroke as written to disk (also what authorship digests hash, so they survive a save). */
+export function encodeStroke(s: InkStroke): Record<string, unknown> {
   const o: Record<string, unknown> = { id: s.id, pen: s.pen, color: s.color, size: r3(s.size), createdAt: s.createdAt };
   if (s.shape) o.shape = s.shape;
+  if (s.input) o.input = s.input;
+  if (s.origin) o.origin = s.origin;
   o.points = s.points.map(encodePoint);
   return o;
 }
 
-function decodeStroke(o: any): InkStroke {
+export function decodeStroke(o: any): InkStroke {
   const s: InkStroke = {
     id: String(o.id),
     pen: o.pen ?? 'fountain',
@@ -55,6 +58,8 @@ function decodeStroke(o: any): InkStroke {
     createdAt: typeof o.createdAt === 'number' ? o.createdAt : 0,
   };
   if (o.shape) s.shape = o.shape;
+  if (o.input === 'pen' || o.input === 'touch' || o.input === 'mouse') s.input = o.input;
+  if (typeof o.origin === 'string') s.origin = o.origin;
   return s;
 }
 

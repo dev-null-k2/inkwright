@@ -26,6 +26,7 @@ import {
   type Vec2,
 } from '@inkstone/core';
 import { AssetCache, type AssetLoader } from './assets.ts';
+import { drawPageObjectsFor } from '../smart/render.ts';
 import { PAGE_GAP, Viewport, layoutPages, nearestSlot, slotAt, type DocLayout, type PageSlot } from './layout.ts';
 import {
   cachedBounds,
@@ -125,7 +126,7 @@ interface Selection {
 
 type Gesture =
   | { kind: 'none' }
-  | { kind: 'stroke'; pointerId: number; pageIndex: number; slot: PageSlot; points: InkPoint[]; predicted: InkPoint[]; t0: number; wall: number; preset: PenPreset; shape: InkStroke | null; holdX: number; holdY: number; holdTimer: number; lastTs: number; pen: boolean; raw: boolean }
+  | { kind: 'stroke'; pointerId: number; pageIndex: number; slot: PageSlot; points: InkPoint[]; predicted: InkPoint[]; t0: number; wall: number; preset: PenPreset; shape: InkStroke | null; holdX: number; holdY: number; holdTimer: number; lastTs: number; pen: boolean; raw: boolean; input: PointerKind }
   | { kind: 'erase'; pointerId: number; pageIndex: number; slot: PageSlot; before: PageInk; working: PageInk; last: Vec2 | null; precise: boolean; t0: number }
   | { kind: 'lasso'; pointerId: number; pageIndex: number; slot: PageSlot; points: Vec2[] }
   | { kind: 'move'; pointerId: number; startX: number; startY: number; dx: number; dy: number; scale: number; mode: 'move' | 'scale'; anchor: Vec2; startDist: number }
@@ -177,6 +178,7 @@ export class InkEngine {
   private fitted = false;
   private destroyed = false;
   private wetDirtyRect: { x: number; y: number; w: number; h: number } | null = null;
+  private flash: { el: HTMLDivElement; pageIndex: number; rect: Rect; timer: number } | null = null;
 
   tool: ToolState;
   prefs: InputPrefs;
@@ -284,6 +286,40 @@ export class InkEngine {
     this.viewport.panY = -s.y * this.viewport.zoom + 16;
     this.clampView();
     this.invalidate();
+  }
+
+  /**
+   * Scrolls a page-space region into view and briefly highlights it, so a search result or an AI
+   * citation lands on the exact words. The highlight follows panning and zooming until it fades.
+   */
+  flashRegion(pageIndex: number, r: Rect, ms = 2200) {
+    const slot = this.layout.slots[pageIndex];
+    if (!slot) return;
+    const v = this.viewport;
+    const ox = slot.infinite ? 0 : slot.x, oy = slot.infinite ? 0 : slot.y;
+    const cx = (r.minX + r.maxX) / 2 + ox, cy = (r.minY + r.maxY) / 2 + oy;
+    if (this.layout.infinite) v.panX = v.width / 2 - cx * v.zoom;
+    v.panY = v.height * 0.4 - cy * v.zoom;
+    this.clampView();
+    if (this.flash) { clearTimeout(this.flash.timer); this.flash.el.remove(); }
+    const box = el('div', 'ink-flash') as HTMLDivElement;
+    box.setAttribute('aria-hidden', 'true');
+    this.overlay.append(box);
+    const flash = { el: box, pageIndex, rect: r, timer: 0 };
+    flash.timer = window.setTimeout(() => {
+      box.classList.add('is-fading');
+      setTimeout(() => { box.remove(); if (this.flash === flash) this.flash = null; }, 500);
+    }, ms);
+    this.flash = flash;
+    this.invalidate();
+  }
+
+  private positionFlash() {
+    const f = this.flash;
+    if (!f) return;
+    const pad = 6;
+    const s = this.pageRectToScreen(f.pageIndex, f.rect);
+    Object.assign(f.el.style, { left: `${s.x - pad}px`, top: `${s.y - pad}px`, width: `${s.w + pad * 2}px`, height: `${s.h + pad * 2}px` });
   }
 
   get currentPageIndex(): number {
@@ -459,6 +495,7 @@ export class InkEngine {
       this.needsBase = false;
       this.renderBase();
       this.updateSelectionOverlay();
+      this.positionFlash();
       this.emitViewport();
     }
     if (this.needsWet) {
@@ -666,6 +703,7 @@ export class InkEngine {
       if (hidden?.images.has(im.id)) continue;
       drawImageItem(ctx, im, this.assets.image(note.id, im.asset));
     }
+    drawPageObjectsFor(ctx, note, page);
     const playback = this.playback;
     drawStrokes(dc, page.strokes, {
       paperColor: paperColorFor(note, page),
@@ -1008,7 +1046,7 @@ export class InkEngine {
     const first: InkPoint = { x: pp.x, y: pp.y, t: 0, p: this.pressure(e), tilt, orient };
     this.gesture = {
       kind: 'stroke', pointerId: e.pointerId, pageIndex: slot.index, slot, points: [first], predicted: [], t0: e.timeStamp, wall: Date.now(), preset: resolved.preset,
-      shape: null, holdX: p.x, holdY: p.y, holdTimer: 0, lastTs: e.timeStamp, pen: e.pointerType === 'pen', raw: false,
+      shape: null, holdX: p.x, holdY: p.y, holdTimer: 0, lastTs: e.timeStamp, pen: e.pointerType === 'pen', raw: false, input: pointerKind(e),
     };
     this.armHold();
     this.feel?.begin(resolved.preset.pen, pointerKind(e), first.p);
@@ -1313,9 +1351,10 @@ export class InkEngine {
     this.callbacks.onWriting?.(false);
     if (!g.shape) this.inkTip?.end(false);
     this.gesture = { kind: 'none' };
+    // `input` records how the stroke was written (authorship certificates count handwriting by it).
     const stroke: InkStroke = g.shape
-      ? { ...g.shape, id: newId() }
-      : { id: newId(), pen: g.preset.pen, color: g.preset.color, size: g.preset.size, points: g.points, createdAt: g.wall };
+      ? { ...g.shape, id: newId(), input: g.input }
+      : { id: newId(), pen: g.preset.pen, color: g.preset.color, size: g.preset.size, points: g.points, createdAt: g.wall, input: g.input };
     // Audio playback: a tap on ink seeks to when it was written.
     if (this.playback && !g.shape && g.points.length < 4) {
       const last = g.points[g.points.length - 1]!;
@@ -1633,6 +1672,7 @@ export async function renderPageStandalone(doc: Pick<NoteDocument, 'meta' | 'pag
     for (let i = 0; !bmp && assets && i < 30; i++) { await new Promise((r) => setTimeout(r, 60)); bmp = assets.image(note.id, im.asset); }
     drawImageItem(ctx, im, bmp);
   }
+  drawPageObjectsFor(ctx, note, page);
   drawStrokes(dc, page.strokes, { paperColor: paperColorFor(note, page) });
   for (const t of page.texts ?? []) drawTextBox(ctx, t);
   return canvas;

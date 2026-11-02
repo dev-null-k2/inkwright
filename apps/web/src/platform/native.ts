@@ -53,6 +53,11 @@ export interface InkstoneNativePlugin {
    * yet. Each was copied into the app's cache; `path` is a file:// URI for Capacitor Filesystem.
    */
   takeSharedFiles(): Promise<{ files: SharedFile[] }>;
+  /**
+   * Opens the calendar app's prefilled "new event" screen (ACTION_INSERT; no calendar permission).
+   * Times are epoch ms. `opened` is false when no calendar app is installed.
+   */
+  insertCalendarEvent(opts: { title: string; beginTime: number; endTime: number; allDay: boolean; description?: string; location?: string }): Promise<{ opened: boolean }>;
   /** A file arrived while Inkstone was running (the same files are not returned by takeSharedFiles). */
   addListener(event: 'sharedFiles', cb: (e: { files: SharedFile[] }) => void): Promise<PluginListenerHandle>;
 }
