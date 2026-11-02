@@ -13,6 +13,11 @@ reference implementation is `packages/core/src/codec.ts` + `vault.ts`.
   notes/<noteId>/pages/<pageId>.ink.json  PageInk (compact JSON) — the source of truth for ink
   notes/<noteId>/pages/<pageId>.svg     SVG render of the page — generated
   notes/<noteId>/assets/<name>          images, PDFs, audio recordings referenced by pages/notes
+  ai/skills/<name>/SKILL.md             Agent Skills the user imported (+ their bundled files)
+  ai/skills.json                        which skills are switched off
+  ai/memory.json                        assistant memory: instructions, facts, proposals
+  ai/routines/<routineId>.json          routines (background agents) and their run state
+  ai/activity/<runId>.json              AI activity log: what agents changed, for undo
 ```
 
 Rules
@@ -39,11 +44,23 @@ Rules
   ],
   "texts":  [{ "id", "x", "y", "width", "text" /* Markdown */, "fontSize", "color", "font": "sans|serif|mono|hand", "createdAt" }],
   "images": [{ "id", "x", "y", "width", "height", "asset", "rotation", "createdAt" }],
-  "background": { "kind": "pdf|image", "asset": "file.pdf", "pageNumber": 1 },   // optional
+  "background": { "kind": "pdf|image", "asset": "file.pdf", "pageNumber": 1, "rotation": 90 },   // optional
   "paper": { … }, "size": { … },                                               // optional per-page overrides
-  "recognizedText": "…", "recognizedAt": 0, "recognizedBy": "mlkit|gemini-2.5-flash|…"   // optional
+  "recognizedText": "…", "recognizedAt": 0, "recognizedBy": "mlkit|gemini-2.5-flash|…",  // optional
+  "recognizedLines": [                                                         // optional
+    { "text": "fourier transform", "strokeIds": ["…"], "bounds": { "minX", "minY", "maxX", "maxY" } }
+  ]
 }
 ```
+
+`background.rotation` (optional, degrees, a multiple of 90) is a clockwise turn the user added on
+top of the source page's own orientation (a PDF page's `/Rotate`); the page's `size` is already
+swapped to match. Readers that don't know it show the page unturned.
+
+`recognizedLines` anchors each recognized line to the strokes it came from (written by line-by-line
+recognizers such as ML Kit). Search results and AI citations use it to point at the exact
+handwriting. It always describes the current `recognizedText`; writers that replace the text
+without line anchors drop it. Readers that don't know it ignore it.
 
 Pens: `fountain | ballpoint | pencil | brush | marker | highlighter | dashed`. Missing pressure /
 tilt / orientation are omitted from the point array (or `-1` when a later field is present).
@@ -58,9 +75,31 @@ tilt / orientation are omitted from the point array (or `-1` when a later field 
   "pageIds": ["…"], "notebookId": "…?", "tags": ["…"],
   "createdAt", "updatedAt", "pinned": false, "color": "#AARRGGBB?",
   "recordings": [{ "id", "asset", "startedAt", "durationMs", "mimeType", "title?" }],
-  "summary": "…?", "trashedAt": 0, "formatVersion": 2
+  "summary": "…?", "trashedAt": 0, "formatVersion": 2,
+  "forms": { "file.pdf": { "applicant.name": "Ada Lovelace", "agree": true, "color": "blue", "langs": ["en", "fr"] } }   // optional
 }
 ```
+
+### PDF form values (`forms`, "Fill & sign")
+
+Values the user typed into the AcroForm fields of an imported PDF. Keys are the PDF's asset name,
+then the field's fully qualified name (`parent.child`, as in the PDF). The PDF asset itself is never
+modified; exporters write the values into a copy. Value by field type:
+
+| Field | Value |
+|---|---|
+| Text, dropdown, single-choice list | string (dropdowns/lists: the option's export value) |
+| Checkbox | `true` / `false` |
+| Radio group (or checkboxes sharing a name with different on-states) | the selected widget's state / export value, or `"Off"` |
+| Multi-select list | string array of export values |
+
+A field with no entry shows the value saved in the PDF. Writers drop empty maps (no `forms` key when
+nothing is filled). Signatures, initials, checkmarks and text placed on a page (flat PDFs) are not
+form values: they are ordinary `strokes`, `texts` and `images` of the page. Signatures typed or
+imported as images are stored as `assets/sig-<id>.png` (transparent PNG); drawn ones are strokes.
+
+The signature *library* (saved signatures and initials for reuse) is not part of the vault: it is
+kept on each device only, encrypted with the app's WebCrypto secret store, and never synced.
 
 Paper styles: `blank ruled_narrow ruled_wide dot_grid square_grid graph_mm isometric cornell music
 planner_day planner_week todo`. Tints: `white ivory cream recycled kraft mint blush slate midnight`.
@@ -75,5 +114,67 @@ Textures: `smooth standard toothy`.
 Sync engines (Google Drive, WebDAV, local folder) mirror this tree file-for-file. Conflicts on
 `*.ink.json` and `note.json` are merged three-way against the last-synced base: strokes/texts/
 images are unioned by id with deletions honoured from either side; scalar metadata takes the most
-recent `updatedAt`. Derived files are regenerated after merge. Sync state lives outside the vault
+recent `updatedAt`. `forms` merges per PDF and per field (filling different fields on two devices
+keeps both; the newer note wins a field both changed). Derived files are regenerated after merge. Sync state lives outside the vault
 (app storage), never inside it.
+
+## Assistant data (`ai/`)
+
+Everything the in-app assistant keeps lives next to the notes so it syncs with them. All files
+are JSON (or Markdown for skills); readers ignore unknown fields. Sync treats them as whole files
+(three-way merge is only for ink and note files), so each run and routine is its own file and two
+devices rarely touch the same one. Nothing secret is stored here: API keys, MCP sign-ins and
+tokens stay in each device's encrypted secret store and never sync.
+
+**Skills** — `ai/skills/<name>/` is an [Agent Skill](https://agentskills.io/specification):
+`SKILL.md` with YAML frontmatter (`name` — must equal the folder name, 1–64 chars of `a-z0-9-`,
+no leading/trailing/double hyphens; `description` ≤ 1024 chars; optional `license`,
+`compatibility` ≤ 500 chars, `metadata` (string map), `allowed-tools`) and any bundled files
+(`references/`, `assets/`, `scripts/`). Inkstone never executes scripts. `ai/skills.json` is
+`{ "disabled": ["skill-name", …] }` (built-in skills can be switched off too; they ship with the
+app and are not written here).
+
+**Memory** — `ai/memory.json`:
+
+```jsonc
+{ "version": 1, "items": [
+  { "id", "kind": "instruction|fact", "text", "status": "active|proposed",
+    "source": "user|assistant", "createdAt", "updatedAt", "reason?" }
+] }
+```
+
+Only `active` items reach the model. `proposed` items come from the assistant's `remember` tool
+and wait for the user.
+
+**Routines** — `ai/routines/<id>.json`:
+
+```jsonc
+{ "id", "name", "prompt", "enabled", "ai": "<provider config id>|null",
+  "tools": { "notes": "read|write", "skills": true, "mcpServers": ["<connection id>"] },
+  "triggers": [ { "kind": "daily", "time": "18:00" }, { "kind": "weekly", "day": 1, "time": "08:00" },
+                { "kind": "note-saved", "tag": "email" }, { "kind": "recording-ended" },
+                { "kind": "before-date", "days": 3, "keyword": "exam" } ],
+  "template?", "createdAt", "updatedAt",
+  "state": { "lastRunAt?", "lastStatus?", "lastError?", "slots": { "<trigger index>": <slot ms> },
+             "firedDates": ["<noteId>@YYYY-MM-DD"] } }
+```
+
+Times are the device's local time. A routine runs while Inkstone is open; a slot missed while it
+was closed runs once on the next open (`slots` records it so no device repeats it).
+
+**Activity** — `ai/activity/<runId>.json`, one run per assistant turn, routine run or external
+agent connection (the MCP server writes these too):
+
+```jsonc
+{ "id", "source": "assistant|routine|external", "label", "routineId?", "prompt?",
+  "startedAt", "endedAt?", "status": "running|done|error|cancelled", "reply?", "error?",
+  "ops": [ { "id", "at", "tool", "summary", "undoneAt?", "undoNote?", "kind": … } ] }
+```
+
+Op kinds and how undo reverses them: `note_created {noteId, title}` → move to Trash;
+`note_trashed {noteId, title}` → restore; `text_appended {noteId, pageId, textId, text,
+addedPage?}` → remove that text box (and the page, if it was added and is now empty);
+`meta_changed {noteId, before, after}` (fields `title`, `tags`, `notebookId` (null = unfiled),
+`pinned`, `summary` (null = none)) → put back each field that still has the `after` value;
+`notebook_created {notebookId, name}` → delete it if still empty; `external {server, detail?}` —
+a change in a connected app, listed only. The newest 300 runs are kept.

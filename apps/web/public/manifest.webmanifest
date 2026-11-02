@@ -18,12 +18,16 @@
     { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
   ],
   "file_handlers": [
-    { "action": "./", "accept": { "application/pdf": [".pdf"], "image/*": [".png", ".jpg", ".jpeg", ".webp"] } }
+    { "action": "./", "accept": { "application/pdf": [".pdf"], "image/*": [".png", ".jpg", ".jpeg", ".webp", ".heic", ".heif"], "text/plain": [".txt"], "text/markdown": [".md", ".markdown"] } }
   ],
   "share_target": {
-    "action": "./",
-    "method": "GET",
-    "params": { "title": "title", "text": "text", "url": "url" }
+    "action": "./share-target",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title", "text": "text", "url": "url",
+      "files": [{ "name": "files", "accept": ["application/pdf", ".pdf", "image/*", "text/plain", ".txt", "text/markdown", ".md"] }]
+    }
   },
   "shortcuts": [
     { "name": "New note", "url": "./#new", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }

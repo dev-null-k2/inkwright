@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 import type { Plugin } from 'vite';
+import { fileURLToPath } from 'node:url';
 
 /**
  * Content Security Policy for hosted/native builds. Any AI endpoint may be configured by the user
@@ -12,7 +13,8 @@ function csp(native: boolean): Plugin {
   const policy = [
     "default-src 'self'",
     // Capacitor injects its native bridge as an inline script, so native builds must allow it.
-    `script-src 'self' blob: https://accounts.google.com${native ? " 'unsafe-inline'" : ''}`,
+    // 'wasm-unsafe-eval' lets the on-device AI runtime (ONNX Runtime Web) compile WebAssembly.
+    `script-src 'self' blob: 'wasm-unsafe-eval' https://accounts.google.com${native ? " 'unsafe-inline'" : ''}`,
     "style-src 'self' 'unsafe-inline' https://accounts.google.com",
     "img-src 'self' data: blob: https://*.googleusercontent.com",
     "font-src 'self' data:",
@@ -36,7 +38,8 @@ function serviceWorker(): Plugin {
     name: 'inkstone-sw',
     apply: 'build',
     generateBundle(_opts, bundle) {
-      const files = Object.keys(bundle).filter((f) => !f.endsWith('.map'));
+      // The on-device AI runtime (tens of MB of WebAssembly) is cached when first used, not on install.
+      const files = Object.keys(bundle).filter((f) => !f.endsWith('.map') && !/ort-wasm|\.wasm$/.test(f));
       const version = Date.now().toString(36);
       const source = `// Generated at build time. Precaches the app so it opens offline; notes live in IndexedDB.
 const CACHE = 'inkstone-${'$'}{version}';
@@ -45,6 +48,23 @@ self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k.startsWith('inkstone-') && k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', (e) => {
   const req = e.request;
+  // Web Share Target: files/text shared to the installed app arrive as a POST; keep them in a
+  // cache for the page (lib/openFiles.ts) and open the app.
+  if (req.method === 'POST' && new URL(req.url).pathname.endsWith('/share-target')) {
+    e.respondWith((async () => {
+      const form = await req.formData();
+      const cache = await caches.open('inkstone-share');
+      let i = 0;
+      for (const f of form.getAll('files')) {
+        if (typeof f === 'string') continue;
+        await cache.put('./__share/' + Date.now() + '-' + (i++), new Response(f, { headers: { 'content-type': f.type || 'application/octet-stream', 'x-name': encodeURIComponent(f.name || 'Shared file') } }));
+      }
+      const text = ['title', 'text', 'url'].map((k) => form.get(k)).filter((v) => typeof v === 'string' && v).join('\\n');
+      if (text) await cache.put('./__share/text', new Response(text));
+      return Response.redirect('./?share=1', 303);
+    })());
+    return;
+  }
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
   if (req.mode === 'navigate') {
     e.respondWith(fetch(req).then((r) => { const copy = r.clone(); caches.open(CACHE).then((c) => c.put('./', copy)); return r; }).catch(() => caches.match('./')));
@@ -68,6 +88,8 @@ export default defineConfig(({ mode }) => {
     base: './',
     plugins: [react(), ...(single ? [viteSingleFile({ removeViteModuleLoader: true })] : native ? [csp(true)] : [serviceWorker(), csp(false)])],
     publicDir: single ? false : 'public',
+    // The single-file preview leaves the on-device AI runtime out (see src/ai/spawn-unavailable.ts).
+    resolve: single ? { alias: [{ find: /^\.\.\/ai\/spawn\.ts$/, replacement: fileURLToPath(new URL('./src/ai/spawn-unavailable.ts', import.meta.url)) }] } : undefined,
     define: {
       __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '1.0.0'),
       __BUILD_TARGET__: JSON.stringify(single ? 'single' : 'web'),

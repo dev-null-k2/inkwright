@@ -33,6 +33,7 @@ import { pageImageForAI } from './exporter.ts';
 import { getSecret } from './secrets.ts';
 import type { AppVault } from './vault.ts';
 import { recognizeLocally } from './recognition.ts';
+import { chatChoice, isInstalled, localActiveAI, pickAssistant } from './localai.ts';
 
 export const CLAUDE_BUILTIN_ID = '__claude_builtin__';
 
@@ -69,7 +70,7 @@ export function hasBuiltinClaude(): boolean {
 
 export function isAIReady(): boolean {
   const s = useSettings.getState().ai;
-  return (!!s.activeId && s.providers.some((p) => p.id === s.activeId)) || hasBuiltinClaude();
+  return (!!s.activeId && s.providers.some((p) => p.id === s.activeId)) || hasBuiltinClaude() || isInstalled(chatChoice());
 }
 
 export async function providerFromConfig(cfg: AIProviderConfig, keyOverride?: string): Promise<Provider> {
@@ -81,6 +82,12 @@ export async function providerFromConfig(cfg: AIProviderConfig, keyOverride?: st
 export async function getActiveAI(): Promise<ActiveAI | null> {
   const s = useSettings.getState().ai;
   const cfg = s.providers.find((p) => p.id === s.activeId);
+  // Without a provider the assistant runs on this device; with one, Settings › AI › "Who answers" decides.
+  const pick = await pickAssistant({ providerConfigured: !!cfg && cfg.id !== CLAUDE_BUILTIN_ID, builtinClaude: hasBuiltinClaude() });
+  if (pick.kind === 'device' || pick.kind === 'chrome' || pick.kind === 'native') {
+    const local = localActiveAI(pick.kind);
+    if (local) return local;
+  }
   if (cfg && cfg.id !== CLAUDE_BUILTIN_ID) {
     const info = getProviderInfo(cfg.providerId);
     const provider = await providerFromConfig(cfg);
@@ -134,6 +141,8 @@ export class AppNoteToolHost implements NoteToolHost {
     if (!n) return null;
     const pages = await this.pagesOf(n);
     return {
+      // `meta` is what the note tools read; `note` is kept for older callers.
+      meta: info(n),
       note: { ...info(n), pageCount: pages.length },
       pages: pages.map((p, i) => ({ index: i, text: pageText(p), strokeCount: p.strokes.length, hasHandwriting: p.strokes.length > 0, handwritingRecognized: !!p.recognizedText, imageCount: p.images?.length ?? 0 })),
     } as unknown as NoteContent;
@@ -158,7 +167,7 @@ export class AppNoteToolHost implements NoteToolHost {
     return info(note);
   }
 
-  async appendText(noteId: string, text: string, pageIndex?: number): Promise<{ noteId: string; pageIndex: number }> {
+  async appendText(noteId: string, text: string, pageIndex?: number): Promise<{ noteId: string; pageIndex: number; pageId: string; textId: string }> {
     const n = await this.metaOf(noteId);
     if (!n) throw new Error(`No note with id "${noteId}"`);
     const pages = await this.pagesOf(n);
@@ -177,7 +186,8 @@ export class AppNoteToolHost implements NoteToolHost {
       this.vault.indexNote(meta, next);
       await useApp.getState().refresh();
     }
-    return { noteId, pageIndex: i };
+    // Ids let the activity log undo exactly this text later.
+    return { noteId, pageIndex: i, pageId: page.id, textId: box.id };
   }
 
   async updateNote(id: string, patch: NotePatch): Promise<NoteInfo | null> {

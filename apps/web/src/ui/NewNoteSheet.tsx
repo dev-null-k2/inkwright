@@ -74,7 +74,7 @@ export function NewNoteSheet({ anchor, open, onClose, notebookId, onImport }: { 
           <span>Use this paper for new notes</span>
         </label>
         <div className="new-sheet-actions">
-          <button type="button" className="btn" onClick={onImport}><FileUp size={16} /> Import PDF or image</button>
+          <button type="button" className="btn" onClick={onImport}><FileUp size={16} /> Open file</button>
           <button type="button" className="btn btn-primary" onClick={() => void create()}>Create</button>
         </div>
       </div>
