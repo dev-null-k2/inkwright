@@ -200,6 +200,37 @@ export const BUILTIN_MODULES: ModuleDefinition[] = [
     },
   },
   {
+    id: 'peer',
+    name: 'Devices & live sharing',
+    description: 'Pair your devices by QR code and sync them directly, with no cloud in between, and write on a note together with other people in real time. End to end encrypted.',
+    defaultEnabled: true,
+    contributes: {
+      settingsSections: ['devices'],
+      menuItems: ['Share live'],
+      paletteActions: ['peer.devices'],
+      panels: ['Live sharing', 'Collaborators’ cursors and ink'],
+      background: ['Answering paired devices through your signalling server (when one is set)'],
+    },
+    whenOff: 'Paired devices are remembered but can’t connect; live sessions end. Notes others wrote with you stay, marked as theirs.',
+    async activate() {
+      const { startPeerService } = await import('../peer/service.ts');
+      return startPeerService();
+    },
+  },
+  {
+    id: 'timeline',
+    name: 'Time travel & branches',
+    description: 'See all your notes as they were on any date, and try an assistant’s proposed changes on a branch you can compare with your notes, then merge or discard.',
+    defaultEnabled: true,
+    dependencies: ['studio'],
+    contributes: {
+      paletteActions: ['timeline.asof', 'timeline.today'],
+      panels: ['Time travel bar', 'Branches (Activity)'],
+      menuItems: ['Try on a branch (proposals)'],
+    },
+    whenOff: 'Version history and branches stay in the vault; open branches can be merged or discarded when it is on again.',
+  },
+  {
     id: 'deep-links',
     name: 'Links from other apps',
     description: 'inkstone:// links and web links that create notes, open pages, search and capture — for Shortcuts, Tasker and launchers.',

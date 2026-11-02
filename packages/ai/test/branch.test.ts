@@ -34,6 +34,8 @@ describe('applying dry-run proposals to a branch', () => {
     expect(b.proposals).toEqual([p1!.id, p2!.id]);
     const sides = (await store.sides(b, note.id))!;
     expect(sides.head.pages[0]!.texts!.map((x) => x.text)).toEqual(['eggs', 'milk']);
+    // What the agent wrote is AI content; what was there stays as it was.
+    expect(sides.head.pages[0]!.texts!.map((x) => x.origin ?? null)).toEqual([null, 'ai']);
     expect(Object.values(b.notes).map((n) => n.title).sort()).toEqual(['Groceries', 'Meal plan']);
 
     await store.decide(branch.id, 'merged');

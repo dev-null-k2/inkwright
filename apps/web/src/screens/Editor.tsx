@@ -44,6 +44,8 @@ import { currentLayer, useStudio } from '../studio/EditorStudio.tsx';
 import { useCompilerEditor } from '../compiler/ui/EditorParts.tsx';
 import { LockGate } from '../studio/LockDialogs.tsx';
 import { useDevEditor } from '../dev/DevEditor.tsx';
+import { useLiveEditor } from '../peer/LiveEditor.tsx';
+import { useTimeTravelGuard } from '../timeline/TimeTravel.tsx';
 import { isModuleOn, useModules } from '../modules/registry.ts';
 import { useEditorBridge } from '../plugins/editorBridge.ts';
 import { useEditorPlugins } from '../plugins/EditorPlugins.tsx';
@@ -488,6 +490,9 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   useEditorBridge(doc, engine, sel);
   const plugins = useEditorPlugins({ noteId, anchor: btn.more.current, onPanelOpen: () => setPanel(null) });
   const compiler = useCompilerEditor({ doc, engine, host: host.current, view });
+  // Live sharing (peer/) and the read-only past (timeline/).
+  const liveShare = useLiveEditor({ doc: on('peer') ? doc : null, engine, host: host.current, view });
+  useTimeTravelGuard(doc);
   // [[Wiki links]]: open the note with that title (at its page), or create it (like Obsidian).
   const openWikiLink = (title: string) => kb.follow(title);
 
@@ -563,6 +568,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
           {studio.parts}
           {dev.parts}
           {on('compiler') && compiler.parts}
+          {liveShare.parts}
           {dropping && <div className="drop-hint" aria-live="polite"><FileUp size={22} /> Drop to add to this note</div>}
           {latched && <div className="latch-pill" role="status">{settings.input.buttonAction === 'lasso' ? 'Lasso' : settings.input.buttonAction === 'highlighter' ? 'Highlighter' : 'Eraser'} on — press the pen button to switch back</div>}
           {clips.length > 0 && (
@@ -678,6 +684,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
           ...(on('studio') ? studio.menuItems : []),
           ...dev.menuItems,
           ...(on('compiler') ? compiler.menuItems : []),
+          ...liveShare.menuItems,
           ...plugins.menuItems,
           ...(narrow && !isArtifact ? [{ label: recording != null ? 'Stop recording' : 'Record audio', icon: <Mic size={16} />, onClick: () => void toggleRecording() }] : []),
           { label: 'Export and share', icon: <Download size={16} />, onClick: () => setTimeout(() => setMenu('export'), 0) },

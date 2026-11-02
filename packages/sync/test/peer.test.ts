@@ -202,7 +202,7 @@ async function linkPair(tap?: (from: 'a' | 'b', f: Uint8Array) => Uint8Array | n
   const [ta, tb] = memoryTransportPair({ tap });
   const [la, lb] = await Promise.all([
     PeerLink.open(ta, aKeys, { device: a.info, features: ['sync'] }),
-    PeerLink.open(tb, bKeys, { device: b.info, features: ['sync'] }, { setup: setupB }),
+    PeerLink.open(tb, bKeys, { device: b.info, features: ['sync'] }, { setup: setupB, answering: true }),
   ]);
   return { la, lb, a, b };
 }

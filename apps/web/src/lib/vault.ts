@@ -42,6 +42,19 @@ export class AppVault {
     });
   }
 
+  /**
+   * A non-persistent AppVault over another file system: the vault as of a date (time travel,
+   * core timeline.ts). It never syncs, and what is written to it is not kept.
+   */
+  static over(fs: VaultFS, asOf: number): AppVault {
+    const v = new AppVault(fs, false);
+    v.asOf = asOf;
+    return v;
+  }
+
+  /** Set when this is a read-only view of the vault at that moment (epoch ms). */
+  asOf: number | null = null;
+
   static async open(): Promise<AppVault> {
     let fs: VaultFS;
     let persistent = true;

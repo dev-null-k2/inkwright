@@ -51,8 +51,13 @@ export class PeerLink {
    * Opens the link: sends our hello and waits for theirs (or fails). Messages that arrive right
    * after the hello are held until `setup` has registered the handlers, so a fast peer's first
    * request is never answered with "not offered".
+   *
+   * The device that started the connection speaks first; the answering device (`answering`)
+   * sends its hello only once the first hello arrived. A data channel opens on the answering
+   * side a moment before the starting side has processed the opening handshake, and Chromium can
+   * lose a message sent into that moment; answering a message that has arrived never hits it.
    */
-  static async open(transport: PeerTransport, keys: SessionKeys, hello: PeerHello, opts: { timeoutMs?: number; setup?: (link: PeerLink) => void } = {}): Promise<PeerLink> {
+  static async open(transport: PeerTransport, keys: SessionKeys, hello: PeerHello, opts: { timeoutMs?: number; setup?: (link: PeerLink) => void; answering?: boolean } = {}): Promise<PeerLink> {
     const channel = new SecureChannel(transport, keys);
     const early: PeerMessage[] = [];
     let greeted = false;
@@ -79,6 +84,7 @@ export class PeerLink {
           reject(new Error('The other device sent an invalid greeting.'));
           return;
         }
+        if (opts.answering) channel.send({ type: 'hello', body: hello }).catch(reject);
         resolve(h);
         // Keep collecting until the RPC layer is attached (below).
         stop = off;
@@ -88,7 +94,7 @@ export class PeerLink {
         off();
         reject(new Error(reason ?? 'The connection closed.'));
       });
-      channel.send({ type: 'hello', body: hello }).catch(reject);
+      if (!opts.answering) channel.send({ type: 'hello', body: hello }).catch(reject);
     });
     stop();
     return new PeerLink(channel, theirs, early, opts.setup);
