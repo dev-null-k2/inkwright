@@ -42,3 +42,4 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 - The developer module: code graph, drift detection, verified diagrams, runbooks, session lessons, CLI and Agent Skill.
 - Accessibility: read aloud, a reading mode, keyboard navigation and an axe-clean UI.
 - Android, iOS (Capacitor) and an installable web app; tested on Chromium, WebKit and Firefox.
+- A lean, fast app: a 20 MB download from Google Play on an arm64 phone (a 37 MB APK from GitHub), and the library is usable in 1.3 s on a mid-range phone's CPU. DuckDB, the on-device AI runtime and the code parsers download once, verified, when first used; release builds are shrunk with R8 and split per ABI ([PERFORMANCE.md](docs/PERFORMANCE.md)).
