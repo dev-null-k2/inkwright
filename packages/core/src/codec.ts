@@ -46,6 +46,7 @@ export function encodeStroke(s: InkStroke): Record<string, unknown> {
   if (s.origin) o.origin = s.origin;
   if (typeof s.nib === 'number') o.nib = r3(s.nib);
   if (s.layer === 'drawing') o.layer = s.layer;
+  if (s.author) o.author = { id: s.author.id, name: s.author.name };
   o.points = s.points.map(encodePoint);
   return o;
 }
@@ -64,6 +65,7 @@ export function decodeStroke(o: any): InkStroke {
   if (typeof o.origin === 'string') s.origin = o.origin;
   if (typeof o.nib === 'number' && Number.isFinite(o.nib)) s.nib = o.nib;
   if (o.layer === 'drawing') s.layer = 'drawing';
+  if (o.author && typeof o.author.id === 'string') s.author = { id: o.author.id, name: typeof o.author.name === 'string' ? o.author.name : '' };
   return s;
 }
 

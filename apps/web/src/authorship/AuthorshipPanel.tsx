@@ -39,6 +39,7 @@ export function CountsList({ c }: { c: ContentCounts }) {
   if (c.recognizedText || c.objects) rows.push(['Made by the app', [c.recognizedText && `${plural(c.recognizedText, 'recognized text')}`, c.objects && plural(c.objects, 'table, result or graph', 'tables, results or graphs')].filter(Boolean).join(', ')]);
   if (c.importedImages || c.importedPages || c.importedText) rows.push(['Imported', [c.importedPages && plural(c.importedPages, 'PDF/image page'), c.importedImages && plural(c.importedImages, 'image'), c.importedText && plural(c.importedText, 'text file')].filter(Boolean).join(', ')]);
   if (c.copied) rows.push(['Pasted or copied ink', plural(c.copied, 'stroke')]);
+  if (c.collaborator) rows.push(['By a collaborator', `${plural(c.collaborator, 'stroke or text box', 'strokes and text boxes')} written or changed in a live session`]);
   if (c.unattested) rows.push(['Without history', `${plural(c.unattested, 'stroke')} (written before this was recorded, or edited outside Inkstone)`]);
   return <>{rows.map(([k, v]) => <div key={k} style={{ display: 'contents' }}><dt>{k}</dt><dd>{v}</dd></div>)}</>;
 }

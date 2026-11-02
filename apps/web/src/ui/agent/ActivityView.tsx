@@ -12,6 +12,7 @@ import { useApp } from '../../state/app.ts';
 import { cx, relativeTime } from '../primitives.tsx';
 import { ApprovalList } from './shared.tsx';
 import { ProposalList } from '../trust/ProposalList.tsx';
+import { BranchList } from '../../timeline/BranchList.tsx';
 
 const SOURCE_ICON = { assistant: <Bot size={15} />, routine: <Repeat size={15} />, external: <Plug size={15} /> } as const;
 
@@ -23,6 +24,7 @@ export function ActivityView() {
       <p className="ag-lead">Everything the assistant and your routines changed in your notes. Undo any change, or a whole run.</p>
       <ApprovalList />
       <ProposalList />
+      <BranchList />
       {!runs.length && <p className="ag-empty">Nothing yet. When the assistant creates, edits, tags or moves notes, it shows up here.</p>}
       <ol className="ag-runs">
         {runs.slice(0, limit).map((r) => <RunCard key={r.id} run={r} />)}

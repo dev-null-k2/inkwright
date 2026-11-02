@@ -10,6 +10,7 @@ Inkstone is a note-taking app. Your notes stay under your control.
 
 - On your device: app storage on Android and iOS, browser storage on the web.
 - If you turn on sync: in **your** Google Drive (the visible "Inkstone" folder; Inkstone can see only files it created), on **your** WebDAV server, or in a folder you choose. Data goes straight from your device to that service under your account.
+- If you pair devices or share a page live: directly between the devices, end to end encrypted (see [COLLABORATION.md](COLLABORATION.md)). A STUN server (Google's by default; you can change or clear it) learns your devices' public IP addresses so they can find each other; a TURN relay or signalling server, if you set one up, carries only encrypted data. A live-session guest keeps a copy of the shared page in their own notes.
 
 **AI features** work only when you turn them on. You either add your own API key for a provider such as OpenAI, Anthropic, Google, OpenRouter or a local model, or you use Claude inside claude.ai.
 

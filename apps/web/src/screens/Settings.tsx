@@ -37,6 +37,8 @@ import { contributionOn, isModuleOn, useModules } from '../modules/registry.ts';
 import { MemoryEvalSection } from '../compiler/ui/MemoryEvalSection.tsx';
 import { Accessibility } from 'lucide-react';
 import { InkActionsSettings, ReadingSettings } from '../inkactions/Settings.tsx';
+import { MonitorSmartphone } from 'lucide-react';
+import { DevicesSection } from '../peer/DevicesSection.tsx';
 
 const SECTIONS = [
   { id: 'writing', label: 'Writing feel', icon: <Vibrate size={17} /> },
@@ -44,6 +46,7 @@ const SECTIONS = [
   { id: 'handwriting', label: 'Handwriting', icon: <ScanText size={17} /> },
   { id: 'ai', label: 'AI', icon: <Bot size={17} /> },
   { id: 'sync', label: 'Account & sync', icon: <Cloud size={17} /> },
+  { id: 'devices', label: 'Devices & sharing', icon: <MonitorSmartphone size={17} /> },
   { id: 'agents', label: 'Agents (MCP)', icon: <Plug size={17} /> },
   { id: 'authorship', label: 'Authorship', icon: <Fingerprint size={17} /> },
   { id: 'appearance', label: 'Appearance & paper', icon: <Palette size={17} /> },
@@ -95,6 +98,7 @@ export function Settings({ section }: { section?: string }) {
             {active === 'handwriting' && <HandwritingSection />}
             {active === 'ai' && <AISection />}
             {active === 'sync' && <SyncSection />}
+            {active === 'devices' && current && <DevicesSection />}
             {active === 'agents' && <AgentsSection />}
             {active === 'authorship' && current && <AuthorshipSection />}
             {active === 'appearance' && <AppearanceSection />}

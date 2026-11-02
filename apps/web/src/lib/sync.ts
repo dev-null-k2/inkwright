@@ -160,6 +160,8 @@ export async function syncNow(opts: { interactive?: boolean; allowMassDelete?: b
   const targets = enabledTargets();
   if (!targets.length) return;
   const app = useApp.getState();
+  // Looking at the past (time travel): nothing to sync until back to today.
+  if (app.vault?.asOf != null) return;
   if (app.vault && !app.vault.persistent) {
     // Never sync a temporary in-memory vault: it would look like "everything was deleted".
     useSync.setState({ status: 'error', message: 'Sync is off because this browser is blocking storage for Inkstone.' });

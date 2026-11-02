@@ -47,6 +47,7 @@
     "onnxruntime-web": "1.31.0-dev.20260914-8d85527a0",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.5.438",
+    "qrcode-generator": "^2.0.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "sql.js": "^1.14.2",
