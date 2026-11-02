@@ -86,6 +86,19 @@ describe('authorship chain', () => {
     expect(doc.page(0).authorship!.events.map((e) => e.op + (e.how ?? ''))).toEqual(['+draw', '-', '+redo']);
   });
 
+  it('records page objects, but not a graph being panned (no content change)', () => {
+    const doc = makeDoc();
+    const g = { type: 'graph' as const, id: 'g1', x: 0, y: 0, width: 200, height: 150, createdAt: tick(), origin: 'solver' as const, functions: [{ expr: 'x', color: '#FF000000' }], view: { xMin: -1, xMax: 1, yMin: -1, yMax: 1 } };
+    doc.editObjects(0, 'Plot', { upsert: [g] });
+    expect(doc.page(0).authorship!.events).toHaveLength(1);
+    doc.editObjects(0, 'Move graph', { upsert: [{ ...g, view: { xMin: -2, xMax: 2, yMin: -2, yMax: 2 } }] }, { undoable: false });
+    expect(doc.page(0).authorship!.events).toHaveLength(1);
+    expect(doc.canUndo).toBe(true);
+    doc.editObjects(0, 'Add to graph', { upsert: [{ ...g, functions: [...g.functions, { expr: 'x^2', color: '#FF000000' }] }] });
+    expect(doc.page(0).authorship!.events.map((e) => e.op + e.k)).toEqual(['+o', '-o', '+o']);
+    expect(classifyPage(doc.page(0)).counts.objects).toBe(1);
+  });
+
   it('a stroke drawn by code (no input recorded) is never counted as handwriting', () => {
     const doc = makeDoc();
     doc.addStroke(0, { ...handStroke(10, 10), input: undefined });

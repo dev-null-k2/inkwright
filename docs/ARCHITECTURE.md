@@ -81,6 +81,36 @@ Sync (`@inkstone/sync`) compares content hashes with the last-synced state and r
   (`launchQueue`), the POST share target (the service worker stashes files in Cache Storage), and
   Android intents. Text and Markdown become typed notes.
 
+## Smart ink (`apps/web/src/smart/`, core `objects.ts`, `tables.ts`, `inkcues.ts`, `mathexpr.ts`)
+
+- **Noticing:** `SmartLayer.tsx` watches the document for new handwritten strokes and, ~1 s after
+  the pen rests, runs the geometric detectors in core: a drawn grid (`detectTable` — strict, with
+  tests for near misses), a trailing "=" (`detectTrailingEquals`), a loop around writing
+  (`detectEnclosure`), handwritten checkboxes (`detectChecklist`). At most one chip is offered;
+  writing on or × dismisses it. Settings › Pen & touch › Smart ink suggestions turns it off.
+- **Objects:** tables, solved results and graphs are `PageInk.objects`, committed through
+  `NoteDocument.editObjects` (undoable; automatic follow-ups like a table growing to fit its ink
+  use `adjust`, which is not an undo step). Canvas (`smart/render.ts`, called from the engine's
+  page drawing and `renderPageStandalone`), SVG (`core/objectsvg.ts`) and PDF (`smart/pdf.ts`) draw
+  the same picture.
+- **Reading ink:** `smart/read.ts` uses on-device recognition first; the active AI's vision
+  (`getActiveAI()`, whichever provider — cloud or on-device) with strict JSON prompts for maths and
+  tables, automatically only when Settings › Handwriting allows AI, otherwise on a tap.
+- **Solving:** `smart/math.ts` — nerdamer-prime (equations, systems, derivatives, integrals,
+  limits) and mathjs (units), both lazy-loaded; every symbolic answer is checked numerically with
+  core's own parser, and a numeric root finder covers transcendental equations. Offline.
+- **Dates and links:** `smart/detect.ts` (chrono-node, phone/email/URL patterns, task lines) and
+  `smart/ics.ts` (RFC 5545 files, Google Calendar links); on Android the plugin's
+  `insertCalendarEvent` opens the calendar app's prefilled new-event screen.
+
+## Proof of authorship (`core/authorship.ts`, `apps/web/src/authorship/`)
+
+Strokes record their input device; AI/solver/recognized/imported content carries an `origin`;
+`NoteDocument.commit` appends content-digest events to a per-page hash chain. Certificates (claim
++ evidence + ES256 signature with a non-extractable device key in IndexedDB) are made in the
+editor's Authorship panel and embedded in exported PDFs; Settings › Authorship verifies PDFs and
+JSON offline. Details and limits: [AUTHORSHIP.md](AUTHORSHIP.md).
+
 ## AI (`@inkstone/ai`, `apps/web/src/lib/ai.ts`)
 
 - **Providers:** one `Provider` interface over OpenAI-compatible APIs (OpenAI, OpenRouter, Groq, Mistral, xAI, DeepSeek, Together, Fireworks, Perplexity, Cerebras, Azure, Ollama, LM Studio, custom), Anthropic, Gemini, and Claude through the claude.ai `sample` capability. Requests stream, retry and send images. Tool calling is unified across providers, with a prompt-based fallback for models without native tools.

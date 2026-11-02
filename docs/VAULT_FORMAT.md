@@ -35,10 +35,14 @@ Rules
   "strokes": [
     { "id": "…", "pen": "fountain", "color": "#FF1B1F24", "size": 2.6, "createdAt": 1730000000000,
       "shape": "rectangle",                 // optional, when snapped to a shape
+      "input": "pen",                       // optional: pen | touch | mouse — how it was written in Inkstone
+      "origin": "ai",                       // optional: ai | solver | recognized | import — not handwriting
       "points": [[x, y, t, p?, tilt?, orient?], …] }   // t = ms since stroke start; p 0..1; radians
   ],
-  "texts":  [{ "id", "x", "y", "width", "text" /* Markdown */, "fontSize", "color", "font": "sans|serif|mono|hand", "createdAt" }],
-  "images": [{ "id", "x", "y", "width", "height", "asset", "rotation", "createdAt" }],
+  "texts":  [{ "id", "x", "y", "width", "text" /* Markdown */, "fontSize", "color", "font": "sans|serif|mono|hand", "createdAt", "origin?" }],
+  "images": [{ "id", "x", "y", "width", "height", "asset", "rotation", "createdAt", "origin?" }],
+  "objects": [ … ],                                                            // optional: tables, solved results, graphs (below)
+  "authorship": { "v": 1, "events": [ … ] },                                   // optional: hash chain (docs/AUTHORSHIP.md)
   "background": { "kind": "pdf|image", "asset": "file.pdf", "pageNumber": 1, "rotation": 90 },   // optional
   "paper": { … }, "size": { … },                                               // optional per-page overrides
   "recognizedText": "…", "recognizedAt": 0, "recognizedBy": "mlkit|gemini-2.5-flash|…"   // optional
@@ -52,6 +56,51 @@ swapped to match. Readers that don't know it show the page unturned.
 Pens: `fountain | ballpoint | pencil | brush | marker | highlighter | dashed`. Missing pressure /
 tilt / orientation are omitted from the point array (or `-1` when a later field is present).
 
+`input` and `origin` (strokes, texts, images) say how content was made; see
+[AUTHORSHIP.md](AUTHORSHIP.md). Absent `origin` means made by the user in the app. Readers that
+don't know them ignore them; writers keep them when they rewrite an item.
+
+### Page objects (`objects`, "ink that does things")
+
+Live objects made from ink, drawn **under** the strokes (handwriting in a table cell sits on top of
+the grid). Every object has `id`, `type`, `x`, `y` (top-left, page units), `createdAt`, and an
+optional `origin`. Readers that don't know `objects` show the page without them (the ink is all
+still there); readers that don't know a `type` skip that object. Writers must keep objects they
+don't understand.
+
+```jsonc
+{ "type": "table", "id", "x", "y", "createdAt",
+  "cols": [120, 90, 90],                 // column widths, left to right
+  "rows": [32, 32, 32],                  // row heights, top to bottom
+  "cells": [[{ "text": "Item" }, {}, {}], [{ "recognized": "milk" }, {}, {}], …],   // [row][col]
+  "color": "#FF1B1F24", "lineWidth": 1.6, "header": true }
+
+{ "type": "math", "id", "x", "y", "createdAt",
+  "input": "2x + 3 = 7", "latex": "2x+3=7", "result": "x = 2", "steps": ["…"],
+  "fontSize": 22, "color": "#FF1B1F24", "source": ["<stroke ids>"], "origin": "solver|ai" }
+
+{ "type": "graph", "id", "x", "y", "createdAt", "width": 320, "height": 220,
+  "functions": [{ "expr": "x^2-4", "color": "#FF2F6FB5", "label": "y" }],
+  "view": { "xMin": -10, "xMax": 10, "yMin": -6, "yMax": 30 }, "origin": "solver" }
+```
+
+**Tables.** `cells` is always `rows.length × cols.length`. A cell's `text` is what was typed into
+it; `recognized` is what was read from the ink written in it (typed text wins when both exist).
+Ink written in a table is an ordinary stroke in `strokes`: it belongs to the cell that contains
+the centre of its bounds, and moves with that cell when rows or columns are inserted, removed or
+resized (`relayoutStrokes` in `packages/core/src/objects.ts`). Markdown and CSV exports use typed
+text, else recognized text.
+
+**Solved results** (`math`) are machine-made answers shown next to the handwriting they came
+from, in a handwriting-style font with a faint wash so they are never mistaken for the user's ink.
+`input` is plain ASCII maths. `origin` is `solver` when the device read and solved it, `ai` when
+an AI read the handwriting (the answer is still checked by the on-device solver when it can).
+
+**Graphs** plot each `expr` as y = f(x) over `view`. Expressions use the syntax in
+`packages/core/src/mathexpr.ts`: `+ - * / ^`, implicit multiplication (`2x`, `3sin(x)`),
+`sqrt abs exp ln log(=log10) sin cos tan asin acos atan sinh cosh tanh sec csc cot floor ceil`,
+`pi`, `e`, `|x|`, `n!`. Any tool can redraw them; SVG exports already include them.
+
 ## NoteMeta (`note.json`)
 
 ```jsonc
@@ -63,9 +112,13 @@ tilt / orientation are omitted from the point array (or `-1` when a later field 
   "createdAt", "updatedAt", "pinned": false, "color": "#AARRGGBB?",
   "recordings": [{ "id", "asset", "startedAt", "durationMs", "mimeType", "title?" }],
   "summary": "…?", "trashedAt": 0, "formatVersion": 2,
-  "forms": { "file.pdf": { "applicant.name": "Ada Lovelace", "agree": true, "color": "blue", "langs": ["en", "fr"] } }   // optional
+  "forms": { "file.pdf": { "applicant.name": "Ada Lovelace", "agree": true, "color": "blue", "langs": ["en", "fr"] } },   // optional
+  "certificate": { "asset": "authorship-1730000000000.json", "signedAt": 1730000000000 }   // optional, latest signed authorship certificate
 }
 ```
+
+`certificate` points at the note's latest signed authorship certificate in `assets/` (format in
+[AUTHORSHIP.md](AUTHORSHIP.md)).
 
 ### PDF form values (`forms`, "Fill & sign")
 
@@ -100,7 +153,8 @@ Textures: `smooth standard toothy`.
 
 Sync engines (Google Drive, WebDAV, local folder) mirror this tree file-for-file. Conflicts on
 `*.ink.json` and `note.json` are merged three-way against the last-synced base: strokes/texts/
-images are unioned by id with deletions honoured from either side; scalar metadata takes the most
+images/objects are unioned by id with deletions honoured from either side; authorship chain events
+are unioned and ordered by time; scalar metadata takes the most
 recent `updatedAt`. `forms` merges per PDF and per field (filling different fields on two devices
 keeps both; the newer note wins a field both changed). Derived files are regenerated after merge. Sync state lives outside the vault
 (app storage), never inside it.

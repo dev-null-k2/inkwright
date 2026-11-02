@@ -119,6 +119,12 @@ listening, otherwise `takeSharedFiles()` returns them. Shared text without a fil
 The web layer (`lib/openFiles.ts`) reads each copy with Capacitor Filesystem, imports it like the
 library's Open file and deletes the copy.
 
+**`insertCalendarEvent({ title, beginTime, endTime, allDay, description?, location? })`** → `{ opened }`:
+"circle a date" opens the user's calendar app on a prefilled new event (`Intent.ACTION_INSERT` on
+`CalendarContract.Events.CONTENT_URI`, built in `calendar/CalendarIntents.kt`). The user confirms it
+there; Inkstone never reads or writes the calendar itself, so no calendar permission is needed.
+`opened` is false when no calendar app handles the intent (the web layer then offers the .ics file).
+
 **Refresh rate**: the activity asks for the display mode with the highest refresh rate at the current resolution, and asks again after fold/unfold, which can move it to another panel. This costs some battery while Inkstone is in the foreground. That is the trade for ink that keeps up with the pen.
 
 **Unbuffered input**: on Android 11+ the WebView calls `requestUnbufferedDispatch(SOURCE_CLASS_POINTER)`, so pen samples are handed to Chromium as they arrive instead of once per frame. Set `UNBUFFERED_POINTER_DISPATCH = false` in `MainActivity.kt` to go back to the default.

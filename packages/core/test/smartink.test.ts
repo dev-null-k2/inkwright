@@ -3,7 +3,7 @@ import {
   asFunctionOfX, autoView, cellAt, cellOfStroke, compileFunctionOfX, detectChecklist, detectEnclosure, detectTable,
   detectTrailingEquals, findRoots, fitTableToInk, graphGeometry, insertCol, insertRow, niceTicks, parseMath, compileNode,
   recognizeShape, relayoutStrokes, removeCol, removeRow, sampleFunction, shapeToStroke, tableFromCandidate,
-  tableToCsv, tableToMarkdown, exportPageSvg, newNote, objectsText, type InkStroke, type TableObject, type GraphObject,
+  tableToCsv, tableToMarkdown, exportPageSvg, newNote, objectsText, NoteDocument, type InkStroke, type TableObject, type GraphObject,
 } from '../src/index.ts';
 import { jitter, polyline, stroke, wobblyEllipse, word } from './helpers.ts';
 
@@ -121,6 +121,25 @@ describe('table objects', () => {
     const e = fitTableToInk(t, [tall])!;
     expect(e.table.rows[1]).toBeGreaterThanOrEqual(100 - 40 + 6 - 0.01);
     expect(fitTableToInk(t, [s(word(10, 60, 40))])).toBeNull();
+  });
+
+  it('a grid becomes a table in one undo step; automatic fitting is not an undo step', () => {
+    const grid = [snappedBox(0, 0, 300, 200), hline(2, 298, 100), vline(150, 2, 198)];
+    const doc = new NoteDocument(newNote({ id: 'n', title: 'T', pageId: 'p', now: 0 }), [{ id: 'p', strokes: grid, formatVersion: 2 }]);
+    const c = detectTable(grid)!;
+    const table = tableFromCandidate(c, 'tbl', 0);
+    doc.editObjects(0, 'Make a table', { upsert: [table], removeStrokes: new Set(c.strokeIds) });
+    expect(doc.page(0).strokes).toHaveLength(0);
+    expect(doc.page(0).objects).toHaveLength(1);
+    doc.addStroke(0, { ...s(polyline([[20, 120], [20, 260]])), input: 'pen' });
+    const fit = fitTableToInk(table, doc.page(0).strokes)!;
+    doc.editObjects(0, 'Fit table', { upsert: [fit.table] }, { undoable: false });
+    expect((doc.page(0).objects![0] as TableObject).rows[1]).toBeGreaterThan(160);
+    doc.undo(); // the stroke
+    expect(doc.page(0).strokes).toHaveLength(0);
+    doc.undo(); // the table → the grid's strokes are back
+    expect(doc.page(0).objects).toHaveLength(0);
+    expect(doc.page(0).strokes).toHaveLength(3);
   });
 
   it('renders into the page SVG', () => {

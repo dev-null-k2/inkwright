@@ -56,7 +56,11 @@ export async function verifyStored(vault: AppVault, doc: NoteDocument): Promise<
  */
 export async function embedInPdf(pdf: PDFDocument, cert: AuthorshipCertificate): Promise<void> {
   const created = new Date(cert.claim.created);
-  await pdf.attach(new TextEncoder().encode(canonicalJson(cert)), PDF_ATTACHMENT_NAME, {
+  // As a data URI: pdf-lib's type checks are realm-sensitive for typed arrays (WebViews, tests).
+  const utf8 = new TextEncoder().encode(canonicalJson(cert));
+  let bin = '';
+  for (let i = 0; i < utf8.length; i += 0x8000) bin += String.fromCharCode(...utf8.subarray(i, i + 0x8000));
+  await pdf.attach(`data:application/json;base64,${btoa(bin)}`, PDF_ATTACHMENT_NAME, {
     mimeType: 'application/json',
     description: 'Inkstone authorship certificate (signed). Verify it in Inkstone › Settings › Authorship.',
     creationDate: created,

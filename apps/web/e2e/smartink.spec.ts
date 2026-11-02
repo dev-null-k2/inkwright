@@ -84,7 +84,38 @@ test('draw a grid → it becomes a table → write and type in its cells', async
   await page.getByRole('button', { name: 'Copy table' }).click();
   await page.getByRole('menuitem', { name: 'Copy as Markdown' }).click();
   await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain('| Item |');
+  await page.screenshot({ path: 'test-results/smartink-table.png' });
   await page.getByRole('button', { name: 'Done', exact: true }).click();
+});
+
+test('a solved function plots as a live graph that pans and zooms', async ({ page }) => {
+  await mockLLM(page, () => JSON.stringify({ plain: 'y = x^2 - 4', latex: 'y=x^2-4', steps: [], answer: '' }));
+  await openApp(page);
+  await addVisionProvider(page);
+  await newNote(page);
+  await pen(page, word(160, 200, 120));
+  await page.keyboard.press('l');
+  await pen(page, circle(220, 200, 90), { type: 'mouse' });
+  await page.getByRole('button', { name: 'Solve' }).click();
+  await expect.poll(async () => (await objects(page)).length).toBe(1);
+  expect((await objects(page))[0].result).toBe('x-intercepts −2, 2; y-intercept −4');
+  await page.getByRole('button', { name: /^Result x-intercepts/ }).click();
+  await page.getByRole('menuitem', { name: 'Plot' }).click();
+  await expect.poll(async () => (await objects(page)).map((o: any) => o.type)).toEqual(['math', 'graph']);
+  const g0 = (await objects(page))[1];
+  expect(g0.functions[0].expr).toBe('x^2 - 4');
+  const graph = page.getByRole('img', { name: /Graph of y = x\^2 - 4/ });
+  await graph.hover();
+  await page.mouse.wheel(0, -300);
+  await expect.poll(async () => { const v = (await objects(page))[1].view; return v.xMax - v.xMin; }).toBeLessThan(g0.view.xMax - g0.view.xMin);
+  const box = (await graph.boundingBox())!;
+  const v1 = (await objects(page))[1].view;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 60, box.y + box.height / 2, { steps: 4 });
+  await page.mouse.up();
+  expect((await objects(page))[1].view.xMin).toBeLessThan(v1.xMin);
+  await page.screenshot({ path: 'test-results/smartink-graph.png' });
 });
 
 test('lasso an equation → Solve → a result object next to it (AI reads, device solves)', async ({ page }) => {
@@ -122,6 +153,7 @@ test('circle a date → read it → download an .ics event', async ({ page }) =>
   const card = page.getByRole('dialog', { name: 'What you circled' });
   await expect(card).toContainText('Add to calendar');
   await expect(card).toContainText('Signals midterm');
+  await page.screenshot({ path: 'test-results/smartink-date.png' });
   const download = page.waitForEvent('download');
   await card.getByRole('button', { name: /\.ics/ }).click();
   const d = await download;
@@ -141,14 +173,14 @@ test('export PDF → verify its authorship certificate; the panel notices later 
   await newNote(page);
   await pen(page, word(200, 220, 160));
   await pen(page, word(200, 280, 140));
-  await pen(page, word(200, 340, 120), { type: 'touch' });
+  await pen(page, word(200, 340, 120), { type: 'mouse' });
 
   // Sign in the editor's panel: verified, then changed after more writing.
   await page.getByRole('button', { name: 'More', exact: true }).click();
   await page.getByRole('menuitem', { name: /Authorship/ }).click();
   const panel = page.getByRole('dialog', { name: 'Authorship' });
   await expect(panel).toContainText('Not signed yet');
-  await expect(panel).toContainText('3 strokes (2 with pen pressure)');
+  await expect(panel).toContainText('3 strokes (2 with pen pressure), 1 by mouse');
   await panel.getByRole('button', { name: 'Sign certificate' }).click();
   await expect(panel).toContainText('Verified handwriting');
   await panel.getByRole('button', { name: 'Done' }).click();
@@ -173,8 +205,9 @@ test('export PDF → verify its authorship certificate; the panel notices later 
   const report = page.getByTestId('verify-report');
   await expect(report).toHaveAttribute('data-status', 'verified');
   await expect(report).toContainText('Verified handwriting');
-  await expect(report).toContainText('4 strokes (3 with pen pressure), 1 by finger');
+  await expect(report).toContainText('4 strokes (3 with pen pressure), 1 by mouse');
   await expect(report).toContainText(`${own} — this device`);
+  await page.screenshot({ path: 'test-results/smartink-verify.png', fullPage: true });
 
   // A tampered certificate (more "handwriting" claimed than was written) is rejected.
   const { PDFDocument, PDFName, PDFDict, PDFArray, PDFRawStream, decodePDFRawStream } = await import('pdf-lib');

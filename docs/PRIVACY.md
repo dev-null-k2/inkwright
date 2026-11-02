@@ -20,6 +20,10 @@ Inkstone is a note-taking app. Your notes stay under your control.
 
 **Signatures and initials** you save for Fill & sign stay on your device, encrypted, and are never synced. A signature is only copied into a document when you place it there.
 
+**Smart ink** (tables, solving maths, circled dates) works on your device. Handwriting is read by on-device recognition where available; it is sent to your AI provider only when you tap an action that needs it, or if you turned on automatic AI recognition. Calendar events are files you download or your calendar app's own "new event" screen — Inkstone never reads your calendar.
+
+**Proof of authorship:** each page keeps a history of edits (what changed and when, as content fingerprints) so you can sign a certificate of your handwriting. The signing key is made on your device and cannot be exported. Certificates contain the signed handwriting, its timing and your key's fingerprint; they leave your device only when you share them or export a PDF with one attached (Settings › Authorship can turn that off).
+
 **Microphone:** used only while you record an audio note. Recordings are saved with the note.
 
 **Deleting data:** delete notes in the app. Trash empties after 30 days, or right away with "Delete forever". Uninstall the app or clear site data to remove everything stored on the device. Synced copies stay in your Drive or server until you delete them there.

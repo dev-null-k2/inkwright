@@ -67,7 +67,10 @@ type AnyItem = InkStroke | TextBox | ImageItem | PageObject;
 
 /** The exact content of an item as it is saved (strokes use the compact on-disk encoding). */
 export function itemContent(kind: ChainKind, item: AnyItem): unknown {
-  return kind === 's' ? encodeStroke(item as InkStroke) : item;
+  if (kind === 's') return encodeStroke(item as InkStroke);
+  // A graph's view window is where it is panned to, not what it says.
+  if (kind === 'o' && (item as PageObject).type === 'graph') { const { view: _v, ...rest } = item as PageObject & { view: unknown }; return rest; }
+  return item;
 }
 
 export function itemDigest(kind: ChainKind, item: AnyItem): string {
@@ -141,8 +144,12 @@ export interface ChainChange {
 export function eventsFor(changes: readonly ChainChange[], how: ChainCause, t: number, dev?: string): ChainEvent[] {
   const out: ChainEvent[] = [];
   for (const ch of changes) {
-    for (const x of ch.removed) out.push(ev('-', ch.kind, x, t, undefined, undefined, dev));
+    // Replacing an item with identical content (a graph panned, a table re-saved) is not an edit.
+    const removedDigest = new Map(ch.removed.map((r) => [r.id, itemDigest(ch.kind, r)]));
+    const unchanged = new Set(ch.added.filter((x) => removedDigest.get(x.id) === itemDigest(ch.kind, x)).map((x) => x.id));
+    for (const x of ch.removed) if (!unchanged.has(x.id)) out.push(ev('-', ch.kind, x, t, undefined, undefined, dev));
     for (const x of ch.added) {
+      if (unchanged.has(x.id)) continue;
       let cause: ChainCause = how;
       let from: string | undefined;
       if (how !== 'draw' && how !== 'undo' && how !== 'redo') {
