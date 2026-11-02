@@ -19,6 +19,7 @@ import { readFileSync } from 'node:fs';
 import { hostname } from 'node:os';
 import { Vault, type NoteMeta, type NotebookMeta, type PageInk, type SaveOptions } from '@inkstone/core';
 import {
+  ActivityStore,
   AuditLog,
   MemoryContentStore,
   POLICY_PATH,
@@ -32,6 +33,7 @@ import {
   mergeManagedPolicy,
   notebookChain,
   parsePolicy,
+  pruneAudit,
   webCryptoSigner,
   type AIPolicy,
   type AgentTool,
@@ -373,4 +375,18 @@ export function logPolicy(ctx: { policy: PolicySource; trust: ServerTrust }, log
   if (ctx.policy.managedErrors.length) log(`Managed AI policy: ${ctx.policy.managedErrors.join('; ')} (safe defaults used for those fields)`);
   if (ctx.policy.errors.length) log(`ai/policy.json: ${ctx.policy.errors.join('; ')} (safe defaults used for those fields)`);
   log(`AI policy: ${ctx.policy.isManaged ? 'managed policy + ' : ''}ai/policy.json; audit trail ai/audit/${ctx.trust.device}/`);
+}
+
+/**
+ * Applies the policy's retention on the server (at start): activity runs and audit months past
+ * their periods, decided proposals after 30 days. Nothing under legal hold. Version history is
+ * pruned where snapshots are taken (the app); the server only adds snapshots before agent writes.
+ */
+export async function applyServerRetention(ctx: { fs: NodeFS; clock: () => number; policy: PolicySource; trust: ServerTrust }): Promise<{ activity: number; audit: number; proposals: number }> {
+  const r = ctx.policy.current.retention;
+  if (r.legalHold) return { activity: 0, audit: 0, proposals: 0 };
+  const activity = await new ActivityStore(ctx.fs, { maxAgeDays: () => r.activityDays, clock: ctx.clock }).prune();
+  const audit = await pruneAudit(ctx.fs, ctx.trust.audit, r.auditDays, ctx.clock(), r.legalHold);
+  const proposals = await ctx.trust.proposals.prune();
+  return { activity, audit, proposals };
 }

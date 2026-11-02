@@ -20,6 +20,16 @@ Three layers cover every feature.
 | Unit | `npx vitest run --project mcp apps/mcp-server/test/studio.test.ts` | agent writes snapshot first; locked notes are blank to agents and refuse writes |
 | End-to-end | `cd apps/web && PW_PORT=4189 npx playwright test e2e/studio.spec.ts --project desktop` | long-press eraser filters, snapping with guides and Alt, sticky notes (write, type, fold, undo), tape and study mode, calligraphy nib angle, two-page view input mapping, layers, version history restore and copy-in, locking (cover, passcode gate, search, no plaintext in IndexedDB) |
 
+### Trust and cost
+
+| Layer | Command | What it covers |
+|---|---|---|
+| Unit | `npx vitest run --project ai packages/ai/test/trust.test.ts` | policy parsing (bad fields keep safe defaults), compact serialization, managed-policy merge, routing (local-only notes pull a run onto the device); validators (Luhn, mod-97, Verhoeff), detection with look-alikes, stable placeholders and rehydration (also streamed); shape-aware shortening, determinism, retrieval and sticky expansion; prices and the ledger across devices; audit chain signing, tamper cases (edit, remove, reorder, forged signature, cut tail) and retention; spotlighting and the injection guard in a real agent run; notebook permissions; the guarded provider (redaction round trip, device routing, budgets, `retrieve_original`, tasks switched off); proposals |
+| Unit | `npx vitest run --project mcp apps/mcp-server/test/trust.test.ts` | the policy vault on every tool, resource and search (hidden, local-only, read-only, nested notebooks), managed policy, dry run for MCP writes, audit of reads/writes and `inkstone-agent audit` verification, the server agent through the guarded provider, retention; security review: hostile ids on every tool, resource URIs, symlink escapes, `/healthz`, body limit, no SSRF surface |
+| Evals | `npx vitest run --project evals packages/ai/evals/trust.eval.ts` | privacy firewall precision/recall per kind; context budgeter benchmark (tokens and answer quality with and without, including where it costs more); injection detection, attack success with and without the guard, held-out cases and strict mode. Numbers are published in docs/TRUST.md |
+| End-to-end | `cd apps/web && PW_PORT=4193 npx playwright test e2e/trust.spec.ts --project desktop` | the provider never sees an email the user does; AI usage and the audit trail (verify, JSONL export); Routing & privacy writes `ai/policy.json`; a local-only notebook stops a cloud run, a hidden one is invisible; dry run → proposal with a diff → approve |
+| Appliance | `docker compose -f deploy/docker-compose.yml config` | compose file validity (no daemon needed); `docker build -f deploy/Dockerfile --target server .` where a daemon is available |
+
 ## Testing on a device
 
 The pen-on-glass feel, haptics, Bluetooth pen buttons and real latency can only be judged on hardware. On the Razr Fold:

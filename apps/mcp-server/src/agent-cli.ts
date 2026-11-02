@@ -20,7 +20,7 @@ import { ApprovalStore } from './approvals.ts';
 import { executeApproval } from './agent/run.ts';
 import { CliError, SHARED_OPTIONS, expandHome, resolveOptions, type CliOptions } from './cli.ts';
 import { createContext } from './context.ts';
-import { logPolicy, trustedAI } from './trust.ts';
+import { applyServerRetention, logPolicy, trustedAI } from './trust.ts';
 import { RoutineRunner } from './runner/runner.ts';
 import { currentPlatform, decodeServiceContent, serviceFile, type ServicePlatform } from './runner/services.ts';
 import { aiFromOptions, serveHttp } from './serve.ts';
@@ -154,6 +154,7 @@ async function run(c: AgentCommand): Promise<void> {
   const log = makeLog(c.logFile);
   const ctx = await createContext({ root: needVault(c.options), readOnly: c.options.readOnly, watch: c.options.watch, ...(c.options.policyFile ? { managedPolicyFile: c.options.policyFile } : {}), ...(c.options.auditKey ? { auditKeyFile: c.options.auditKey } : {}) });
   logPolicy(ctx, log);
+  if (!ctx.readOnly) void applyServerRetention(ctx).catch((e) => log(`Retention: ${(e as Error).message}`));
   // The runner's AI goes through the trust layer (routing, privacy firewall, meter, audit).
   const ai = trustedAI(aiFromOptions(c.options, log), ctx.trust);
   if (!ai) log('No AI configured: routines will be logged as failed until you add --ai-provider (see docs/AGENTS.md).');
