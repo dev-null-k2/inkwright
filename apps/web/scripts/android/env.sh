@@ -21,9 +21,9 @@ AVDMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
 AVD_NAME="${INKSTONE_AVD:-inkstone-atd33}"
 AVD_IMAGE="${INKSTONE_AVD_IMAGE:-system-images;android-33;aosp_atd;x86_64}"
 # A Razr-Fold-like inner screen, scaled down: fewer pixels keeps software rendering responsive.
-AVD_WIDTH="${INKSTONE_AVD_WIDTH:-904}"
-AVD_HEIGHT="${INKSTONE_AVD_HEIGHT:-1130}"
-AVD_DENSITY="${INKSTONE_AVD_DENSITY:-200}"
+AVD_WIDTH="${INKSTONE_AVD_WIDTH:-1104}"
+AVD_HEIGHT="${INKSTONE_AVD_HEIGHT:-1380}"
+AVD_DENSITY="${INKSTONE_AVD_DENSITY:-240}"
 # Memory: the emulator process needs roughly guest RAM + TCG translation cache + ~0.6 GB (software
 # GPU, emulator). Its QEMU 2.12 core sizes the translation cache at guest RAM / 4 unless told
 # otherwise, so both are kept small: on a machine with ~6 GB shared with builds, 1024 MB + 128 MB keeps
@@ -31,6 +31,8 @@ AVD_DENSITY="${INKSTONE_AVD_DENSITY:-200}"
 AVD_RAM_MB="${INKSTONE_AVD_RAM_MB:-1024}"
 TCG_TB_MB="${INKSTONE_TCG_TB_MB:-128}"
 AVD_CORES="${INKSTONE_AVD_CORES:-2}"
+# Emulator GPU mode: swiftshader_indirect (host-side software GL) or guest (software GL in the guest).
+EMU_GPU="${INKSTONE_EMU_GPU:-swiftshader_indirect}"
 
 # Console port 5554 → serial emulator-5554.
 EMU_PORT="${INKSTONE_EMU_PORT:-5554}"
