@@ -7,7 +7,7 @@
  * The format is the contract shared with @inkstone/ai's `ActivityRun` (not imported here: the
  * server is bundled on its own).
  */
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult } from '@modelcontextprotocol/server';
 import { VaultLayout, newId, type NoteMeta } from '@inkstone/core';
 import { readNoteFresh, type ServerContext } from './context.ts';
 
@@ -25,9 +25,10 @@ type Op = { id: string; at: number; tool: string; summary: string } & (
   | { kind: 'text_appended'; noteId: string; title: string; pageId: string; textId: string; text: string; addedPage?: boolean }
   | { kind: 'meta_changed'; noteId: string; title: string; before: MetaFields; after: MetaFields }
   | { kind: 'notebook_created'; notebookId: string; name: string }
+  | { kind: 'handwriting_recognized'; noteId: string; title: string; pageId: string; text: string }
 );
 
-type NewOp = Op extends infer T ? (T extends Op ? Omit<T, 'id' | 'at'> : never) : never;
+export type NewOp = Op extends infer T ? (T extends Op ? Omit<T, 'id' | 'at'> : never) : never;
 
 interface Run {
   id: string;
@@ -75,12 +76,18 @@ function resultJson(r: CallToolResult): Record<string, any> | null {
 export class ActivityLog {
   private run: Run | null = null;
   private saving: Promise<void> = Promise.resolve();
+  /** When this log last recorded something (or was created). */
+  lastUsed: number;
 
   /** `label` names the connected agent, e.g. "Claude Desktop (MCP)". */
-  constructor(private ctx: ServerContext, private label: () => string) {}
+  constructor(private ctx: ServerContext, private label: () => string) {
+    this.lastUsed = ctx.clock();
+  }
 
-  private push(op: NewOp) {
+  /** Records one change (the server's own long-running tools log through this too). */
+  push(op: NewOp) {
     const now = this.ctx.clock();
+    this.lastUsed = now;
     this.run ??= { id: newId(now), source: 'external', label: this.label(), startedAt: now, status: 'running', ops: [] };
     this.run.ops.push({ ...op, id: newId(now), at: now } as Op);
     this.run.endedAt = now;
@@ -152,5 +159,33 @@ export class ActivityLog {
         return;
       }
     }
+  }
+}
+
+/**
+ * One activity run per connected agent, across requests. Over stateless HTTP every request gets a
+ * fresh MCP server, so without this each write would become its own run in the app's Activity
+ * list. Writes from the same agent (same name and principal) within `idleMs` join one run.
+ */
+export class ActivitySessions {
+  private logs = new Map<string, ActivityLog>();
+
+  constructor(private ctx: ServerContext, private idleMs = 15 * 60_000) {}
+
+  /** The log for `key` (agent + principal), labelled `label`. */
+  get(key: string, label: string): ActivityLog {
+    const now = this.ctx.clock();
+    for (const [k, l] of this.logs) if (now - l.lastUsed > this.idleMs) this.logs.delete(k);
+    let log = this.logs.get(key);
+    if (!log) {
+      log = new ActivityLog(this.ctx, () => label);
+      this.logs.set(key, log);
+    }
+    return log;
+  }
+
+  /** Waits for every pending log write. */
+  async flush(): Promise<void> {
+    await Promise.all([...this.logs.values()].map((l) => l.flush()));
   }
 }

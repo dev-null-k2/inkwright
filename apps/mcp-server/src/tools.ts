@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/server';
 import {
   DEFAULT_PAPER,
   LEFT_MARGIN,
@@ -210,9 +210,10 @@ function flowText(
   text: string,
   now: number,
   allowNewPages: boolean,
-): { pages: PageInk[]; changed: string[]; added: string[]; firstPage: number } {
+): { pages: PageInk[]; changed: string[]; added: string[]; firstPage: number; boxes: Array<{ pageId: string; textId: string; text: string }> } {
   const out = pages.slice();
   const changed: string[] = [];
+  const boxes: Array<{ pageId: string; textId: string; text: string }> = [];
   const added: string[] = [];
   let index = startIndex;
   let remaining = text.replace(/\s+$/, '');
@@ -228,6 +229,7 @@ function flowText(
     if (head.trim()) {
       const box = makeTextBox(note, page, head, frame.x, y, frame.width, now);
       out[index] = { ...page, texts: [...(page.texts ?? []), box] };
+      boxes.push({ pageId: page.id, textId: box.id, text: head });
       if (!changed.includes(page.id)) changed.push(page.id);
       if (firstPage < 0) firstPage = index;
     }
@@ -239,7 +241,7 @@ function flowText(
     added.push(fresh.id);
     index += 1;
   }
-  return { pages: out, changed, added, firstPage: Math.max(0, firstPage) };
+  return { pages: out, changed, added, firstPage: Math.max(0, firstPage), boxes };
 }
 
 /**
@@ -428,6 +430,30 @@ export async function listNotebooks(ctx: ServerContext, _args: Record<string, ne
   });
 }
 
+/**
+ * Stores text recognized from a page's handwriting (the ink is untouched). Only fills pages whose
+ * recognized text is still empty, so a transcription the user made or corrected is never
+ * replaced. Returns false when the page already had text or is gone.
+ */
+export async function setRecognizedText(ctx: ServerContext, noteId: string, pageId: string, text: string, by: string): Promise<boolean> {
+  requireWritable(ctx);
+  return ctx.withWriteLock(async () => {
+    const found = await readNoteFresh(ctx, noteId);
+    if (!found?.note.pageIds.includes(pageId) || (await ctx.vault.readPage(noteId, pageId)).recognizedText?.trim()) return false;
+    let wrote = false;
+    await mutateNote(ctx, noteId, (cur, pages) => {
+      wrote = false;
+      const next = pages.map((p) => {
+        if (p.id !== pageId || p.recognizedText?.trim()) return p;
+        wrote = true;
+        return { ...p, recognizedText: text, recognizedAt: ctx.clock(), recognizedBy: by };
+      });
+      return { note: cur, pages: next, changedPageIds: wrote ? [pageId] : [] };
+    });
+    return wrote;
+  });
+}
+
 export const createNotebookShape = {
   name: z.string().trim().min(1).max(200).describe('Notebook name.'),
   color: z.string().regex(/^#?([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/, 'Color must be #RRGGBB or #AARRGGBB').optional().describe('Cover color, #RRGGBB or #AARRGGBB.'),
@@ -511,12 +537,26 @@ export const appendToNoteShape = {
 const appendToNoteSchema = z.object(appendToNoteShape);
 export type AppendToNoteArgs = z.input<typeof appendToNoteSchema>;
 
-export async function appendToNote(ctx: ServerContext, args: AppendToNoteArgs): Promise<CallToolResult> {
+export interface AppendOutcome {
+  note: NoteMeta;
+  /** 1-based page the text starts on. */
+  page: number;
+  newPages: number;
+  /** Text boxes added, in order (one per page the text flowed onto). */
+  boxes: Array<{ pageId: string; textId: string; text: string; addedPage: boolean }>;
+}
+
+/**
+ * Appends typed text to a note (see append_to_note) and reports the text boxes it placed, so
+ * agent hosts can log reversible operations without diffing the note.
+ */
+export async function appendTextToNote(ctx: ServerContext, args: AppendToNoteArgs): Promise<AppendOutcome> {
   const a = appendToNoteSchema.parse(args);
   requireWritable(ctx);
   if (!a.text.trim()) throw new Error('Text is empty.');
   return ctx.withWriteLock(async () => {
     let placed = { page: 0, newPages: 0 };
+    let boxes: AppendOutcome['boxes'] = [];
     const { note } = await mutateNote(ctx, a.id, (cur, curPages) => {
       if (cur.trashedAt != null) throw new Error(`Note ${cur.id} is in the Trash; restore it first.`);
       const now = ctx.clock();
@@ -526,11 +566,18 @@ export async function appendToNote(ctx: ServerContext, args: AppendToNoteArgs): 
       const index = a.page != null ? a.page - 1 : pages.length - 1;
       const flowed = flowText(cur, pages, index, a.text, now, a.page == null && cur.kind !== 'board');
       placed = { page: flowed.firstPage + 1, newPages: flowed.added.length };
+      const existing = new Set(curPages.map((p) => p.id));
+      boxes = flowed.boxes.map((b) => ({ ...b, addedPage: !existing.has(b.pageId) }));
       const pageIds = flowed.pages.map((p) => p.id);
       return { note: { ...cur, pageIds }, pages: flowed.pages, changedPageIds: [...new Set([...flowed.changed, ...flowed.added, ...(curPages.length ? [] : pageIds)])] };
     });
-    return jsonResult({ appended: true, id: note.id, title: note.title, page: placed.page, newPages: placed.newPages, totalPages: note.pageIds.length, updated: iso(note.updatedAt) });
+    return { note, page: placed.page, newPages: placed.newPages, boxes };
   });
+}
+
+export async function appendToNote(ctx: ServerContext, args: AppendToNoteArgs): Promise<CallToolResult> {
+  const r = await appendTextToNote(ctx, args);
+  return jsonResult({ appended: true, id: r.note.id, title: r.note.title, page: r.page, newPages: r.newPages, totalPages: r.note.pageIds.length, updated: iso(r.note.updatedAt) });
 }
 
 // ---- update_note -------------------------------------------------------------------------------

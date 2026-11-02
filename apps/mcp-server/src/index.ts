@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import { CliError, USAGE, parseCli } from './cli.ts';
 import { createContext } from './context.ts';
-import { startHttpServer } from './http.ts';
-import { createMcpServer } from './server.ts';
+import { aiFromOptions, serveHttp } from './serve.ts';
+import { createMcpServer, createServices } from './server.ts';
 import { VERSION } from './version.ts';
 
 // stdout carries the MCP protocol in stdio mode: everything human-readable goes to stderr.
@@ -35,29 +35,41 @@ async function main(): Promise<void> {
 
   const ctx = await createContext({ root: opts.vault, readOnly: opts.readOnly, watch: opts.watch });
   if (ctx.createdVault) log(`No inkstone.json found; initialized a new vault at ${ctx.root}`);
+  const ai = aiFromOptions(opts, log);
   let shuttingDown = false;
+  let closeAll: () => Promise<void> = async () => {};
   const shutdown = (code = 0) => {
     if (shuttingDown) return;
     shuttingDown = true;
-    ctx.close();
-    process.exit(code);
+    void closeAll().finally(() => {
+      ctx.close();
+      process.exit(code);
+    });
   };
   process.on('SIGINT', () => shutdown(0));
   process.on('SIGTERM', () => shutdown(0));
 
   if (opts.http !== undefined) {
-    const http = await startHttpServer(ctx, { port: opts.http, token: opts.token });
+    const { http, services } = await serveHttp(ctx, opts, ai, log);
     log(`Vault ${ctx.root}${ctx.readOnly ? ' (read-only)' : ''}`);
-    log(`Streamable HTTP on ${http.url}${opts.token ? ' (bearer token required)' : ' (no token; loopback clients only)'}`);
+    closeAll = async () => {
+      services.tasks.close();
+      await services.activity.flush();
+      await http.close();
+    };
     return;
   }
 
-  const server = createMcpServer(ctx);
-  const transport = new StdioServerTransport();
-  transport.onclose = () => shutdown(0);
+  // stdio: one connection, either protocol era (2026-07-28 opening or a 2025 `initialize`).
+  const services = createServices(ctx, { ai, transport: 'stdio' });
+  const handle = serveStdio(() => createMcpServer(services), { onerror: (e) => { if (process.env.INKSTONE_DEBUG) log(e.message); } });
+  closeAll = async () => {
+    services.tasks.close();
+    await services.activity.flush();
+    await handle.close();
+  };
   process.stdin.on('end', () => shutdown(0));
   process.stdin.on('close', () => shutdown(0));
-  await server.connect(transport);
   log(`Serving ${ctx.root}${ctx.readOnly ? ' (read-only)' : ''} over stdio`);
 }
 
