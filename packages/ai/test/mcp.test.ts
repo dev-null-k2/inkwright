@@ -63,6 +63,9 @@ describe('MCP connection (in-process server)', () => {
     expect(discover).toBeTruthy();
     const read = await c.readResource('fake://readme');
     expect(JSON.stringify(read.contents)).toContain('Hello from the fake server');
+    expect(c.prompts.map((p) => p.name)).toEqual(['plan_week']);
+    const prompt = await c.getPrompt('plan_week', { focus: 'exams' });
+    expect(JSON.stringify(prompt.messages)).toContain('Plan my week around exams');
     await c.close();
   });
 
@@ -161,6 +164,15 @@ describe('MCP tools in the agent: per-tool on/off and ask-before-running', () =>
     expect(res.toolRuns[0]!.ok).toBe(false);
     expect(res.toolRuns[0]!.error).toMatch(/Quota exceeded/);
     expect(changes).toEqual(['Used “Add task” in Tasks']);
+  });
+
+  it('resources are readable through one read-only tool that lists them', async () => {
+    const { c } = await connected();
+    const tool = createMcpAgentTools([{ connection: c }]).find((t) => t.name === 'tasks__read_resource')!;
+    expect(tool.readOnly).toBe(true);
+    expect(tool.destructive).toBeFalsy();
+    expect(tool.description).toContain('fake://readme');
+    expect(await tool.execute({ uri: 'fake://readme' }, { toolCallId: 'x', messages: [] })).toBe('Hello from the fake server');
   });
 
   it('disabled servers contribute no tools', async () => {

@@ -99,6 +99,16 @@ test('connected apps: OAuth sign-in in a popup, per-tool approval, and the assis
   await page.getByRole('button', { name: 'Assistant menu' }).click();
   await page.getByRole('menuitem', { name: 'Activity' }).click();
   await expect(page.locator('.ag-panel-view .ag-op').first()).toContainText('Used “Add task” in Tasks');
+  await page.getByRole('button', { name: 'Back to chat' }).click();
+
+  // The app's prompts are picked by the user and land in the input to review.
+  await page.getByRole('button', { name: 'Assistant menu' }).click();
+  await page.getByRole('menuitem', { name: 'Connected apps' }).click();
+  await page.getByRole('button', { name: 'Show Tasks tools' }).click();
+  await page.locator('.ag-prompt', { hasText: 'Plan my week' }).getByRole('button', { name: 'Use' }).click();
+  await page.getByRole('dialog').locator('input').fill('exams');
+  await page.getByRole('button', { name: 'Next' }).click();
+  await expect(page.locator('.ai-input textarea')).toHaveValue('Plan my week around exams, using my open tasks.');
 });
 
 test('connected apps: a server that blocks web apps is explained, not a silent failure', async ({ page, context }) => {

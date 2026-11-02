@@ -65,6 +65,9 @@ export function createFakeMcp(opts: FakeMcpOptions = {}) {
     });
     s.registerTool('broken', { description: 'Always fails', annotations: { readOnlyHint: true } }, async () => ({ isError: true, content: [{ type: 'text', text: 'Quota exceeded for broken.' }] }));
     s.registerTool('export_notes', { description: 'Export a big archive (long-running)', inputSchema: z.object({ format: z.string() }) }, async () => ({ content: [{ type: 'text', text: 'should have been a task' }] }));
+    s.registerPrompt('plan_week', { title: 'Plan my week', description: 'Turn open tasks into a weekly plan', argsSchema: z.object({ focus: z.string() }) }, async ({ focus }) => ({
+      messages: [{ role: 'user', content: { type: 'text', text: `Plan my week around ${focus}, using my open tasks.` } }],
+    }));
     s.registerResource('readme', 'fake://readme', { mimeType: 'text/plain', description: 'Read me' }, async () => ({ contents: [{ uri: 'fake://readme', text: 'Hello from the fake server' }] }));
     return s;
   });

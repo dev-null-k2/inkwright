@@ -394,7 +394,7 @@ export function mcpResultParts(r: CallToolResult, opts: { images?: boolean; maxC
 // ---- Agent tools -------------------------------------------------------------------------------
 
 export interface McpToolSource {
-  connection: Pick<McpConnection, 'callTool' | 'getTask' | 'config' | 'tools'>;
+  connection: Pick<McpConnection, 'callTool' | 'getTask' | 'config' | 'tools'> & Partial<Pick<McpConnection, 'resources' | 'readResource'>>;
   /** Restrict to these tool names (routines pick tools per server). */
   only?: readonly string[];
 }
@@ -451,6 +451,24 @@ export function createMcpAgentTools(sources: readonly McpToolSource[], opts: Mcp
           if (r.isError) throw new Error(text);
           if (!readOnly) opts.onExternalChange?.({ serverName: cfg.name, tool: tool.name, args, summary: `Used “${title}” in ${cfg.name}` });
           return parts.length > 1 ? richResult(parts) : text;
+        },
+      });
+    }
+    // Resources (files, documents the server exposes): one read-only tool listing what exists.
+    const resources = src.connection.resources ?? [];
+    const read = src.connection.readResource;
+    if (resources.length && read && !src.only) {
+      const listed = resources.slice(0, 25).map((r) => `- ${r.uri}${r.name && r.name !== r.uri ? ` (${r.name})` : ''}${r.description ? `: ${r.description.slice(0, 100)}` : ''}`);
+      out.push({
+        name: agentToolName(cfg.name, 'read_resource', taken),
+        description: `[${cfg.name}] Read a resource (document or data) this app shares, by URI.${resources.length > 25 ? ` ${resources.length} resources; some are:` : ' Available:'}\n${listed.join('\n')}`.slice(0, 2000),
+        parameters: { type: 'object', properties: { uri: { type: 'string', description: 'The resource URI.' } }, required: ['uri'], additionalProperties: false },
+        readOnly: true,
+        async execute(a: { uri: string }) {
+          const r = await read.call(src.connection, a.uri);
+          const parts = (r.contents ?? []).map((c) => ('text' in c && typeof c.text === 'string' ? c.text : `[binary ${c.uri}${c.mimeType ? ` (${c.mimeType})` : ''} not shown]`));
+          const text = parts.join('\n\n') || '(empty)';
+          return text.length > 24_000 ? `${text.slice(0, 24_000)}\n…[truncated]` : text;
         },
       });
     }

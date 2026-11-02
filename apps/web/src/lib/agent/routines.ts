@@ -21,7 +21,7 @@ import { getProviderInfo, guessModelCapabilities } from '@inkstone/ai';
 import { getActiveAI, providerFromConfig, type ActiveAI } from '../ai.ts';
 import type { AppVault } from '../vault.ts';
 import { prepareAgentRun, touchedByAgent } from './assistant.ts';
-import { requestApproval, requireHub, useAgent } from './hub.ts';
+import { openAgentView, requestApproval, requireHub, useAgent } from './hub.ts';
 import { describeMcpToolName, startConnectedApps } from './mcp.ts';
 
 let scheduler: RoutineScheduler | null = null;
@@ -77,13 +77,13 @@ export async function runRoutine(r: Routine, ev: TriggerEvent): Promise<{ status
       confirm: (call) => {
         const mcp = describeMcpToolName(call.name);
         const what = mcp ? `use “${mcp.tool}” in ${mcp.server}` : call.name === 'trash_note' ? 'move a note to Trash' : call.name;
-        useApp.getState().toast({ text: `“${r.name}” is waiting for your OK`, action: { label: 'Review', run: () => window.dispatchEvent(new CustomEvent('inkstone:open-agent-view', { detail: 'activity' })) } });
+        useApp.getState().toast({ text: `“${r.name}” is waiting for your OK`, action: { label: 'Review', run: () => openAgentView('activity') } });
         return requestApproval({ source: r.name, title: `Allow “${r.name}” to ${what}?`, detail: JSON.stringify(call.arguments, null, 1).slice(0, 600) });
       },
     });
     await prep.recorder.finish('done', { reply: res.text, alwaysLog: true });
     if (prep.recorder.run.ops.length) {
-      useApp.getState().toast({ text: `${r.name}: ${prep.recorder.run.ops.length} ${prep.recorder.run.ops.length === 1 ? 'change' : 'changes'}`, action: { label: 'Review', run: () => window.dispatchEvent(new CustomEvent('inkstone:open-agent-view', { detail: 'activity' })) } });
+      useApp.getState().toast({ text: `${r.name}: ${prep.recorder.run.ops.length} ${prep.recorder.run.ops.length === 1 ? 'change' : 'changes'}`, action: { label: 'Review', run: () => openAgentView('activity') } });
     }
     return { status: 'done' };
   } catch (e) {
