@@ -40,3 +40,4 @@ export * from './handwrite.ts';
 export * from './papers/index.ts';
 export * from './datasandbox/index.ts';
 export * from './canvasdag/index.ts';
+export * from './photoink/index.ts';
