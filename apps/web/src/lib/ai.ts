@@ -33,6 +33,7 @@ import { pageImageForAI } from './exporter.ts';
 import { getSecret } from './secrets.ts';
 import type { AppVault } from './vault.ts';
 import { recognizeLocally } from './recognition.ts';
+import { chatChoice, isInstalled, localActiveAI, pickAssistant } from './localai.ts';
 
 export const CLAUDE_BUILTIN_ID = '__claude_builtin__';
 
@@ -69,7 +70,7 @@ export function hasBuiltinClaude(): boolean {
 
 export function isAIReady(): boolean {
   const s = useSettings.getState().ai;
-  return (!!s.activeId && s.providers.some((p) => p.id === s.activeId)) || hasBuiltinClaude();
+  return (!!s.activeId && s.providers.some((p) => p.id === s.activeId)) || hasBuiltinClaude() || isInstalled(chatChoice());
 }
 
 export async function providerFromConfig(cfg: AIProviderConfig, keyOverride?: string): Promise<Provider> {
@@ -81,6 +82,12 @@ export async function providerFromConfig(cfg: AIProviderConfig, keyOverride?: st
 export async function getActiveAI(): Promise<ActiveAI | null> {
   const s = useSettings.getState().ai;
   const cfg = s.providers.find((p) => p.id === s.activeId);
+  // Without a provider the assistant runs on this device; with one, Settings › AI › "Who answers" decides.
+  const pick = await pickAssistant({ providerConfigured: !!cfg && cfg.id !== CLAUDE_BUILTIN_ID, builtinClaude: hasBuiltinClaude() });
+  if (pick.kind === 'device' || pick.kind === 'chrome' || pick.kind === 'native') {
+    const local = localActiveAI(pick.kind);
+    if (local) return local;
+  }
   if (cfg && cfg.id !== CLAUDE_BUILTIN_ID) {
     const info = getProviderInfo(cfg.providerId);
     const provider = await providerFromConfig(cfg);
@@ -229,7 +236,7 @@ function clean(p: NotePatch): Partial<NoteMeta> {
 }
 
 function textBox(x: number, y: number, width: number, text: string): TextBox {
-  return { id: newId(), x, y, width, text, fontSize: 16, color: '#FF1B1F24', font: 'sans', createdAt: Date.now() };
+  return { id: newId(), x, y, width, text, fontSize: 16, color: '#FF1B1F24', font: 'sans', createdAt: Date.now(), origin: 'ai' };
 }
 
 export { textBoxHeight };

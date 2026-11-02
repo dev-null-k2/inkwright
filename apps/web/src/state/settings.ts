@@ -43,6 +43,13 @@ export interface Settings {
   library: { sort: 'updated' | 'created' | 'title'; view: 'grid' | 'list' };
   recentColors: string[];
   onboardingDone: boolean;
+  /** Smart ink: quiet suggestion chips after a pause ("Make a table", "Solve", "Add to calendar"). */
+  smartInk: { suggestions: boolean };
+  /**
+   * Proof of authorship: an optional name shown in certificates (self-chosen, not verified), and
+   * whether exported PDFs carry a signed certificate.
+   */
+  authorship: { deviceName: string; attachToPdf: boolean };
 }
 
 export const DEFAULT_TRAY: PenPreset[] = [
@@ -85,6 +92,8 @@ export const DEFAULT_SETTINGS: Settings = {
   library: { sort: 'updated', view: 'grid' },
   recentColors: [],
   onboardingDone: false,
+  smartInk: { suggestions: true },
+  authorship: { deviceName: '', attachToPdf: true },
 };
 
 const KEY = 'inkstone.settings.v1';
