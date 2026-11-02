@@ -6,10 +6,13 @@ import { INK_PALETTE } from '../state/settings.ts';
 import { cx } from './primitives.tsx';
 import { DictateButton } from './Dictation.tsx';
 import { insertAtCaret } from '../lib/listen/dictation.ts';
+import { LinkSuggest, type SuggestHandle } from './knowledge/LinkSuggest.tsx';
 
 /** Edits a text box in place: a textarea laid exactly over where the text renders on the page. */
-export function TextOverlay({ box, screen, zoom, onChange, onDone }: {
+export function TextOverlay({ box, screen, zoom, onChange, onDone, noteId }: {
   box: TextBox;
+  /** The note being edited (left out of its own [[link]] suggestions). */
+  noteId?: string;
   screen: { x: number; y: number; w: number; h: number };
   zoom: number;
   onChange: (b: TextBox) => void;
@@ -17,6 +20,7 @@ export function TextOverlay({ box, screen, zoom, onChange, onDone }: {
 }) {
   const [b, setB] = useState(box);
   const ta = useRef<HTMLTextAreaElement>(null);
+  const suggest = useRef<SuggestHandle>(null);
   useEffect(() => { setTimeout(() => { ta.current?.focus(); const l = ta.current?.value.length ?? 0; ta.current?.setSelectionRange(l, l); }, 20); }, []);
   useLayoutEffect(() => {
     const t = ta.current;
@@ -67,10 +71,13 @@ export function TextOverlay({ box, screen, zoom, onChange, onDone }: {
         style={{ width: Math.max(120, b.width * zoom), fontSize: b.fontSize * zoom, fontFamily: FONT_FAMILIES[b.font], color: '#' + b.color.slice(3), lineHeight: 1.35 }}
         onChange={(e) => update({ text: e.target.value })}
         onKeyDown={(e) => {
+          if (suggest.current?.onKeyDown(e)) { e.stopPropagation(); return; }
           if (e.key === 'Escape' || ((e.metaKey || e.ctrlKey) && e.key === 'Enter')) { e.preventDefault(); onDone(b); }
           e.stopPropagation();
         }}
       />
+      <LinkSuggest ref={suggest} taRef={ta} text={b.text} noteId={noteId}
+        onApply={(text, caret) => { update({ text }); setTimeout(() => { ta.current?.focus(); ta.current?.setSelectionRange(caret, caret); }, 0); }} />
     </div>
   );
 }

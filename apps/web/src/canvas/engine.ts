@@ -26,6 +26,7 @@ import {
   type Vec2,
 } from '@inkstone/core';
 import { AssetCache, type AssetLoader } from './assets.ts';
+import { drawPageObjectsFor } from '../smart/render.ts';
 import { PAGE_GAP, Viewport, layoutPages, nearestSlot, slotAt, type DocLayout, type PageSlot } from './layout.ts';
 import {
   cachedBounds,
@@ -125,7 +126,7 @@ interface Selection {
 
 type Gesture =
   | { kind: 'none' }
-  | { kind: 'stroke'; pointerId: number; pageIndex: number; slot: PageSlot; points: InkPoint[]; predicted: InkPoint[]; t0: number; wall: number; preset: PenPreset; shape: InkStroke | null; holdX: number; holdY: number; holdTimer: number; lastTs: number; pen: boolean; raw: boolean }
+  | { kind: 'stroke'; pointerId: number; pageIndex: number; slot: PageSlot; points: InkPoint[]; predicted: InkPoint[]; t0: number; wall: number; preset: PenPreset; shape: InkStroke | null; holdX: number; holdY: number; holdTimer: number; lastTs: number; pen: boolean; raw: boolean; input: PointerKind }
   | { kind: 'erase'; pointerId: number; pageIndex: number; slot: PageSlot; before: PageInk; working: PageInk; last: Vec2 | null; precise: boolean; t0: number }
   | { kind: 'lasso'; pointerId: number; pageIndex: number; slot: PageSlot; points: Vec2[] }
   | { kind: 'move'; pointerId: number; startX: number; startY: number; dx: number; dy: number; scale: number; mode: 'move' | 'scale'; anchor: Vec2; startDist: number }
@@ -732,6 +733,7 @@ export class InkEngine {
       if (hidden?.images.has(im.id)) continue;
       drawImageItem(ctx, im, this.assets.image(note.id, im.asset));
     }
+    drawPageObjectsFor(ctx, note, page);
     const playback = this.playback;
     const focus = this.strokeFocus?.ids;
     drawStrokes(dc, page.strokes, {
@@ -1075,7 +1077,7 @@ export class InkEngine {
     const first: InkPoint = { x: pp.x, y: pp.y, t: 0, p: this.pressure(e), tilt, orient };
     this.gesture = {
       kind: 'stroke', pointerId: e.pointerId, pageIndex: slot.index, slot, points: [first], predicted: [], t0: e.timeStamp, wall: Date.now(), preset: resolved.preset,
-      shape: null, holdX: p.x, holdY: p.y, holdTimer: 0, lastTs: e.timeStamp, pen: e.pointerType === 'pen', raw: false,
+      shape: null, holdX: p.x, holdY: p.y, holdTimer: 0, lastTs: e.timeStamp, pen: e.pointerType === 'pen', raw: false, input: pointerKind(e),
     };
     this.armHold();
     this.feel?.begin(resolved.preset.pen, pointerKind(e), first.p);
@@ -1380,9 +1382,10 @@ export class InkEngine {
     this.callbacks.onWriting?.(false);
     if (!g.shape) this.inkTip?.end(false);
     this.gesture = { kind: 'none' };
+    // `input` records how the stroke was written (authorship certificates count handwriting by it).
     const stroke: InkStroke = g.shape
-      ? { ...g.shape, id: newId() }
-      : { id: newId(), pen: g.preset.pen, color: g.preset.color, size: g.preset.size, points: g.points, createdAt: g.wall };
+      ? { ...g.shape, id: newId(), input: g.input }
+      : { id: newId(), pen: g.preset.pen, color: g.preset.color, size: g.preset.size, points: g.points, createdAt: g.wall, input: g.input };
     // Audio playback: a tap on ink seeks to when it was written.
     if ((this.playback || this.tapToSeek) && !g.shape && g.points.length < 4) {
       const last = g.points[g.points.length - 1]!;
@@ -1700,6 +1703,7 @@ export async function renderPageStandalone(doc: Pick<NoteDocument, 'meta' | 'pag
     for (let i = 0; !bmp && assets && i < 30; i++) { await new Promise((r) => setTimeout(r, 60)); bmp = assets.image(note.id, im.asset); }
     drawImageItem(ctx, im, bmp);
   }
+  drawPageObjectsFor(ctx, note, page);
   drawStrokes(dc, page.strokes, { paperColor: paperColorFor(note, page) });
   for (const t of page.texts ?? []) drawTextBox(ctx, t);
   return canvas;

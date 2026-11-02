@@ -1,6 +1,8 @@
 import { detectScratchOut, type ScratchOutOptions } from './gestures.ts';
 import { newId as defaultNewId } from './ids.ts';
-import { newPage, type ImageItem, type InkStroke, type NoteMeta, type PageBackground, type PageInk, type PageSize, type PaperSpec, type RecognizedLine, type TextBox } from './model.ts';
+import { newPage, type ImageItem, type InkLink, type InkStroke, type NoteMeta, type PageBackground, type PageInk, type PageSize, type PaperSpec, type RecognizedLine, type TextBox } from './model.ts';
+import type { PageObject } from './objects.ts';
+import { appendEvents, eventsFor, type ChainCause, type ChainChange } from './authorship.ts';
 
 /** Anything with an id that lives in a page list in z-order. */
 interface Item { id: string }
@@ -18,10 +20,14 @@ export interface PageDiff {
   strokes?: ListDiff<InkStroke>;
   texts?: ListDiff<TextBox>;
   images?: ListDiff<ImageItem>;
+  /** Links riding on handwriting (`PageInk.links`). */
+  links?: ListDiff<InkLink>;
+  /** Tables, solved results and graphs (objects.ts). */
+  objects?: ListDiff<PageObject>;
 }
 
 const emptyList = <T extends Item>(d?: ListDiff<T>) => !d || (d.removed.length === 0 && d.added.length === 0);
-export const isEmptyDiff = (d: PageDiff) => emptyList(d.strokes) && emptyList(d.texts) && emptyList(d.images);
+export const isEmptyDiff = (d: PageDiff) => emptyList(d.strokes) && emptyList(d.texts) && emptyList(d.images) && emptyList(d.links) && emptyList(d.objects);
 
 function splice<T extends Item>(list: readonly T[], out: Indexed<T>[], inn: Indexed<T>[]): T[] {
   const outIds = new Set(out.map((o) => o.item.id));
@@ -53,12 +59,18 @@ export function applyDiff(page: PageInk, d: PageDiff): PageInk {
   if (d.strokes) next.strokes = splice(page.strokes, d.strokes.removed, d.strokes.added);
   if (d.texts) next.texts = splice(page.texts ?? [], d.texts.removed, d.texts.added);
   if (d.images) next.images = splice(page.images ?? [], d.images.removed, d.images.added);
+  if (d.links) {
+    const links = splice(page.links ?? [], d.links.removed, d.links.added);
+    if (links.length) next.links = links;
+    else delete next.links;
+  }
+  if (d.objects) next.objects = splice(page.objects ?? [], d.objects.removed, d.objects.added);
   return next;
 }
 
 export function invertDiff(d: PageDiff): PageDiff {
   const inv = <T extends Item>(l?: ListDiff<T>) => (l ? { removed: l.added, added: l.removed } : undefined);
-  return { label: d.label, strokes: inv(d.strokes), texts: inv(d.texts), images: inv(d.images) };
+  return { label: d.label, strokes: inv(d.strokes), texts: inv(d.texts), images: inv(d.images), links: inv(d.links), objects: inv(d.objects) };
 }
 
 /** Diff turning one page state into another (multi-step gestures commit as one undo step). */
@@ -67,6 +79,8 @@ export function pageDiffBetween(before: PageInk, after: PageInk, label: string):
   if (before.strokes !== after.strokes) d.strokes = listDiffBetween(before.strokes, after.strokes);
   if ((before.texts ?? []) !== (after.texts ?? [])) d.texts = listDiffBetween(before.texts ?? [], after.texts ?? []);
   if ((before.images ?? []) !== (after.images ?? [])) d.images = listDiffBetween(before.images ?? [], after.images ?? []);
+  if ((before.links ?? []) !== (after.links ?? [])) d.links = listDiffBetween(before.links ?? [], after.links ?? []);
+  if ((before.objects ?? []) !== (after.objects ?? [])) d.objects = listDiffBetween(before.objects ?? [], after.objects ?? []);
   return d;
 }
 
@@ -157,13 +171,44 @@ export class NoteDocument {
 
   // ---- Edits -------------------------------------------------------------------------------
 
+  /**
+   * Short fingerprint of this device's signing key; stamped on authorship chain events so a
+   * certificate can show which devices wrote a page. Set by the app once the key is loaded.
+   */
+  authorshipDevice: string | undefined;
+
   /** Commits a diff on a page as one undo step. */
-  commit(pageIndex: number, diff: PageDiff): void {
+  commit(pageIndex: number, diff: PageDiff, how: ChainCause = 'other'): void {
     if (isEmptyDiff(diff) || !this.pageList[pageIndex]) return;
     const page = this.pageList[pageIndex]!;
-    this.pageList[pageIndex] = applyDiff(page, diff);
+    this.pageList[pageIndex] = this.chain(applyDiff(page, diff), diff, how);
     this.history.record(page.id, diff);
     this.touch(page.id);
+  }
+
+  /**
+   * Applies an automatic follow-up change that is not an undo step of its own (a table growing
+   * to fit the ink just written in it, recognized text stored in a cell): undoing goes straight
+   * back to what the user did. Still saved, synced and recorded in the authorship chain.
+   */
+  adjust(pageIndex: number, diff: PageDiff): void {
+    if (isEmptyDiff(diff) || !this.pageList[pageIndex]) return;
+    const page = this.pageList[pageIndex]!;
+    this.pageList[pageIndex] = this.chain(applyDiff(page, diff), diff, 'other');
+    this.touch(page.id);
+  }
+
+  /** Appends the diff's authorship chain events (docs/AUTHORSHIP.md) to the page. */
+  private chain(page: PageInk, d: PageDiff, how: ChainCause): PageInk {
+    const changes: ChainChange[] = [];
+    const add = (kind: ChainChange['kind'], l?: ListDiff<Item & { createdAt?: number }>) => {
+      if (l && (l.removed.length || l.added.length)) changes.push({ kind, removed: l.removed.map((x) => x.item) as never[], added: l.added.map((x) => x.item) as never[] });
+    };
+    add('s', d.strokes);
+    add('t', d.texts);
+    add('i', d.images);
+    add('o', d.objects);
+    return appendEvents(page, eventsFor(changes, how, this.clock(), this.authorshipDevice));
   }
 
   /**
@@ -180,7 +225,7 @@ export class NoteDocument {
         return { kind: 'scratched', erased: r.targetIds.size };
       }
     }
-    this.commit(pageIndex, { label: 'Draw', strokes: { removed: [], added: [{ index: page.strokes.length, item: stroke }] } });
+    this.commit(pageIndex, { label: 'Draw', strokes: { removed: [], added: [{ index: page.strokes.length, item: stroke }] } }, 'draw');
     return { kind: 'added' };
   }
 
@@ -261,6 +306,18 @@ export class NoteDocument {
       texts: replaceIn(page.texts ?? [], sel.texts, fns.text, res.texts),
       images: replaceIn(page.images ?? [], sel.images, fns.image, res.images),
     };
+    // Moved or recoloured ink gets new ids; links riding on it follow along in the same step.
+    if (diff.strokes && page.links?.length) {
+      const map = new Map(diff.strokes.removed.map((r, k) => [r.item.id, diff.strokes!.added[k]!.item.id]));
+      const removed: Indexed<InkLink>[] = [];
+      const added: Indexed<InkLink>[] = [];
+      page.links.forEach((l, i) => {
+        if (!l.strokeIds.some((id) => map.has(id))) return;
+        removed.push({ index: i, item: l });
+        added.push({ index: i, item: { ...l, strokeIds: l.strokeIds.map((id) => map.get(id) ?? id) } });
+      });
+      if (removed.length) diff.links = { removed, added };
+    }
     this.commit(pageIndex, diff);
     return res;
   }
@@ -286,17 +343,18 @@ export class NoteDocument {
       strokes: add(page.strokes, items.strokes, res.strokes, (s) => ({ ...s, createdAt: now })),
       texts: add(page.texts ?? [], items.texts, res.texts, (t) => ({ ...t, createdAt: now })),
       images: add(page.images ?? [], items.images, res.images, (i) => ({ ...i, createdAt: now })),
-    });
+    }, 'copy');
     return res;
   }
 
-  deleteItems(pageIndex: number, sel: { strokes?: Set<string>; texts?: Set<string>; images?: Set<string> }, label = 'Delete'): boolean {
+  deleteItems(pageIndex: number, sel: { strokes?: Set<string>; texts?: Set<string>; images?: Set<string>; objects?: Set<string> }, label = 'Delete'): boolean {
     const page = this.pageList[pageIndex]!;
     const d: PageDiff = {
       label,
       strokes: sel.strokes?.size ? { removed: indexed(page.strokes, sel.strokes), added: [] } : undefined,
       texts: sel.texts?.size ? { removed: indexed(page.texts ?? [], sel.texts), added: [] } : undefined,
       images: sel.images?.size ? { removed: indexed(page.images ?? [], sel.images), added: [] } : undefined,
+      objects: sel.objects?.size ? { removed: indexed(page.objects ?? [], sel.objects), added: [] } : undefined,
     };
     if (isEmptyDiff(d)) return false;
     this.commit(pageIndex, d);
@@ -324,12 +382,43 @@ export class NoteDocument {
     this.commit(pageIndex, { label: 'Insert image', images: { removed: [], added: [{ index: (page.images ?? []).length, item: image }] } });
   }
 
+  /**
+   * Adds or replaces (by id) page objects, optionally replacing strokes in the same undo step —
+   * e.g. a drawn grid's strokes become a table, or a table and its cell ink move together.
+   */
+  editObjects(pageIndex: number, label: string, change: { upsert?: PageObject[]; removeObjects?: Set<string>; addStrokes?: InkStroke[]; replaceStrokes?: Map<string, InkStroke>; removeStrokes?: Set<string> }, opts: { undoable?: boolean } = {}): void {
+    const page = this.pageList[pageIndex];
+    if (!page) return;
+    const objs = page.objects ?? [];
+    const od: ListDiff<PageObject> = { removed: [], added: [] };
+    for (const o of change.upsert ?? []) {
+      const i = objs.findIndex((x) => x.id === o.id);
+      if (i >= 0) { od.removed.push({ index: i, item: objs[i]! }); od.added.push({ index: i, item: o }); }
+      else od.added.push({ index: objs.length + od.added.filter((a) => a.index >= objs.length).length, item: o });
+    }
+    objs.forEach((o, i) => { if (change.removeObjects?.has(o.id)) od.removed.push({ index: i, item: o }); });
+    const sd: ListDiff<InkStroke> = { removed: [], added: [] };
+    page.strokes.forEach((s, i) => {
+      if (change.removeStrokes?.has(s.id)) sd.removed.push({ index: i, item: s });
+      else {
+        const rep = change.replaceStrokes?.get(s.id);
+        if (rep) { sd.removed.push({ index: i, item: s }); sd.added.push({ index: i, item: rep }); }
+      }
+    });
+    const kept = page.strokes.length - (change.removeStrokes?.size ? page.strokes.filter((s) => change.removeStrokes!.has(s.id)).length : 0);
+    (change.addStrokes ?? []).forEach((s, k) => sd.added.push({ index: kept + k, item: s }));
+    const diff: PageDiff = { label, objects: od.removed.length || od.added.length ? od : undefined, strokes: sd.removed.length || sd.added.length ? sd : undefined };
+    if (opts.undoable === false) this.adjust(pageIndex, diff);
+    else this.commit(pageIndex, diff);
+  }
+
   clearPage(pageIndex: number): boolean {
     const p = this.pageList[pageIndex]!;
     return this.deleteItems(pageIndex, {
       strokes: new Set(p.strokes.map((s) => s.id)),
       texts: new Set((p.texts ?? []).map((t) => t.id)),
       images: new Set((p.images ?? []).map((i) => i.id)),
+      objects: new Set((p.objects ?? []).map((o) => o.id)),
     }, 'Clear page');
   }
 
@@ -341,7 +430,8 @@ export class NoteDocument {
     if (!e) return -1;
     const i = this.indexOfPage(e.pageId);
     if (i < 0) return -1;
-    this.pageList[i] = applyDiff(this.pageList[i]!, invertDiff(e.diff));
+    const inv = invertDiff(e.diff);
+    this.pageList[i] = this.chain(applyDiff(this.pageList[i]!, inv), inv, 'undo');
     this.touch(e.pageId);
     return i;
   }
@@ -351,7 +441,7 @@ export class NoteDocument {
     if (!e) return -1;
     const i = this.indexOfPage(e.pageId);
     if (i < 0) return -1;
-    this.pageList[i] = applyDiff(this.pageList[i]!, e.diff);
+    this.pageList[i] = this.chain(applyDiff(this.pageList[i]!, e.diff), e.diff, 'redo');
     this.touch(e.pageId);
     return i;
   }
@@ -369,13 +459,18 @@ export class NoteDocument {
 
   duplicatePage(index: number): number {
     const src = this.pageList[index]!;
+    const ids = new Map<string, string>();
     const copy: PageInk = {
       ...src,
       id: this.newId(),
-      strokes: src.strokes.map((s) => ({ ...s, id: this.newId() })),
+      strokes: src.strokes.map((s) => { const id = this.newId(); ids.set(s.id, id); return { ...s, id }; }),
       texts: src.texts?.map((t) => ({ ...t, id: this.newId() })),
       images: src.images?.map((im) => ({ ...im, id: this.newId() })),
+      objects: src.objects?.map((o) => ({ ...o, id: this.newId() })),
+      // A copy is not where this ink was written: its history starts empty.
+      authorship: undefined,
     };
+    if (src.links) copy.links = src.links.map((l) => ({ ...l, id: this.newId(), strokeIds: l.strokeIds.map((id) => ids.get(id) ?? id) }));
     this.pageList.splice(index + 1, 0, copy);
     this.changed.add(copy.id);
     this.syncPageIds();

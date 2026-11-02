@@ -315,6 +315,29 @@ export class AppMemory implements MemorySearchHost {
     return () => this.listeners.delete(fn);
   }
 
+  /**
+   * A note's meaning as one vector: the normalized mean of its passages' embeddings (null when
+   * none are embedded yet). Lets "related notes" (lib/related.ts) compare whole notes.
+   */
+  noteVector(noteId: string): Float32Array | null {
+    let sum: Float32Array | null = null;
+    let n = 0;
+    for (const c of this.corpus.chunksOf(noteId)) {
+      const v = this.vectors.get(c.hash);
+      if (!v) continue;
+      sum ??= new Float32Array(v.length);
+      if (v.length !== sum.length) continue;
+      for (let i = 0; i < v.length; i++) sum[i]! += v[i]!;
+      n++;
+    }
+    if (!sum || !n) return null;
+    let norm = 0;
+    for (let i = 0; i < sum.length; i++) norm += sum[i]! * sum[i]!;
+    norm = Math.sqrt(norm) || 1;
+    for (let i = 0; i < sum.length; i++) sum[i]! /= norm;
+    return sum;
+  }
+
   /** Forgets every stored vector (Settings › AI › rebuild). */
   async resetVectors(): Promise<void> {
     const db = await this.database();

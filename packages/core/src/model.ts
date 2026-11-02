@@ -4,6 +4,11 @@
  * and AI agents. Units: 1 page unit = 1/96 inch (CSS px at 100%).
  */
 
+import type { PageObject } from './objects.ts';
+import type { PageAuthorship } from './authorship.ts';
+
+export type { PageObject };
+
 /** Current on-disk format version. Readers accept older versions and ignore unknown fields. */
 export const VAULT_FORMAT_VERSION = 2;
 
@@ -52,7 +57,27 @@ export interface InkStroke {
   createdAt: number;
   /** Set when the stroke was snapped to a geometric shape. */
   shape?: ShapeKind;
+  /**
+   * How a stroke written in Inkstone was made: stylus, finger or mouse. Set by the ink engine
+   * when the stroke is drawn; absent for strokes from older versions or created by code.
+   */
+  input?: StrokeInput;
+  /** Where the stroke came from when it was not written by hand (see `ContentOrigin`). */
+  origin?: ContentOrigin;
 }
+
+export type StrokeInput = 'pen' | 'touch' | 'mouse';
+
+/**
+ * Where a piece of content came from, so it can never be mistaken for handwriting (see
+ * docs/AUTHORSHIP.md). Absent means "made by the user in the app" (handwriting for strokes,
+ * typing for text boxes).
+ *  - `ai`: written by an AI model (assistant text, AI ink, AI-solved results).
+ *  - `solver`: computed on the device by the maths engine (no AI involved).
+ *  - `recognized`: machine transcription of the user's own handwriting.
+ *  - `import`: brought in from a file (images, PDF pages, pasted pictures).
+ */
+export type ContentOrigin = 'ai' | 'solver' | 'recognized' | 'import';
 
 export type NoteKind = 'paged' | 'board';
 
@@ -164,6 +189,8 @@ export interface TextBox {
   color: string;
   font: FontFamily;
   createdAt: number;
+  /** Set when the text was not typed by the user (AI answer, recognized handwriting…). */
+  origin?: ContentOrigin;
 }
 
 /** An image placed on a page; the bytes live in the note's assets folder. */
@@ -177,6 +204,8 @@ export interface ImageItem {
   asset: string;
   rotation: number;
   createdAt: number;
+  /** Images are imported (`import`) or generated (`ai`); never handwriting. */
+  origin?: ContentOrigin;
 }
 
 /** A page whose background is an imported document page (PDF annotation) or an image. */
@@ -192,6 +221,20 @@ export interface PageBackground {
   rotation?: number;
 }
 
+/**
+ * Handwriting that links to another note: the user lassoed ink and chose "Link to note…", or
+ * recognized handwriting contained `[[…]]`. The ink stays ink; the link rides on top of it.
+ * `target` is a wiki-link target (`Title`, `Title#Page 2`), `noteId` the note it resolved to when
+ * the link was made, so renaming the target never breaks it.
+ */
+export interface InkLink {
+  id: string;
+  strokeIds: string[];
+  target: string;
+  noteId?: string;
+  createdAt: number;
+}
+
 /** Content of one page file. */
 export interface PageInk {
   id: string;
@@ -199,6 +242,8 @@ export interface PageInk {
   texts?: TextBox[];
   images?: ImageItem[];
   background?: PageBackground;
+  /** Links carried by handwriting on this page (see `InkLink`). */
+  links?: InkLink[];
   /** Per-page overrides (e.g. imported PDF pages with their own size). */
   paper?: PaperSpec;
   size?: PageSize;
@@ -206,6 +251,13 @@ export interface PageInk {
   recognizedText?: string;
   recognizedAt?: number;
   recognizedBy?: string;
+  /**
+   * Live objects on the page made from ink: tables, solved equations, function graphs
+   * (see objects.ts). Drawn under the ink so handwriting in a table cell sits on top.
+   */
+  objects?: PageObject[];
+  /** Append-only hash chain of content events, for authorship certificates (authorship.ts). */
+  authorship?: PageAuthorship;
   /**
    * Where each recognized line sits on the page, when the recognizer worked line by line. Lets
    * search results and AI citations point at the exact handwriting, not just the page.
@@ -257,6 +309,24 @@ export interface NoteMeta {
    * written into a copy on export. See `FormFieldValue`.
    */
   forms?: Record<string, Record<string, FormFieldValue>>;
+  /**
+   * Tags that came from `#tags` written or typed in the note (kept in `tags` too). Remembered
+   * separately so deleting the `#tag` from the page removes it again without touching tags the
+   * user added by hand.
+   */
+  inlineTags?: string[];
+  /** Set on daily notes ("Today"): the local calendar day, `YYYY-MM-DD`. */
+  daily?: string;
+  /**
+   * Front-matter properties brought in from Markdown/Obsidian that Inkstone has no field for
+   * (`aliases`, `status`, …). Kept as-is and written back on Obsidian export.
+   */
+  properties?: Record<string, unknown>;
+  /**
+   * The latest signed authorship certificate of this note (a JSON file in `assets/`), so the
+   * "Verified handwriting" panel can show what changed since it was signed.
+   */
+  certificate?: { asset: string; signedAt: number };
   formatVersion: number;
 }
 

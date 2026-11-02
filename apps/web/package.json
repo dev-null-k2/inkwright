@@ -33,14 +33,18 @@
     "@inkstone/ai": "*",
     "@inkstone/core": "*",
     "@inkstone/sync": "*",
+    "chrono-node": "^2.10.3",
     "dompurify": "^3.4.17",
     "lucide-react": "^1.66.0",
     "marked": "^18.1.2",
+    "mathjs": "^15.2.0",
+    "nerdamer-prime": "^1.5.0",
     "onnxruntime-web": "1.31.0-dev.20260914-8d85527a0",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.5.438",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "three": "^0.187.0",
     "zustand": "^5.0.16"
   },
   "devDependencies": {
@@ -51,6 +55,7 @@
     "@testing-library/user-event": "^14.6.8",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.187.0",
     "@vitejs/plugin-react": "^6.1.2",
     "vite": "^8.3.5",
     "vite-plugin-singlefile": "^2.3.4"

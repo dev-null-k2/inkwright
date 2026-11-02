@@ -43,6 +43,8 @@ export type ActivityOp =
   | (OpBase & { kind: 'text_appended'; noteId: string; title: string; pageId: string; textId: string; text: string; addedPage?: boolean })
   | (OpBase & { kind: 'meta_changed'; noteId: string; title: string; before: MetaFields; after: MetaFields })
   | (OpBase & { kind: 'notebook_created'; notebookId: string; name: string })
+  /** Handwriting on a page was converted to text (the ink is untouched); undo clears that text. */
+  | (OpBase & { kind: 'handwriting_recognized'; noteId: string; title: string; pageId: string; text: string })
   /** A change in another app through a connected MCP server: shown, but only that app can undo it. */
   | (OpBase & { kind: 'external'; server: string; detail?: string });
 
@@ -201,6 +203,12 @@ export interface UndoTarget {
   removeText(noteId: string, pageId: string, textId: string, opts?: { removePageIfEmpty?: boolean }): Promise<boolean>;
   notebookNoteCount(notebookId: string): Promise<number | null>;
   deleteNotebook(notebookId: string): Promise<boolean>;
+  /**
+   * Clears a page's recognized handwriting text, but only while it is still `expected` (the user
+   * may have corrected or re-run recognition since). Optional so older hosts keep compiling; undo
+   * says it can't when it is missing.
+   */
+  clearRecognizedText?(noteId: string, pageId: string, expected: string): Promise<'cleared' | 'changed' | 'missing'>;
 }
 
 export interface UndoResult {
@@ -253,6 +261,13 @@ export async function undoOp(op: ActivityOp, target: UndoTarget): Promise<UndoRe
       if (count == null) return { ok: true, message: 'The notebook no longer exists.' };
       if (count > 0) return { ok: false, message: `The notebook has ${count} ${count === 1 ? 'note' : 'notes'} in it now, so it was kept.` };
       return (await target.deleteNotebook(op.notebookId)) ? { ok: true } : { ok: false, message: 'Could not delete the notebook.' };
+    }
+    case 'handwriting_recognized': {
+      if (!target.clearRecognizedText) return { ok: false, message: 'Update Inkstone to undo this.' };
+      const r = await target.clearRecognizedText(op.noteId, op.pageId, op.text);
+      if (r === 'cleared') return { ok: true };
+      if (r === 'changed') return { ok: false, message: 'The recognized text was edited since; kept your version.' };
+      return { ok: true, message: 'That page no longer exists.' };
     }
     case 'external':
       return { ok: false, message: 'This change was made in another app; undo it there.' };
@@ -335,6 +350,18 @@ export class VaultUndoTarget implements UndoTarget {
     }
     await this.onChange(noteId);
     return true;
+  }
+
+  async clearRecognizedText(noteId: string, pageId: string, expected: string): Promise<'cleared' | 'changed' | 'missing'> {
+    const n = await this.note(noteId);
+    if (!n || !n.pageIds.includes(pageId)) return 'missing';
+    const page = await this.vault.readPage(noteId, pageId);
+    if ((page.recognizedText ?? '') !== expected) return 'changed';
+    const { recognizedText: _t, recognizedAt: _a, recognizedBy: _b, ...rest } = page;
+    const pages = (await this.vault.readPages(n)).map((p) => (p.id === pageId ? (rest as PageInk) : p));
+    await this.vault.saveNote({ ...n, updatedAt: Date.now() }, pages, { changedPageIds: [pageId] });
+    await this.onChange(noteId);
+    return 'cleared';
   }
 
   async notebookNoteCount(notebookId: string) {

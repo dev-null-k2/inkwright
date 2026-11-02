@@ -1,30 +1,25 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { ActivityStore, VaultUndoTarget, undoRun } from '@inkstone/ai';
 import type { ServerContext } from '../src/context.ts';
-import { createMcpServer } from '../src/server.ts';
+import { createServices, type ServerServices } from '../src/server.ts';
+import { legacyClient, modernClient } from './clients.ts';
 import { json, makeFixture, type Fixture } from './fixtures.ts';
 
 let fx: Fixture;
 let ctx: ServerContext;
+let services: ServerServices;
 
 beforeEach(async () => {
   fx = await makeFixture();
   ctx = await fx.ctx();
+  services = createServices(ctx, { transport: 'http' });
 });
 afterEach(async () => {
   await fx.cleanup();
 });
 
-async function connect() {
-  const server = createMcpServer(ctx);
-  const [a, b] = InMemoryTransport.createLinkedPair();
-  await server.connect(b);
-  const client = new Client({ name: 'claude-desktop', title: 'Claude Desktop', version: '1.0.0' });
-  await client.connect(a);
-  return client;
-}
+// Over stateless HTTP every request gets its own MCP server; writes still join one run per agent.
+const connect = () => modernClient(services, { name: 'claude-desktop', title: 'Claude Desktop', version: '1.0.0' });
 
 describe('activity log for external agents', () => {
   it('logs writes made through the server as one undoable run, in the app’s format', async () => {
@@ -34,7 +29,7 @@ describe('activity log for external agents', () => {
     await client.callTool({ name: 'update_note', arguments: { id: 'GROCERIES', title: 'Shopping', tags: ['errands'] } });
     await client.callTool({ name: 'trash_note', arguments: { id: 'OLDNOTE' } });
     await client.callTool({ name: 'search_notes', arguments: { query: 'launch' } }); // reads are not logged
-    await new Promise((r) => setTimeout(r, 50));
+    await services.activity.flush();
 
     const store = new ActivityStore(ctx.fs);
     const runs = await store.list();
@@ -57,6 +52,18 @@ describe('activity log for external agents', () => {
     const launchPages = await ctx.vault.readPages((await ctx.vault.readNote('LAUNCH'))!);
     expect(JSON.stringify(launchPages)).not.toContain('Added by the agent');
     await client.close();
+  });
+
+  it('2025-era clients are logged the same way, as a separate agent', async () => {
+    const old = await legacyClient(services, { name: 'cursor', title: 'Cursor', version: '1.0.0' });
+    await old.callTool({ name: 'create_note', arguments: { title: 'From Cursor', text: 'hi' } });
+    const modern = await connect();
+    await modern.callTool({ name: 'create_note', arguments: { title: 'From Claude', text: 'hi' } });
+    await services.activity.flush();
+    const runs = await new ActivityStore(ctx.fs).list();
+    expect(runs.map((r) => r.label).sort()).toEqual(['Claude Desktop (via MCP)', 'Cursor (via MCP)']);
+    await old.close();
+    await modern.close();
   });
 
   it('failed calls are not logged', async () => {
