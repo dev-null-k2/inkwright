@@ -68,6 +68,8 @@ interface Piece {
   textId?: string;
   /** Starts a new paragraph (a vertical gap or a new block): prefer to break before it. */
   breakBefore?: boolean;
+  /** Far from the previous piece on the page: always break, so anchors stay tight. */
+  hard?: boolean;
 }
 
 /** Packs consecutive pieces into chunks of at most ~maxChars, breaking at paragraph gaps when it can. */
@@ -78,7 +80,7 @@ function pack(pieces: Piece[], maxChars: number): Piece[] {
     if (!p.text.trim()) continue;
     const wouldBe = (cur?.text.length ?? 0) + p.text.length + 1;
     const sameBlock = cur && cur.textId === p.textId;
-    if (cur && (wouldBe > maxChars || (p.breakBefore && cur.text.length > maxChars / 3) || !sameBlock)) {
+    if (cur && (wouldBe > maxChars || p.hard || (p.breakBefore && cur.text.length > maxChars / 3) || !sameBlock)) {
       out.push(cur);
       cur = null;
     }
@@ -162,9 +164,11 @@ function handwritingPieces(page: PageInk, maxChars: number): Piece[] {
   let prevBottom = -Infinity;
   for (const l of lines) {
     const hasRect = l.bounds.maxX > l.bounds.minX || l.bounds.maxY > l.bounds.minY;
-    const gap = typical > 0 && hasRect && l.bounds.minY - prevBottom > typical * 1.6;
+    const space = hasRect ? l.bounds.minY - prevBottom : 0;
+    const gap = typical > 0 && space > typical * 1.6;
+    const hard = typical > 0 && space > typical * 4;
     for (const part of splitLong(l.text.trim(), maxChars)) {
-      pieces.push({ text: part, rect: hasRect ? l.bounds : undefined, strokeIds: l.strokeIds.length ? l.strokeIds : undefined, breakBefore: gap });
+      pieces.push({ text: part, rect: hasRect ? l.bounds : undefined, strokeIds: l.strokeIds.length ? l.strokeIds : undefined, breakBefore: gap, hard });
     }
     if (hasRect) prevBottom = l.bounds.maxY;
   }
@@ -190,7 +194,8 @@ export function pdfPieces(items: readonly PdfTextItem[], maxChars = 600): Piece[
   for (const l of lines) {
     const text = l.runs.sort((a, b) => a.rect.minX - b.rect.minX).map((r) => r.str).join(' ').replace(/\s+/g, ' ').trim();
     const gap = typical > 0 && l.rect.minY - prevBottom > typical * 1.2;
-    for (const part of splitLong(text, maxChars)) pieces.push({ text: part, rect: l.rect, breakBefore: gap });
+    const hard = typical > 0 && l.rect.minY - prevBottom > typical * 4;
+    for (const part of splitLong(text, maxChars)) pieces.push({ text: part, rect: l.rect, breakBefore: gap, hard });
     prevBottom = l.rect.maxY;
   }
   return pieces;

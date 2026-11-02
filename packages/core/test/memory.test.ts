@@ -64,6 +64,20 @@ describe('chunkNote', () => {
     expect(hw[1]!.rect!.minY).toBe(400);
   });
 
+  it('never merges short handwriting lines that are far apart on the page', () => {
+    const page: PageInk = {
+      ...newPage('p'),
+      recognizedText: 'shopping list\nnyquist rate',
+      recognizedLines: [
+        { text: 'shopping list', strokeIds: ['a'], bounds: { minX: 100, minY: 160, maxX: 260, maxY: 178 } },
+        { text: 'nyquist rate', strokeIds: ['b'], bounds: { minX: 100, minY: 410, maxX: 280, maxY: 428 } },
+      ],
+    };
+    const hw = chunkNote(note('n', 'Mixed'), [page]).filter((c) => c.source === 'handwriting');
+    expect(hw.map((c) => c.strokeIds)).toEqual([['a'], ['b']]);
+    expect(hw[1]!.rect!.minY).toBe(410);
+  });
+
   it('lines recognized text up with the writing lines when no anchors were stored', () => {
     const page: PageInk = { ...handwrittenPage('p'), recognizedText: 'one two\nthree four\nfive six' };
     const lines = handwritingLines(page);

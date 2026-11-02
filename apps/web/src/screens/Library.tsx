@@ -11,12 +11,15 @@ import { NewNoteSheet } from '../ui/NewNoteSheet.tsx';
 import { createNote, importFiles, moveNote, renameNote, togglePin, trashNote, restoreNote, deleteForever, duplicateNote, createNotebook, deleteNotebook, renameNotebook } from '../lib/actions.ts';
 import { BrandMark } from '../ui/Brand.tsx';
 import { syncNow, useSync } from '../lib/sync.ts';
+import { openPalette } from '../lib/palette.ts';
 
 export function Library() {
   const { notes, trash, notebooks, filter, setFilter, query, setQuery, navigate, vault } = useApp();
   const sort = useSettings((s) => s.library.sort);
   const account = useSettings((s) => s.sync.account);
   const wide = useMediaQuery('(min-width: 900px)');
+  // On touch screens the search field opens search-everything (notes, handwriting, PDFs, Ask).
+  const touch = useMediaQuery('(pointer: coarse)');
   const [drawer, setDrawer] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
   const newBtn = useRef<HTMLButtonElement>(null);
@@ -132,7 +135,8 @@ export function Library() {
           {!wide && <IconButton label="Menu" onClick={() => setDrawer(true)}><MenuIcon size={20} /></IconButton>}
           <label className="search">
             <Search size={18} aria-hidden />
-            <input ref={searchRef} type="search" placeholder="Search your notes and handwriting" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search notes" />
+            <input ref={searchRef} type="search" placeholder="Search your notes and handwriting" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search notes"
+              onFocus={(e) => { if (touch) { e.currentTarget.blur(); openPalette({ query }); } }} />
             {query && <button type="button" className="search-clear" aria-label="Clear search" onClick={() => setQuery('')}><X size={16} /></button>}
           </label>
           {account && <IconButton label="Sync now" onClick={() => void syncNow()} className={cx(sync.status === 'syncing' && 'is-spinning')}><Cloud size={19} /></IconButton>}

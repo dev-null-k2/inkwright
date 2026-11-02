@@ -3,6 +3,7 @@ import { ArrowUp, CheckSquare, FileText, Languages, Layers3, ListTodo, Settings2
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import {
+  createMemoryTools,
   createNoteTools,
   extractTodos,
   makeFlashcards,
@@ -25,6 +26,8 @@ import { useApp } from '../state/app.ts';
 import { useSettings } from '../state/settings.ts';
 import { askConfirm, askText } from './prompts.tsx';
 import { IconButton, cx } from './primitives.tsx';
+import { LocalAISetup } from './LocalAISetup.tsx';
+import { appMemory } from '../lib/memory.ts';
 
 export type AIRequest = { kind: 'selection'; pageIndex: number; strokeIds: string[]; textIds: string[]; at: number };
 
@@ -47,6 +50,7 @@ const TOOL_LABELS: Record<string, string> = {
   list_notebooks: 'Checked notebooks',
   create_notebook: 'Created a notebook',
   trash_note: 'Moved a note to Trash',
+  search_memory: 'Searched everything you wrote',
 };
 
 export function AIPanel({ session, engine, request, onClose, onOpenSettings }: { session: EditorSession; engine: InkEngine; request: AIRequest | null; onClose: () => void; onOpenSettings: () => void }) {
@@ -192,7 +196,8 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
     setBusy(true);
     abort.current = new AbortController();
     const host = new AppNoteToolHost(vault, doc);
-    const tools = createNoteTools(host, a.vision ? {} : { exclude: ['get_page_image'] });
+    const memory = appMemory();
+    const tools = [...createNoteTools(host, a.vision ? {} : { exclude: ['get_page_image'] }), ...(memory ? createMemoryTools(memory) : [])];
     let replyId: string | null = null;
     let reply = '';
     const toolItems = new Map<string, string>();
@@ -253,6 +258,7 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
       </header>
       {ai === null && (
         <div className="ai-setup">
+          <LocalAISetup onReady={() => void getActiveAI().then(setAi)} />
           <p className="ai-setup-lead">Use any AI with your notes.</p>
           <p className="muted">Add a key from OpenAI, Anthropic, Google Gemini, OpenRouter, Groq, Mistral, xAI or DeepSeek, or point Inkstone at a local model in Ollama or LM Studio. Keys stay encrypted on this device.</p>
           <button type="button" className="btn btn-primary" onClick={onOpenSettings}>Connect an AI</button>

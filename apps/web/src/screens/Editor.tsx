@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft, Camera, CloudUpload, Undo2, Redo2, Download, FileImage, FileText, FileType2, Files, Image as ImageIcon, Layers,
-  AudioLines, Mic, MoreHorizontal, Pause, Play, Sparkles, Square, Tag, Trash2, Maximize2, FilePlus2, Copy, Scan,
+  AudioLines, Mic, MoreHorizontal, Pause, Play, Sparkles, Square, Tag, Trash2, Maximize2, FilePlus2, Copy, Scan, Search,
 } from 'lucide-react';
 import { newId, PAGE_SIZE_PRESETS, pagePaper, pageSizeOf, type ImageItem, type InkStroke, type TextBox } from '@inkstone/core';
 import { InkEngine, type SelectionInfo, type Tool, type ToolState } from '../canvas/engine.ts';
@@ -27,6 +27,8 @@ import { AIPanel, type AIRequest } from '../ui/AIPanel.tsx';
 import { IconButton, Menu, Popover, cx, useMediaQuery } from '../ui/primitives.tsx';
 import { askConfirm, askText } from '../ui/prompts.tsx';
 import { isAIReady, transcribePage } from '../lib/ai.ts';
+import { useFocusRequests } from '../lib/focus.ts';
+import { openPalette, usePaletteActions } from '../lib/palette.ts';
 
 declare const __E2E__: boolean;
 /** Test builds (`vite build --mode e2e`) expose the document to end-to-end tests; releases never do. */
@@ -207,6 +209,19 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }); // re-bind each render: handlers close over current state
+
+  // Search results and AI citations land here: scroll to the cited words and flash them.
+  useFocusRequests(engine, noteId);
+  usePaletteActions('editor', [
+    { id: 'export-pdf', label: 'Export PDF', keywords: 'save share print', hint: `${modKey}P`, icon: <FileType2 size={16} />, run: () => void doExport('pdf') },
+    { id: 'export-md', label: 'Export Markdown', keywords: 'save share text', icon: <FileText size={16} />, run: () => void doExport('md') },
+    { id: 'export-png', label: 'Export page as image', keywords: 'png picture save share', icon: <FileImage size={16} />, run: () => void doExport('png') },
+    { id: 'feel', label: 'Writing sound & feel', keywords: 'sound haptics volume paper texture', icon: <AudioLines size={16} />, run: () => setTimeout(() => setMenu('feel'), 0) },
+    { id: 'pages', label: 'Pages', keywords: 'thumbnails overview', icon: <Layers size={16} />, run: () => setPanel('pages') },
+    { id: 'assistant', label: 'Open assistant', keywords: 'ai chat help', icon: <Sparkles size={16} />, run: () => setPanel('ai') },
+    { id: 'insert-pdf', label: 'Insert PDF pages', keywords: 'import annotate', icon: <FileType2 size={16} />, run: () => void insertPdfPages() },
+    { id: 'fit', label: 'Fit to width', hint: `${modKey}0`, icon: <Maximize2 size={16} />, run: () => engine?.fitWidth() },
+  ]);
 
   const pasteClipboard = async () => {
     const clip = inkClipboard;
@@ -564,6 +579,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
 
       <Popover anchor={btn.more.current} open={menu === 'more'} onClose={() => setMenu(null)} title="More" placement="below">
         <Menu onClose={() => setMenu(null)} items={[
+          { label: 'Search everything', icon: <Search size={16} />, hint: `${modKey}K`, onClick: () => openPalette({ query: '' }) },
           { label: 'Pages', icon: <Layers size={16} />, hint: doc && doc.pageCount > 1 ? `${doc.pageCount}` : undefined, onClick: () => setPanel('pages') },
           { label: 'Paper', icon: <Files size={16} />, onClick: () => setTimeout(() => setPaperOpen(true), 0) },
           { label: 'Writing sound & feel', icon: <AudioLines size={16} />, hint: settings.feel.sound ? `${Math.round(settings.feel.soundVolume * 100)}%` : 'Off', onClick: () => setTimeout(() => setMenu('feel'), 0) },
