@@ -482,7 +482,7 @@ export function hasScopeRules(policy: AIPolicy): boolean {
 
 /** Whether an agent may call a tool by name (deny list, then the allowlist if there is one). */
 export function toolAllowed(policy: AIPolicy, name: string): boolean {
-  const match = (pattern: string) => (pattern.endsWith('*') ? name.startsWith(pattern.slice(0, -1)) : pattern === name);
+  const match = (pattern: string) => new RegExp(`^${pattern.split('*').map((x) => x.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*')}$`).test(name);
   if (policy.tools.deny.some(match)) return false;
   if (policy.tools.allowOnly && !policy.tools.allowOnly.some(match)) return false;
   return true;
