@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
-import { Eraser, Hand, Lasso, Plus, Redo2, Type, Undo2, Wand2, Trash2, Crosshair } from 'lucide-react';
-import { PEN_INFO, PEN_TYPES, newId, outlineToSvgPath, strokeOutline, type InkPoint, type PenType } from '@inkstone/core';
+import { Eraser, Hand, Lasso, Plus, Redo2, Type, Undo2, Wand2, Trash2, Crosshair, Bandage, StickyNote } from 'lucide-react';
+import { DEFAULT_NIB_ANGLE, ERASER_FILTERS, PEN_INFO, PEN_TYPES, TAPE_COLORS, newId, outlineToSvgPath, strokeOutline, type InkPoint, type PenType } from '@inkstone/core';
+import { useLongPress } from '../studio/useLongPress.ts';
 import type { PenPreset, Tool } from '../canvas/engine.ts';
 import { PenNib, argbToCss } from './PenNib.tsx';
 import { IconButton, Popover, Segmented, Slider, cx } from './primitives.tsx';
@@ -21,6 +22,8 @@ export interface DockProps {
   onUndo: () => void;
   onRedo: () => void;
   onClearPage: () => void;
+  /** Places a sticky note on the current page. */
+  onAddSticky?: () => void;
 }
 
 export function PenDock(p: DockProps) {
@@ -28,6 +31,9 @@ export function PenDock(p: DockProps) {
   const [editing, setEditing] = useState<string | null>(null);
   const [eraserOpen, setEraserOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  // Long-press on the eraser: choose what it erases (selective eraser).
+  const [filterOpen, setFilterOpen] = useState(false);
+  const eraserPress = useLongPress(() => setFilterOpen(true));
   const refs = useRef(new Map<string, HTMLButtonElement>());
   const eraserBtn = useRef<HTMLButtonElement>(null);
   const moreBtn = useRef<HTMLButtonElement>(null);
@@ -82,15 +88,17 @@ export function PenDock(p: DockProps) {
       <div className="dock-sep" />
       <div className="dock-group">
         <button ref={eraserBtn} type="button" className={cx('icon-btn', (p.tool === 'eraser' || (p.latched && s.input.buttonAction !== 'lasso')) && 'is-active', p.latched && 'is-latched')}
-          aria-label="Eraser" title={`Eraser (E)${p.tool === 'eraser' ? ' — tap again for options' : ''}`}
-          onClick={() => (p.tool === 'eraser' ? setEraserOpen(true) : p.onTool('eraser'))}>
+          aria-label="Eraser" title={`Eraser (E)${p.tool === 'eraser' ? ' — tap again for options' : ''} — press and hold to choose what it erases`}
+          {...eraserPress.handlers}
+          onClick={() => { if (eraserPress.consumed()) return; if (p.tool === 'eraser') setEraserOpen(true); else p.onTool('eraser'); }}>
           <Eraser size={20} />
           {s.eraserMode === 'precise' && <span className="tool-badge" aria-hidden>·</span>}
+          {s.eraserFilter !== 'all' && <span className="tool-filter-badge" aria-hidden />}
         </button>
         <IconButton label="Lasso select" shortcut="L" active={p.tool === 'lasso'} onClick={() => p.onTool('lasso')}><Lasso size={20} /></IconButton>
         <IconButton label="Text" shortcut="T" active={p.tool === 'text'} onClick={() => p.onTool('text')}><Type size={20} /></IconButton>
-        <button ref={moreBtn} type="button" className={cx('icon-btn', (p.tool === 'hand' || p.tool === 'laser') && 'is-active')} aria-label="More tools" title="More tools" onClick={() => setMoreOpen(true)}>
-          {p.tool === 'laser' ? <Crosshair size={20} /> : p.tool === 'hand' ? <Hand size={20} /> : <Wand2 size={20} />}
+        <button ref={moreBtn} type="button" className={cx('icon-btn', (p.tool === 'hand' || p.tool === 'laser' || p.tool === 'tape') && 'is-active')} aria-label="More tools" title="More tools" onClick={() => setMoreOpen(true)}>
+          {p.tool === 'laser' ? <Crosshair size={20} /> : p.tool === 'hand' ? <Hand size={20} /> : p.tool === 'tape' ? <Bandage size={20} /> : <Wand2 size={20} />}
         </button>
       </div>
 
@@ -106,14 +114,30 @@ export function PenDock(p: DockProps) {
             { value: 'precise', label: 'Precise' },
           ]} />
           <Slider label="Size" value={s.eraserSize} min={8} max={80} step={1} onChange={(v) => s.update(() => ({ eraserSize: v }))} format={(v) => `${v}px`} />
+          <EraserFilterList onPick={() => {}} />
           <button type="button" className="btn btn-danger-ghost" onClick={() => { setEraserOpen(false); p.onClearPage(); }}><Trash2 size={16} /> Clear page</button>
         </div>
+      </Popover>
+      <Popover anchor={eraserBtn.current} open={filterOpen} onClose={() => setFilterOpen(false)} title="Erase" placement={p.vertical ? 'right' : 'above'}>
+        <EraserFilterList onPick={() => { setFilterOpen(false); p.onTool('eraser'); }} />
       </Popover>
       <Popover anchor={moreBtn.current} open={moreOpen} onClose={() => setMoreOpen(false)} title="More tools" placement={p.vertical ? 'right' : 'above'}>
         <div className="menu">
           <button type="button" className={cx('menu-item', p.tool === 'hand' && 'is-on')} onClick={() => { p.onTool('hand'); setMoreOpen(false); }}><span className="menu-icon"><Hand size={16} /></span><span className="menu-label">Pan and zoom</span><span className="menu-hint">H</span></button>
           <button type="button" className={cx('menu-item', p.tool === 'laser' && 'is-on')} onClick={() => { p.onTool('laser'); setMoreOpen(false); }}><span className="menu-icon"><Crosshair size={16} /></span><span className="menu-label">Laser pointer</span><span className="menu-hint">K</span></button>
+          <button type="button" className={cx('menu-item', p.tool === 'tape' && 'is-on')} onClick={() => { p.onTool('tape'); setMoreOpen(false); }}><span className="menu-icon"><Bandage size={16} /></span><span className="menu-label">Tape</span><span className="menu-hint">Cover ink to test yourself</span></button>
+          {p.onAddSticky && <button type="button" className="menu-item" onClick={() => { p.onAddSticky!(); setMoreOpen(false); }}><span className="menu-icon"><StickyNote size={16} /></span><span className="menu-label">Sticky note</span></button>}
         </div>
+        {p.tool === 'tape' && (
+          <div className="pop-section tape-options">
+            <div className="swatches" role="radiogroup" aria-label="Tape colour">
+              {TAPE_COLORS.map((c) => (
+                <button key={c} type="button" role="radio" aria-checked={s.tape.color === c} aria-label={`Tape ${c}`} className={cx('swatch', s.tape.color === c && 'is-on')} style={{ background: '#' + c.slice(3) }} onClick={() => s.update((x) => ({ tape: { ...x.tape, color: c } }))} />
+              ))}
+            </div>
+            <Slider label="Width" value={s.tape.width} min={8} max={60} step={1} onChange={(v) => s.update((x) => ({ tape: { ...x.tape, width: v } }))} format={(v) => `${(v * 0.2646).toFixed(1)} mm`} />
+          </div>
+        )}
       </Popover>
     </div>
   );
@@ -122,6 +146,21 @@ export function PenDock(p: DockProps) {
 function colorName(c: string) {
   const map: Record<string, string> = { '#FF1B1F24': 'ink black', '#FF1F3A93': 'navy', '#FF4A4F57': 'graphite', '#FFC0392B': 'red', '#FFFFD54A': 'yellow' };
   return map[c] ?? c;
+}
+
+/** What the eraser removes: everything, only highlighter, only pen ink, only shapes. */
+function EraserFilterList({ onPick }: { onPick: () => void }) {
+  const s = useSettings();
+  return (
+    <div className="menu eraser-filters" role="radiogroup" aria-label="What the eraser removes">
+      {ERASER_FILTERS.map((f) => (
+        <button key={f.value} type="button" role="radio" aria-checked={s.eraserFilter === f.value} className={cx('menu-item', s.eraserFilter === f.value && 'is-on')}
+          onClick={() => { s.update(() => ({ eraserFilter: f.value })); onPick(); }}>
+          <span className="menu-label">{f.label}</span><span className="menu-hint">{f.hint}</span>
+        </button>
+      ))}
+    </div>
+  );
 }
 
 const SAMPLE: InkPoint[] = Array.from({ length: 60 }, (_, i) => {
@@ -133,7 +172,7 @@ export function PenEditor({ preset, onClose }: { preset: PenPreset; onClose: () 
   const s = useSettings();
   const set = (patch: Partial<PenPreset>) => s.update((x) => ({ tray: x.tray.map((p) => (p.id === preset.id ? { ...p, ...patch } : p)) }));
   const palette = preset.pen === 'highlighter' ? HIGHLIGHT_PALETTE : INK_PALETTE;
-  const sample = useMemo(() => outlineToSvgPath(strokeOutline({ pen: preset.pen, size: preset.size * 1.6, points: SAMPLE })), [preset.pen, preset.size]);
+  const sample = useMemo(() => outlineToSvgPath(strokeOutline({ pen: preset.pen, size: preset.size * 1.6, points: SAMPLE, nib: preset.nibAngle ?? DEFAULT_NIB_ANGLE })), [preset.pen, preset.size, preset.nibAngle]);
   const remove = () => {
     if (s.tray.length <= 1) return;
     s.update((x) => {
@@ -164,7 +203,10 @@ export function PenEditor({ preset, onClose }: { preset: PenPreset; onClose: () 
           <input type="color" value={css} onChange={(e) => set({ color: ('#FF' + e.target.value.slice(1)).toUpperCase() })} aria-label="Custom colour" />
         </label>
       </div>
-      <Slider label="Size" value={preset.size} min={preset.pen === 'highlighter' ? 6 : 0.6} max={preset.pen === 'highlighter' ? 40 : preset.pen === 'brush' || preset.pen === 'marker' ? 24 : 12} step={0.1} onChange={(v) => set({ size: v })} format={(v) => `${(v * 0.2646).toFixed(2)} mm`} />
+      <Slider label="Size" value={preset.size} min={preset.pen === 'highlighter' ? 6 : 0.6} max={preset.pen === 'highlighter' ? 40 : preset.pen === 'brush' || preset.pen === 'marker' || preset.pen === 'calligraphy' ? 24 : 12} step={0.1} onChange={(v) => set({ size: v })} format={(v) => `${(v * 0.2646).toFixed(2)} mm`} />
+      {preset.pen === 'calligraphy' && (
+        <Slider label="Nib angle" value={preset.nibAngle ?? DEFAULT_NIB_ANGLE} min={0} max={180} step={1} onChange={(v) => set({ nibAngle: v })} format={(v) => `${v}°`} />
+      )}
       <div className="pen-editor-foot">
         {useSettings.getState().highlighterId !== preset.id && preset.pen === 'highlighter' && (
           <button type="button" className="btn btn-ghost" onClick={() => s.update(() => ({ highlighterId: preset.id }))}>Use for pen button</button>

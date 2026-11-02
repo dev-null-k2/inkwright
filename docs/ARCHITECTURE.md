@@ -103,6 +103,46 @@ Sync (`@inkstone/sync`) compares content hashes with the last-synced state and r
   `smart/ics.ts` (RFC 5545 files, Google Calendar links); on Android the plugin's
   `insertCalendarEvent` opens the calendar app's prefilled new-event screen.
 
+## Studio tools (`core/{overlays,layers,snap,lock,history}.ts`, `apps/web/src/studio/`)
+
+The pro tools that Goodnotes, Notability, Notewise and Samsung Notes users expect, built on the same
+model so every one of them undoes, syncs, exports and enters the authorship chain.
+
+- **Selective eraser** (`layers.ts`: `eraserAccepts`): everything, only highlighter, only pen ink, or
+  only shapes; the engine erases only eligible strokes (whole or precise). Long-press the eraser in
+  the dock to choose.
+- **Layers** (`layers.ts`): strokes carry `layer`; `visibleStrokes` gives drawing order (drawing layer
+  under writing) without hidden layers and is used by the canvas, SVG and PDF; `editableStroke` keeps
+  the eraser, lasso and scratch-out off locked or hidden layers. ••• › View picks the layer to write on.
+- **Calligraphy pen** (`outline.ts`: `calligraphyOutline`): a broad nib as a Minkowski sum with a
+  rectangle at the stroke's `nib` angle; `strokeOutline` routes to it, so every renderer and export
+  draws it. It has its own paper-feel profile; it is not in the native ink-tip list (its width
+  changes with direction).
+- **Sticky notes and tape** (`overlays.ts`, `studio/render.ts`, `studio/pdf.ts`, `StudioLayer.tsx`):
+  overlay objects drawn after the ink by the canvas (`drawOverlays`), SVG (`overlaysSvg`) and PDF.
+  The engine sends pen strokes that start on a sticky into it, turns pen and finger taps on tape into
+  reveal/cover (screen-only state), has a tape tool, and erases sticky ink and tape (Everything mode)
+  while leaving ink under covering overlays alone.
+- **Snapping** (`snap.ts`): `snapTargets` collects other items' edges and centres, the page's edges,
+  centre and margins, and the paper's lines (thinned by zoom); `snapMove`/`snapScale`/`snapSize`
+  return the adjusted drag and guides. The engine snaps lasso moves and resizes and exposes
+  `snapDrag` to the table and sticky handles; guides are a jade SVG over the canvas. Alt or a second
+  finger on the page turns it off for that drag; Settings and ••• › View turn it off altogether.
+- **Two-page view** (`canvas/layout.ts`: `layoutPages(…, { spreads })`): pages pair up side by side;
+  input mapping, scrolling and culling already go through page slots. `fitWidth` fits a whole
+  spread; the current page in a spread is the one last written on or scrolled to. Auto mode
+  (`autoSpreads`) turns it on for multi-page notes on wide, non-portrait screens.
+- **Version history** (`history.ts`, `studio/versions.ts`, `HistoryDialog.tsx`): content-addressed,
+  write-once snapshot files in the note's folder (VAULT_FORMAT.md), retention pruning, and restores
+  as minimal commits (`alignPage` + `NoteDocument.restoreVersion`). The app snapshots on open/close,
+  every ten minutes of editing, before restores and before assistant/routine edits; the MCP server's
+  agent host snapshots before its writes too.
+- **Locked notes** (`lock.ts`, `Vault`): keys live only in `Vault`'s in-memory map while the note is
+  open. `saveNote` seals pages and content metadata, `writeAsset`/`readAsset` seal and open assets,
+  and `readPages` returns blank pages unless the editor asks for `unlocked` pages — so search, the
+  knowledge index, semantic memory, thumbnails, the assistant, routines and the MCP server never see
+  the content. `EditorSession.open` throws `NoteLockedError` until the passcode gate unlocks it.
+
 ## Proof of authorship (`core/authorship.ts`, `apps/web/src/authorship/`)
 
 Strokes record their input device; AI/solver/recognized/imported content carries an `origin`;
@@ -231,7 +271,8 @@ as "what was said" passages. Details in docs/LOCAL_AI.md § Speech to text.
 
 ## Extending
 
-- **A pen:** add it to `PenType`/`PEN_INFO`, give it a `penLook` and `outlineOptions` (core) and a `PenNib` drawing (web).
+- **A pen:** add it to `PenType`/`PEN_INFO`, give it a `penLook` and `outlineOptions` (core) and a `PenNib` drawing (web). A pen whose shape perfect-freehand can't make gets its own outline function, routed from `strokeOutline` (see `calligraphyOutline`).
+- **An overlay object:** add its type to `overlays.ts` (`isOverlay`, rect, hit test, SVG) and draw it in `studio/render.ts` and `studio/pdf.ts`.
 - **A paper:** add it to `PaperStyle`, then add a case in `paperElements` (`core/paper.ts`). It renders on screen, in thumbnails, SVG and PDF export automatically.
 - **An AI provider:** add a registry entry in `packages/ai/src/providers/registry.ts`. Most are OpenAI-compatible and need only a base URL.
 - **An agent tool:** add it in `createNoteTools` and implement it in `NoteToolHost`, both for the app (`lib/ai.ts`) and for the MCP server (`apps/mcp-server/src/agent/host.ts`). If it writes, record it in `RecordingNoteToolHost` with an op kind and its inverse in `undoOp`.

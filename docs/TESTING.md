@@ -11,6 +11,15 @@ Three layers cover every feature.
 | Outside agents | `npx vitest run --project mcp` | MCP server with SDK clients in-process: 2026-07-28 (`server/discover`, `_meta` envelope) and 2025 clients over HTTP, both over stdio; OAuth resource server against a local jose issuer (metadata, 401 challenge, audience/expiry/issuer/signature, step-up `insufficient_scope`); Tasks lifecycle through the app's own client (progress, `input_required` approval, cancel, ownership, -32602/-32021); MCP Apps resources and tool links; A2A with the official `@a2a-js/sdk` client (card v1.0/v0.3, SendMessage with citations, streaming, INPUT_REQUIRED approval, cancel, v0.3 `message/send`, token); the runner on a fake clock (catch-up, lease handover and expiry, note-saved trigger, deferred approvals); launchd/systemd/Task Scheduler files. e2e: `agent.spec.ts` shows the runner notice on the Routines screen |
 | Android | `cd apps/web/android && ./gradlew testDebugUnitTest` | native plugin logic: stylus key mapping, refresh-rate choice, recognition payloads, the native writing-sound synth and grain scheduler (sample-exact against fixtures generated from the TypeScript reference), stroke arming and audio buffer sizing, the instant ink tip |
 
+### Studio tools
+
+| Layer | Command | What it covers |
+|---|---|---|
+| Unit | `npx vitest run --project core packages/core/test/pro.test.ts` | calligraphy outline (thick across the nib, hairline along it, nib angle per stroke), selective eraser filters, layer order/visibility/locking and scratch-out on a locked layer, snapping to items, margins, paper lines and resize corners, sticky/tape geometry and SVG order, encryption at rest with wrong-passcode and swapped-file cases, snapshots with dedupe, shared blobs, retention, pruning, sealed history and minimal restores in the authorship chain |
+| Unit | `npx vitest run --project web apps/web/src/canvas/layout.test.ts apps/web/src/studio` | two-page layout and Auto rule; app snapshots on open/edit/before assistant edits; locked sessions and search |
+| Unit | `npx vitest run --project mcp apps/mcp-server/test/studio.test.ts` | agent writes snapshot first; locked notes are blank to agents and refuse writes |
+| End-to-end | `cd apps/web && PW_PORT=4189 npx playwright test e2e/studio.spec.ts --project desktop` | long-press eraser filters, snapping with guides and Alt, sticky notes (write, type, fold, undo), tape and study mode, calligraphy nib angle, two-page view input mapping, layers, version history restore and copy-in, locking (cover, passcode gate, search, no plaintext in IndexedDB) |
+
 ## Testing on a device
 
 The pen-on-glass feel, haptics, Bluetooth pen buttons and real latency can only be judged on hardware. On the Razr Fold:
@@ -24,6 +33,7 @@ The pen-on-glass feel, haptics, Bluetooth pen buttons and real latency can only 
 7. Write fast with a fountain pen and watch the nib: the newest part of the line should stay under it (Settings → Pen & touch → Instant ink). If the tip ever looks offset from the ink, turn it off and note the screen (folded/unfolded, split screen).
 8. Settings → Handwriting: on-device engine. Write a line, then search for it in the library.
 9. Smart ink: draw a box with two lines across it and rest the pen — "Make a table" appears; write in a cell (it is recognized on the device). Write `2x + 3 =` and rest — "Solve". Write "Dentist Fri 3pm", circle it — the calendar card appears; "Add to calendar" opens the calendar app prefilled.
+10. Studio: write with the calligraphy pen at different angles (Pen settings › Nib angle) — thick downstrokes, thin hairlines. Unfold the Razr Fold with a multi-page note open: two pages side by side; write on the right-hand page. Put a sticky note on a page and write on it with the pen; tape over a word and tap it with a finger and with the pen. Lock a note, close it, reopen it with the passcode.
 
 ## Adding tests
 

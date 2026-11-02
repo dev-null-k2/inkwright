@@ -1,4 +1,4 @@
-import { NoteDocument, type NoteMeta, type PageInk } from '@inkstone/core';
+import { NoteDocument, NoteLockedError, sealedView, type NoteMeta, type PageInk } from '@inkstone/core';
 import { mergeNote, mergePage } from '@inkstone/sync';
 import { useApp } from '../state/app.ts';
 import { recognizeLocally } from './recognition.ts';
@@ -34,11 +34,29 @@ export class EditorSession {
     current = this;
   }
 
+  /**
+   * Opens a note for editing. A locked note opens only once its passcode has unlocked it
+   * (`Vault.unlock`); otherwise this throws `NoteLockedError` and the editor asks for it.
+   */
   static async open(vault: AppVault, noteId: string): Promise<EditorSession | null> {
-    const note = await vault.vault.readNote(noteId);
-    if (!note) return null;
-    const pages = await vault.vault.readPages(note);
+    const raw = await vault.vault.readNote(noteId);
+    if (!raw) return null;
+    if (raw.lock && !vault.vault.isUnlocked(noteId)) throw new NoteLockedError(noteId);
+    const note = raw.lock ? (await vault.vault.readNote(noteId, { unlocked: true }))! : raw;
+    const pages = await vault.vault.readPages(note, { unlocked: true });
     return new EditorSession(vault, new NoteDocument(note, pages));
+  }
+
+  /**
+   * Runs `fn` with no save in between (after pending changes are saved), e.g. locking the note:
+   * its files are rewritten while the document can't be saved under them.
+   */
+  exclusive<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.saveTimer) { clearTimeout(this.saveTimer); this.saveTimer = null; }
+    void this.flush();
+    const run = this.saving.then(fn);
+    this.saving = run.then(() => undefined, () => undefined);
+    return run;
   }
 
   private onVisibility = () => {
@@ -64,7 +82,8 @@ export class EditorSession {
       this.onSaved?.('saving');
       try {
         await this.vault.vault.saveNote(snap.meta, snap.pages, { changedPageIds: snap.changedPageIds, removedPageIds: snap.removedPageIds });
-        this.vault.indexNote(snap.meta, snap.pages);
+        // A locked note's content never reaches search, links or the assistant's memory.
+        this.vault.indexNote(snap.meta, snap.meta.lock ? snap.pages.map(sealedView) : snap.pages);
         this.vault.forgetThumb(snap.meta.id);
         this.savedAt = Date.now();
         this.onSaved?.('saved');
@@ -111,14 +130,14 @@ export class EditorSession {
    */
   async reloadAfterSync(base: Map<string, PageInk>, baseMeta: NoteMeta): Promise<void> {
     const doc = this.doc;
-    const disk = await this.vault.vault.readNote(doc.meta.id);
+    const disk = await this.vault.vault.readNote(doc.meta.id, { unlocked: !!doc.meta.lock });
     if (!disk) {
       // Deleted on another device while open here: keep it (an edit beats a delete) and re-save.
       doc.replaceContent(doc.meta, [...doc.committedPages], doc.committedPages.map((p) => p.id));
       this.scheduleSave(0);
       return;
     }
-    const remote = await this.vault.vault.readPages(disk);
+    const remote = await this.vault.vault.readPages(disk, { unlocked: true });
     const dirty = new Set(doc.dirtyPageIds);
     if (!doc.isDirty) {
       doc.replaceContent(disk, remote);

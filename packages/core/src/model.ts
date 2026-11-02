@@ -12,9 +12,9 @@ export type { PageObject };
 /** Current on-disk format version. Readers accept older versions and ignore unknown fields. */
 export const VAULT_FORMAT_VERSION = 2;
 
-export type PenType = 'fountain' | 'ballpoint' | 'pencil' | 'marker' | 'highlighter' | 'dashed' | 'brush';
+export type PenType = 'fountain' | 'ballpoint' | 'pencil' | 'marker' | 'highlighter' | 'dashed' | 'brush' | 'calligraphy';
 
-export const PEN_TYPES: readonly PenType[] = ['fountain', 'ballpoint', 'pencil', 'brush', 'marker', 'highlighter', 'dashed'];
+export const PEN_TYPES: readonly PenType[] = ['fountain', 'ballpoint', 'pencil', 'brush', 'calligraphy', 'marker', 'highlighter', 'dashed'];
 
 export const PEN_INFO: Record<PenType, { name: string; isHighlighter: boolean; defaultSize: number }> = {
   fountain: { name: 'Fountain pen', isHighlighter: false, defaultSize: 2.6 },
@@ -24,7 +24,11 @@ export const PEN_INFO: Record<PenType, { name: string; isHighlighter: boolean; d
   marker: { name: 'Marker', isHighlighter: false, defaultSize: 5 },
   highlighter: { name: 'Highlighter', isHighlighter: true, defaultSize: 16 },
   dashed: { name: 'Dashed line', isHighlighter: false, defaultSize: 2 },
+  calligraphy: { name: 'Calligraphy pen', isHighlighter: false, defaultSize: 7 },
 };
+
+/** Default nib angle of the calligraphy pen, degrees clockwise from the page's x axis (italic hands use 30–45°). */
+export const DEFAULT_NIB_ANGLE = 40;
 
 /** Sentinel for "not reported by the device" (pressure, tilt, orientation). */
 export const NO_VALUE = -1;
@@ -64,6 +68,25 @@ export interface InkStroke {
   input?: StrokeInput;
   /** Where the stroke came from when it was not written by hand (see `ContentOrigin`). */
   origin?: ContentOrigin;
+  /**
+   * Calligraphy pen only: the broad nib's angle in degrees, clockwise from the page's x axis.
+   * Stored per stroke so every renderer and export draws the same thick and thin strokes.
+   */
+  nib?: number;
+  /** The page layer the stroke is on (see `PageLayers`); absent = the writing layer. */
+  layer?: StrokeLayer;
+}
+
+/**
+ * Lightweight layers: strokes are on the writing layer (default) or the drawing layer, which is
+ * drawn underneath. Each layer can be hidden or locked per page (`PageInk.layers`).
+ */
+export type StrokeLayer = 'writing' | 'drawing';
+
+/** Per-page layer state. Hidden layers are not drawn or exported; locked ones can't be erased, selected or scratched out. */
+export interface PageLayers {
+  writing?: { hidden?: boolean; locked?: boolean };
+  drawing?: { hidden?: boolean; locked?: boolean };
 }
 
 export type StrokeInput = 'pen' | 'touch' | 'mouse';
@@ -263,7 +286,37 @@ export interface PageInk {
    * search results and AI citations point at the exact handwriting, not just the page.
    */
   recognizedLines?: RecognizedLine[];
+  /** Hide/lock state of the page's writing and drawing layers (see `StrokeLayer`). */
+  layers?: PageLayers;
+  /**
+   * Present only in the files of a locked note: the page's real content, encrypted (lock.ts).
+   * The visible fields of such a file are empty, so tools that don't know about locks see a
+   * blank page instead of the content.
+   */
+  sealed?: SealedBox;
   formatVersion: number;
+}
+
+/** AES-GCM ciphertext (base64) with its 96-bit IV (base64). */
+export interface SealedBox {
+  v: 1;
+  iv: string;
+  data: string;
+}
+
+/**
+ * A note locked with a passcode (lock.ts, docs/PRIVACY.md): its pages, assets, version history
+ * and sensitive metadata are encrypted with a key derived from the passcode.
+ */
+export interface NoteLock {
+  v: 1;
+  kdf: { name: 'PBKDF2'; hash: 'SHA-256'; iterations: number; salt: string };
+  cipher: 'AES-GCM-256';
+  /** A known value encrypted with the key: proves a passcode right without decrypting pages. */
+  check: SealedBox;
+  /** Encrypted metadata that would otherwise reveal content (summary, form values, properties). */
+  meta?: SealedBox;
+  lockedAt: number;
 }
 
 /** One line of recognized handwriting: its text, the strokes it came from and their bounds (page units). */
@@ -327,6 +380,8 @@ export interface NoteMeta {
    * "Verified handwriting" panel can show what changed since it was signed.
    */
   certificate?: { asset: string; signedAt: number };
+  /** Set while the note is locked with a passcode (see `NoteLock`). */
+  lock?: NoteLock;
   formatVersion: number;
 }
 

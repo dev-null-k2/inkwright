@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { DEFAULT_PAPER, PAGE_SIZES, type PageSize, type PaperSpec } from '@inkstone/core';
+import { DEFAULT_PAPER, PAGE_SIZES, TAPE_COLORS, TAPE_DEFAULT_WIDTH, type EraserFilter, type PageSize, type PaperSpec } from '@inkstone/core';
 import type { ButtonAction, InputPrefs, PenPreset } from '../canvas/engine.ts';
 import { safeStorage } from '../platform/env.ts';
 
@@ -29,6 +29,12 @@ export interface Settings {
   highlighterId: string;
   eraserMode: 'stroke' | 'precise';
   eraserSize: number;
+  /** Selective eraser: everything, only highlighter, only pen ink or only shapes. */
+  eraserFilter: EraserFilter;
+  /** Tape tool (study mode): strip width in page units and colour. */
+  tape: { width: number; color: string };
+  /** Two-page view for paged notes: automatic on wide screens, always, or never. */
+  pageView: 'auto' | 'single' | 'spread';
   defaultPaper: PaperSpec;
   defaultPageSize: PageSize;
   recognition: { engine: 'auto' | 'native' | 'ai' | 'off'; language: string; autoAI: boolean };
@@ -72,12 +78,15 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   palette: 'duan',
   feel: { haptics: true, hapticStrength: 0.8, sound: true, soundVolume: 0.5 },
-  input: { fingerAction: 'scroll', buttonAction: 'eraser', scratchToErase: true, holdToShape: true, tapGestures: true, pressureCurve: 1, instantInk: true },
+  input: { fingerAction: 'scroll', buttonAction: 'eraser', scratchToErase: true, holdToShape: true, tapGestures: true, pressureCurve: 1, instantInk: true, snapping: true },
   tray: DEFAULT_TRAY,
   activePresetId: 'fountain-black',
   highlighterId: 'highlighter-yellow',
   eraserMode: 'stroke',
   eraserSize: 22,
+  eraserFilter: 'all',
+  tape: { width: TAPE_DEFAULT_WIDTH, color: TAPE_COLORS[0] },
+  pageView: 'auto',
   defaultPaper: DEFAULT_PAPER,
   defaultPageSize: PAGE_SIZES.A4,
   recognition: { engine: 'auto', language: 'en-US', autoAI: false },

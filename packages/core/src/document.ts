@@ -3,6 +3,9 @@ import { newId as defaultNewId } from './ids.ts';
 import { newPage, type ImageItem, type InkLink, type InkStroke, type NoteMeta, type PageBackground, type PageInk, type PageSize, type PaperSpec, type RecognizedLine, type TextBox } from './model.ts';
 import type { PageObject } from './objects.ts';
 import { appendEvents, eventsFor, type ChainCause, type ChainChange } from './authorship.ts';
+import { editableStroke, withLayerState } from './layers.ts';
+import { alignPage } from './history.ts';
+import type { StrokeLayer } from './model.ts';
 
 /** Anything with an id that lives in a page list in z-order. */
 interface Item { id: string }
@@ -219,7 +222,8 @@ export class NoteDocument {
     const page = this.pageList[pageIndex];
     if (!page || stroke.points.length === 0) return { kind: 'ignored' };
     if (scratch !== false && scratch !== undefined) {
-      const r = detectScratchOut(stroke, page.strokes, scratch);
+      // Ink on a hidden or locked layer can't be scratched out.
+      const r = detectScratchOut(stroke, page.layers ? page.strokes.filter((s) => editableStroke(page, s)) : page.strokes, scratch);
       if (r.isScratch && r.targetIds.size) {
         this.commit(pageIndex, { label: 'Scratch out', strokes: { removed: indexed(page.strokes, r.targetIds), added: [] } });
         return { kind: 'scratched', erased: r.targetIds.size };
@@ -512,6 +516,66 @@ export class NoteDocument {
     this.pageList[index] = { ...page, id: p.id };
     this.history.forgetPage(p.id);
     this.touch(p.id);
+  }
+
+  /**
+   * Hides/shows or locks/unlocks a page layer. Like paper changes this is page state, not an
+   * undo step, and it is saved and synced with the page.
+   */
+  setLayerState(index: number, layer: StrokeLayer, patch: { hidden?: boolean; locked?: boolean }): void {
+    const p = this.pageList[index];
+    if (!p) return;
+    const layers = withLayerState(p.layers, layer, patch);
+    const next: PageInk = { ...p };
+    if (layers) next.layers = layers;
+    else delete next.layers;
+    this.previews.delete(index);
+    this.pageList[index] = next;
+    this.touch(p.id);
+  }
+
+  /**
+   * Brings the note back to a version from its history: pages are added, removed and reordered
+   * to match, and each page's content changes by an ordinary commit (so the authorship chain
+   * records what the restore changed, and undo steps back page by page). Metadata that belongs to
+   * the content (title, tags, paper, size, summary, form values) comes back too; where the note is
+   * filed, its lock and its dates stay as they are.
+   */
+  restoreVersion(meta: NoteMeta, pages: readonly PageInk[], label = 'Restore version'): void {
+    if (!pages.length) return;
+    this.previews.clear();
+    pages.forEach((p) => {
+      if (this.indexOfPage(p.id) < 0) this.addPage(this.pageList.length, { id: p.id, strokes: [] });
+    });
+    const keep = new Set(pages.map((p) => p.id));
+    for (let i = this.pageList.length - 1; i >= 0; i--) if (!keep.has(this.pageList[i]!.id)) this.deletePage(i);
+    pages.forEach((p, k) => {
+      const from = this.indexOfPage(p.id);
+      if (from !== k) this.movePage(from, k);
+    });
+    pages.forEach((target, i) => {
+      const cur = this.pageList[i]!;
+      const props: Partial<PageInk> = {};
+      for (const f of ['paper', 'size', 'background', 'layers'] as const) if (JSON.stringify(cur[f]) !== JSON.stringify(target[f])) (props as Record<string, unknown>)[f] = target[f];
+      if (Object.keys(props).length) {
+        const next: PageInk = { ...cur, ...props };
+        for (const f of Object.keys(props) as (keyof PageInk)[]) if (next[f] === undefined) delete next[f];
+        this.pageList[i] = next;
+        this.touch(cur.id);
+      }
+      const now = this.pageList[i]!;
+      const d = pageDiffBetween(now, alignPage(now, target), label);
+      if (!isEmptyDiff(d)) this.commit(i, d, 'other');
+      if ((target.recognizedText ?? undefined) !== (now.recognizedText ?? undefined)) this.setRecognizedText(target.id, target.recognizedText, target.recognizedBy, target.recognizedLines);
+    });
+    this.updateMeta((m) => {
+      const next: NoteMeta = { ...m, title: meta.title, tags: meta.tags, paper: meta.paper, pageSize: meta.pageSize, pageIds: this.pageList.map((p) => p.id) };
+      for (const f of ['summary', 'forms', 'color', 'properties', 'inlineTags'] as const) {
+        if (meta[f] === undefined) delete next[f];
+        else (next as unknown as Record<string, unknown>)[f] = meta[f];
+      }
+      return next;
+    });
   }
 
   private syncPageIds() {

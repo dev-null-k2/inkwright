@@ -11,6 +11,7 @@ import { NewNoteSheet } from '../ui/NewNoteSheet.tsx';
 import { createNote, importFiles, moveNote, renameNote, togglePin, trashNote, restoreNote, deleteForever, duplicateNote, createNotebook, deleteNotebook, renameNotebook } from '../lib/actions.ts';
 import { BrandMark } from '../ui/Brand.tsx';
 import { InkRipple, NotebookCover } from '../ui/Cover.tsx';
+import { LockedCover } from '../studio/LockedCover.tsx';
 import { syncNow, useSync } from '../lib/sync.ts';
 import { OPENABLE, useFileDrop } from '../lib/openFiles.ts';
 import { GraphNavItem, TodayNavItem } from '../ui/knowledge/LibraryParts.tsx';
@@ -339,7 +340,7 @@ function NoteCard({ note, notebooks, trashed }: { note: NoteMeta; notebooks: Not
     <div className="note-card" ref={ref}>
       <button type="button" className="note-open" onClick={() => !trashed && navigate({ name: 'editor', noteId: note.id })} aria-label={`Open ${note.title}`} disabled={trashed}>
         <span className={cx('sheet', pages > 1 && 'is-stack', note.kind === 'board' && 'is-board')} style={{ aspectRatio: String(aspect) }}>
-          {thumb ? <img src={thumb} alt="" draggable={false} /> : <span className="sheet-blank" />}
+          {note.lock ? <LockedCover /> : thumb ? <img src={thumb} alt="" draggable={false} /> : <span className="sheet-blank" />}
         </span>
       </button>
       <div className="note-info">

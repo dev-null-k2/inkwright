@@ -295,7 +295,8 @@ export function classifyPage(page: PageInk): { counts: ContentCounts; handwritte
     else c.importedImages++;
   }
   if (page.background) c.importedPages++;
-  c.objects += page.objects?.length ?? 0;
+  // Sticky notes and tape are the user's own paper, not machine-made content.
+  c.objects += (page.objects ?? []).filter((o) => o.type !== 'sticky' && o.type !== 'tape').length;
   return { counts: c, handwritten: hand };
 }
 
