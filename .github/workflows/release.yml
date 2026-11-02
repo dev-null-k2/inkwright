@@ -1,0 +1,80 @@
+# Builds a release when a version tag is pushed (git tag v1.2.0 && git push --tags):
+#   - Android: a signed APK for sideloading and an AAB for Google Play
+#   - Web: the single-file offline build (open it from disk, no server)
+#   - Source zip
+# and attaches them to a GitHub release with notes from CHANGELOG.md.
+#
+# Signing uses repository secrets ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
+# ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD (see docs/PUBLISHING.md). Without them the APK is
+# signed with a throwaway debug key: it installs, but Google Play will not accept it.
+name: Release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+      - run: npm run typecheck && npm test
+
+      - name: Version from tag
+        id: v
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          echo "version=${tag:-0.0.0}" >> "$GITHUB_OUTPUT"
+          # versionCode: major*10000 + minor*100 + patch
+          IFS=. read -r a b c <<< "${tag%%-*}"
+          echo "code=$(( ${a:-0}*10000 + ${b:-0}*100 + ${c:-0} ))" >> "$GITHUB_OUTPUT"
+
+      - name: Signing key
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PW: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PW: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        if: env.KEYSTORE != ''
+        working-directory: apps/web/android
+        run: |
+          echo "$KEYSTORE" | base64 -d > upload.jks
+          printf 'storeFile=upload.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$STORE_PW" "$ALIAS" "$KEY_PW" > keystore.properties
+
+      - name: Android
+        working-directory: apps/web
+        run: |
+          npx vite build --mode native
+          npx cap sync android
+          cd android
+          sed -i "s/versionCode [0-9]*/versionCode ${{ steps.v.outputs.code }}/; s/versionName \"[^\"]*\"/versionName \"${{ steps.v.outputs.version }}\"/" app/build.gradle
+          ./gradlew testDebugUnitTest assembleRelease bundleRelease
+          mkdir -p ../../../out
+          cp app/build/outputs/apk/release/*.apk ../../../out/Inkwright-${{ steps.v.outputs.version }}.apk
+          cp app/build/outputs/bundle/release/*.aab ../../../out/Inkwright-${{ steps.v.outputs.version }}.aab
+
+      - name: Web (single file)
+        run: |
+          npm run build:single -w @inkstone/web
+          cp apps/web/dist-single/index.html out/Inkwright-${{ steps.v.outputs.version }}.html
+
+      - name: Source
+        run: git archive -o out/Inkwright-${{ steps.v.outputs.version }}-source.zip --prefix=inkwright/ HEAD
+
+      - name: Release notes
+        run: |
+          awk -v v="${{ steps.v.outputs.version }}" '/^## /{p = index($0, v) > 0; next} p' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "See CHANGELOG.md." > notes.md
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          body_path: notes.md
+          files: out/*
+          prerelease: ${{ contains(github.ref_name, '-') }}
