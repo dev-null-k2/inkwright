@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { line, newNote, openApp, pen, scribble, word } from './helpers.ts';
+import { line, modKey, newNote, openApp, pen, scribble, word } from './helpers.ts';
 
 /** Darkness (0 = white paper, 255 = black ink) of the rendered canvas at a CSS point. */
 async function inkAt(page: Page, x: number, y: number): Promise<number> {
@@ -38,7 +38,7 @@ test.describe('what you see is what is stored', () => {
     await pen(page, line([250, 400], [600, 400]));
     await page.keyboard.press('e');
     await pen(page, line([420, 360], [420, 440]));
-    await page.keyboard.press('Control+z');
+    await page.keyboard.press(`${await modKey(page)}+z`);
     expect(await inkAt(page, 420, 400)).toBeGreaterThan(80);
     await page.mouse.move(640, 500);
     await page.mouse.wheel(0, 100);
