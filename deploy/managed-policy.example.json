@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "routes": { "background": "device", "chat": "device", "heavy": "device", "vision": "device" },
+  "tags": { "confidential": { "access": "none" }, "client": { "localOnly": true } },
+  "privacy": {
+    "mode": "redact",
+    "kinds": { "secret": "block", "card": "block", "iban": "block", "gov_id": "block", "email": "redact", "phone": "redact", "address": "redact", "name": "allow", "ip": "redact" }
+  },
+  "injection": { "spotlight": true, "confirmWritesAfterSuspicious": true },
+  "tools": { "deny": ["*__delete*", "*__send*"] },
+  "agentWrites": { "assistant": "apply", "routine": "propose", "external": "propose" },
+  "retention": { "activityDays": 365, "auditDays": 2555, "historyDays": 0, "legalHold": false }
+}

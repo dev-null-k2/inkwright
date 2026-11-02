@@ -1,0 +1,20 @@
+# Secret scanning (gitleaks; also read by the Security workflow). The default rules apply; the
+# allowlist only covers test fixtures whose fake keys are assembled at runtime or are public
+# documentation examples, so a real key committed anywhere else is still caught.
+title = "Inkstone"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fictitious credentials in tests and evals"
+paths = [
+  '''packages/ai/evals/fixtures/pii-corpus\.ts''',
+  '''packages/ai/test/trust\.test\.ts''',
+  '''apps/web/e2e/fixtures/''',
+]
+regexes = [
+  # The well-known test card numbers and documentation IBANs used in privacy tests.
+  '''4111 1111 1111 1111''',
+  '''DE89 ?3704 ?0044 ?0532 ?0130 ?00''',
+]
