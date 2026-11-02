@@ -119,7 +119,7 @@ function ConflictBadges({ doc, engine, host, view, mine, stale, onStale }: { doc
   }
   const firstText = doc.pages[0]?.texts?.[0];
   return (
-    <div className="cp-badges" aria-label="Notes about this page">
+    <div className="cp-badges" role="group" aria-label="Notes about this page">
       {placed.map((p) => {
         const s = engine.pageRectToScreen(p.pageIndex, p.rect);
         if (s.y > box.height + 20 || s.y + s.h < -20) return null;

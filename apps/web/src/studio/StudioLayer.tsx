@@ -120,7 +120,7 @@ export function StudioLayer({ doc, engine, host, tool, apiRef }: Props) {
   const stickies = doc.pages.flatMap((p, pageIndex) => (p.objects ?? []).filter((o): o is StickyObject => o.type === 'sticky').map((o) => ({ o, pageIndex })));
 
   return (
-    <div className="studio-layer" aria-label="Sticky notes">
+    <div className="studio-layer" role="group" aria-label="Sticky notes">
       {stickies.map(({ o: s, pageIndex }) => {
         const d = drag?.id === s.id ? drag : null;
         const r = scr(pageIndex, stickyRect(s));

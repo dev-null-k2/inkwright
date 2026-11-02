@@ -33,24 +33,24 @@ export function InkActionsSettings() {
       {!any && <p className="set-note">These features are switched off. Switch them on in Settings › Modules.</p>}
       {on('ink-answers') && (
         <Group title="AI answers" note="Lasso a question and choose Answer, or ••• › Write the answer here. AI handwriting is marked as AI ink: authorship certificates never count it as yours.">
-          <label className="field-row">
-            <span className="row-label" id="ia-answer-in">Answer on the page in</span>
+          <div className="field-row">
+            <span className="row-label">Answer on the page in</span>
             <Segmented label="Answer on the page in" value={p.answerIn} onChange={(v) => p.set({ answerIn: v })} options={[{ value: 'text', label: 'Typed text' }, { value: 'ink', label: 'Handwriting' }]} />
-          </label>
+          </div>
           {p.answerIn === 'ink' && (
-            <label className="field-row">
+            <div className="field-row">
               <span className="row-label">Handwriting style</span>
               <Segmented label="Handwriting style" value={p.answerStyle} onChange={(v) => p.set({ answerStyle: v })} options={[{ value: 'script', label: 'Joined' }, { value: 'print', label: 'Print' }]} />
-            </label>
+            </div>
           )}
         </Group>
       )}
       {on('papers') && (
         <Group title="Papers and citations" note={`${libraryReferences(notes).length} papers in your library. Type [@ in a text box to cite one.`}>
-          <label className="field-row">
+          <div className="field-row">
             <span className="row-label">Citation style</span>
             <Segmented label="Citation style" value={p.citationStyle} onChange={(v) => p.set({ citationStyle: v })} options={[{ value: 'apa', label: 'APA 7' }, { value: 'ieee', label: 'IEEE' }]} />
-          </label>
+          </div>
           <div className="field-row">
             <span className="row-label">Library of papers</span>
             <button type="button" className="btn btn-sm" onClick={openPapers}><BookMarked size={15} aria-hidden /> Import and attach PDFs</button>
@@ -92,10 +92,10 @@ export function ReadingSettings() {
         <Slider label="Word spacing" value={r.wordSpacing} min={0} max={0.6} step={0.02} onChange={(v) => set({ wordSpacing: v })} format={(v) => `${Math.round(v * 100)}%`} />
         <Slider label="Line spacing" value={r.lineHeight} min={1.3} max={2.6} step={0.05} onChange={(v) => set({ lineHeight: v })} format={(v) => v.toFixed(2)} />
         <Switch label="Line focus" hint="Keep the line you are reading clear and dim the rest" checked={r.lineFocus} onChange={(v) => set({ lineFocus: v })} />
-        <label className="field-row">
+        <div className="field-row">
           <span className="row-label">Background</span>
           <Segmented label="Reading background" value={r.tint} onChange={(v) => set({ tint: v })} options={[{ value: 'paper', label: 'Paper' }, { value: 'cream', label: 'Cream' }, { value: 'blue', label: 'Blue' }, { value: 'grey', label: 'Grey' }]} />
-        </label>
+        </div>
         <div className={`ia-reader ia-reader-preview is-${r.tint}`} style={readingStyle(r)} aria-label="Preview">
           <p className="ia-reader-line is-focus">The quick brown fox jumps over the lazy dog.</p>
         </div>
