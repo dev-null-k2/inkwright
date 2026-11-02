@@ -1,0 +1,9 @@
+{
+  "name": "create-inkstone-plugin",
+  "version": "1.0.0",
+  "description": "Start an Inkstone plugin: npm create inkstone-plugin my-plugin",
+  "type": "module",
+  "bin": { "create-inkstone-plugin": "index.mjs" },
+  "files": ["index.mjs", "template"],
+  "license": "Apache-2.0"
+}

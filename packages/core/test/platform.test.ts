@@ -12,7 +12,7 @@ describe('API keys', () => {
     expect(record.hash).toBe(hashApiKey(key));
     expect(record.scopes).toEqual(['notes:read']);
     const file = decodeApiKeys(encodeApiKeys({ ...emptyApiKeys(), keys: [record] }));
-    expect(JSON.stringify(file)).not.toContain(key.split('_')[2]);
+    expect(JSON.stringify(file)).not.toContain(key.slice(15));
     expect(verifyApiKey(file, key, 2000)).toMatchObject({ ok: true, record: { id: record.id } });
   });
 
