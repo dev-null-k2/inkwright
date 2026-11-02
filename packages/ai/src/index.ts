@@ -22,5 +22,6 @@ export * from './memory.ts';
 export * from './agentskills.ts';
 export * from './builtin-skills.ts';
 export * from './routines.ts';
+export * from './routine-lease.ts';
 export * from './transcribe.ts';
 export * from './mcp/index.ts';
