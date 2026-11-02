@@ -33,7 +33,7 @@ CDP="$("$SCRIPT_DIR/app.sh" cdp)"
 log "WebView CDP endpoint: $CDP"
 
 STATUS=0
-(cd "$WEB_DIR" && INKSTONE_CDP="$CDP" ANDROID_SERIAL="$ANDROID_SERIAL" INKSTONE_ANDROID_ARTIFACTS="$ARTIFACTS" \
+(cd "$WEB_DIR" && DEBUG=pw:protocol DEBUG_FILE="$ARTIFACTS/cdp-protocol.log" INKSTONE_CDP="$CDP" ANDROID_SERIAL="$ANDROID_SERIAL" INKSTONE_ANDROID_ARTIFACTS="$ARTIFACTS" \
   npx playwright test -c playwright.android.config.ts) || STATUS=$?
 
 # Native evidence: what the activity and plugin did, straight from the device.

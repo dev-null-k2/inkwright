@@ -43,7 +43,7 @@ else
   # -audio none keeps the guest's audio device (so AudioTrack opens and the writing-sound path runs)
   # but discards the samples on the host. -no-audio would remove the device altogether.
   nohup "$EMULATOR" -avd "$AVD_NAME" -port "$EMU_PORT" \
-    -no-window -no-boot-anim -audio none -gpu swiftshader_indirect -feature -Vulkan "${ACCEL[@]}" \
+    -no-window -no-boot-anim -audio none -gpu "$EMU_GPU" -feature -Vulkan "${ACCEL[@]}" \
     -cores "$AVD_CORES" -memory "$AVD_RAM_MB" -no-metrics "${SNAP[@]}" "${QEMU_EXTRA[@]}" \
     >"$ARTIFACTS/emulator.log" 2>&1 &
   echo $! >"$ARTIFACTS/emulator.pid"
