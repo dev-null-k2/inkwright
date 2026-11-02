@@ -108,7 +108,7 @@ input[type='range'] { accent-color: var(--ink); width: 100%; }
 /* ---------- Popovers, sheets, dialogs, menus ---------- */
 .popover {
   position: fixed; z-index: 60;
-  min-width: 220px; max-width: min(420px, calc(100vw - 16px)); max-height: calc(100vh - 24px); overflow: auto;
+  min-width: 220px; max-width: min(420px, calc(100vw - 16px - var(--safe-left) - var(--safe-right))); max-height: calc(var(--usable-h) - 16px); overflow: auto; overscroll-behavior: contain;
   background: var(--raised); border-radius: 14px; box-shadow: var(--float-shadow);
   border: 1px solid var(--line);
   animation: pop-in 0.14s var(--ease-out);
@@ -116,14 +116,14 @@ input[type='range'] { accent-color: var(--ink); width: 100%; }
 @keyframes pop-in { from { opacity: 0; transform: scale(0.97); } }
 .popover.is-sheet {
   left: 0 !important; right: 0; bottom: 0; top: auto !important; max-width: none; width: 100%;
-  border-radius: 20px 20px 0 0; padding-bottom: var(--safe-bottom); max-height: 86vh;
+  border-radius: 20px 20px 0 0; padding-bottom: var(--safe-bottom); max-height: calc(var(--usable-h) * 0.9 + var(--safe-bottom));
   animation: sheet-up 0.22s var(--ease-out);
 }
 @keyframes sheet-up { from { transform: translateY(40px); opacity: 0; } }
 .sheet-grip { width: 38px; height: 5px; border-radius: 3px; background: var(--line-strong); margin: 8px auto 2px; }
 .sheet-scrim, .dialog-scrim, .drawer-scrim { position: fixed; inset: 0; background: rgba(26, 18, 30, 0.36); z-index: 55; }
-.dialog-scrim { display: grid; place-items: center; padding: 16px; z-index: 70; }
-.dialog { width: min(440px, 100%); max-height: 90vh; overflow: auto; background: var(--raised); border-radius: var(--r-panel); box-shadow: var(--float-shadow); padding: 22px; animation: pop-in 0.16s var(--ease-out); }
+.dialog-scrim { display: grid; place-items: center; padding: calc(16px + var(--safe-top)) calc(16px + var(--safe-right)) calc(16px + var(--safe-bottom)) calc(16px + var(--safe-left)); z-index: 70; }
+.dialog { width: min(440px, 100%); max-height: calc(var(--usable-h) - 32px); overflow: auto; overscroll-behavior: contain; background: var(--raised); border-radius: var(--r-panel); box-shadow: var(--float-shadow); padding: 22px; animation: pop-in 0.16s var(--ease-out); }
 .dialog.is-wide { width: min(640px, 100%); }
 .dialog-title { margin: 0 0 12px; font-family: var(--font-title); font-weight: 520; font-size: var(--t-xl); }
 .dialog-body p { margin: 0 0 8px; color: var(--ink-2); }
@@ -230,7 +230,7 @@ input[type='range'] { accent-color: var(--ink); width: 100%; }
 .hit-title { font-family: var(--font-title); font-size: var(--t-lg); font-weight: 560; }
 .hit-snippet { color: var(--ink-2); font-size: var(--t-sm); }
 .hit-meta { font-size: var(--t-xs); color: var(--ink-3); }
-.move-list { display: flex; flex-direction: column; gap: 2px; max-height: 50vh; overflow: auto; }
+.move-list { display: flex; flex-direction: column; gap: 2px; max-height: calc(var(--usable-h) * 0.5); overflow: auto; }
 
 /* New note sheet / paper picker */
 .new-sheet { width: 440px; }
@@ -514,3 +514,12 @@ input[type='range'] { accent-color: var(--ink); width: 100%; }
 .palette-swatches { display: flex; gap: 6px; margin-bottom: 6px; }
 .palette-name { font-family: var(--font-title); font-size: var(--t-lg); font-weight: 520; }
 .palette-hint { font-size: var(--t-xs); color: var(--ink-3); }
+
+/* ---- Google sign-in setup dialog ---- */
+.google-setup { display: flex; flex-direction: column; gap: 10px; }
+.google-setup p { margin: 0; }
+.google-setup-alts { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; color: var(--ink-2); }
+.google-setup-dev { border-top: 1px solid var(--line); padding-top: 10px; }
+.google-setup-dev summary { cursor: pointer; font-weight: 600; color: var(--ink-2); }
+.google-setup-dev ol { padding-left: 20px; color: var(--ink-2); display: flex; flex-direction: column; gap: 6px; }
+.google-setup-dev code { font: 12.5px var(--font-mono); overflow-wrap: anywhere; }

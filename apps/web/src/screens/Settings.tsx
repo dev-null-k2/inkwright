@@ -11,6 +11,7 @@ import { DEFAULT_SETTINGS, useSettings, type AIProviderConfig } from '../state/s
 import { IconButton, Segmented, Slider, Switch, cx, relativeTime, useMediaQuery } from '../ui/primitives.tsx';
 import { PaperPicker } from '../ui/NewNoteSheet.tsx';
 import { askConfirm } from '../ui/prompts.tsx';
+import { GoogleSetupDialog } from '../ui/GoogleSetupDialog.tsx';
 import { APP_VERSION, isArtifact, isNative, modKey, nativePlatform } from '../platform/env.ts';
 import { hasNativePlugin } from '../platform/native.ts';
 import { getSecret, setSecret } from '../lib/secrets.ts';
@@ -361,6 +362,7 @@ function SyncSection() {
   const vault = useApp((a) => a.vault);
   const sy = s.sync;
   const [davPass, setDavPass] = useState('');
+  const [googleHelp, setGoogleHelp] = useState(false);
   const set = (p: Partial<typeof sy>) => { s.update((x) => ({ sync: { ...x.sync, ...p } })); resetSyncEngines(); };
   useEffect(() => { void getSecret('webdav.password').then((v) => setDavPass(v ? '••••••••' : '')); }, []);
   const doSignIn = async () => {
@@ -382,17 +384,12 @@ function SyncSection() {
             <button type="button" className="btn btn-sm" onClick={() => void signOut()}>Sign out</button>
           </div>
         ) : (
-          <button type="button" className="btn btn-google" onClick={() => void doSignIn()} disabled={!sy.googleClientId}>
+          // Never a dead button: without a client ID it explains what's missing and what works now.
+          <button type="button" className="btn btn-google" onClick={() => (sy.googleClientId ? void doSignIn() : setGoogleHelp(true))}>
             <GoogleG /> Sign in with Google
           </button>
         )}
-        {!sy.googleClientId && (
-          <label className="field">
-            <span className="field-label">Google OAuth client ID <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer">Create one <ExternalLink size={12} /></a></span>
-            <input value={sy.googleClientId} placeholder="1234-abc.apps.googleusercontent.com" onChange={(e) => set({ googleClientId: e.target.value.trim() })} />
-            <span className="muted small">Google requires each app to register. Create a “Web application” client, add this page’s address as an authorized JavaScript origin, and enable the Google Drive API. See docs/GOOGLE_SETUP.md.</span>
-          </label>
-        )}
+        <GoogleSetupDialog open={googleHelp} onClose={() => setGoogleHelp(false)} clientId={sy.googleClientId} onClientId={(id) => set({ googleClientId: id })} onSignIn={() => { setGoogleHelp(false); void doSignIn(); }} />
         {sy.account && (
           <>
             <Switch label="Sync with Google Drive" checked={sy.drive.enabled} onChange={(v) => set({ drive: { ...sy.drive, enabled: v } })} />
