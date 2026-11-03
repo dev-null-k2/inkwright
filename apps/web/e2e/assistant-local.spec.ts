@@ -263,7 +263,8 @@ test.describe('Settings › AI on Android', () => {
     // Three tools one after another: one progress for all of them, never back to "Download".
     const seen: number[] = [];
     while (await row.locator('[data-state="downloading"]').count()) {
-      const m = /(\d+)%/.exec((await row.locator('[data-state="downloading"]').textContent().catch(() => '')) ?? '');
+      // allTextContents doesn't wait: the element may be gone by now (the download finished).
+      const m = /(\d+)%/.exec((await row.locator('[data-state="downloading"]').allTextContents()).join(' '));
       if (m) seen.push(Number(m[1]));
       expect(await row.getByRole('button', { name: 'Download', exact: true }).count()).toBe(0);
       await page.waitForTimeout(150);
