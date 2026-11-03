@@ -193,25 +193,32 @@ export function isActionRequest(question: string): boolean {
 }
 
 /** The user turn for an action: the request, and the note it is about (with its id for the tools). */
-export function actionUserMessage(request: string, openNote?: { id: string; title: string; currentPage: number } | null, g?: Pick<Grounding, 'context' | 'hasContent'>): string {
-  const where = openNote ? `The note open on screen is "${openNote.title}" (note_id: ${openNote.id}), page ${openNote.currentPage}.\n` : '';
+export function actionUserMessage(request: string, openNote?: { id: string; title: string; currentPage: number; kind?: string } | null, g?: Pick<Grounding, 'context' | 'hasContent'>): string {
+  const where = openNote
+    ? openNote.kind === 'document'
+      ? `The note open on screen is the document "${openNote.title}" (note_id: ${openNote.id}); change it with edit_document (operation "append" to add at the end).\n`
+      : `The note open on screen is "${openNote.title}" (note_id: ${openNote.id}), page ${openNote.currentPage}.\n`
+    : '';
   const ctx = g?.hasContent ? `Context from my notes, in case the request refers to it:\n${g.context}\n\n` : '';
   return `${ctx}${where}Request: ${request}`;
 }
 
 /** Tools a small model is best at, most useful first. Names not offered by the app are skipped. */
-export const COMPACT_TOOL_ORDER = ['create_note', 'append_to_note', 'search_memory', 'search_notes', 'read_note', 'write_in_ink', 'update_note', 'remember'] as const;
+export const COMPACT_TOOL_ORDER = ['create_note', 'append_to_note', 'edit_document', 'search_memory', 'search_notes', 'read_note', 'write_in_ink', 'update_note', 'remember'] as const;
 
 /**
  * A reduced tool set sized to the model: 3 tools for a 4k context, 5 up to 8k, 7 above, with
  * descriptions cut to their first sentence (small models read long tool lists badly, and every
  * description costs context). `search_notes` is dropped when `search_memory` is there.
  */
-export function compactTools<T extends ToolDef>(tools: readonly T[], contextTokens: number): T[] {
+export function compactTools<T extends ToolDef>(tools: readonly T[], contextTokens: number, opts: { document?: boolean } = {}): T[] {
   const max = contextTokens <= 4096 ? 3 : contextTokens <= 8192 ? 5 : 7;
   const names = new Set(tools.map((t) => t.name));
   const picked: T[] = [];
-  for (const name of COMPACT_TOOL_ORDER) {
+  // On a document note, edit_document is how text is added (append_to_note doesn't work there);
+  // elsewhere it only earns a place in larger windows.
+  const order = opts.document ? ['edit_document', ...COMPACT_TOOL_ORDER.filter((n) => n !== 'edit_document' && n !== 'append_to_note')] : COMPACT_TOOL_ORDER.filter((n) => n !== 'edit_document' || max > 3);
+  for (const name of order) {
     if (picked.length >= max) break;
     if (name === 'search_notes' && names.has('search_memory')) continue;
     const t = tools.find((x) => x.name === name);

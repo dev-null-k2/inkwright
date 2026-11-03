@@ -18,7 +18,7 @@ import {
   type ContentPart,
   type ToolCall,
 } from '@inkwright/ai';
-import { newId, pageText, type TextBox } from '@inkwright/core';
+import { isDocumentNote, newId, pageText, type TextBox } from '@inkwright/core';
 import type { InkEngine } from '../canvas/engine.ts';
 import type { EditorSession } from '../lib/session.ts';
 import { getActiveAI, transcribeWithSource, type ActiveAI } from '../lib/ai.ts';
@@ -277,7 +277,7 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
         const grounding = await gatherGrounding({ ai: a, vault, question: live ? `${q}\n\n${live}` : q, doc, pageIndex: engine.currentPageIndex, selection: sel, memory });
         for (const src of grounding.sources) if (src.noteId) read.push({ noteId: src.noteId, title: src.label, pageIndex: Math.max(0, (src.page ?? 1) - 1), text: src.text });
         prep = await prepareAgentRun({ ai: a, vault, source: 'assistant', label: 'Assistant', prompt: q, openDoc: doc, notes: 'write', skills: false, remember: true, mcp: [] });
-        const res = await runGroundedTurn({ provider: a.provider, model: a.model, question: q, history: before, grounding, openNote: { id: doc.meta.id, title: doc.meta.title, currentPage: engine.currentPageIndex + 1 }, tools: prep.tools, contextTokens: contextTokensOf(a), appName: 'Inkwright', today: new Date().toISOString().slice(0, 10), signal: abort.current.signal, onEvent, confirm });
+        const res = await runGroundedTurn({ provider: a.provider, model: a.model, question: q, history: before, grounding, openNote: { id: doc.meta.id, title: doc.meta.title, currentPage: engine.currentPageIndex + 1, kind: isDocumentNote(doc.meta) ? 'document' : doc.meta.kind }, tools: prep.tools, contextTokens: contextTokensOf(a), appName: 'Inkwright', today: new Date().toISOString().slice(0, 10), signal: abort.current.signal, onEvent, confirm });
         history.current = [...before, ...res.remember];
         text = res.text;
         // The guardrails may have replaced what streamed (a dodge, or nothing): show the final reply.

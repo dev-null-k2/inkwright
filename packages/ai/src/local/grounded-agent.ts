@@ -21,7 +21,7 @@ export interface GroundedTurnOptions {
   history: readonly ChatMessage[];
   grounding: Grounding;
   /** The note open on screen (its id lets append/update tools act on "this note"). */
-  openNote?: { id: string; title: string; currentPage: number } | null;
+  openNote?: { id: string; title: string; currentPage: number; /** `document` for typed documents (edited with edit_document). */ kind?: string } | null;
   /** The app's tools; a compact subset sized to the model is offered. */
   tools?: AgentTool[];
   /** The model's context window in tokens (sizes tools and history). */
@@ -53,7 +53,7 @@ export interface GroundedTurnResult {
  *  - no context at all → a plain "I couldn't find that", with what to do next.
  */
 export async function runGroundedTurn(o: GroundedTurnOptions): Promise<GroundedTurnResult> {
-  const tools = o.tools?.length ? compactTools(o.tools, o.contextTokens) : [];
+  const tools = o.tools?.length ? compactTools(o.tools, o.contextTokens, { document: o.openNote?.kind === 'document' }) : [];
   const action = tools.length > 0 && isActionRequest(o.question);
   const system = groundedSystemPrompt({ appName: o.appName, today: o.today, memory: o.grounding.memory, hasTools: tools.length > 0, action });
   const historyTurns = o.contextTokens <= 4096 ? 4 : 8;

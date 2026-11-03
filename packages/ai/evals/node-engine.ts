@@ -131,7 +131,7 @@ async function greedy(T: any, model: any, prompt: bigint[], maxNew: number, eos:
       next = await step([BigInt(next)]);
     }
   } finally {
-    const last: Record<string, any> | null = past;
+    const last = past as Record<string, { dispose?: () => void }> | null;
     if (last) for (const t of Object.values(last)) t.dispose?.();
   }
 }

@@ -163,3 +163,26 @@ describe('compact tool schemas', () => {
     expect(got).toEqual([{ title: 'Groceries', text: 'milk' }]);
   });
 });
+
+describe('document notes', () => {
+  it('offer edit_document instead of append_to_note, and a Gemma call to it runs', async () => {
+    const edits: unknown[] = [];
+    const mk = (name: string, props: Record<string, unknown>, required: string[]): AgentTool => ({ name, description: `${name}.`, parameters: { type: 'object', properties: props, required, additionalProperties: false }, execute: async (a) => { if (name === 'edit_document') edits.push(a); return { changed: true }; } });
+    const tools = [
+      mk('create_note', { title: { type: 'string' }, text: { type: 'string' } }, ['title', 'text']),
+      mk('append_to_note', { note_id: { type: 'string' }, text: { type: 'string' } }, ['note_id', 'text']),
+      mk('edit_document', { note_id: { type: 'string' }, operation: { type: 'string', enum: ['append', 'replace_text'] }, markdown: { type: 'string' }, find: { type: 'string' } }, ['note_id', 'operation']),
+      mk('search_memory', { query: { type: 'string' } }, ['query']),
+    ];
+    expect(compactTools(tools, 4096, { document: true }).map((t) => t.name)).toEqual(['edit_document', 'create_note', 'search_memory']);
+    expect(compactTools(tools, 4096).map((t) => t.name)).toEqual(['create_note', 'append_to_note', 'search_memory']);
+    const seen: ChatRequest[] = [];
+    const turns = ['<|tool_call>call:edit_document{note_id:<|"|>d1<|"|>,operation:<|"|>append<|"|>,markdown:<|"|>- [ ] call the hotel<|"|>}<tool_call|>', 'Added the to-do to Trip plan.'];
+    const provider = withPromptTools(new CallbackProvider({ handler: async (r) => { seen.push(r); return turns[seen.length - 1]!; } }));
+    const g = buildGrounding({ question: 'Add a to-do to this note: call the hotel', openNote: { id: 'd1', title: 'Trip plan', currentPage: 1, pages: [{ page: 1, text: '# Trip plan' }] } });
+    const r = await runGroundedTurn({ provider, model: 'm', question: 'Add a to-do to this note: call the hotel', history: [], grounding: g, tools, contextTokens: 4096, openNote: { id: 'd1', title: 'Trip plan', currentPage: 1, kind: 'document' } });
+    expect(edits).toEqual([{ note_id: 'd1', operation: 'append', markdown: '- [ ] call the hotel' }]);
+    expect(r.text).toBe('Added the to-do to Trip plan.');
+    expect(String(seen[0]!.messages.at(-1)!.content)).toMatch(/document "Trip plan" \(note_id: d1\); change it with edit_document/);
+  });
+});
