@@ -147,7 +147,7 @@ function cards(scheme, mcp) {
       html: `
         <div class="copy" style="top:70px"><h1 style="font-size:60px">Written by hand. <em>Answered in ink.</em> Read by your agents.</h1>
         <p class="sub" style="font-size:28px">One note, three places: a question written on a foldable, the answer written back on the page in the AI&rsquo;s own ink, and the same page read by an agent over MCP.</p></div>
-        ${at(s('hero-laptop', { width: 1040, crop: [0, 0, 1280, 800], kind: 'window' }), 650, 290)}
+        ${at(s('hero-laptop', { width: 1040, crop: [0, 0, 1280, 800], kind: 'window' }), 590, 290)}
         ${at(s('hero-fold', { width: 600, crop: [0, 0, 720, 800] }), 72, 310)}
         <div class="term" style="left:800px;top:640px;width:900px"><div class="bar"><i></i><i></i><i></i><span>A real MCP session: inkwright-mcp over stdio, on the same note</span></div><pre>${terminal(mcp)}</pre></div>`,
     },
