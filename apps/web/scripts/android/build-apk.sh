@@ -14,5 +14,6 @@ INKWRIGHT_E2E_HOOK=1 npx vite build --mode native
 npx cap sync android
 cd android
 # shellcheck disable=SC2086
-./gradlew --no-daemon ${INKWRIGHT_GRADLE_ARGS:-} assembleDebug
+# Debug APKs carry arm64-v8a only (docs/PERFORMANCE.md); add the emulator image's ABI.
+./gradlew --no-daemon ${INKWRIGHT_GRADLE_ARGS:-} -Pinkwright.debugAbis="arm64-v8a,${AVD_IMAGE##*;}" assembleDebug
 log "built $APK"

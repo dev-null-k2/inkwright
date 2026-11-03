@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Check, Cpu, Download, RefreshCw, Server, Trash2, X } from 'lucide-react';
+import { EngineOneTimeNote } from '../engines/EngineUI.tsx';
 import { formatBytes, getProviderInfo, runnableModels, type DetectedServer, type ModelChoice } from '@inkwright/ai';
 import { newId } from '@inkwright/core';
 import { useApp } from '../state/app.ts';
@@ -67,7 +68,7 @@ export function LocalAISettings() {
             ]} />
           </div>
         )}
-        <p className="set-note">Models are open-licence and download once from Hugging Face. They run inside Inkwright, so your notes never leave this device. {hasProvider ? 'Automatic uses your provider when one is set up, otherwise this device.' : 'Without an AI provider, the assistant and Ask use this device.'}</p>
+        <p className="set-note">Models are open-licence and download once from Hugging Face. They run inside Inkwright, so your notes never leave this device. <EngineOneTimeNote id="onnx-runtime" lead="The first one also downloads" /> {hasProvider ? 'Automatic uses your provider when one is set up, otherwise this device.' : 'Without an AI provider, the assistant and Ask use this device.'}</p>
       </section>
       <SemanticSearch />
       {!isNative && supported && <LocalServers />}

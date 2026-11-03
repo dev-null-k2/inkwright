@@ -38,6 +38,7 @@ import { DeviceCheckButton } from '../devicecheck/DeviceCheck.tsx';
 import { MemoryEvalSection } from '../compiler/ui/MemoryEvalSection.tsx';
 import { InkActionsSettings, ReadingSettings } from '../inkactions/Settings.tsx';
 import { DevicesSection } from '../peer/DevicesSection.tsx';
+import { EngineDownloads } from '../engines/EngineUI.tsx';
 import { History, Monitor, NotebookPen } from 'lucide-react';
 import { ImportSettings } from '../importers/ImportSettings.tsx';
 import { RecallSettings } from '../recall/RecallSettings.tsx';
@@ -504,6 +505,7 @@ function AboutSection() {
         <p>{notes.length} notes · {vault?.persistent ? 'stored on this device' : 'this session only (storage blocked)'}{usage ? ` · ${usage}` : ''}</p>
         <p className="muted small">Everything is plain files in an open format (docs/VAULT_FORMAT.md). No account is required and nothing is sent anywhere unless you turn on sync or use AI.</p>
       </Group>
+      <EngineDownloads />
       {isModuleOn('device-check') && (
         <Group title="This device" note="Measures the pen, the screen and how fast ink appears, and makes a report you can copy or share, for example with a bug report.">
           <div className="row-buttons"><DeviceCheckButton /></div>

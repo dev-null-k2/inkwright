@@ -2,7 +2,7 @@ import { argbToHexOpacity, cellRect, colEdges, formatMathNumber, graphGeometry, 
 import { LineCapStyle, rgb, type PDFDocument, type PDFFont, type PDFPage } from 'pdf-lib';
 import { canvasBytes } from '../lib/canvasBytes.ts';
 import { tableCellFontSize, drawPageObjects } from './render.ts';
-import { drawDiagramPdf } from '../dev/diagramRender.ts';
+import { drawDiagramPdf } from '../dev/diagramPdf.ts';
 
 /**
  * Page objects in exported PDFs: tables and graphs as vectors (crisp at any zoom, table text is

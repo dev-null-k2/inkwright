@@ -49,8 +49,8 @@ cd android && ./gradlew assembleDebug     # → app/build/outputs/apk/debug/app-
 |---|---|
 | `./gradlew testDebugUnitTest` | JVM unit tests for the plugin's pure logic |
 | `./gradlew lintDebug` | Android lint (report in `app/build/reports/`) |
-| `./gradlew assembleRelease` | release APK (signed with your key if `keystore.properties` exists, else the debug key) |
-| `./gradlew bundleRelease` | release App Bundle for Google Play → `app/build/outputs/bundle/release/app-release.aab` |
+| `./gradlew assembleRelease` | release APKs, one per ABI: `app/build/outputs/apk/release/app-arm64-v8a-release.apk` is the one phones need (signed with your key if `keystore.properties` exists, else the debug key) |
+| `./gradlew bundleRelease` | release App Bundle for Google Play → `app/build/outputs/bundle/release/app-release.aab`. Run it on its own, not in the same command as `assembleRelease` (nor `assembleRelease` with `assembleDebug`): the Android Gradle plugin cannot build split APKs and a shrunk bundle in one invocation, and ABI splits would apply to the debug APK too. The build stops with a message saying so |
 | `./gradlew signingReport` | SHA-1/SHA-256 of the debug and release keys (needed for Google sign-in) |
 
 Run `npx cap sync android` again after every web build; Gradle only packages what is already in `android/app/src/main/assets/public`. You can also open `apps/web/android` in Android Studio and press Run.
@@ -78,6 +78,8 @@ allprojects {
 | Toolchain | AGP 8.13.0, Gradle 8.14.3, Kotlin 2.4.21, Java 21. Kotlin is newer than Capacitor 8's default (2.2) because LiteRT-LM 0.19 and ML Kit GenAI Prompt beta5 ship Kotlin 2.4 metadata, which a 2.2 compiler refuses to read. |
 | ML Kit | `com.google.mlkit:digital-ink-recognition:19.0.0`; GenAI: `genai-prompt:1.0.0-beta5`, `genai-summarization`, `genai-proofreading`, `genai-rewriting`, `genai-image-description` `1.0.0-beta1` |
 | LiteRT-LM | `com.google.ai.edge.litertlm:litertlm-android:0.19.0` (adds about 23 MB of native code on arm64-v8a, 27 MB on x86_64; none for 32-bit ABIs, where the open models are reported unavailable) |
+| ABIs | `arm64-v8a`, `armeabi-v7a`, `x86_64` (no 32-bit x86). Debug APKs carry `arm64-v8a` only (`-Pinkwright.debugAbis=arm64-v8a,x86_64` adds more); release APKs are split per ABI; the App Bundle carries all three and Play delivers one. See [PERFORMANCE.md](PERFORMANCE.md#android) |
+| Code shrinking | R8 (`minifyEnabled`, `shrinkResources`) in release builds; keep rules in `app/proguard-rules.pro`, mapping for crash reports in `app/build/outputs/mapping/release/mapping.txt` |
 
 ## Install on the Razr Fold
 
@@ -85,7 +87,7 @@ allprojects {
 2. Connect by USB and accept the prompt, or pair over Wi-Fi with `adb pair <ip>:<port>` then `adb connect <ip>:<port>`.
 3. Install:
    ```sh
-   adb install -r dist/Inkwright-debug.apk        # or apps/web/android/app/build/outputs/apk/debug/app-debug.apk
+   adb install -r Inkwright-1.0.0-arm64-v8a.apk   # from Releases, or apps/web/android/app/build/outputs/apk/debug/app-debug.apk
    ```
    Without adb: copy the APK to the phone, open it in Files, and allow "Install unknown apps" for Files when asked.
 4. Debug the web layer from a computer: open `chrome://inspect` in Chrome on the computer while the phone is connected (debug builds only). Native logs: `adb logcat -s InkwrightNative InkwrightRecognizer Inkwright`.
@@ -282,11 +284,11 @@ component.
    Without this file (or with a field missing), release builds are signed with the debug key and Gradle prints a warning. Play rejects such builds.
 3. **Build the bundle**: bump `versionCode` (and `versionName`) in `app/build.gradle`, then
    ```sh
-   npm run build -w @inkwright/web && (cd apps/web && npx cap sync android)
+   npm run cap:sync -w @inkwright/web       # vite build --mode native, then cap sync
    cd apps/web/android && ./gradlew bundleRelease
    # → app/build/outputs/bundle/release/app-release.aab
    ```
-   Release builds leave out the web source maps. Code shrinking (R8) is off, the Capacitor default, because plugins are found by reflection.
+   Release builds leave out the web source maps and are shrunk with R8. Capacitor finds plugins by reflection, so the keep rules matter: Capacitor's and the plugins' own consumer rules keep `@CapacitorPlugin` classes and `@PluginMethod` methods (InkwrightNativePlugin included), and `app/proguard-rules.pro` keeps what LiteRT-LM and ML Kit GenAI reach through JNI and IPC. Keep `app/build/outputs/mapping/release/mapping.txt` for every upload (Play Console → App bundle explorer → Downloads, or upload it there) to read crash stack traces. [PERFORMANCE.md](PERFORMANCE.md#android) has the sizes and how the shrunk build is checked.
 4. **Play Console** (play.google.com/console, one-time $25 developer account): create the app, accept **Play App Signing** (Google holds the app signing key; your key is only the upload key), and upload the `.aab` to **Internal testing** first. Then fill in Data safety (microphone for audio notes; network for sync and AI, both user-initiated), content rating, target audience and the privacy policy URL, and promote to production.
 5. **Google sign-in in Play builds**: copy the SHA-1 from Play Console → App integrity → App signing → **App signing key certificate**, and add an Android OAuth client for `app.inkwright` with it. Play-installed apps are signed with that key, not with your upload key.
 

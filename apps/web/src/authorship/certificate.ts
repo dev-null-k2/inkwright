@@ -2,7 +2,7 @@ import {
   buildClaim, canonicalJson, parseCertificate, signClaim, verifyCertificate,
   type AuthorshipCertificate, type NoteDocument, type NoteMeta, type PageInk, type VerifyReport,
 } from '@inkwright/core';
-import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFRawStream, PDFString, decodePDFRawStream } from 'pdf-lib';
+import type { PDFDict, PDFDocument } from 'pdf-lib';
 import { APP_VERSION } from '../platform/env.ts';
 import type { AppVault } from '../lib/vault.ts';
 import { deviceSigner } from './keys.ts';
@@ -14,6 +14,13 @@ import { deviceSigner } from './keys.ts';
  */
 
 export const PDF_ATTACHMENT_NAME = 'inkwright-authorship.json';
+
+/**
+ * pdf-lib loads only when a PDF is written or read: this module is on the editor's path (the
+ * authorship panel), and pdf-lib is ~170 kB of compressed JavaScript the first stroke doesn't need.
+ */
+type PdfLib = typeof import('pdf-lib');
+const pdfLib = (): Promise<PdfLib> => import('pdf-lib');
 
 /** Signs a certificate for a note (all pages, or some) with this device's key. */
 export async function createCertificate(note: Pick<NoteMeta, 'id' | 'title'>, pages: readonly PageInk[], pageIndexes?: number[]): Promise<AuthorshipCertificate> {
@@ -67,17 +74,20 @@ export async function embedInPdf(pdf: PDFDocument, cert: AuthorshipCertificate):
     modificationDate: created,
   });
   const t = cert.claim.totals;
+  const { PDFName, PDFString } = await pdfLib();
   // The Info dictionary accessor is internal in pdf-lib's typings; it is the standard PDF /Info.
   (pdf as unknown as { getInfoDict(): PDFDict }).getInfoDict().set(PDFName.of('InkwrightAuthorship'), PDFString.of(`${t.handwritten} handwritten strokes; signed by key ${cert.claim.signer.fingerprint}`));
 }
 
 /** The certificate attached to a PDF, or null if it has none. */
 export async function extractFromPdf(bytes: Uint8Array): Promise<AuthorshipCertificate | null> {
+  const lib = await pdfLib();
+  const { PDFDocument, PDFDict, PDFName, PDFRawStream, decodePDFRawStream } = lib;
   const doc = await PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false });
   const names = doc.catalog.lookupMaybe(PDFName.of('Names'), PDFDict);
   const tree = names?.lookupMaybe(PDFName.of('EmbeddedFiles'), PDFDict);
   if (!tree) return null;
-  const found = findInNameTree(tree);
+  const found = findInNameTree(lib, tree);
   if (!found) return null;
   const ef = found.lookupMaybe(PDFName.of('EF'), PDFDict);
   const raw = ef?.lookup(PDFName.of('F')) ?? ef?.lookup(PDFName.of('UF'));
@@ -87,24 +97,25 @@ export async function extractFromPdf(bytes: Uint8Array): Promise<AuthorshipCerti
   return parseCertificate(new TextDecoder().decode(data));
 }
 
-const text = (o: unknown) => (o instanceof PDFString || o instanceof PDFHexString ? o.decodeText() : undefined);
+const text = ({ PDFString, PDFHexString }: PdfLib, o: unknown) => (o instanceof PDFString || o instanceof PDFHexString ? o.decodeText() : undefined);
 
-function findInNameTree(node: PDFDict, depth = 0): PDFDict | null {
+function findInNameTree(lib: PdfLib, node: PDFDict, depth = 0): PDFDict | null {
   if (depth > 8) return null;
+  const { PDFArray, PDFDict, PDFName } = lib;
   const arr = node.lookupMaybe(PDFName.of('Names'), PDFArray);
   if (arr) {
     for (let i = 0; i + 1 < arr.size(); i += 2) {
       const spec = arr.lookupMaybe(i + 1, PDFDict);
       if (!spec) continue;
-      const name = text(arr.lookup(i)) ?? text(spec.lookup(PDFName.of('UF'))) ?? text(spec.lookup(PDFName.of('F')));
-      const fname = text(spec.lookup(PDFName.of('UF'))) ?? text(spec.lookup(PDFName.of('F'))) ?? name;
+      const name = text(lib, arr.lookup(i)) ?? text(lib, spec.lookup(PDFName.of('UF'))) ?? text(lib, spec.lookup(PDFName.of('F')));
+      const fname = text(lib, spec.lookup(PDFName.of('UF'))) ?? text(lib, spec.lookup(PDFName.of('F'))) ?? name;
       if (name === PDF_ATTACHMENT_NAME || fname === PDF_ATTACHMENT_NAME) return spec;
     }
   }
   const kids = node.lookupMaybe(PDFName.of('Kids'), PDFArray);
   if (kids) for (let i = 0; i < kids.size(); i++) {
     const k = kids.lookupMaybe(i, PDFDict);
-    const r = k ? findInNameTree(k, depth + 1) : null;
+    const r = k ? findInNameTree(lib, k, depth + 1) : null;
     if (r) return r;
   }
   return null;

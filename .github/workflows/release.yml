@@ -69,10 +69,21 @@ jobs:
             printf 'storeFile=upload.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$STORE_PW" "$ALIAS" "$KEY_PW" > keystore.properties
           fi
           sed -i "s/versionCode [0-9]*/versionCode $CODE/; s/versionName \"[^\"]*\"/versionName \"$VERSION\"/" app/build.gradle
-          ./gradlew testDebugUnitTest assembleRelease bundleRelease
+          # Two invocations: split release APKs and a shrunk bundle can't be built in one (app/build.gradle).
+          ./gradlew testDebugUnitTest bundleRelease
+          ./gradlew assembleRelease
+          # Everything Capacitor and native code find by name survived R8 (docs/PERFORMANCE.md).
+          node ../scripts/android/check-r8.mjs
           mkdir -p ../../../out
-          cp app/build/outputs/apk/release/*.apk "../../../out/Inkwright-$VERSION.apk"
+          # One APK per ABI (app/build.gradle, docs/PERFORMANCE.md): arm64-v8a is the one phones need.
+          for apk in app/build/outputs/apk/release/app-*-release.apk; do
+            abi="${apk##*/app-}"; abi="${abi%-release.apk}"
+            cp "$apk" "../../../out/Inkwright-$VERSION-$abi.apk"
+          done
+          ls ../../../out/Inkwright-"$VERSION"-arm64-v8a.apk
           cp app/build/outputs/bundle/release/*.aab "../../../out/Inkwright-$VERSION.aab"
+          # R8's mapping, to read crash stack traces from these builds (the code is public anyway).
+          cp app/build/outputs/mapping/release/mapping.txt "../../../out/Inkwright-$VERSION-r8-mapping.txt"
 
       - name: Remove the signing key
         if: always()

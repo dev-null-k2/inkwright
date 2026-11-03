@@ -131,12 +131,13 @@ Every number below comes from an eval or test in this repository and can be re-r
 | Prompt-injection detector | **weak on held-out attacks: 29 % detected, 17 % false alarms.** What holds regardless: deletes always ask, dry run and strict mode block writes, local-only notes never reach the cloud | same |
 | Sketch → graph extraction | 1.0 on 120 synthetic sketches (real sketches will do worse; you confirm the graph before it runs) | `packages/core/evals/canvasdag.eval.ts` |
 | Photo → ink | traced strokes within one pen width of the source for tilted, blurred and noisy photos | `packages/core/test/photoink.test.ts` |
+| Size and startup | Play download for an arm64 phone 20.7 MB (was 49.9 MB); library interactive in 1.1 s at 4× CPU slowdown (was 1.9 s), 3.4 s adding a mid-tier mobile network (was 8.2 s); a startup budget fails CI on regressions | `npm run perf:budget -w @inkwright/web`, [PERFORMANCE.md](docs/PERFORMANCE.md) |
 | Tests | 1,300+ unit tests and evals, 140+ end-to-end tests on Chromium, WebKit (Safari) and Firefox at phone, foldable and desktop sizes, 150+ Android JVM tests, zero serious accessibility violations (axe) | `npm test`, `npm run e2e:all` |
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/section-start-dark.svg"><img alt="Start in a minute" src="docs/media/section-start-light.svg" height="52"></picture>
 
 - **In a browser:** [open the app](https://dev-null-k2.github.io/inkwright/app/). It installs as an offline app on Mac, Windows, Linux, ChromeOS and iPad. Your notes stay in the browser until you connect Google Drive, WebDAV or a folder.
-- **Android:** download the APK from [Releases](https://github.com/dev-null-k2/inkwright/releases/latest). Google Play is coming.
+- **Android:** download `Inkwright-<version>-arm64-v8a.apk` from [Releases](https://github.com/dev-null-k2/inkwright/releases/latest) (`armeabi-v7a` for older 32-bit phones). Google Play is coming.
 - **From source:**
 
 ```sh

@@ -1,5 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { modKey, newNote, openApp, pen, settingsGroup, word } from './helpers.ts';
+import { editorMenu, modKey, newNote, openApp, pen, settingsGroup, word } from './helpers.ts';
 
 /**
  * Time travel across the vault (version history read as the past) and branches for dry-run
@@ -14,8 +14,11 @@ async function backToLibrary(page: Page) {
 }
 
 async function openNote(page: Page, title: string) {
+  // The test hook keeps the last editor's document until the next editor replaces the whole hook
+  // object; mark it, so a document from an earlier visit to the same note is never read.
+  await page.evaluate(() => { const h = (window as any).__inkwright; if (h) h.stale = true; });
   await page.getByRole('button', { name: `Open ${title}` }).click();
-  await page.waitForFunction((t) => (window as any).__inkwright?.doc?.meta.title === t, title);
+  await page.waitForFunction((t) => { const h = (window as any).__inkwright; return !!h && !h.stale && h.doc?.meta.title === t; }, title);
 }
 
 test('show my notes as of a date: the library and a note read the past, read-only, until back to today', async ({ page }) => {
@@ -29,7 +32,15 @@ test('show my notes as of a date: the library and a note read the past, read-onl
   await page.getByRole('button', { name: 'Rename' }).click();
   await expect(page.locator('.ed-title')).toContainText('Diary');
   await pen(page, word(200, 220, 200));
-  await backToLibrary(page); // the closing snapshot: one line, at nine
+  // Version history saves a version as it opens: one line, titled, at nine. The closing snapshot
+  // would too, but it is written after leaving the note, and on a busy machine it can land after
+  // the clock below has moved on three hours.
+  await editorMenu(page, 'Note', 'Version history');
+  const history = page.getByRole('dialog', { name: 'Version history' });
+  await expect(history.locator('.history-item')).toHaveCount(2); // opened (blank) and now
+  await page.keyboard.press('Escape');
+  await expect(history).toHaveCount(0);
+  await backToLibrary(page);
   await expect(page.getByRole('button', { name: 'Open Diary' })).toBeVisible();
 
   await page.clock.fastForward('03:00:00');

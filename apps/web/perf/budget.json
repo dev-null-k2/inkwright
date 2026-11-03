@@ -1,0 +1,9 @@
+{
+  "$comment": "Startup budget, checked in CI by scripts/perf/startup.mjs --budget (docs/PERFORMANCE.md). Bytes are gzip level 9 of what index.html loads before the app runs; times are medians of 5 cold starts in Chromium at 4x CPU slowdown. Raise a number only in the change that needs it, and say why in its description.",
+  "initialJsGzipBytes": 337920,
+  "initialCssGzipBytes": 32768,
+  "cpu4": {
+    "libraryInteractive": 1500,
+    "lcp": 2000
+  }
+}

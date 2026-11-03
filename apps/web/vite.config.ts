@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 import type { Plugin } from 'vite';
 import { fileURLToPath } from 'node:url';
+import { engineAssets, engineSourceFromEnv, keepEngineWasmOut, type EngineSourceMode } from './build/engines.ts';
 import { desktopOcrAssets } from './scripts/vite-desktop-assets.ts';
 
 /**
@@ -39,8 +40,9 @@ function serviceWorker(): Plugin {
     name: 'inkwright-sw',
     apply: 'build',
     generateBundle(_opts, bundle) {
-      // The on-device AI runtime (tens of MB of WebAssembly) is cached when first used, not on install.
-      const files = Object.keys(bundle).filter((f) => !f.endsWith('.map') && !/ort-wasm|\.wasm$/.test(f));
+      // Engines (DuckDB, the on-device AI runtime, code parsers: tens of MB of WebAssembly) download
+      // on first use into their own verified cache (src/engines), never at install.
+      const files = Object.keys(bundle).filter((f) => !f.endsWith('.map') && !f.startsWith('engines/') && !/ort-wasm|\.wasm$/.test(f));
       const version = Date.now().toString(36);
       const source = `// Generated at build time. Precaches the app so it opens offline; notes live in IndexedDB.
 const CACHE = 'inkwright-${'$'}{version}';
@@ -67,6 +69,9 @@ self.addEventListener('fetch', (e) => {
     return;
   }
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  // Engine files have their own cache (src/engines/store.ts); keeping a second copy here would
+  // double tens of MB of storage.
+  if (new URL(req.url).pathname.includes('/engines/')) return;
   if (req.mode === 'navigate') {
     e.respondWith(fetch(req).then((r) => { const copy = r.clone(); caches.open(CACHE).then((c) => c.put('./', copy)); return r; }).catch(() => caches.match('./')));
     return;
@@ -88,9 +93,14 @@ export default defineConfig(({ mode }) => {
   // `vite build --mode desktop` → dist-desktop/ for the Tauri shell (apps/desktop): no service
   // worker (the shell serves the files), CSP from tauri.conf.json, on-device OCR files included.
   const desktop = mode === 'desktop';
+  // Where heavy engines come from (build/engines.ts): a pinned CDN for the native and desktop apps,
+  // so they stay out of the APK and the installer; next to the app for web builds.
+  // INKWRIGHT_ENGINE_SOURCE=app|cdn overrides (not INKWRIGHT_ENGINES, which selects the browser
+  // engines e2e runs on: playwright.config.ts).
+  const engines: EngineSourceMode = single ? 'none' : engineSourceFromEnv(process.env.INKWRIGHT_ENGINE_SOURCE) ?? (native || desktop ? 'cdn' : 'app');
   return {
     base: './',
-    plugins: [react(), ...(single ? [viteSingleFile({ removeViteModuleLoader: true })] : native ? [csp(true)] : desktop ? [] : [serviceWorker(), csp(false)]), ...(desktop || e2e ? [desktopOcrAssets()] : [])],
+    plugins: [react(), engineAssets(engines), keepEngineWasmOut(), ...(single ? [viteSingleFile({ removeViteModuleLoader: true })] : native ? [csp(true)] : desktop ? [] : [serviceWorker(), csp(false)]), ...(desktop || e2e ? [desktopOcrAssets()] : [])],
     publicDir: single ? false : 'public',
     // The single-file preview leaves the on-device AI runtime out (see src/ai/spawn-unavailable.ts).
     // It also leaves out the developer module's grammars and SQLite (src/dev/wasm-assets-unavailable.ts).
@@ -107,11 +117,13 @@ export default defineConfig(({ mode }) => {
       // (e2e-android/) drives a native debug build and reads the document through it.
       __E2E__: JSON.stringify(e2e || process.env.INKWRIGHT_E2E_HOOK === '1'),
     },
-    worker: { format: 'es' },
+    worker: { format: 'es', plugins: () => [keepEngineWasmOut()] },
     build: {
       outDir: single ? 'dist-single' : e2e ? 'dist-e2e' : native ? 'dist-native' : desktop ? 'dist-desktop' : 'dist',
       target: 'es2022',
-      sourcemap: !single,
+      // Native builds leave source maps out of the APK unless asked for (INKWRIGHT_SOURCEMAPS=1,
+      // for chrome://inspect sessions): they were 8.8 MB of the debug APK (docs/PERFORMANCE.md).
+      sourcemap: native ? process.env.INKWRIGHT_SOURCEMAPS === '1' : !single,
       assetsInlineLimit: single ? 100_000_000 : 4096,
       chunkSizeWarningLimit: 4000,
     },

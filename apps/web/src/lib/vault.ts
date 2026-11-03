@@ -9,7 +9,7 @@ import {
   type PageInk,
   type VaultFS,
 } from '@inkwright/core';
-import { IndexedDBFS, CapacitorFS } from '@inkwright/sync';
+import { IndexedDBFS, CapacitorFS } from '@inkwright/sync/storage';
 import { Filesystem } from '@capacitor/filesystem';
 import { isNative } from '../platform/env.ts';
 import { AssetCache } from '../canvas/assets.ts';

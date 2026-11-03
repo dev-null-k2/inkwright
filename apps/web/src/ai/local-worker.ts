@@ -6,18 +6,16 @@
  * `LocalEngine` protocol in @inkwright/ai.
  */
 import * as T from '@huggingface/transformers';
-import ortWasmUrl from 'onnxruntime-web/ort-wasm-simd-threaded.asyncify.wasm?url';
-import ortMjsUrl from 'onnxruntime-web/ort-wasm-simd-threaded.asyncify.mjs?url';
 import { normalize, serveLocalEngine, truncateEmbedding, type DownloadProgress, type GenerateRequest, type GenerateResult, type LocalEngine, type ModelRef, type ModelStatus, type PortLike, type TranscribeRequest, type TranscribeResult } from '@inkwright/ai';
+import { engine as engineInfo, engineSize } from '../engines/catalog.ts';
+import { engineStatus, ensureEngine } from '../engines/store.ts';
 import { HF_HOST, fileHandle, filesFor, opfsAvailable, parseCacheKey, readIndex, readStored, removeStored, repoDir, storedSize, storedStatus, writeManifest } from './model-files.ts';
 
 const env = T.env as any;
 const scope = self as unknown as PortLike & { location: Location; crossOriginIsolated?: boolean };
 
-// The ONNX Runtime WebAssembly files ship with the app (never a CDN): works offline and under CSP.
 env.allowLocalModels = false;
 env.useWasmCache = false;
-env.backends.onnx.wasm.wasmPaths = { wasm: new URL(ortWasmUrl, scope.location.href).href, mjs: new URL(ortMjsUrl, scope.location.href).href };
 env.backends.onnx.wasm.numThreads = scope.crossOriginIsolated ? Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1)) : 1;
 
 /** Synchronous access handles (workers only) make in-place, resumable writes possible. */
@@ -42,6 +40,46 @@ function canWriteOpfs(): Promise<boolean> {
     })
     : Promise.resolve(false);
   return opfsProbe;
+}
+
+// ---- Runtime -----------------------------------------------------------------------------------
+
+const ORT_WASM = 'ort-wasm-simd-threaded.asyncify.wasm';
+const ORT_MJS = 'ort-wasm-simd-threaded.asyncify.mjs';
+let runtimeReady: Promise<void> | null = null;
+
+/**
+ * ONNX Runtime Web's WebAssembly (~26 MB) is not part of the install: it downloads once with the
+ * first model, verified against the checksum the build published (src/engines), and from then on
+ * loads offline from the engine cache. transformers.js is pointed at those local copies, so it
+ * never fetches the runtime from a CDN of its own.
+ */
+function ensureRuntime(onBytes?: (delta: number) => void, signal?: AbortSignal): Promise<void> {
+  if (!runtimeReady) {
+    let reported = 0;
+    runtimeReady = ensureEngine('onnx-runtime', {
+      signal,
+      onProgress: (p) => { onBytes?.(p.loaded - reported); reported = p.loaded; },
+    }).then((files) => {
+      env.backends.onnx.wasm.wasmPaths = { wasm: files[ORT_WASM], mjs: files[ORT_MJS] };
+    }, (e: Error) => {
+      if (e.name === 'AbortError') throw e;
+      // Typically offline on first use (or after an update that moved the runtime out of the app).
+      const e2 = engineInfo('onnx-runtime');
+      const mb = e2 ? Math.max(1, Math.round(engineSize(e2).transfer / 1048576)) : 0;
+      throw new Error(`On-device AI needs its runtime, a one-time download of about ${mb} MB, which did not finish (${e.message}). Connect to the internet once and try again.`);
+    });
+    runtimeReady.catch(() => { runtimeReady = null; });
+  }
+  return runtimeReady;
+}
+
+/** Runtime bytes still to download (0 once stored), so a model's progress bar includes them. */
+async function runtimeBytesMissing(): Promise<number> {
+  const e = engineInfo('onnx-runtime');
+  if (!e) throw new Error('On-device AI is not part of this build.');
+  const st = await engineStatus('onnx-runtime');
+  return st.state === 'ready' ? 0 : engineSize(e).bytes - st.bytesOnDevice;
 }
 
 function abortError(): Error {
@@ -172,6 +210,7 @@ function load(ref: ModelRef): Promise<Loaded> {
   let p = loaded.get(key);
   if (p) return p;
   p = (async (): Promise<Loaded> => {
+    await ensureRuntime();
     // One chat model at a time: GPU memory is the scarce resource on phones.
     if (ref.loader === 'causal-lm') for (const k of [...loaded.keys()]) if (k !== key && loaded.has(k)) { const other = await loaded.get(k)!.catch(() => null); if (other?.kind === 'causal') await disposeLoaded(k); }
     const opts = { device: ref.device, dtype: ref.dtype };
@@ -210,6 +249,15 @@ const engine: LocalEngine = {
   },
 
   async download(ref: ModelRef, onProgress?: (p: DownloadProgress) => void, signal?: AbortSignal) {
+    // The runtime comes first (once per device): a model without it could not run offline.
+    const runtimeMissing = await runtimeBytesMissing();
+    if (runtimeMissing) {
+      let got = 0;
+      await ensureRuntime((d) => { got += d; onProgress?.({ loaded: got, total: runtimeMissing + ref.bytes, file: 'AI runtime' }); }, signal);
+      // The model's own progress continues from there, so the bar never jumps back.
+      const report = onProgress;
+      onProgress = report && ((p) => report({ ...p, loaded: p.loaded + runtimeMissing, total: p.total + runtimeMissing }));
+    }
     if (!(await canWriteOpfs())) {
       // No OPFS writes (e.g. a private window): let transformers.js fetch into Cache Storage.
       const m = await load({ ...ref });

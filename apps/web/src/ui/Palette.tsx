@@ -12,7 +12,7 @@ import { aiCanSee, noteLabelOf } from '../lib/trust/state.ts';
 import { anchorOf, askNotes, sourceKindLabel, toSources, type AskSource } from '../lib/ask.ts';
 import { openAnchor } from '../lib/focus.ts';
 import { appMemory, useMemoryStatus } from '../lib/memory.ts';
-import { closePalette, findActions, openPalette, registerPaletteActions, usePalette, type PaletteAction, type PaletteMode } from '../lib/palette.ts';
+import { closePalette, findActions, openPalette, registerPaletteActions, usePalette, usePaletteActionsVersion, type PaletteAction, type PaletteMode } from '../lib/palette.ts';
 import { createNote, importFiles } from '../lib/actions.ts';
 import { pickFiles } from '../platform/files.ts';
 import { isIOS, isMac, modKey } from '../platform/env.ts';
@@ -140,6 +140,8 @@ function SearchResults({ query, inputRef, onAsk }: { query: string; inputRef: Re
   const { notes, notebooks, navigate, setFilter } = useApp();
   const status = useMemoryStatus();
   const [passages, setPassages] = useState<RankedChunk[]>([]);
+  // Actions that arrive while the palette is open (a plugin finishing its start) join the results.
+  const actionsVersion = usePaletteActionsVersion();
   const [semantic, setSemantic] = useState(false);
   const [active, setActive] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
@@ -195,7 +197,7 @@ function SearchResults({ query, inputRef, onAsk }: { query: string; inputRef: Re
       out.push({ key: `act:${a.id}`, group: 'Actions', icon: a.icon ?? <ArrowRight size={16} />, title: a.label, hint: a.hint, run: () => { done(); void a.run(); } });
     }
     return out;
-  }, [q, notes, notebooks, passages]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [q, notes, notebooks, passages, actionsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => setActive(0), [q]);
   useEffect(() => {

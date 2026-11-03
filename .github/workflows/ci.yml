@@ -1,4 +1,5 @@
-# Typecheck, unit tests + evals, and end-to-end tests on every push and pull request.
+# Typecheck, unit tests + evals, end-to-end tests and the startup performance budget on every push
+# and pull request.
 name: CI
 on:
   push:
@@ -19,3 +20,8 @@ jobs:
       - run: npx playwright install --with-deps chromium
         working-directory: apps/web
       - run: npm run e2e
+      # Startup budget (docs/PERFORMANCE.md): initial JS/CSS bytes and cold-start timings of the
+      # production build at 4x CPU slowdown must stay within apps/web/perf/budget.json.
+      - run: npm run build
+      - run: npm run perf:bundle -w @inkwright/web
+      - run: npm run perf:budget -w @inkwright/web
