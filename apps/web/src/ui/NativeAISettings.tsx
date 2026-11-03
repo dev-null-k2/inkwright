@@ -107,6 +107,7 @@ function TasksRow() {
   const st = useNativeAI();
   // Downloads still to start (they run one after another): the button stays "Downloading…" between them.
   const [queued, setQueued] = useState<string[]>([]);
+  const [batch, setBatch] = useState(0);
   const cancelled = useRef(false);
   const states = TASKS.map((t) => ({ ...t, state: taskState(t.task, st), dl: st.downloads[`task:${t.task}`] }));
   const shown = states.filter((t) => t.state !== 'unavailable');
@@ -115,14 +116,18 @@ function TasksRow() {
   const missing = shown.filter((t) => t.state === 'downloadable' && !(t.dl && t.dl.phase !== 'failed'));
   const busy = shown.find((t) => t.dl && t.dl.phase !== 'failed' && t.dl.phase !== 'retrying');
   const issue = shown.find((t) => t.dl?.phase === 'failed' || t.dl?.phase === 'retrying');
-  // One button for all of them: their combined progress, while any is still to come.
+  // One button for all of them: overall progress across the batch, while any is still to come.
   const active = shown.filter((t) => t.dl && t.dl.phase !== 'failed');
   const pending = active.length > 0 || queued.length > 0;
-  const total = active.reduce((a, t) => a + (t.dl!.total || 0), 0);
-  const loaded = active.reduce((a, t) => a + (t.dl!.loaded || 0), 0);
-  const phase = active.some((t) => t.dl!.phase === 'retrying') ? 'retrying' : active.some((t) => t.dl!.phase === 'download') ? 'download' : active[0]?.dl?.phase ?? 'started';
+  const cur = active.find((t) => t.dl!.phase !== 'retrying')?.dl;
+  const done = Math.max(0, batch - queued.length);
+  const fraction = cur && cur.total > 0 ? Math.min(1, cur.loaded / cur.total) : 0;
+  const loaded = Math.round(((done + fraction) / Math.max(1, batch)) * 1000);
+  const total = batch > 0 ? 1000 : 0;
+  const phase = active.some((t) => t.dl!.phase === 'retrying') ? 'retrying' : done > 0 || cur?.phase === 'download' ? 'download' : cur?.phase ?? 'started';
   const start = () => void (async () => {
     const list = missing.map((t) => `task:${t.task}`);
+    setBatch(list.length);
     setQueued(list);
     for (const target of list) {
       if (cancelled.current) break;
@@ -145,7 +150,7 @@ function TasksRow() {
           Tuned Gemini Nano for {shown.map((t) => t.label).join(', ')}.
           {ready.length ? ` Ready: ${ready.map((t) => t.label).join(', ')}.` : ''}
         </span>
-        {busy?.dl && <Progress d={{ ...busy.dl, loaded, total }} />}
+        {busy?.dl && <Progress d={busy.dl} />}
         <DownloadIssueLine what="the writing tools" progress={issue?.dl} onRetry={start} />
       </div>
       <div className="prov-acts">

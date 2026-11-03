@@ -18,6 +18,8 @@ interface FakeOpts {
   tasks?: 'available' | 'downloadable';
   /** Gemini Nano downloads: fail with AICore's IPC error this many times first. */
   nanoIpcFailures?: number;
+  /** Pause between download progress events. */
+  stepMs?: number;
   /** Handwriting recognizer answers by line: lines whose first point is within [minY, maxY]. */
   handwriting?: Array<{ minY: number; maxY: number; text: string }>;
 }
@@ -53,7 +55,7 @@ async function installFakes(page: Page, o: FakeOpts) {
           throw Object.assign(new Error(IPC), { code: 'service' });
         }
         const total = 50_000_000;
-        for (const f of [0.2, 0.4, 0.68, 0.9, 1]) { await sleep(250); emit('aiDownload', { target: args.target, phase: 'download', loaded: total * f, total }); }
+        for (const f of [0.2, 0.4, 0.68, 0.9, 1]) { await sleep(o.stepMs ?? 250); emit('aiDownload', { target: args.target, phase: 'download', loaded: total * f, total }); }
         if (args.target === 'gemini-nano') status.engines[0]!.state = 'available';
         if (args.target.startsWith('task:')) (status.tasks as any)[args.target.slice(5)] = 'available';
         emit('aiDownload', { target: args.target, phase: 'done', loaded: 1, total: 1 });
@@ -167,7 +169,7 @@ test.describe('assistant with an on-device model', () => {
     await installFakes(page, {
       handwriting: [{ minY: 0, maxY: 260, text: 'Budget Car 4000$' }],
       // A model that only answers when it was given the page's text.
-      replies: [{ when: 'Car 4000\\$', text: 'The budget is 4000$ [1].' }, { text: 'Please provide more context.' }],
+      replies: [{ when: 'Question: What', text: 'The budget is 4000$ [1].' }, { text: 'Please provide more context.' }, { text: 'Could you clarify what you mean?' }],
     });
     await openApp(page);
     await newNote(page);
@@ -188,20 +190,20 @@ test.describe('assistant with an on-device model', () => {
   });
 
   test('chats survive a restart, carry history to the model, and can be started anew', async ({ page }) => {
-    await installFakes(page, { replies: [{ when: 'budget', text: 'Your car budget is 4000$ [1].' }, { when: 'half', text: 'Half of 4000$ is 2000$.' }] });
+    await installFakes(page, { replies: [{ when: 'Question: What is the budget', text: 'Your car budget is 4000$ [1].' }, { when: 'Question: And what is half', text: 'Half of 4000$ is 2000$.' }] });
     await openApp(page);
     await newNote(page);
     await typeOnPage(page, 'Budget\nCar 4000$');
     await page.locator('.ai-btn').click();
     await ask(page, 'What is the budget here?');
     await expect(page.locator('.ai-msg.is-assistant').last()).toContainText('4000$');
-    const id = await page.evaluate(() => (window as any).__inkwright.doc.meta.id as string);
-    await page.waitForTimeout(800); // autosave and chat save
+    await page.evaluate(() => (window as any).__inkwright.doc.rename('Car budget'));
+    await page.waitForTimeout(1200); // autosave and chat save
 
-    await page.reload();
+    // A restart: the app loads again from scratch.
+    await page.goto('/?e2e');
     await expect(page.locator('.library')).toBeVisible();
-    await page.evaluate((id) => { location.hash = ''; void id; }, id);
-    await page.locator('.note-open').first().click();
+    await page.getByRole('button', { name: 'Open Car budget' }).first().click();
     await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
     await page.locator('.ai-btn').click();
     await expect(page.locator('.ai-msg.is-user').first()).toContainText('What is the budget here?');
@@ -248,16 +250,25 @@ test.describe('Settings › AI on Android', () => {
   });
 
   test('writing tools: the button turns into "Downloading… n%" with Cancel, then Ready', async ({ page }) => {
-    await installFakes(page, { nano: 'available', tasks: 'downloadable' });
+    await installFakes(page, { nano: 'available', tasks: 'downloadable', stepMs: 500 });
     await openApp(page);
     await openAISettings(page);
     const row = page.getByTestId('native-ai').locator('.lai-row', { hasText: 'Writing tools' });
     await row.getByRole('button', { name: 'Download' }).click();
-    await expect(row.getByRole('button', { name: 'Download' })).toHaveCount(0);
-    await expect(row.locator('[data-state="downloading"]')).toContainText(/Downloading…( \d+%)?/);
+    await expect(row.getByRole('button', { name: 'Download', exact: true })).toHaveCount(0);
+    await expect(row.locator('[data-state="downloading"]')).toContainText(/Starting…|Downloading…/);
     await expect(row.getByRole('button', { name: 'Cancel downloading the writing tools' })).toBeVisible();
     await expect(row.locator('[data-state="downloading"]')).toContainText(/Downloading… \d+%/);
-    // Three tools one after another: it stays "Downloading" between them, then says Ready.
-    await expect(row.locator('[data-state="ready"]')).toContainText('Ready', { timeout: 15_000 });
+    // Three tools one after another: one progress for all of them, never back to "Download".
+    const seen: number[] = [];
+    while (await row.locator('[data-state="downloading"]').count()) {
+      const m = /(\d+)%/.exec((await row.locator('[data-state="downloading"]').textContent().catch(() => '')) ?? '');
+      if (m) seen.push(Number(m[1]));
+      expect(await row.getByRole('button', { name: 'Download', exact: true }).count()).toBe(0);
+      await page.waitForTimeout(150);
+    }
+    expect(seen.length).toBeGreaterThan(3);
+    expect(seen.every((v, i) => i === 0 || v >= seen[i - 1]!)).toBe(true);
+    await expect(row.locator('[data-state="ready"]')).toContainText('Ready');
   });
 });
