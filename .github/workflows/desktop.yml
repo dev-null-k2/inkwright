@@ -46,7 +46,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-22.04]
+        os: [macos-latest, windows-latest, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -86,7 +86,7 @@ jobs:
           - os: windows-latest
             args: ''
             rust-targets: ''
-          - os: ubuntu-22.04
+          - os: ubuntu-24.04
             args: ''
             rust-targets: ''
     runs-on: ${{ matrix.os }}
@@ -158,6 +158,7 @@ jobs:
         shell: bash
         env:
           ARGS: ${{ matrix.args }}
+          VERSION: ${{ steps.v.outputs.version }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
@@ -168,7 +169,15 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           # Unsigned macOS builds are signed ad hoc ("-") instead of asking for an identity.
+          # Secrets that don't exist arrive as empty variables; Tauri treats a set-but-empty
+          # APPLE_CERTIFICATE as a certificate to import, so drop every empty one.
+          for v in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID TAURI_SIGNING_PRIVATE_KEY TAURI_SIGNING_PRIVATE_KEY_PASSWORD; do
+            if [ -z "${!v}" ]; then unset "$v"; fi
+          done
           if [ "$RUNNER_OS" = macOS ] && [ "$HAS_APPLE_CERT" != true ]; then export APPLE_SIGNING_IDENTITY=-; fi
+          # The MSI format only takes numeric pre-release versions (1.2.3-4), so a beta such as
+          # 1.2.3-beta.1 ships the NSIS installer (.exe) alone on Windows.
+          if [ "$RUNNER_OS" = Windows ] && [[ "$VERSION" == *-* ]]; then ARGS="$ARGS --bundles nsis"; fi
           # Runs the web build and the sidecar first (beforeBuildCommand in tauri.conf.json).
           npx tauri build $ARGS --config src-tauri/tauri.release.json
 
