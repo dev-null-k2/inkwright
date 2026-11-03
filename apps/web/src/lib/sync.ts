@@ -13,7 +13,7 @@ import {
   hasLocalChanges,
   type Remote,
   type SyncReport,
-} from '@inkwright/sync';
+} from '@inkwright/sync/storage';
 import { useApp } from '../state/app.ts';
 import { useSettings } from '../state/settings.ts';
 import { getAccessToken } from './google.ts';

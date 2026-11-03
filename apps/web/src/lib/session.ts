@@ -1,5 +1,5 @@
 import { NoteDocument, NoteLockedError, sealedView, type NoteMeta, type PageInk } from '@inkwright/core';
-import { mergeNote, mergePage } from '@inkwright/sync';
+import { mergeNote, mergePage } from '@inkwright/sync/storage';
 import { useApp } from '../state/app.ts';
 import { recognizeLocally } from './recognition.ts';
 import { applyRecognizedLinks, syncDocInlineTags } from './docLinks.ts';
