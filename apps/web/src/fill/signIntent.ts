@@ -10,7 +10,21 @@ export function requestFillOnOpen(noteId: string): void {
   pending.add(noteId);
 }
 
-/** True (once) when `noteId` was opened through "Sign a document". */
+/**
+ * True when `noteId` was opened through "Sign a document". Safe to call while rendering: React
+ * may throw a first render away (a lazily loaded part suspending) and run it again, so the request
+ * stays until the editor has mounted and calls {@link clearFillRequest}.
+ */
+export function wantsFill(noteId: string): boolean {
+  return pending.has(noteId);
+}
+
+/** Called once the editor has mounted with the request applied. */
+export function clearFillRequest(noteId: string): void {
+  pending.delete(noteId);
+}
+
+/** True (once) when `noteId` was opened through "Sign a document". Not for use while rendering. */
 export function takeFillRequest(noteId: string): boolean {
   return pending.delete(noteId);
 }

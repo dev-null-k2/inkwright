@@ -55,7 +55,7 @@ import { useEditorPlugins } from '../plugins/EditorPlugins.tsx';
 import { ThemeToggle, THEME_NAMES, nextTheme, switchTheme } from '../ui/ThemeToggle.tsx';
 import { NewNoteButton } from '../ui/NewNoteButton.tsx';
 import { useFingerDraw } from '../ui/FingerDraw.tsx';
-import { takeFillRequest } from '../fill/signIntent.ts';
+import { clearFillRequest, wantsFill } from '../fill/signIntent.ts';
 
 // Document notes (documents/) open in the rich-text editor, loaded only when one is opened.
 const DocumentEditor = lazy(() => import('../documents/DocumentEditor.tsx'));
@@ -106,7 +106,8 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   const btn = { more: useRef<HTMLButtonElement>(null) };
   // Fill & sign (PDF notes): the form layer and its export dialog.
   // Opened through "Sign a document": start with the form layer on.
-  const [fill, setFill] = useState(() => takeFillRequest(noteId));
+  const [fill, setFill] = useState(() => wantsFill(noteId));
+  useEffect(() => clearFillRequest(noteId), [noteId]);
   const [fillExport, setFillExport] = useState(false);
   // Smart ink (tables, solving, dates) and proof of authorship.
   const smartApi = useRef<SmartApi | null>(null);
