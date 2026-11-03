@@ -2,9 +2,12 @@
 const PORT = Number(process.env.PW_PORT ?? 4174);
 const OUT = PORT === 4174 ? 'dist-e2e' : `dist-e2e-${PORT}`;
 
+import { existsSync } from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
 
-process.env.PLAYWRIGHT_BROWSERS_PATH ??= '/opt/pw-browsers';
+// The build container keeps its browsers in /opt/pw-browsers; elsewhere (CI, a laptop) Playwright's
+// own cache is used, where `npx playwright install` put them.
+if (!process.env.PLAYWRIGHT_BROWSERS_PATH && existsSync('/opt/pw-browsers')) process.env.PLAYWRIGHT_BROWSERS_PATH = '/opt/pw-browsers';
 
 // Headless WebKit and Firefox are slower than Chromium on small CI machines; give tests more time.
 const SLOW = 90_000;

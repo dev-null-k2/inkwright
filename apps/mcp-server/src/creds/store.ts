@@ -134,7 +134,10 @@ function seal(key: Buffer, plaintext: string, additional: Buffer): { iv: string;
 
 function open(key: Buffer, sealed: { iv: string; ct: string }, additional: Buffer): string {
   const raw = Buffer.from(sealed.ct, 'base64');
-  const d = createDecipheriv('aes-256-gcm', key, Buffer.from(sealed.iv, 'base64'));
+  const iv = Buffer.from(sealed.iv, 'base64');
+  if (iv.length !== 12 || raw.length < 16) throw new Error('Damaged credential entry.');
+  // authTagLength pins the tag to 16 bytes, so a truncated tag can never be accepted.
+  const d = createDecipheriv('aes-256-gcm', key, iv, { authTagLength: 16 });
   d.setAAD(additional);
   d.setAuthTag(raw.subarray(raw.length - 16));
   return Buffer.concat([d.update(raw.subarray(0, raw.length - 16)), d.final()]).toString('utf8');
