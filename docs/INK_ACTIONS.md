@@ -2,18 +2,21 @@
 
 Six modules that make what you write act: AI answers written in ink, hand-drawn diagrams that
 run, data you can query on a page, photos of paper turned into ink, reading aloud and a reading
-view, and a paper workbench with citations. Each one is a module (Settings › Modules) and can be
+view, and a paper workbench with citations. Each one is a module (Settings › Extend › Modules) and can be
 switched off on its own; switching one off removes its menu items, palette actions, assistant
 tools and drop handling, and leaves everything it already made in your notes.
 
 | Module | Where | Code |
 |---|---|---|
-| AI answers in ink (`ink-answers`) | lasso bar › Answer, ••• › Write the answer here, AI panel reply › Write in ink, tool `write_in_ink` | `packages/core/src/inkanswer/`, `apps/web/src/inkanswer/` |
-| Executable diagrams (`canvas-run`) | lasso bar › Run, ••• › Run diagram | `packages/core/src/canvasdag/`, `apps/web/src/canvasdag/` |
-| Data sandbox (`data-sandbox`) | drop a file on a page, ••• › Add data / Query data, tools `list_datasets`, `query_data` | `packages/core/src/datasandbox/`, `apps/web/src/datasandbox/` |
-| Photo to ink (`photo-ink`) | ••• › Photo to ink, ••• › Show the original photo | `packages/core/src/photoink/`, `apps/web/src/photoink/` |
-| Reading and read aloud (`accessibility`) | ••• › Read aloud, ••• › Reading view, Settings › Reading | `packages/core/src/readaloud/`, `apps/web/src/a11y/` |
-| Paper workbench (`papers`) | Library › Papers, `[@` in typed text, ••• › Bibliography | `packages/core/src/papers/`, `apps/web/src/papers/` |
+| AI answers in ink (`ink-answers`) | lasso bar › Answer, AI panel reply › Write in ink, tool `write_in_ink` | `packages/core/src/inkanswer/`, `apps/web/src/inkanswer/` |
+| Executable diagrams (`canvas-run`) | lasso bar › Run | `packages/core/src/canvasdag/`, `apps/web/src/canvasdag/` |
+| Data sandbox (`data-sandbox`) | drop a file on a page, ••• › Insert › Add data / Query data, tools `list_datasets`, `query_data` | `packages/core/src/datasandbox/`, `apps/web/src/datasandbox/` |
+| Photo to ink (`photo-ink`) | ••• › Insert › Photo to ink, ••• › Page › Show the original photo | `packages/core/src/photoink/`, `apps/web/src/photoink/` |
+| Reading and read aloud (`accessibility`) | ••• › Audio › Read aloud, ••• › Page › Reading view, Settings › Appearance › Reading | `packages/core/src/readaloud/`, `apps/web/src/a11y/` |
+| Paper workbench (`papers`) | Library › Papers, `[@` in typed text, ••• › Study › Bibliography | `packages/core/src/papers/`, `apps/web/src/papers/` |
+
+Handwritten maths (write, lasso, Solve) belongs to the smart-ink module; how it is read on the
+device, solved, and measured is in docs/MATH.md.
 
 The modules are declared in `apps/web/src/inkactions/modules.ts` and registered with the built-in
 modules (`apps/web/src/modules/builtin.ts`); the editor wiring is one hook,
@@ -26,7 +29,7 @@ the AI policy hides from AI are refused before anything is sent (`aiCanSee`).
 **What it does.** Lasso a question — handwriting, typed text or both — and choose **Answer**. The
 selection goes to your AI (typed and recognized text as text; handwriting as a picture when the
 model can see images), and the answer is put in the free space below the selection (else beside
-it, else below everything on the page, else on a new page). Settings › Ink actions › *Answer on
+it, else below everything on the page, else on a new page). Settings › AI › Ink actions › *Answer on
 the page in* chooses **Handwriting** (default) or **Typed text**; handwriting is laid out with
 `handwrite()` in a joined or print hand, in the `--ai-ink` colour (an indigo distinct from every
 pen in the tray), and written on over one to two seconds. People who ask their system for reduced
@@ -97,9 +100,9 @@ steps send the step's label and its inputs to your AI under your AI policy.
 ## Data sandbox
 
 **What it does.** Drop CSV, TSV, JSON (arrays, wrapped arrays, NDJSON), Excel (.xlsx, .xls) or
-OpenDocument (.ods) files on a page — or ••• › Add data. Each file becomes a dataset with typed
+OpenDocument (.ods) files on a page — or ••• › Insert › Add data. Each file becomes a dataset with typed
 columns (integer, number, boolean, date, text; thousands separators and `NA`/`null`/empty handled)
-and a table on the page showing its first rows. ••• › Query data opens the panel: run read-only
+and a table on the page showing its first rows. ••• › Insert › Query data opens the panel: run read-only
 SQL (⌘/Ctrl-Enter), or **Ask** in words, then **Put on page** (a table), **Chart on page** (a bar
 or line chart image) or **Copy** (Markdown). The assistant gets `list_datasets` and `query_data`.
 
@@ -141,7 +144,7 @@ series in a fixed, colour-blind-checked palette; one y axis.
 
 ## Photo to ink
 
-**What it does.** ••• › Photo to ink: choose or take a photo of handwriting or a diagram on paper.
+**What it does.** ••• › Insert › Photo to ink: choose or take a photo of handwriting or a diagram on paper.
 The page is found automatically (the largest bright region, its extreme corners refined by fitting
 a line to each side, so blur doesn't round them off); drag the four corners — or focus one and use
 the arrow keys (Shift for bigger steps) — if they are off. **Make ink** straightens the page
@@ -151,7 +154,7 @@ distance transform, traces the skeleton into polylines (spurs pruned, pieces joi
 continues through a junction), and adds a page after the current one with real strokes:
 ballpoint, the measured width (pressure follows it along the stroke), the ink's colour when it is
 clearly coloured, `origin: 'import'`. The straightened photo is kept as the page's hidden
-`underlay`; ••• › Show the original photo lays it faintly over the ink to compare. It is never
+`underlay`; ••• › Page › Show the original photo lays it faintly over the ink to compare. It is never
 drawn into the page, its thumbnail or exports. Tracing runs in a worker.
 
 **Quality bar** (`packages/core/test/photoink.test.ts`). Handwriting from `handwrite()` is
@@ -170,7 +173,7 @@ Pages).
 
 ## Reading and read aloud
 
-**Read aloud.** ••• › Read aloud speaks the page — or the lassoed part — in reading order (typed
+**Read aloud.** ••• › Audio › Read aloud speaks the page — or the lassoed part — in reading order (typed
 paragraphs, recognized handwriting lines, sticky notes), and highlights what is being read: the
 handwriting's own strokes with the search highlight (`focusStrokes`), typed text with the search
 flash. A small player pauses and stops; the sentence being read is announced politely to screen
@@ -180,7 +183,7 @@ Reading. Speech uses the Web Speech API: on Android that is the system's text-to
 the WebView. The native plugin has no text-to-speech bridge, so a WebView without
 `speechSynthesis` shows that Read aloud is unavailable.
 
-**Reading view.** ••• › Reading view shows the note's typed and recognized text reflowed in your
+**Reading view.** ••• › Page › Reading view shows the note's typed and recognized text reflowed in your
 reading style: a font from those installed on this device (fonts people with dyslexia often
 prefer — OpenDyslexic, Lexend, Atkinson Hyperlegible, Andika, Verdana… — are detected by measuring
 text; Chromium can list every installed font after you allow it), size, letter, word and line
@@ -222,8 +225,8 @@ paper's note as annotatable pages.
 **Citations.** Type `[@` in any text box for autocomplete by key, author, title word or year
 (↑/↓, Enter or Tab, Escape). Pandoc syntax: `[@key]`, `[@a, p. 4; @b]`, `[-@key]`. Resting the
 mouse on a citation on the page shows a card with the reference and a link to its note (pens and
-fingers never trigger it). ••• › **Bibliography** lists what the note cites in order of first
-citation, formatted in **APA 7** or **IEEE** (Settings › Ink actions remembers the choice), names
+fingers never trigger it). ••• › Study › **Bibliography** lists what the note cites in order of first
+citation, formatted in **APA 7** or **IEEE** (Settings › AI › Ink actions remembers the choice), names
 keys missing from the library, and can copy it, put it on the page, or export it as BibTeX or a
 Markdown reference list. Both styles are implemented in `packages/core/src/papers/format.ts`
 (author lists, 21+ authors in APA, "et al." after six in IEEE, a/b suffixes for the same author

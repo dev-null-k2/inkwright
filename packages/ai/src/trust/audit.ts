@@ -19,7 +19,8 @@
  */
 import { canonicalJson, sha256, type VaultFS } from '@inkwright/core';
 
-export type AuditKind = 'key' | 'ai_call' | 'read' | 'write' | 'proposal' | 'policy' | 'blocked' | 'retention';
+/** `exec`: a command the always-on runner ran for a runbook, after a signed approval (docs/DEVELOPERS.md). */
+export type AuditKind = 'key' | 'ai_call' | 'read' | 'write' | 'proposal' | 'policy' | 'blocked' | 'retention' | 'exec';
 
 export interface AuditActor {
   /** assistant | routine | external | smart-ink | listen | ask | server … */

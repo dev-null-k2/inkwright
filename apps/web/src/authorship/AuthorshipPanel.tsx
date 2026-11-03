@@ -121,7 +121,7 @@ export function HonestNote() {
   );
 }
 
-/** Editor › ••• › Authorship: the note's "Verified handwriting" panel. */
+/** Editor › ••• › Share & export › Authorship: the note's "Verified handwriting" panel. */
 export function AuthorshipDialog({ open, onClose, doc, vault, onVerifyFile }: { open: boolean; onClose: () => void; doc: NoteDocument; vault: AppVault; onVerifyFile: () => void }) {
   const { toast } = useApp();
   const [stored, setStored] = useState<{ cert: AuthorshipCertificate; report: VerifyReport } | null | undefined>(undefined);
@@ -177,7 +177,7 @@ export function AuthorshipDialog({ open, onClose, doc, vault, onVerifyFile }: { 
         {stored && <button type="button" className="btn" onClick={() => void download()}><Download size={16} /> Download certificate</button>}
         <button type="button" className="btn btn-ghost" onClick={onVerifyFile}>Verify a file…</button>
       </div>
-      <p className="set-note">Exported PDFs carry a signed certificate of the pages they contain (Settings › Authorship).</p>
+      <p className="set-note">Exported PDFs carry a signed certificate of the pages they contain (Settings › Privacy & trust › Authorship).</p>
       <HonestNote />
     </Dialog>
   );

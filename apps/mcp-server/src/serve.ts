@@ -7,7 +7,7 @@ import { createApi } from './api/index.ts';
 import { createAgentAI, type AgentAI } from './agent/ai.ts';
 import type { AuthMode } from './auth.ts';
 import type { CliOptions } from './cli.ts';
-import type { ServerContext } from './context.ts';
+import type { ServerContext, ServerFeatures } from './context.ts';
 import { startHttpServer, type RunningHttpServer } from './http.ts';
 import { createServices, type Scopes, type ServerServices } from './server.ts';
 
@@ -24,6 +24,36 @@ export function aiFromOptions(o: CliOptions, log: Log, env: NodeJS.ProcessEnv = 
     log(`AI not available: ${(e as Error).message}`);
     return null;
   }
+}
+
+/**
+ * Like `aiFromOptions`, but also connects to the credential executor when the AI is configured
+ * with `--ai-credential` (the key then stays in the executor's process; docs/CREDENTIALS.md).
+ * Connected apps (connector credentials) become available to routines through the same client.
+ */
+export async function aiFromOptionsAsync(o: CliOptions, log: Log, env: NodeJS.ProcessEnv = process.env): Promise<AgentAI | null> {
+  if (!o.ai?.credential) return aiFromOptions(o, log, env);
+  try {
+    const { agentAIViaExecutor, connectorToolsViaExecutor } = await import('./creds/agent.ts');
+    const ai = await agentAIViaExecutor({ ...o.ai, credential: o.ai.credential }, { ...(o.credentialsDir ? { dir: o.credentialsDir } : {}) });
+    log(`AI: ${ai.label} through the credential executor (credential ${o.ai.credential}; this process holds no key)`);
+    const client = ai.executor;
+    return { ...ai, connectorTools: (refs, actor) => connectorToolsViaExecutor(client, refs, actor), close: () => client.close() };
+  } catch (e) {
+    log(`AI not available: ${(e as Error).message}`);
+    return null;
+  }
+}
+
+/** Optional server features from options (team search, context tools). */
+export async function featuresFromOptions(o: CliOptions, log: Log): Promise<ServerFeatures> {
+  let team: ServerFeatures['team'] = null;
+  if (o.team) {
+    const { loadTeamConfig } = await import('./federation/team.ts');
+    team = loadTeamConfig(o.team);
+    log(`Team search on: sharing ${[...team.share.notebooks.map((n) => `notebook ${n}`), ...team.share.tags.map((t) => `#${t}`)].join(', ') || 'nothing'} with ${team.peers.length} peer(s)`);
+  }
+  return { contextTools: o.contextTools, ...(o.originalsDir ? { originalsDir: o.originalsDir } : {}), ...(o.credentialsDir ? { credentialsDir: o.credentialsDir } : {}), team };
 }
 
 export function authFromOptions(o: CliOptions): { auth: AuthMode; scopes: Scopes | null } {

@@ -43,6 +43,10 @@ What clients get:
   `transcribe_pages`, `run_routine` (plus `list_routines`), and `list_pending_approvals` /
   `decide_approval`. With code scanned into the vault (docs/DEVELOPERS.md): `code_search`,
   `code_symbol`, `drift_report`, `get_runbook` and `validate_diagram` (all read-only).
+  `compress_and_store` and `retrieve_original` keep large text on this computer behind a handle
+  and give back a shortened version (the same store as the context-saving proxy, below;
+  `--no-context-tools` turns them off). With a team file (`--team`), `team_search` searches your
+  notes and your teammates' shared notes on their own servers (docs/FEDERATION.md).
 - **Tasks** (extension `io.modelcontextprotocol/tasks`): clients that support it get a task
   for the long-running tools at once, with progress in the task's status message, approvals as
   `input_required`, and cancel. Other clients get the same work done inline.
@@ -297,7 +301,7 @@ command lines or service files.
 ## Trust: the AI policy, dry run and the audit trail
 
 The server, the A2A agent and the runner follow the vault's AI policy (`ai/policy.json`, edited in
-Settings › AI › Routing & privacy; docs/TRUST.md):
+Settings › Privacy & trust › Routing & privacy; docs/TRUST.md):
 
 - Notebooks and tags set to **hidden**, and notes that **stay on the device**, don't exist for
   MCP clients or the server's agent; **read-only** notes can't be changed, moved or trashed.
@@ -314,11 +318,47 @@ Settings › AI › Routing & privacy; docs/TRUST.md):
 
 For a self-hosted, no-egress deployment with Docker, see docs/ENTERPRISE.md.
 
+## Keys in a separate process
+
+The runner, the server and the proxy can make their AI calls through the **credential executor**
+instead of holding keys: `inkwright-mcp creds init`, `creds add anthropic --provider anthropic`,
+`creds serve --vault …`, then `--ai-credential anthropic` in place of `--ai-provider` and the key
+variable. The executor checks every request against the AI policy and writes it to the signed
+audit trail; it never hands a key out. With a connector credential (`creds add linear --connector
+https://mcp.linear.app/mcp --server linear`) routines running on the computer get that connected
+app's read-only tools. See [CREDENTIALS.md](CREDENTIALS.md).
+
+## More on the runner
+
+- `--watch-repo <folder>` (repeatable) re-scans a repository into the vault's code graph when its
+  git HEAD moves, so code links show drift without pressing Re-scan (docs/DEVELOPERS.md).
+- `--shell-allow <folder> --shell-trust "<device fingerprint>"` lets the runner run runbook shell
+  blocks you approve in the app, signed by that device, only inside those folders, with a
+  timeout (`--shell-timeout`) and the run in the audit trail (docs/DEVELOPERS.md › Runbooks).
+  Without these flags nothing is ever run.
+- The same settings in the config file: `"runner": { "watchRepos": […], "shell": { "allow": […],
+  "trust": […], "timeoutSeconds": 120 } }`, and `"ai": { "credential": "anthropic" }`.
+
+## Other tools through a context-saving proxy
+
+`inkwright-mcp proxy --vault …` is a local OpenAI- and Anthropic-compatible endpoint for coding
+agents and SDKs (`ANTHROPIC_BASE_URL=http://127.0.0.1:8787`, `OPENAI_BASE_URL=http://127.0.0.1:8787/v1`).
+It shortens large tool output with the same reversible budgeter the app uses, keeps originals on
+this computer, and records the tokens and money saved in the vault's usage files, which the app's
+AI usage page shows. Benchmark and limits in [PROXY.md](PROXY.md).
+
+## Context packs in an open format
+
+Context packs saved in the app (`inkwright://packs/{id}`) follow an open, versioned format with a
+JSON Schema and a conformance suite: [spec/personal-context/v1.md](../spec/personal-context/v1.md).
+`npx inkwright context validate <pack.json>` checks a pack from any producer.
+
 ## Peer-link signalling relay
 
 `--signal-token <secret>` (or `INKWRIGHT_SIGNAL_TOKEN`, HTTP mode only, ≥ 16 characters) adds a
 tiny mailbox at `/signal/v1` that lets paired Inkwright devices find each other without exchanging
-codes by hand. It has its own token — handing it to a device opens the mailbox, never the vault —
+codes by hand, and carries short codes (sharing and pairing) instead of the public ntfy.sh when
+it is set in the app. It has its own token — handing it to a device opens the mailbox, never the vault —
 and it stores only sealed, unlinkable messages in memory for ten minutes. See
 [COLLABORATION.md](COLLABORATION.md#signalling-without-a-server--and-with-one-you-run).
 

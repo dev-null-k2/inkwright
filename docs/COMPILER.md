@@ -123,10 +123,10 @@ note, **missing** when the note is gone. Stale claims show on compiled pages ("2
 Explain, with **Re-check** (a proposal for that page only). Anchors with hash `0` point at a
 region rather than a sentence (ink a solver read) and can't go stale.
 
-Explain is available for compiled pages (Compiled wiki › Explain, or ••• › Sources of AI text on
+Explain is available for compiled pages (Compiled wiki › Explain, or ••• › Study › Sources of AI text on
 the page), assistant answers (Explain under the reply), summaries (Explain, and the provenance is
 kept when the summary is saved), answers inserted on a page (provenance kept), and solved maths
-(••• › Sources of AI text). Tapping a sentence shows the tag (or "Not from your notes"), support,
+(••• › Study › Sources of AI text). Tapping a sentence shows the tag (or "Not from your notes"), support,
 freshness, each source with a picture of the ink/page region and its words or the moment in the
 recording, and who wrote it. Answers are attributed to the passages the model actually read in
 that turn (`search_memory`, `read_note`, `search_notes` results) by the links it cited and by

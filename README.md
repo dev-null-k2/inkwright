@@ -123,6 +123,7 @@ Every number below comes from an eval or test in this repository and can be re-r
 | What | Result | How |
 |---|---|---|
 | Scribble-to-erase | 99.6 % of 250 scribbles caught; 0 of 330 normal strokes erased | `packages/core/evals/scratch.eval.ts` |
+| Scribble-to-erase on real letter shapes (large, slanted, cursive; zig-zags, loops, strike-throughs) | 98.3 % of 300 crossed-out words fully erased; 0 neighbours touched; 0 of 200 next words or underlines erased (was 77.7 %, found after testing on a phone) | `packages/core/evals/scratch-real.eval.ts` |
 | Contradiction linter | precision 1.00, recall 0.92 on 58 labelled pairs; 0 false alarms in 40 everyday notes | `packages/core/evals/compiler.eval.ts` |
 | Wiki drafts vs a noisy model | provenance precision 0.92; unsupported sentences let through 0.17 | `packages/ai/evals/compiler.eval.ts` |
 | Personal-data firewall | precision 100 %, recall 98.2 % (78 labelled lines; names without context are missed) | `packages/ai/evals/trust.eval.ts` |

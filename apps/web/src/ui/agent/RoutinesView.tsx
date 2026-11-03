@@ -22,6 +22,7 @@ import { useApp } from '../../state/app.ts';
 import { useSettings } from '../../state/settings.ts';
 import { IconButton, Segmented, Switch, relativeTime } from '../primitives.tsx';
 import { askConfirm } from '../prompts.tsx';
+import { contributionOn } from '../../modules/registry.ts';
 import { Section, StatusDot } from './shared.tsx';
 
 export function RoutinesView() {
@@ -47,7 +48,7 @@ export function RoutinesView() {
       </Section>
       <Section title="Start from a template">
         <ul className="ag-list">
-          {ROUTINE_TEMPLATES.map((t) => (
+          {ROUTINE_TEMPLATES.filter((t) => contributionOn('routineTemplates', t.id)).map((t) => (
             <li key={t.id} className="ag-item">
               <div className="ag-item-main">
                 <span className="ag-item-title">{t.name}</span>

@@ -5,6 +5,8 @@ import { dailyReviewArgs, dailyReviewPrompt, summarizeNoteArgs, summarizeNotePro
 import { NOTE_TEMPLATE, PACK_TEMPLATE, PAGE_SVG_TEMPLATE, listNoteResources, listPackResources, readNoteResource, readPackResource, readPageSvgResource } from './resources.ts';
 import { TOOLS, type ToolDef } from './tools.ts';
 import { DEV_TOOLS } from './dev/tools.ts';
+import { CONTEXT_TOOLS } from './proxy/tools.ts';
+import { TEAM_TOOLS } from './federation/tools.ts';
 import { ActivitySessions } from './activity.ts';
 import { registerAgentTools, ownerOf } from './agent-tools.ts';
 import { ApprovalStore } from './approvals.ts';
@@ -59,7 +61,9 @@ export function createServices(ctx: ServerContext, o: { ai?: AgentAI | null; tra
 
 /** Write tools available for this context (none in read-only mode). */
 export function activeTools(ctx: ServerContext): ToolDef[] {
-  return [...TOOLS, ...DEV_TOOLS].filter((t) => !t.write || !ctx.readOnly);
+  // Optional features: context tools unless switched off (--no-context-tools), team search with --team.
+  const optional = [...(ctx.features?.contextTools === false ? [] : CONTEXT_TOOLS), ...(ctx.features?.team ? TEAM_TOOLS : [])];
+  return [...TOOLS, ...DEV_TOOLS, ...optional].filter((t) => !t.write || !ctx.readOnly);
 }
 
 function errorResult(e: unknown): CallToolResult {

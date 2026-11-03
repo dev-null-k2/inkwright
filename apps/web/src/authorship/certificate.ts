@@ -69,7 +69,7 @@ export async function embedInPdf(pdf: PDFDocument, cert: AuthorshipCertificate):
   for (let i = 0; i < utf8.length; i += 0x8000) bin += String.fromCharCode(...utf8.subarray(i, i + 0x8000));
   await pdf.attach(`data:application/json;base64,${btoa(bin)}`, PDF_ATTACHMENT_NAME, {
     mimeType: 'application/json',
-    description: 'Inkwright authorship certificate (signed). Verify it in Inkwright › Settings › Authorship.',
+    description: 'Inkwright authorship certificate (signed). Verify it in Inkwright › Settings › Privacy & trust › Authorship.',
     creationDate: created,
     modificationDate: created,
   });

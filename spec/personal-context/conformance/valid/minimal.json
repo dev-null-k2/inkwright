@@ -1,0 +1,14 @@
+{
+ "format": "inkwright-context-pack/1",
+ "id": "empty-pack",
+ "title": "Empty",
+ "createdAt": "2026-11-02T09:00:00.000Z",
+ "memory": {
+  "instructions": [],
+  "facts": []
+ },
+ "compiled": [],
+ "notes": [],
+ "images": [],
+ "truncated": []
+}

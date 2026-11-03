@@ -63,6 +63,8 @@ const TOOL_LABELS: Record<string, string> = {
   remember: 'Suggested something to remember',
   check_background_task: 'Checked a background task',
   search_memory: 'Searched everything you wrote',
+  read_document: 'Read a document',
+  edit_document: 'Edited a document',
 };
 
 /** Label for a tool row: note tools by name, connected-app tools as "Used X in App". */
@@ -316,7 +318,7 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
       )}
       <div className="ai-quick">
         {quick.map((q) => (
-          <button key={q.k} type="button" className="chip" disabled={busy || !ai} onClick={() => void runQuick(q.k)}>{q.icon}{q.label}</button>
+          <button key={q.k} type="button" className="chip" disabled={busy || !ai} title={!ai ? 'Connect an AI first: Settings › AI' : undefined} onClick={() => void runQuick(q.k)}>{q.icon}{q.label}</button>
         ))}
       </div>
       <div className="ai-log" ref={scroll}>
@@ -348,7 +350,7 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
         {busy ? (
           <button type="button" className="send-btn" aria-label="Stop" onClick={() => abort.current?.abort()}><Square size={14} fill="currentColor" /></button>
         ) : (
-          <button type="submit" className="send-btn" aria-label="Send" disabled={!input.trim() || !ai}><ArrowUp size={18} /></button>
+          <button type="submit" className="send-btn" aria-label="Send" disabled={!input.trim() || !ai} title={!ai ? 'Connect an AI first: Settings › AI' : !input.trim() ? 'Type a message first' : undefined}><ArrowUp size={18} /></button>
         )}
       </form>
       {view && <PanelAgentView view={view} onBack={() => setView(null)} />}

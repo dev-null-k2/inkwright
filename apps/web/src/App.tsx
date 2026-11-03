@@ -12,7 +12,7 @@ import { isNative } from './platform/env.ts';
 import { useKnowledgeShortcuts } from './ui/knowledge/shortcuts.ts';
 // Only the library is in the startup bundle; the other screens and app-wide overlays are chunks
 // fetched in the background once it is up (boot/screens.ts, docs/PERFORMANCE.md).
-import { AgentDialogs, CompilerDialogs, DevGlobal, Editor, PeerGlobal, Settings, afterEditorPreload, preloadAfterLibrary } from './boot/screens.ts';
+import { AgentDialogs, CompilerDialogs, DevGlobal, Editor, PeerGlobal, RecallGlobal, Settings, WelcomeGate, afterEditorPreload, preloadAfterLibrary } from './boot/screens.ts';
 import { PaletteHost, usePaletteShortcutUntilLoaded } from './boot/paletteShortcut.ts';
 import { releaseBackgroundSoon, useBackgroundReady } from './boot/background.ts';
 import { isModuleOn, startModules, useModule } from './modules/registry.ts';
@@ -33,6 +33,7 @@ export function App() {
   const searchOn = useModule('search');
   const assistantOn = useModule('assistant');
   const compilerOn = useModule('compiler');
+  const recallOn = useModule('memory-timeline');
   useKnowledgeShortcuts();
   usePaletteShortcutUntilLoaded(searchOn);
   useEffect(() => { if (ready) preloadAfterLibrary(); }, [ready]);
@@ -139,12 +140,15 @@ export function App() {
       </Suspense>
       {route.name === 'graph' && !graphOn && <Library />}
       {route.name === 'graph' && graphOn && <Suspense fallback={screenFallback}><GraphView /></Suspense>}
+      {/* First run only: how you write, colours, AI and sync (welcome/, loaded only then). */}
+      <WelcomeGate />
       {background && <Suspense fallback={null}>
         {searchOn && <PaletteHost />}
         {assistantOn && <AgentDialogs />}
         <DevGlobal />
         <PeerGlobal />
         {compilerOn && <CompilerDialogs />}
+        {recallOn && <RecallGlobal />}
       </Suspense>}
       <Prompts />
       <Toasts />

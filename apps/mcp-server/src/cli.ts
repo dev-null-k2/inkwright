@@ -41,6 +41,14 @@ export interface CliOptions {
   auditKey?: string;
   /** Token for the peer-link signalling relay at /signal/v1 (off when absent). */
   signalToken?: string;
+  /** Folder of the credential store and executor (`--credentials-dir`; default ~/.config/inkwright/credentials). */
+  credentialsDir?: string;
+  /** Team file: turns on federated search (docs/FEDERATION.md). */
+  team?: string;
+  /** `compress_and_store` / `retrieve_original` MCP tools (default on). */
+  contextTools: boolean;
+  /** Where originals of shortened text are kept (shared with `inkwright-mcp proxy`). */
+  originalsDir?: string;
   help: boolean;
   version: boolean;
 }
@@ -108,8 +116,23 @@ AI for the server's own agent (A2A, run_routine, summarize/transcribe tasks):
   --ai-model <model>       Model id (default: the provider's default).
   --ai-base-url <url>      Custom endpoint (Ollama, LM Studio, a proxy, custom).
   --ai-key-env <NAME>      Environment variable with the API key (default: the provider's usual one).
+  --ai-credential <name>   Make AI calls through the credential executor with this credential, so this
+                           process never holds the key (docs/CREDENTIALS.md; implies its provider).
+  --credentials-dir <dir>  The credential executor's folder (default ~/.config/inkwright/credentials).
   --ai-on-premises         The AI runs inside this deployment (e.g. an Ollama container): it counts as
                            "this device" for the AI policy and requests to it are not redacted.
+
+Team search (docs/FEDERATION.md):
+  --team <file>            Team file (peers, what you share): serves /api/v1/federated/search to peers'
+                           keys (scope federation:search) and adds the team_search tool.
+
+Context tools (docs/PROXY.md):
+  --no-context-tools       Don't offer compress_and_store / retrieve_original.
+  --originals-dir <dir>    Where originals are kept (default ~/.local/state/inkwright/originals).
+  inkwright-mcp proxy …    The context-saving proxy for other tools (inkwright-mcp proxy --help).
+
+Credentials (docs/CREDENTIALS.md):
+  inkwright-mcp creds …    Keys held by a separate process (inkwright-mcp creds help).
 
 Trust (docs/TRUST.md, docs/ENTERPRISE.md):
   --policy <file>          Managed AI policy (same format as ai/policy.json); users can only tighten it.
@@ -118,7 +141,8 @@ Trust (docs/TRUST.md, docs/ENTERPRISE.md):
 Every option also reads an environment variable: INKWRIGHT_VAULT, INKWRIGHT_HTTP_PORT, INKWRIGHT_HOST,
 INKWRIGHT_PUBLIC_URL, INKWRIGHT_A2A=1, INKWRIGHT_MCP_TOKEN, INKWRIGHT_OAUTH_ISSUER, INKWRIGHT_OAUTH_AUDIENCE,
 INKWRIGHT_OAUTH_JWKS_URL, INKWRIGHT_AI_PROVIDER, INKWRIGHT_AI_MODEL, INKWRIGHT_AI_BASE_URL,
-INKWRIGHT_AI_ON_PREMISES=1, INKWRIGHT_POLICY_FILE, INKWRIGHT_AUDIT_KEY.
+INKWRIGHT_AI_ON_PREMISES=1, INKWRIGHT_AI_CREDENTIAL, INKWRIGHT_CREDENTIALS_DIR, INKWRIGHT_POLICY_FILE,
+INKWRIGHT_AUDIT_KEY.
 
   --config <file>          JSON config file with any of the above (see docs/AGENTS.md).
   -h, --help               Show this help.
@@ -165,6 +189,11 @@ export const SHARED_OPTIONS = {
   'ai-base-url': { type: 'string' },
   'ai-key-env': { type: 'string' },
   'ai-on-premises': { type: 'boolean' },
+  'ai-credential': { type: 'string' },
+  'credentials-dir': { type: 'string' },
+  team: { type: 'string' },
+  'no-context-tools': { type: 'boolean', default: false },
+  'originals-dir': { type: 'string' },
   policy: { type: 'string' },
   'audit-key': { type: 'string' },
   config: { type: 'string' },
@@ -213,10 +242,13 @@ export function resolveOptions(values: Record<string, unknown>, env: NodeJS.Proc
   if (issuer && !/^https:\/\//.test(issuer) && !/^http:\/\/(localhost|127\.)/.test(issuer)) throw new CliError('--oauth-issuer must be an https:// URL.');
   const audience = ((values['oauth-audience'] as string[] | undefined) ?? (env.INKWRIGHT_OAUTH_AUDIENCE ? [env.INKWRIGHT_OAUTH_AUDIENCE] : undefined) ?? cfg.auth?.oauth?.audience ?? []).flatMap((a) => a.split(',')).map((a) => a.trim()).filter(Boolean);
   const provider = (values['ai-provider'] as string | undefined) ?? env.INKWRIGHT_AI_PROVIDER ?? cfg.ai?.provider;
-  const ai: AgentAIConfig | undefined = provider
+  const credential = (values['ai-credential'] as string | undefined) ?? env.INKWRIGHT_AI_CREDENTIAL ?? cfg.ai?.credential;
+  const ai: AgentAIConfig | undefined = provider || credential
     ? {
         ...cfg.ai,
-        provider,
+        // With a credential the provider comes from the credential executor.
+        provider: provider ?? '',
+        ...(credential ? { credential } : {}),
         model: (values['ai-model'] as string | undefined) ?? env.INKWRIGHT_AI_MODEL ?? cfg.ai?.model,
         baseUrl: (values['ai-base-url'] as string | undefined) ?? env.INKWRIGHT_AI_BASE_URL ?? cfg.ai?.baseUrl,
         apiKeyEnv: (values['ai-key-env'] as string | undefined) ?? cfg.ai?.apiKeyEnv,
@@ -271,6 +303,16 @@ export function resolveOptions(values: Record<string, unknown>, env: NodeJS.Proc
       if (signalToken.length < 16) throw new CliError('--signal-token must be at least 16 characters (e.g. openssl rand -hex 16).');
       return { signalToken };
     })(),
+    ...(() => {
+      const d = (values['credentials-dir'] as string | undefined) ?? env.INKWRIGHT_CREDENTIALS_DIR;
+      return d ? { credentialsDir: path.resolve(expandHome(d)) } : {};
+    })(),
+    ...(() => {
+      const team = (values.team as string | undefined) ?? env.INKWRIGHT_TEAM_FILE;
+      const originals = (values['originals-dir'] as string | undefined) ?? env.INKWRIGHT_ORIGINALS_DIR;
+      return { ...(team ? { team: path.resolve(expandHome(team)) } : {}), ...(originals ? { originalsDir: path.resolve(expandHome(originals)) } : {}) };
+    })(),
+    contextTools: !values['no-context-tools'],
     help: Boolean(values.help),
     version: Boolean(values.version),
   };

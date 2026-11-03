@@ -1,3 +1,7 @@
+// First: keeps a web clip (#clip=…) from the address before the app routes (importers/stash.ts).
+import './importers/stash.ts';
+// Also first: keeps a join link's code (#join=…) for the join sheet (peer/joinStash.ts).
+import './peer/joinStash.ts';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles/fonts.css';
@@ -12,12 +16,15 @@ import './styles/listen.css';
 import './styles/knowledge.css';
 import './studio/studio.css';
 import './dev/dev.css';
+import './importers/importers.css';
 import './compiler/compiler.css';
 import './styles/platform.css';
 import './styles/trust.css';
 import './inkactions/ink-actions.css';
 import './peer/peer.css';
 import './engines/engines.css';
+import './styles/polish.css';
+import './styles/ux.css';
 import { App } from './App.tsx';
 import { BUILD_TARGET, isNative } from './platform/env.ts';
 import { handleOAuthRedirect } from './lib/agent/oauth-callback.ts';

@@ -77,7 +77,7 @@ function PhotoDialog({ vault, doc, engine, onClose }: { vault: AppVault; doc: No
   return (
     <Dialog open title="Photo to ink" wide onClose={onClose} actions={<>
       <button type="button" className="btn" onClick={onClose}>Cancel</button>
-      <button type="button" className="btn btn-primary" disabled={!photo || !!busy} onClick={() => void make()}>{busy === 'trace' ? 'Tracing…' : 'Make ink'}</button>
+      <button type="button" className="btn btn-primary" disabled={!photo || !!busy} title={!photo ? 'Choose or take a photo first' : undefined} onClick={() => void make()}>{busy === 'trace' ? 'Tracing…' : 'Make ink'}</button>
     </>}>
       {!photo ? (
         <div className="ia-photo-pick">

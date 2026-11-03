@@ -49,6 +49,11 @@ export interface Settings {
   library: { sort: 'updated' | 'created' | 'title'; view: 'grid' | 'list' };
   recentColors: string[];
   onboardingDone: boolean;
+  /**
+   * The hand that holds the pen. On screens wide enough for the side tray, left-handed people get
+   * it on the right edge, clear of the writing hand (set in the welcome or Settings › Writing).
+   */
+  hand: 'right' | 'left';
   /** Smart ink: quiet suggestion chips after a pause ("Make a table", "Solve", "Add to calendar"). */
   smartInk: { suggestions: boolean };
   /**
@@ -101,6 +106,7 @@ export const DEFAULT_SETTINGS: Settings = {
   library: { sort: 'updated', view: 'grid' },
   recentColors: [],
   onboardingDone: false,
+  hand: 'right',
   smartInk: { suggestions: true },
   authorship: { deviceName: '', attachToPdf: true },
 };
@@ -126,6 +132,12 @@ function load(): Settings {
     return DEFAULT_SETTINGS;
   }
 }
+
+/**
+ * Whether this device had saved settings when the app started: false only on a first run (or after
+ * site data was cleared). The welcome uses it to tell a new person from one updating the app.
+ */
+export const settingsWereStored = safeStorage.get(KEY) != null;
 
 interface SettingsStore extends Settings {
   update: (fn: (s: Settings) => Partial<Settings>) => void;

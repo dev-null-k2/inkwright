@@ -10,3 +10,6 @@ export * from './rpc.ts';
 export * from './link.ts';
 export * from './remote.ts';
 export * from './signal.ts';
+export * from './cpace.ts';
+export * from './shortcode.ts';
+export * from './rendezvous.ts';

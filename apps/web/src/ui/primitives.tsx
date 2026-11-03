@@ -78,7 +78,7 @@ export function Popover({ anchor, open, onClose, children, className, placement 
   onClose: () => void;
   children: ReactNode;
   className?: string;
-  placement?: 'auto' | 'right' | 'below' | 'above';
+  placement?: 'auto' | 'right' | 'left' | 'below' | 'above';
   title?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -102,6 +102,7 @@ export function Popover({ anchor, open, onClose, children, className, placement 
       let left: number, top: number;
       const p = placement === 'auto' ? (a.left < 120 ? 'right' : a.top > window.innerHeight / 2 ? 'above' : 'below') : placement;
       if (p === 'right') { left = a.right + 10; top = a.top + a.height / 2 - r.height / 2; }
+      else if (p === 'left') { left = a.left - r.width - 10; top = a.top + a.height / 2 - r.height / 2; }
       else if (p === 'above') { left = a.left + a.width / 2 - r.width / 2; top = a.top - r.height - 10; }
       else { left = a.left + a.width / 2 - r.width / 2; top = a.bottom + 10; }
       left = Math.max(8, Math.min(window.innerWidth - r.width - 8, left));

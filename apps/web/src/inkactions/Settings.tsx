@@ -30,9 +30,9 @@ export function InkActionsSettings() {
   const any = ['ink-answers', 'canvas-run', 'data-sandbox', 'photo-ink', 'papers'].some(on);
   return (
     <>
-      {!any && <p className="set-note">These features are switched off. Switch them on in Settings › Modules.</p>}
+      {!any && <p className="set-note">These features are switched off. Switch them on in Settings › Extend › Modules.</p>}
       {on('ink-answers') && (
-        <Group title="AI answers" note="Lasso a question and choose Answer, or ••• › Write the answer here. AI handwriting is marked as AI ink: authorship certificates never count it as yours.">
+        <Group title="AI answers" note="Lasso a question and choose Answer. AI handwriting is marked as AI ink: authorship certificates never count it as yours.">
           <div className="field-row">
             <span className="row-label">Answer on the page in</span>
             <Segmented label="Answer on the page in" value={p.answerIn} onChange={(v) => p.set({ answerIn: v })} options={[{ value: 'text', label: 'Typed text' }, { value: 'ink', label: 'Handwriting' }]} />
@@ -60,7 +60,7 @@ export function InkActionsSettings() {
       )}
       {on('data-sandbox') && (
         <Group title="Data" note="Data files stay in the note, in the same format the code module’s SQL blocks read. Queries run on this device (DuckDB, or SQLite when DuckDB can’t start) and can only read. Every query, including the assistant’s attempts, is logged with the note.">
-          <p className="ia-pad">Drop CSV, TSV, JSON or spreadsheet files on a page, or ••• › Add data.</p>
+          <p className="ia-pad">Drop CSV, TSV, JSON or spreadsheet files on a page, or ••• › Insert › Add data.</p>
         </Group>
       )}
     </>
@@ -74,11 +74,17 @@ export function ReadingSettings() {
   const [fonts, setFonts] = useState<string[]>(() => availableReadingFonts());
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   useEffect(() => { void listVoices().then(setVoices); }, []);
-  const askFonts = async () => { const all = await queryInstalledFonts(); if (all?.length) setFonts(all); };
+  const toast = useApp((s) => s.toast);
+  // The browser asks before listing fonts; say what happened either way (never a silent button).
+  const askFonts = async () => {
+    const all = await queryInstalledFonts();
+    if (all?.length) { setFonts(all); toast({ text: `${all.length} fonts from this device are in the list`, tone: 'success' }); }
+    else toast({ text: 'This browser didn’t share the device’s fonts. Allow “Fonts” for Inkwright in its site settings and try again.' });
+  };
   const canList = typeof (globalThis as { queryLocalFonts?: unknown }).queryLocalFonts === 'function';
   return (
     <>
-      <Group title="Reading view" note="••• › Reading view shows a note’s typed and recognized text in this style. The page itself is not changed.">
+      <Group title="Reading view" note="••• › Page › Reading view shows a note’s typed and recognized text in this style. The page itself is not changed.">
         <label className="field-row">
           <span className="row-label">Font</span>
           <select value={r.font} onChange={(e) => set({ font: e.target.value })} aria-label="Reading font">
@@ -101,7 +107,7 @@ export function ReadingSettings() {
         </div>
         <div className="field-row"><span className="row-label" /><button type="button" className="btn btn-sm btn-ghost" onClick={() => p.set({ reading: DEFAULT_READING })}>Reset</button></div>
       </Group>
-      <Group title="Read aloud" note={speechSupported() ? '••• › Read aloud reads the page, or the lassoed part, and highlights the ink as it goes. Voices come from this device.' : 'This browser has no text-to-speech voices, so Read aloud is unavailable here.'}>
+      <Group title="Read aloud" note={speechSupported() ? '••• › Audio › Read aloud reads the page, or the lassoed part, and highlights the ink as it goes. Voices come from this device.' : 'This browser has no text-to-speech voices, so Read aloud is unavailable here.'}>
         <label className="field-row">
           <span className="row-label">Voice</span>
           <select value={p.readAloud.voice ?? ''} onChange={(e) => p.set({ readAloud: { ...p.readAloud, voice: e.target.value || null } })} aria-label="Voice" disabled={!voices.length}>

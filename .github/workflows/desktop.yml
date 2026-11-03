@@ -1,0 +1,252 @@
+# The desktop app (apps/desktop, Tauri 2): docs/DESKTOP.md.
+#
+#   - check: on changes to the desktop app or the MCP server, builds the MCP sidecar (Node SEA)
+#     and runs the Rust tests on macOS, Windows and Linux.
+#   - build + publish: on a version tag (git tag v1.2.0 && git push --tags), builds installers and
+#     attaches them to the version's GitHub release (the one release.yml makes):
+#       macOS   universal .dmg (Apple silicon + Intel)
+#       Windows .msi and .exe (NSIS)
+#       Linux   .deb, .rpm and .AppImage
+#     plus latest.json for the in-app updater when the update key is set.
+#
+# Everything signs itself when the secrets exist and builds unsigned when they don't:
+#   macOS:    APPLE_CERTIFICATE (base64 .p12), APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY,
+#             and for notarization APPLE_ID, APPLE_PASSWORD (app-specific), APPLE_TEAM_ID
+#   Windows:  WINDOWS_CERTIFICATE (base64 .pfx), WINDOWS_CERTIFICATE_PASSWORD
+#   Updates:  TAURI_SIGNING_PRIVATE_KEY, TAURI_SIGNING_PRIVATE_KEY_PASSWORD (secrets) and the
+#             matching public key in the repository variable TAURI_UPDATER_PUBKEY. Without them the
+#             installers have no update signature and the app doesn't update itself.
+#
+# Supply-chain hardening, as in release.yml (docs/SECURITY_REVIEW.md, SR-09):
+# - every action is pinned to a commit SHA (the comment names the version);
+# - the build jobs, which run npm install scripts, Vite, Cargo and the bundler, have a read-only
+#   token and no persisted git credentials; only the publish job, which runs no project code, may
+#   write to the repository;
+# - no build cache in release builds (a cache is shared state a pull request could have shaped);
+# - values derived from the tag reach scripts as environment variables, after validation;
+# - each signing secret is given only to the step that needs it, and the Windows certificate is
+#   removed from the runner's store after the build, even on failure.
+name: Desktop
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths: ['apps/desktop/**', 'apps/mcp-server/**', '.github/workflows/desktop.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+
+env:
+  ONNXRUNTIME_NODE_INSTALL: skip
+  LINUX_DEPS: libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf libpipewire-0.3-dev libspa-0.2-dev libclang-dev libxcb1-dev libxcb-randr0-dev libwayland-dev libegl-dev libgbm-dev
+
+jobs:
+  check:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 22, cache: npm }
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master, Nov 2026
+        with: { toolchain: stable }
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with: { workspaces: 'apps/desktop/src-tauri -> target' }
+      - name: Linux libraries
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y $LINUX_DEPS
+      - run: npm ci
+      - name: MCP sidecar (Node single executable)
+        run: npm run sidecar -w @inkwright/desktop
+      - name: Sidecar answers
+        shell: bash
+        run: |
+          bin=$(ls apps/desktop/src-tauri/binaries/inkwright-mcp-*)
+          "$bin" --help | head -3
+      - name: Rust tests
+        working-directory: apps/desktop/src-tauri
+        run: cargo test
+
+  build:
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            args: --target universal-apple-darwin
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
+          - os: windows-latest
+            args: ''
+            rust-targets: ''
+          - os: ubuntu-22.04
+            args: ''
+            rust-targets: ''
+    runs-on: ${{ matrix.os }}
+    env:
+      # Whether secrets exist, without handing them to every step.
+      HAS_UPDATER_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' && vars.TAURI_UPDATER_PUBKEY != '' }}
+      HAS_APPLE_CERT: ${{ secrets.APPLE_CERTIFICATE != '' }}
+      HAS_WINDOWS_CERT: ${{ secrets.WINDOWS_CERTIFICATE != '' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 22 }
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master, Nov 2026
+        with: { toolchain: stable, targets: '${{ matrix.rust-targets }}' }
+      - name: Linux libraries
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y $LINUX_DEPS
+      - run: npm ci
+
+      - name: Version from tag
+        id: v
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          # Only plain versions (1.2.3 or 1.2.3-beta.1) go further: the value ends up in file names,
+          # in the app's version and in the updater manifest.
+          if ! [[ "$tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then echo "Not a version tag: $GITHUB_REF_NAME"; exit 1; fi
+          echo "version=$tag" >> "$GITHUB_OUTPUT"
+
+      # Build settings that depend on the tag and on which secrets exist, as a --config overlay.
+      - name: Build configuration
+        shell: bash
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+          UPDATER_PUBKEY: ${{ vars.TAURI_UPDATER_PUBKEY }}
+        run: |
+          node -e '
+            const env = process.env;
+            const c = { version: env.VERSION, bundle: {}, plugins: {} };
+            if (env.HAS_UPDATER_KEY === "true") c.plugins.updater = { pubkey: env.UPDATER_PUBKEY };
+            else c.bundle.createUpdaterArtifacts = false;
+            require("fs").writeFileSync("apps/desktop/src-tauri/tauri.release.json", JSON.stringify(c, null, 2));
+          '
+          cat apps/desktop/src-tauri/tauri.release.json
+
+      - name: Windows code signing certificate
+        if: runner.os == 'Windows' && env.HAS_WINDOWS_CERT == 'true'
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP 'cert.pfx'
+          try {
+            [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
+            $pw = ConvertTo-SecureString $env:WINDOWS_CERTIFICATE_PASSWORD -AsPlainText -Force
+            $cert = Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\CurrentUser\My -Password $pw
+          } finally {
+            Remove-Item $pfx -ErrorAction SilentlyContinue
+          }
+          "CERT_THUMBPRINT=$($cert.Thumbprint)" | Out-File -FilePath $env:GITHUB_ENV -Append
+          $cfg = Get-Content apps/desktop/src-tauri/tauri.release.json | ConvertFrom-Json
+          $cfg.bundle | Add-Member -NotePropertyName windows -NotePropertyValue @{ certificateThumbprint = $cert.Thumbprint; digestAlgorithm = 'sha256'; timestampUrl = 'http://timestamp.digicert.com' } -Force
+          $cfg | ConvertTo-Json -Depth 8 | Set-Content apps/desktop/src-tauri/tauri.release.json
+
+      - name: Installers
+        working-directory: apps/desktop
+        shell: bash
+        env:
+          ARGS: ${{ matrix.args }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          # Unsigned macOS builds are signed ad hoc ("-") instead of asking for an identity.
+          if [ "$RUNNER_OS" = macOS ] && [ "$HAS_APPLE_CERT" != true ]; then export APPLE_SIGNING_IDENTITY=-; fi
+          # Runs the web build and the sidecar first (beforeBuildCommand in tauri.conf.json).
+          npx tauri build $ARGS --config src-tauri/tauri.release.json
+
+      - name: Remove the signing certificate
+        if: always() && runner.os == 'Windows' && env.CERT_THUMBPRINT != ''
+        shell: pwsh
+        run: Remove-Item "Cert:\CurrentUser\My\$env:CERT_THUMBPRINT" -DeleteKey -ErrorAction SilentlyContinue
+
+      - name: Collect installers and update signatures
+        shell: bash
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          mkdir -p out
+          fragment=()   # this OS's entries for latest.json: platform key, file name
+          url="https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME"
+          for dir in apps/desktop/src-tauri/target/release/bundle apps/desktop/src-tauri/target/*/release/bundle; do
+            for f in "$dir"/dmg/*.dmg "$dir"/msi/*.msi "$dir"/nsis/*.exe "$dir"/deb/*.deb "$dir"/rpm/*.rpm "$dir"/appimage/*.AppImage; do
+              cp "$f" out/
+              if [ -f "$f.sig" ]; then cp "$f.sig" out/; fi
+            done
+            # The macOS update bundle has no version or architecture in its name: give it both.
+            for f in "$dir"/macos/*.app.tar.gz; do
+              name="Inkwright_${VERSION}_universal.app.tar.gz"
+              cp "$f" "out/$name"
+              if [ -f "$f.sig" ]; then cp "$f.sig" "out/$name.sig"; fi
+            done
+          done
+          for f in out/*.app.tar.gz; do fragment+=(darwin-aarch64 "$f" darwin-x86_64 "$f"); done
+          for f in out/*-setup.exe; do fragment+=(windows-x86_64 "$f"); done
+          for f in out/*.AppImage; do fragment+=(linux-x86_64 "$f"); done
+          # Updater entries (only for files the update key signed), merged into latest.json by publish.
+          node -e '
+            const fs = require("fs");
+            const [url, ...pairs] = process.argv.slice(1);
+            const platforms = {};
+            for (let i = 0; i < pairs.length; i += 2) {
+              const file = pairs[i + 1];
+              if (!fs.existsSync(`${file}.sig`)) continue;
+              const name = file.slice(file.lastIndexOf("/") + 1);
+              platforms[pairs[i]] = { signature: fs.readFileSync(`${file}.sig`, "utf8").trim(), url: `${url}/${encodeURIComponent(name)}` };
+            }
+            if (Object.keys(platforms).length) fs.writeFileSync(`out/updater-${process.env.RUNNER_OS}.json`, JSON.stringify(platforms, null, 2));
+          ' "$url" ${fragment[@]+"${fragment[@]}"}
+          ls -l out
+          [ -n "$(ls out)" ] || { echo "No installers were built"; exit 1; }
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with: { name: 'desktop-${{ matrix.os }}', path: out/, if-no-files-found: error }
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with: { pattern: 'desktop-*', merge-multiple: true, path: out }
+      - name: Updater manifest (latest.json)
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          version="${GITHUB_REF_NAME#v}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then echo "Not a version tag"; exit 1; fi
+          parts=(out/updater-*.json)
+          if [ ${#parts[@]} -gt 0 ]; then
+            jq -n --arg v "$version" --arg d "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              '{ version: $v, notes: "See CHANGELOG.md.", pub_date: $d, platforms: (reduce inputs as $p ({}; . + $p)) }' \
+              "${parts[@]}" > out/latest.json
+            rm "${parts[@]}"
+            cat out/latest.json
+          fi
+      # The same release as release.yml's Android and web builds (found or created by tag; its
+      # notes come from release.yml).
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          files: out/*
+          fail_on_unmatched_files: true
+          prerelease: ${{ contains(github.ref_name, '-') }}

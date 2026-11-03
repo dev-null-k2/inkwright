@@ -40,7 +40,7 @@ Google requires every app that signs users in to register an OAuth client. This 
 Pick one of these:
 
 - **Build it in (recommended for publishing):** put `VITE_GOOGLE_CLIENT_ID=<your web client id>` in `apps/web/.env`, then rebuild.
-- **Paste it at runtime:** Settings → Account & sync → *Google OAuth client ID*.
+- **Paste it at runtime:** Settings → Sync & devices → *Google OAuth client ID*.
 
 Then tap **Sign in with Google**. Notes sync to `My Drive/Inkwright/`. On a Mac with Google Drive for desktop that folder is at
 `~/Library/CloudStorage/GoogleDrive-<you@gmail.com>/My Drive/Inkwright`. Point Obsidian or the Inkwright MCP server (`apps/mcp-server`) at it.

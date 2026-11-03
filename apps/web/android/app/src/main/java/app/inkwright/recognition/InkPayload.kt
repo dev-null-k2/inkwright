@@ -9,6 +9,12 @@ class StrokeInput(val x: FloatArray, val y: FloatArray, val t: LongArray?) {
 class LineInput(val strokes: List<StrokeInput>, val width: Float, val height: Float, val preContext: String)
 
 /**
+ * One ML Kit hypothesis for an ink: its text and score. ML Kit's score is "lower = likelier",
+ * unnormalised, and only some models fill it in, so [score] is null when there is none.
+ */
+data class Candidate(val text: String, val score: Float?)
+
+/**
  * Pure helpers that turn the `recognize` payload into what ML Kit wants, kept free of Android
  * and ML Kit types so they can be unit-tested on the JVM.
  */
@@ -80,6 +86,39 @@ object InkPayload {
             if (h <= 0f) h = if (maxY >= minY) maxY - minY else 0f
         }
         return Pair(w.coerceAtLeast(1f), h.coerceAtLeast(1f))
+    }
+
+    /** ML Kit returns at most 10 candidates per ink. */
+    const val MAX_CANDIDATES = 10
+
+    /**
+     * Normalizes ML Kit's candidates for one ink before they cross the bridge: keeps ML Kit's
+     * order (most likely first), trims whitespace, drops empty texts and repeats (keeping the
+     * better score), turns non-finite scores into "no score", and keeps at most [max]
+     * (clamped to 1..[MAX_CANDIDATES]).
+     *
+     * The maths reader on the web side (packages/core/src/mathink) weighs every candidate, not
+     * just the first: "t" first and "+" second is how a text model often reads a plus sign.
+     */
+    fun candidates(raw: List<Pair<String?, Float?>>, max: Int): List<Candidate> {
+        val limit = max.coerceIn(1, MAX_CANDIDATES)
+        val out = ArrayList<Candidate>(minOf(limit, raw.size))
+        val index = HashMap<String, Int>()
+        for ((rawText, rawScore) in raw) {
+            val text = rawText?.trim().orEmpty()
+            if (text.isEmpty()) continue
+            val score = rawScore?.takeIf { it.isFinite() }
+            val seen = index[text]
+            if (seen != null) {
+                val prev = out[seen]
+                if (score != null && (prev.score == null || score < prev.score)) out[seen] = Candidate(text, score)
+                continue
+            }
+            if (out.size == limit) continue
+            index[text] = out.size
+            out += Candidate(text, score)
+        }
+        return out
     }
 
     /**

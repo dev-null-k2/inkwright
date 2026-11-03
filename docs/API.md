@@ -51,9 +51,13 @@ Send `Authorization: Bearer <credential>`:
 
 Scopes: `notes:read` (notes, pages, notebooks, tags, links, search, assets, transcripts,
 activity, routines), `notes:write` (create/change/trash/restore), `routines:run`, `webhooks`
-(manage subscriptions), `admin` (manage keys).
+(manage subscriptions), `admin` (manage keys), `federation:search` (for a teammate's server:
+only `GET /federated/search`, see [Team search](#team-search)).
 
-Create keys in the app (**Settings › Developer › API keys**), with the CLI, or with an `admin`
+Keyword search (`GET /search`) answers only with notes the AI policy lets agents see, like every
+other route (hidden and on-device notes are left out).
+
+Create keys in the app (**Settings › Extend › Developer › API keys**), with the CLI, or with an `admin`
 key through the API. Keys are stored in the vault's `api/keys.json` as SHA-256 hashes only — the
 key is shown once — so a key made on your phone works with the server on your laptop after sync,
 and revoking it anywhere revokes it everywhere (revocation always wins in sync merges).
@@ -122,6 +126,7 @@ Every write made with a key appears in the app under **Settings › AI › Activ
 | Automation | `GET /activity`, `GET /routines`, `POST /routines/{id}/run` |
 | Webhooks | `GET/POST /webhooks`, `GET/DELETE /webhooks/{id}`, `GET /webhooks/{id}/deliveries`, `POST /webhooks/{id}/test` |
 | Keys | `GET/POST /keys`, `DELETE /keys/{id}` |
+| Team | `GET /federated/search?q=` (scope `federation:search`; what this server shares), `GET /federated/team-search?q=` (your notes and your teammates', merged) — 404 unless the server has a team file |
 
 PNG and PDF need the optional `@resvg/resvg-js` package (installed on most platforms); PDF pages
 are the page rendered at 2× on a PDF page of the same size (the app's own PDF export is vector).
@@ -182,6 +187,21 @@ webhook-signature: v1,K5oZfzN95Z9UVu1EsfQmfVNQhnkZ2pj9o9NDN/H/pI4=
   `POST /webhooks/{id}/test` sends a sample event and returns the first attempt.
 - URLs must be https (http only for localhost).
 
+### Team search
+
+With a team file (`--team`, [FEDERATION.md](FEDERATION.md)) each person's server answers
+`GET /api/v1/federated/search` for their teammates' servers — titles and snippets of the notes
+they chose to share, filtered by their AI policy, for keys with the `federation:search` scope —
+and `GET /api/v1/federated/team-search` searches your notes and every teammate's at once:
+
+```sh
+curl -s "http://127.0.0.1:8765/api/v1/federated/team-search?q=pricing" -H "Authorization: Bearer $INKWRIGHT_MCP_TOKEN"
+# → {"query":"pricing","data":[{"person":"Ben","server":"https://ben.example.com","noteId":"…","title":"Pricing call","snippet":"…","relevance":1, …}, …],
+#    "peers":[{"name":"Ben","status":"ok","results":3,"ms":120},{"name":"Chen","status":"timeout", …}]}
+```
+
+Nothing is cached anywhere; a slow or refusing peer is listed in `peers` and never fails the search.
+
 ### The TypeScript SDK
 
 `@inkwright/sdk` (packages/sdk) is generated from the OpenAPI document: one typed method per
@@ -196,6 +216,8 @@ for await (const n of paginate((cursor) => inkwright.listNotes({ tag: 'work', cu
 ```
 
 Other languages: generate a client from `/api/v1/openapi.json` with any OpenAPI 3.1 generator.
+
+The SDK has `client.federatedSearch({ q })` and `client.teamSearch({ q })` for the team routes.
 
 ### How it is built
 
@@ -232,7 +254,7 @@ Modules ignores them. The parser is `apps/web/src/developer/deeplinks.ts`.
 
 ## window.inkwright
 
-Settings › Developer › Automation API exposes the plugin API (docs/PLUGINS.md) to scripts on
+Settings › Extend › Developer › Automation API exposes the plugin API (docs/PLUGINS.md) to scripts on
 the app's page — browser extensions, userscripts, the devtools console — with the permissions
 you tick there. Calls go through the same permission-checked dispatcher as plugins, and changes
 appear in Activity as "Automation API". It needs the Developer tools module (Settings ›

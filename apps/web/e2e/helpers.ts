@@ -98,3 +98,52 @@ export const modKey = (page: Page) =>
 export const isEngineNoise = (text: string) =>
   /Viewport argument key "interactive-widget" not recognized/.test(text) ||
   /Content-Security-Policy: The page.s settings blocked a JavaScript eval/.test(text);
+
+/**
+ * In Settings (already open): opens a group, e.g. "Privacy & trust", and optionally one of its
+ * tabs, e.g. "Authorship".
+ */
+export async function settingsGroup(page: Page, group: string, tab?: string) {
+  await page.getByRole('navigation', { name: 'Settings groups' }).getByRole('button', { name: new RegExp(`^${group.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`) }).click();
+  if (tab) await page.getByRole('tab', { name: tab, exact: true }).click();
+}
+
+/** A menu item by its label exactly (its accessible name also carries the hint, e.g. a shortcut). */
+const menuItemLabelled = (page: Page, label: string | RegExp) =>
+  typeof label === 'string'
+    ? page.getByRole('menu').getByRole('menuitem').filter({ has: page.locator('.menu-label').getByText(label, { exact: true }) }).first()
+    : page.getByRole('menu').getByRole('menuitem', { name: label }).first();
+
+/**
+ * Opens the editor's ••• menu and follows a path through its sub-sheets, e.g.
+ * `editorMenu(page, 'Share & export', 'PDF')`. With no path it only opens the menu.
+ */
+export async function editorMenu(page: Page, ...path: (string | RegExp)[]) {
+  await page.locator('.ed-top').getByRole('button', { name: 'More', exact: true }).click();
+  for (const step of path) await menuItemLabelled(page, step).click();
+}
+
+/**
+ * Every command in the editor's ••• menu as "Section › Item" paths, opening each sub-sheet and
+ * coming back with its back row. Leaves the menu closed.
+ */
+export async function editorMenuCommands(page: Page): Promise<string[]> {
+  await editorMenu(page);
+  const menu = page.getByRole('menu');
+  await expect(menu).toBeVisible();
+  const read = () => menu.getByRole('menuitem').evaluateAll((els) => els.map((e) => ({
+    label: e.querySelector('.menu-label')?.textContent?.trim() ?? '',
+    branch: e.getAttribute('aria-haspopup') === 'menu',
+    back: e.classList.contains('menu-back'),
+  })));
+  const out: string[] = [];
+  for (const top of await read()) {
+    if (!top.branch) { out.push(top.label); continue; }
+    await menuItemLabelled(page, top.label).click();
+    for (const sub of await read()) if (!sub.back) out.push(`${top.label} › ${sub.label}`);
+    await menu.locator('.menu-back').click();
+  }
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  return out;
+}

@@ -96,7 +96,7 @@ export function PluginPermissionPrompt() {
       <h3 className="plg-h">{req.added ? 'The new version also asks to' : 'It asks to'}</h3>
       <PermissionList manifest={m} perms={perms} checked={checked} onChange={(p, on) => setChecked((s) => { const n = new Set(s); if (on) n.add(p); else n.delete(p); return n; })} />
       {adds.length > 0 && <><h3 className="plg-h">It adds</h3><ul className="plg-adds">{adds.map((a) => <li key={a}>{a}</li>)}</ul></>}
-      <p className="muted small">Plugins run in a sandbox: they can’t see your files, keys or other notes beyond what you allow here, and you can take any permission back later in Settings › Plugins.</p>
+      <p className="muted small">Plugins run in a sandbox: they can’t see your files, keys or other notes beyond what you allow here, and you can take any permission back later in Settings › Extend › Plugins.</p>
     </Dialog>
   );
 }
@@ -173,7 +173,7 @@ export function PluginsSettings() {
               <span className="field-label">Link to a plugin (its manifest.json, folder or .zip)</span>
               <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/my-plugin/manifest.json" inputMode="url" autoComplete="off" />
             </label>
-            <button type="submit" className="btn btn-sm" disabled={busy || !url.trim()}><Link2 size={14} /> Install</button>
+            <button type="submit" className="btn btn-sm" disabled={busy || !url.trim()} title={!url.trim() ? 'Paste the plugin’s address first' : undefined}><Link2 size={14} /> Install</button>
           </form>
           <div className="row-buttons">
             <button type="button" className="btn" disabled={busy} onClick={() => void run(async () => {

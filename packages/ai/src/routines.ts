@@ -657,6 +657,25 @@ export const ROUTINE_TEMPLATES: readonly RoutineTemplate[] = [
       ].join('\n'),
     }, now),
   },
+  {
+    // The journal that writes itself (docs/MEMORY_TIMELINE.md § Journal). Its tools come from the
+    // journal module, which runs in the app (the desktop app keeps it running from the tray).
+    id: 'daily-journal',
+    name: 'Journal that writes itself',
+    blurb: 'Every evening, drafts the day\'s journal from your notes, recordings, calendar and memory timeline, with sources; you correct it with the pen.',
+    build: (now) => newRoutine({
+      name: 'Journal that writes itself',
+      template: 'daily-journal',
+      triggers: [{ kind: 'daily', time: '21:30' }],
+      tools: { notes: 'read', skills: false, mcpServers: [] },
+      prompt: [
+        'Draft my journal entry for today.',
+        '1. Call journal_sources (no date: today). If it says nothing happened today, reply that and stop.',
+        '2. Follow the instructions it returns, then call write_journal_draft once.',
+        'If journal_sources is not available here, say that the journal is drafted by the Inkwright app and stop.',
+      ].join('\n'),
+    }, now),
+  },
 ];
 
 /** Context the agent gets about why and when a routine is running. */

@@ -48,7 +48,7 @@ function opened(dc: RTCDataChannel, pc: RTCPeerConnection, timeoutMs = 30_000): 
 /** Plain words for a connection that never opened. */
 function connectionHelp(pc: RTCPeerConnection): string {
   return pc.connectionState === 'failed' || pc.iceConnectionState === 'failed'
-    ? 'The devices could not reach each other. On some networks a TURN relay is needed (Settings › Devices & sharing › Network).'
+    ? 'The devices could not reach each other. On some networks a TURN relay is needed (Settings › Sync & devices › Devices & sharing › Network).'
     : 'The other device did not connect in time.';
 }
 

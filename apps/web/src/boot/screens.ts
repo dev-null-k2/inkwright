@@ -5,6 +5,8 @@
  * next step, and the one where a delay would be felt on the first stroke), then the search palette
  * (Ctrl/⌘-K), then the app-wide dialogs and bars, then Settings.
  */
+import { Suspense, createElement } from 'react';
+import { useSettings } from '../state/settings.ts';
 import { lazyNamed, preloadInSequence } from './lazy.ts';
 import { onBackground, scheduleBackground } from './background.ts';
 
@@ -15,6 +17,17 @@ export const AgentDialogs = lazyNamed(() => import('../ui/agent/shared.tsx'), 'A
 export const CompilerDialogs = lazyNamed(() => import('../compiler/ui/dialogs.tsx'), 'CompilerDialogs');
 export const DevGlobal = lazyNamed(() => import('../dev/DevGlobal.tsx'), 'DevGlobal');
 export const PeerGlobal = lazyNamed(() => import('../peer/PeerGlobal.tsx'), 'PeerGlobal');
+export const RecallGlobal = lazyNamed(() => import('../recall/Global.tsx'), 'RecallGlobal');
+const Welcome = lazyNamed(() => import('../welcome/Welcome.tsx'), 'WelcomeGate');
+
+/**
+ * The first-run welcome, loaded only for someone who has not been through it: it brings the AI
+ * provider and sync setup screens with it, which nobody else needs at startup.
+ */
+export function WelcomeGate() {
+  const done = useSettings((s) => s.onboardingDone);
+  return done ? null : createElement(Suspense, { fallback: null }, createElement(Welcome));
+}
 
 /**
  * Runs `fn` in the background phase once the editor chunk is in (or failed to load), so module
@@ -36,7 +49,7 @@ export function preloadAfterLibrary(): void {
   started = true;
   scheduleBackground();
   onBackground(() => preloadInSequence([
-    Editor.preload, Palette.preload, PeerGlobal.preload, DevGlobal.preload, AgentDialogs.preload, CompilerDialogs.preload, Settings.preload,
+    Editor.preload, Palette.preload, PeerGlobal.preload, DevGlobal.preload, AgentDialogs.preload, CompilerDialogs.preload, RecallGlobal.preload, Settings.preload,
     // Engine files an update no longer uses (src/engines): free their space.
     () => import('../engines/store.ts').then((m) => m.clearStaleEngineCaches()),
   ]));

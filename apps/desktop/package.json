@@ -1,0 +1,21 @@
+{
+  "name": "@inkwright/desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Inkwright for macOS, Windows and Linux: the web app in a Tauri 2 shell with a tray, launch at login, inkwright:// links, Open with for PDFs, auto-update, the MCP server as a sidecar and the memory timeline's screen capture.",
+  "type": "module",
+  "scripts": {
+    "sidecar": "node scripts/build-sidecar.mjs",
+    "icons": "node scripts/icons.mjs",
+    "web": "npm run build:desktop -w @inkwright/web",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "check": "cd src-tauri && cargo check && cargo test"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.3",
+    "esbuild": "^0.28.2",
+    "postject": "1.0.0-alpha.6"
+  },
+  "license": "Apache-2.0"
+}

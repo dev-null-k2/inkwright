@@ -51,6 +51,8 @@ export interface ServerAgentOptions {
   approver: Approver;
   /** Extra system prompt context. */
   context?: string;
+  /** More tools (a routine's connected apps through the credential executor). */
+  extraTools?: AgentTool[];
 }
 
 export interface PreparedServerAgent {
@@ -105,6 +107,7 @@ export async function prepareServerAgent(ctx: ServerContext, ai: AgentAI, o: Ser
       sections.push(skillsPromptSection(enabled));
     }
   }
+  if (o.extraTools?.length) tools.push(...o.extraTools);
   if (proposing) sections.push(PROPOSAL_NOTICE);
   if (o.context) sections.push(o.context);
   // Policy tool rules, and the injection guard: after suspicious content, writes go to the approver.
@@ -147,7 +150,12 @@ export async function runRoutineOnServer(ctx: ServerContext, ai: AgentAI | null,
     const error = 'No AI is set up for the Inkwright agent. Start it with --ai-provider (see docs/AGENTS.md).';
     return { status: 'error', reply: '', error, run: await rec.finish('error', { error, alwaysLog: true }) };
   }
-  const extra = r.tools.mcpServers.length ? '\nConnected apps are not available when the routine runs outside the Inkwright app; skip steps that need them and say so.' : '';
+  // Connected apps: their read-only tools through the credential executor when it holds a token
+  // for them (creds/agent.ts); otherwise the routine is told to skip those steps.
+  const apps = r.tools.mcpServers.length && ai.connectorTools ? await ai.connectorTools(r.tools.mcpServers, { source: 'routine', label: r.name }).catch(() => ({ tools: [], missing: r.tools.mcpServers })) : { tools: [], missing: r.tools.mcpServers };
+  const extra = apps.missing.length
+    ? `\n${apps.tools.length ? 'Some connected apps are' : 'Connected apps are'} not available when the routine runs outside the Inkwright app; skip steps that need them and say so.${apps.tools.length ? ' The apps that are available offer only tools that read.' : ''}`
+    : apps.tools.length ? '\nConnected apps are available here only with tools that read; skip steps that would change something in them and say so.' : '';
   return runServerAgent(ctx, ai, {
     source: 'routine',
     label: r.name,
@@ -157,6 +165,7 @@ export async function runRoutineOnServer(ctx: ServerContext, ai: AgentAI | null,
     skills: r.tools.skills,
     approver,
     context: routineRunContext(r, ev, ctx.clock()) + extra,
+    ...(apps.tools.length ? { extraTools: apps.tools } : {}),
     messages: [{ role: 'user', content: r.prompt }],
     signal: opts.signal,
     onEvent: opts.onEvent,

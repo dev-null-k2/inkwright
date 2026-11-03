@@ -204,6 +204,7 @@ export async function syncNow(opts: { interactive?: boolean; allowMassDelete?: b
       if (open && open === session && [...touched].some((p) => p.startsWith(`notes/${open.doc.meta.id}/`))) {
         await open.reloadAfterSync(base!, baseMeta!);
       }
+      (await import('./vaultChanges.ts')).vaultChanged([...touched]);
     }
     useSync.setState(errors.length ? { status: 'error', message: errors.join(' · '), progress: null } : { status: 'idle', lastSync: Date.now(), progress: null, message: null });
   })().finally(() => { running = null; interactiveRun = false; });

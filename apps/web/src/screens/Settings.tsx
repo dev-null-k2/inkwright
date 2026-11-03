@@ -2,13 +2,13 @@ import { PalettePicker } from '../ui/PalettePicker.tsx';
 import { FeelPanel } from '../ui/FeelPanel.tsx';
 import { useEffect, useRef, useState } from 'react';
 import {
-  ArrowLeft, Bot, Check, Cloud, Copy, Download, ExternalLink, FolderOpen, Hand, Info, KeyRound, Palette, PenLine, Plug, Plus, RefreshCw, Trash2, Upload, Vibrate, ScanText,
+  Check, Copy, Download, ExternalLink, FolderOpen, KeyRound, PenLine, Plus, RefreshCw, Trash2, Upload,
 } from 'lucide-react';
 import { PROVIDERS, getProviderInfo, type ProviderInfo } from '@inkwright/ai';
 import { PAGE_SIZE_PRESETS, newId } from '@inkwright/core';
 import { useApp } from '../state/app.ts';
 import { DEFAULT_SETTINGS, useSettings, type AIProviderConfig } from '../state/settings.ts';
-import { IconButton, Segmented, Slider, Switch, cx, relativeTime, useMediaQuery } from '../ui/primitives.tsx';
+import { IconButton, Segmented, Slider, Switch, cx, relativeTime } from '../ui/primitives.tsx';
 import { PaperPicker } from '../ui/NewNoteSheet.tsx';
 import { askConfirm } from '../ui/prompts.tsx';
 import { GoogleSetupDialog } from '../ui/GoogleSetupDialog.tsx';
@@ -21,102 +21,63 @@ import { chooseSyncFolder, folderSyncSupported, resetSyncEngines, syncNow, useSy
 import { saveFile, pickFiles } from '../platform/files.ts';
 import { importFiles } from '../lib/actions.ts';
 import { BrandMark } from '../ui/Brand.tsx';
-import { Fingerprint } from 'lucide-react';
 import { AuthorshipSection } from '../authorship/AuthorshipSection.tsx';
 import { AgentSettings } from '../ui/agent/AgentSettings.tsx';
 import { SpeechSettings } from '../ui/SpeechSettings.tsx';
-import { Waypoints } from 'lucide-react';
-import { FileCode2 } from 'lucide-react';
 import { DeveloperSection } from '../dev/DevSettings.tsx';
 import { KnowledgeSettings } from '../ui/knowledge/KnowledgeSettings.tsx';
 import { LocalAISettings } from '../ui/LocalAISettings.tsx';
-import { Blocks, Code2, Puzzle } from 'lucide-react';
 import { ModulesSettings } from '../modules/ModulesSettings.tsx';
 import { PluginsSettings } from '../plugins/PluginsSettings.tsx';
 import { DeveloperSettings } from '../developer/DeveloperSettings.tsx';
-import { contributionOn, isModuleOn, useModules } from '../modules/registry.ts';
+import { isModuleOn } from '../modules/registry.ts';
+import { SettingsLayout } from '../settings/SettingsLayout.tsx';
+import { TrustSection, TRUST_VIEWS } from '../settings/TrustSection.tsx';
+import type { SectionId } from '../settings/groups.ts';
+import { DeviceCheckButton } from '../devicecheck/DeviceCheck.tsx';
 import { MemoryEvalSection } from '../compiler/ui/MemoryEvalSection.tsx';
-import { Accessibility } from 'lucide-react';
 import { InkActionsSettings, ReadingSettings } from '../inkactions/Settings.tsx';
-import { MonitorSmartphone } from 'lucide-react';
 import { DevicesSection } from '../peer/DevicesSection.tsx';
 import { EngineDownloads } from '../engines/EngineUI.tsx';
+import { History, Monitor, NotebookPen } from 'lucide-react';
+import { ImportSettings } from '../importers/ImportSettings.tsx';
+import { RecallSettings } from '../recall/RecallSettings.tsx';
+import { JournalSettings } from '../journal/JournalSettings.tsx';
+import { DesktopSettings } from '../desktop/DesktopSettings.tsx';
 
-const SECTIONS = [
-  { id: 'writing', label: 'Writing feel', icon: <Vibrate size={17} /> },
-  { id: 'input', label: 'Pen & touch', icon: <Hand size={17} /> },
-  { id: 'handwriting', label: 'Handwriting', icon: <ScanText size={17} /> },
-  { id: 'ai', label: 'AI', icon: <Bot size={17} /> },
-  { id: 'sync', label: 'Account & sync', icon: <Cloud size={17} /> },
-  { id: 'devices', label: 'Devices & sharing', icon: <MonitorSmartphone size={17} /> },
-  { id: 'agents', label: 'Agents (MCP)', icon: <Plug size={17} /> },
-  { id: 'authorship', label: 'Authorship', icon: <Fingerprint size={17} /> },
-  { id: 'appearance', label: 'Appearance & paper', icon: <Palette size={17} /> },
-  { id: 'knowledge', label: 'Notes, links & Obsidian', icon: <Waypoints size={17} /> },
-  { id: 'ink-actions', label: 'Ink actions', icon: <PenLine size={17} /> },
-  { id: 'reading', label: 'Reading', icon: <Accessibility size={17} /> },
-  { id: 'modules', label: 'Modules', icon: <Blocks size={17} /> },
-  { id: 'plugins', label: 'Plugins', icon: <Puzzle size={17} /> },
-  { id: 'code', label: 'Code & runbooks', icon: <FileCode2 size={17} /> },
-  { id: 'developer', label: 'Developer', icon: <Code2 size={17} /> },
-  { id: 'about', label: 'About', icon: <Info size={17} /> },
-] as const;
-
+/**
+ * Settings: the groups, tabs and search live in settings/SettingsLayout.tsx (ids and the search
+ * index in settings/groups.ts); this file holds the sections themselves.
+ */
 export function Settings({ section }: { section?: string }) {
-  const navigate = useApp((s) => s.navigate);
-  const wide = useMediaQuery('(min-width: 900px)');
-  const [active, setActive] = useState(section ?? (wide ? 'writing' : ''));
-  useEffect(() => { if (section) setActive(section); }, [section]);
-  // Sections owned by a switched-off module (Settings › Modules) are hidden.
-  const mods = useModules((m) => m.enabled);
-  const sections = SECTIONS.filter((s) => contributionOn('settingsSections', s.id, mods));
-  const current = sections.find((s) => s.id === active);
+  return <SettingsLayout section={section} renderSection={renderSection} />;
+}
 
-  const back = () => {
-    if (!wide && active) setActive('');
-    else navigate({ name: 'library' });
-  };
-
-  return (
-    <div className={cx('settings', wide && 'is-wide')}>
-      <header className="set-top">
-        <IconButton label="Back" onClick={back}><ArrowLeft size={20} /></IconButton>
-        <h1>{!wide && current ? current.label : 'Settings'}</h1>
-      </header>
-      <div className="set-body">
-        {(wide || !active) && (
-          <nav className="set-nav" aria-label="Settings sections">
-            {sections.map((s) => (
-              <button key={s.id} type="button" className={cx('nav-item', active === s.id && 'is-on')} onClick={() => setActive(s.id)}>
-                <span className="nav-icon">{s.icon}</span><span className="nav-label">{s.label}</span>
-              </button>
-            ))}
-          </nav>
-        )}
-        {active && (
-          <main className="set-main">
-            {active === 'writing' && <WritingSection />}
-            {active === 'input' && <InputSection />}
-            {active === 'handwriting' && <HandwritingSection />}
-            {active === 'ai' && <AISection />}
-            {active === 'sync' && <SyncSection />}
-            {active === 'devices' && current && <DevicesSection />}
-            {active === 'agents' && <AgentsSection />}
-            {active === 'authorship' && current && <AuthorshipSection />}
-            {active === 'appearance' && <AppearanceSection />}
-            {active === 'knowledge' && current && <KnowledgeSettings />}
-            {active === 'ink-actions' && <InkActionsSettings />}
-            {active === 'reading' && current && <ReadingSettings />}
-            {active === 'modules' && <ModulesSettings />}
-            {active === 'plugins' && current && <PluginsSettings />}
-            {active === 'code' && <DeveloperSection />}
-            {active === 'developer' && current && <DeveloperSettings />}
-            {active === 'about' && <AboutSection />}
-          </main>
-        )}
-      </div>
-    </div>
-  );
+function renderSection(id: SectionId) {
+  switch (id) {
+    case 'writing': return <WritingSection />;
+    case 'input': return <InputSection />;
+    case 'handwriting': return <HandwritingSection />;
+    case 'ai': return <AISection />;
+    case 'sync': return <SyncSection />;
+    case 'devices': return <DevicesSection />;
+    case 'agents': return <AgentsSection />;
+    case 'trust': return <TrustSection />;
+    case 'authorship': return <AuthorshipSection />;
+    case 'appearance': return <AppearanceSection />;
+    case 'knowledge': return <KnowledgeSettings />;
+    case 'ink-actions': return <InkActionsSettings />;
+    case 'reading': return <ReadingSettings />;
+    case 'modules': return <ModulesSettings />;
+    case 'plugins': return <PluginsSettings />;
+    case 'code': return <DeveloperSection />;
+    case 'developer': return <DeveloperSettings />;
+    case 'recall': return <RecallSettings />;
+    case 'journal': return <JournalSettings />;
+    case 'desktop': return <DesktopSettings />;
+    case 'import': return <ImportSettings />;
+    case 'about': return <AboutSection />;
+  }
 }
 
 function Group({ title, children, note }: { title: string; children: React.ReactNode; note?: React.ReactNode }) {
@@ -163,6 +124,9 @@ function InputSection() {
             <option value="none">Nothing</option>
           </select>
         </label>
+      </Group>
+      <Group title="Writing hand" note="On screens wide enough for the side tray, it sits on the edge away from your writing hand.">
+        <Segmented label="Writing hand" value={s.hand} onChange={(v) => s.update(() => ({ hand: v }))} options={[{ value: 'right', label: 'Right hand' }, { value: 'left', label: 'Left hand' }]} />
       </Group>
       <Group title="Fingers">
         <label className="field-row">
@@ -255,7 +219,7 @@ function AISection() {
       <Group title="Safety">
         <Switch label="Ask before the assistant deletes or moves notes" checked={s.ai.confirmDestructive} onChange={(v) => s.update((x) => ({ ai: { ...x.ai, confirmDestructive: v } }))} />
       </Group>
-      {isModuleOn('assistant') && <AgentSettings />}
+      {isModuleOn('assistant') && <AgentSettings exclude={TRUST_VIEWS} />}
       {isModuleOn('compiler') && <MemoryEvalSection />}
     </>
   );
@@ -301,7 +265,8 @@ function ProviderRow({ cfg }: { cfg: AIProviderConfig }) {
   );
 }
 
-function AddProvider({ onDone }: { onDone: () => void }) {
+/** Adds an AI provider and its key (Settings › AI, and the welcome's AI step). */
+export function AddProvider({ onDone }: { onDone: () => void }) {
   const s = useSettings();
   const [pid, setPid] = useState<string>('gemini');
   const info = getProviderInfo(pid) as ProviderInfo;
@@ -541,8 +506,13 @@ function AboutSection() {
         <p className="muted small">Everything is plain files in an open format (docs/VAULT_FORMAT.md). No account is required and nothing is sent anywhere unless you turn on sync or use AI.</p>
       </Group>
       <EngineDownloads />
+      {isModuleOn('device-check') && (
+        <Group title="This device" note="Measures the pen, the screen and how fast ink appears, and makes a report you can copy or share, for example with a bug report.">
+          <div className="row-buttons"><DeviceCheckButton /></div>
+        </Group>
+      )}
       <Group title="Reset">
-        <button type="button" className="btn btn-danger-ghost" onClick={async () => { if (await askConfirm('Reset settings?', 'Pens, gestures, feel and AI choices go back to defaults. Your notes and saved keys are not touched.', 'Reset', true)) s.update(() => ({ ...DEFAULT_SETTINGS, ai: s.ai, sync: s.sync })); }}>Reset settings to defaults</button>
+        <button type="button" className="btn btn-danger-ghost" onClick={async () => { if (await askConfirm('Reset settings?', 'Pens, gestures, feel and AI choices go back to defaults. Your notes and saved keys are not touched.', 'Reset', true)) s.update(() => ({ ...DEFAULT_SETTINGS, ai: s.ai, sync: s.sync, onboardingDone: s.onboardingDone })); }}>Reset settings to defaults</button>
       </Group>
       <p className="muted small"><PenLine size={13} /> Made for people who think with a pen.</p>
     </>

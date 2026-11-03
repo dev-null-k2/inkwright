@@ -13,3 +13,4 @@ export * from './runbook.ts';
 export * from './sessions.ts';
 export * from './graphimport.ts';
 export * from './archive.ts';
+export * from './shellrun.ts';

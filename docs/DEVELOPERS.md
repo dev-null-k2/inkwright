@@ -7,7 +7,7 @@ the rest of the app uses — readable by the MCP server, the `inkwright` CLI and
 
 It follows what works in 2026's code-knowledge tools (GitNexus, graphify, Archify, Headroom):
 deterministic parsing first, models only where judgement is needed, and everything exposed over
-MCP. It is optional: **Settings › Developer › Developer tools** turns all of it off (default: on
+MCP. It is optional: **Settings › Extend › Modules › Developer tools** turns all of it off (default: on
 for computers and tablets, off on phones). Off, nothing of it loads — no parsers, no menu entry,
 no marks on the page, no palette actions, no agent tools.
 
@@ -21,7 +21,7 @@ no marks on the page, no palette actions, no agent tools.
 
 ## 1. Code sources and the code graph
 
-A **code source** is a repository Inkwright has read. Add one in Settings › Developer:
+A **code source** is a repository Inkwright has read. Add one in Settings › Extend › Code & runbooks:
 
 - **Add folder** (desktop Chrome, Edge, Brave — the File System Access API). The folder is
   remembered on that device, so **Re-scan** reads it again after the browser re-confirms access.
@@ -30,6 +30,12 @@ A **code source** is a repository Inkwright has read. Add one in Settings › De
   downloaded by you. The archive is read in the page; nothing is uploaded. Re-scan by picking a
   newer archive.
 - **`inkwright scan <repo> --vault <vault>`** on a computer (below); the graph syncs to your other devices.
+- **The always-on runner watching the repository:** `inkwright-agent run --watch-repo ~/code/shop`
+  re-scans whenever the repository's git HEAD moves — a commit, a checkout, a pull — so drift
+  shows up without pressing Re-scan. HEAD is read from git's own files (`.git/HEAD`, the branch's
+  loose ref or `packed-refs`, worktrees and submodules followed; no git binary needed), checked
+  every 30 s, and the commit is recorded in the source (`source.json` › `head`). A runner that
+  starts on a repository already scanned at that commit doesn't scan it again.
 - **Import graph JSON**: graphify's `graph.json`, or generic nodes/edges JSON (below).
 
 Scanning parses **TypeScript, TSX, JavaScript, Python, Go, Rust and Java** with
@@ -95,7 +101,7 @@ works when it is unique in the file. `[[code:path/to/file.ts]]` links a whole fi
 `[[code:` offers symbols from your code sources. Code links are ordinary wiki links to the rest of
 Inkwright (backlinks, Obsidian export, sync), except that they never create notes.
 
-**Lassoed ink** binds to a symbol like it binds to a note: select it, then ••• › Developer ›
+**Lassoed ink** binds to a symbol like it binds to a note: select it, then ••• › Developer (inside ••• › Tools when plugins add commands there too) ›
 Link selection to code… (or the palette). The ink stays ink; an ink link with target
 `code:path#Symbol` rides on it.
 
@@ -183,21 +189,45 @@ Fenced blocks in typed text get a **Run** (or **Send**) button:
   and stopped after 5 s. `console.log` output and the returned value (top-level `return` and
   `await` work) are shown. No eval: the app's Content Security Policy stays intact.
 
-**Shell commands are not runnable.** Running them safely needs the always-on runner
-(`inkwright-agent`) to execute commands on a computer with a per-command approval round-trip
-through the vault; that is not built, so ` ```sh ` blocks are plain text rather than a fake button.
+- ` ```sh ` (also `bash`, `zsh`, `pwsh`; `cwd=<folder>` and a name after the language, e.g.
+  ` ```bash cwd=~/code/shop restart `) — **never in the page.** A shell block runs on one of your
+  computers, by the always-on runner, after you approve that exact run on this device. It needs
+  the **Runbook shell blocks** module (Settings › Modules, off by default) and a runner started
+  with `--shell-allow <folder>` (repeatable) and `--shell-trust "<this device's fingerprint>"`
+  (shown, with the exact command, in Settings › Code & runbooks › Shell blocks).
+
+  Pressing **Run** shows the command, shell, folder, computer and time limit. **Run on
+  <computer>** signs a request with this device's non-extractable P-256 key (the authorship key)
+  and writes it to the vault (`dev/shell/requests/`, VAULT_FORMAT.md); sync carries it to the
+  computer. The runner runs it only if the signature verifies, the device is one it was told to
+  trust **on that computer** (never from the vault: whoever can write your vault — a sync
+  provider, a paired device — must not be able to run commands), the approval is for this runner,
+  under 5 minutes old and not used before (a `running` result is written first), and the folder
+  — `~`, absolute, or relative to the first allowed folder, symlinks resolved — is inside an
+  allowed folder. The command gets no stdin and the runner's environment without anything that
+  looks like a secret (variables named like keys, tokens, passwords, and every `INKWRIGHT_*`),
+  runs in its own process group and is stopped (TERM, then KILL) after `--shell-timeout` (default
+  120 s). At most 1 MiB of output is kept; long output is shortened like a log (errors kept) and
+  the full text stays on that computer. The result comes back through sync into the block's
+  result card. Refusals say why. Each run and refusal is in the computer's signed audit trail
+  (`kind: exec` / `blocked`) as well as in Activity.
+
+  What it doesn't protect against: a command you approve does whatever it says with your account
+  on that computer — read it before you press Run. Anyone holding the approving device (unlocked)
+  can approve runs; remove its fingerprint from the runner to revoke it. Windows needs `pwsh`, or
+  Git Bash/WSL for `sh` and `bash`.
 
 Every run, including declined requests, is recorded in **Settings › AI › Activity** as a
 "Runbook" entry (a listed action, like a connected app's; nothing to undo in the notes).
 The MCP tool `get_runbook` returns a note's blocks and parsed requests; it does not run them.
 
-**Incident (RCA) template**: palette › New incident note (or Settings › Developer) adds an
+**Incident (RCA) template**: palette › New incident note (or Settings › Extend › Code & runbooks) adds an
 "Incident (RCA)" template to the vault's templates — impact, timeline, checks (an http block),
 root cause, actions — and starts a note from it; it is then offered under New note like any template.
 
 ## 6. Agent sessions → lessons
 
-Import transcripts (Settings › Developer › Import sessions, or the palette) into a **Sessions**
+Import transcripts (Settings › Extend › Code & runbooks › Agent sessions, or the palette) into a **Sessions**
 notebook as readable notes (who asked what, each tool call on one line, failures marked):
 
 | Agent | File | Format |
@@ -205,6 +235,15 @@ notebook as readable notes (who asked what, each tool call on one line, failures
 | Claude Code | `~/.claude/projects/<project>/<session>.jsonl` | one object per line: `type` user / assistant / summary; `message.content` a string or blocks (`text`, `tool_use`, `tool_result`); `timestamp`, `cwd`, `gitBranch`; sidechain and meta lines skipped |
 | Codex CLI | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` | `{timestamp, type, payload}` lines: `session_meta`, `turn_context`, `response_item` (`message`, `function_call`, `function_call_output`), `event_msg`; injected `<environment_context>` skipped |
 | Gemini CLI | `~/.gemini/tmp/<project>/chats/session-*.json` | one document `{sessionId, startTime, lastUpdated, messages: [{type: user / gemini / info / error, content, toolCalls}]}` |
+| OpenClaw, pi | `~/.openclaw/agents/<agent>/sessions/*.jsonl` (history from before OpenClaw's SQLite store, and reset/deletion archives; `zstd -d` the `.jsonl.zst` ones first), `~/.pi/agent/sessions/--<cwd>--/*.jsonl` | pi's session format v3: a `session` header, then a tree of entries (`id`, `parentId`): `message` (user, assistant with `text`/`toolCall` blocks, `toolResult`, `bashExecution`), `compaction`, `branch_summary`, `session_info`, `model_change`, `custom_message`, and OpenClaw's `reset`. Only the active branch (from the last entry back) and the latest reset window are shown, as OpenClaw's own readers do |
+
+OpenClaw support was checked against the formats pi-coding-agent 0.73.1 (`docs/session-format.md`)
+and OpenClaw 2026.10.9 (`docs/reference/session-management-compaction/schema.md`) publish, with
+transcripts written to those specifications — not against files from a live OpenClaw install.
+OpenClaw keeps current sessions in a per-agent SQLite database
+(`~/.openclaw/agents/<agent>/agent/openclaw-agent.sqlite`), which Inkwright does not read; its
+`sessions export-trajectory` bundle (`session-branch.json`) is not documented closely enough to
+import and is not supported.
 
 In a session note, ••• › Developer › **Find lessons** asks your configured AI to read it and call
 `propose_lessons` with at most five short, reusable rules. Proposals wait in Settings ›
@@ -231,6 +270,7 @@ npm run build -w @inkwright/mcp-server          # → apps/mcp-server/dist/inkwr
 node apps/mcp-server/dist/inkwright.js scan ~/code/shop --vault ~/Notes/Inkwright [--name shop] [--max-files 8000] [--json]
 node apps/mcp-server/dist/inkwright.js drift ~/Notes/Inkwright [--json] [--check]
 node apps/mcp-server/dist/inkwright.js mcp --vault ~/Notes/Inkwright      # the MCP server (all inkwright-mcp options)
+node apps/mcp-server/dist/inkwright.js context validate pack.json         # a context pack against spec/personal-context/v1.md
 ```
 
 `scan` writes only `code/sources/<id>/` (the id comes from the folder name; re-scans replace
@@ -253,6 +293,15 @@ approve each. The assistant sees code only through the tools above, and only wit
   CSV/JSON tables, tarballs; graph import; session transcripts and lessons.
   `packages/sync/test/coderefs-merge.test.ts`: baselines merge per link.
 - Evals (`npx vitest run --project evals packages/ai/evals/diagram.eval.ts`): the repair loop.
+- Runner (`npx vitest run --project mcp apps/mcp-server/test/shellrun.test.ts`): shell requests
+  run once when signed by a trusted device, and are refused when untrusted, changed, expired,
+  for another runner, or outside the allowed folders (symlinks included); secrets kept out of the
+  environment; timeouts; shortened output; audit entries; the git HEAD reader (loose, packed,
+  detached, worktree) and re-scans on HEAD moves. OpenClaw transcripts:
+  `packages/core/test/dev/openclaw.test.ts`.
+- End-to-end (`e2e/runbook-shell.spec.ts`): no Run button while the module is off; without a
+  computer the result says how to set one up; declining writes nothing; an approved request
+  verifies (and a changed one doesn't) and the computer's answer shows in the result card.
 - MCP and CLI (`npx vitest run --project mcp apps/mcp-server/test/dev.test.ts`): the five tools
   through the SDK client, `inkwright scan`/`drift` spawned for real, and the Agent Skill validated.
 - End-to-end (`e2e/dev.spec.ts`): zip import, `[[code:` autocomplete, symbol card, drift after a

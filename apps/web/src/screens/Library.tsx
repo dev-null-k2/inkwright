@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BookOpen, ChevronDown, Clock, FileUp, FolderInput, Hash, Inbox, Menu as MenuIcon, MoreHorizontal, NotebookPen, Pin, PinOff,
-  Plus, Search, Settings as SettingsIcon, Trash2, X, Copy, Pencil, RotateCcw, Cloud, CloudOff, Image as ImageIcon,
+  Plus, Search, Settings as SettingsIcon, Trash2, X, Copy, Pencil, RotateCcw, Cloud, CloudOff, Image as ImageIcon, FilePlus2,
 } from 'lucide-react';
 import type { NoteMeta, NotebookMeta, SearchHit } from '@inkwright/core';
 import { useApp, type LibraryFilter } from '../state/app.ts';
@@ -18,6 +18,7 @@ import { GraphNavItem, TodayNavItem } from '../ui/knowledge/LibraryParts.tsx';
 import { LibraryInkActions, PapersNavItem } from '../inkactions/LibraryParts.tsx';
 import { openPalette, usePaletteActions } from '../lib/palette.ts';
 import { isModuleOn, useModules } from '../modules/registry.ts';
+import { ThemeToggle } from '../ui/ThemeToggle.tsx';
 
 export function Library() {
   const { notes, trash, notebooks, filter, setFilter, query, setQuery, navigate, vault } = useApp();
@@ -27,8 +28,17 @@ export function Library() {
   // On touch screens the search field opens search-everything (notes, handwriting, PDFs, Ask).
   const touch = useMediaQuery('(pointer: coarse)');
   const [drawer, setDrawer] = useState(false);
+  // The drawer closes with Escape, like the app's other overlays.
+  useEffect(() => {
+    if (!drawer) return;
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') setDrawer(false); };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, [drawer]);
   const [newOpen, setNewOpen] = useState(false);
   const newBtn = useRef<HTMLButtonElement>(null);
+  // Below 900 px the split button gives way to the round button; this opens the same New menu there.
+  const newMenuBtn = useRef<HTMLButtonElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const [hits, setHits] = useState<SearchHit[] | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -167,6 +177,8 @@ export function Library() {
               onFocus={(e) => { if (touch && isModuleOn('search', mods)) { e.currentTarget.blur(); openPalette({ query }); } }} />
             {query && <button type="button" className="search-clear" aria-label="Clear search" onClick={() => setQuery('')}><X size={16} /></button>}
           </label>
+          <ThemeToggle />
+          {!wide && <button ref={newMenuBtn} type="button" className="icon-btn" aria-label="More ways to create" title="New: paper, template, document, sign a PDF" onClick={() => setNewOpen(true)}><FilePlus2 size={19} /></button>}
           {account && <IconButton label="Sync now" onClick={() => void syncNow()} className={cx(sync.status === 'syncing' && 'is-spinning')}><Cloud size={19} /></IconButton>}
           <div className="new-split">
             <button ref={newBtn} type="button" className="btn btn-primary new-btn" onClick={() => void quickNew()}>
@@ -183,7 +195,7 @@ export function Library() {
           if (id) navigate({ name: 'editor', noteId: id });
         }} />
 
-        <NewNoteSheet anchor={newBtn.current} open={newOpen} onClose={() => setNewOpen(false)} notebookId={filter.kind === 'notebook' ? filter.id : undefined}
+        <NewNoteSheet anchor={wide ? newBtn.current : newMenuBtn.current} open={newOpen} onClose={() => setNewOpen(false)} notebookId={filter.kind === 'notebook' ? filter.id : undefined}
           onImport={() => { setNewOpen(false); fileInput.current?.click(); }} />
 
         <div className="lib-scroll">

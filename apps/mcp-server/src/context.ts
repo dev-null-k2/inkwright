@@ -20,6 +20,20 @@ export interface ContextOptions {
   managedPolicyFile?: string;
   /** P-256 private JWK file that signs the audit trail (default: a key for this process). */
   auditKeyFile?: string;
+  /** Optional server features (switched on and off by command-line flags). */
+  features?: ServerFeatures;
+}
+
+/** Server features that are off unless configured, or on unless switched off. */
+export interface ServerFeatures {
+  /** `compress_and_store` / `retrieve_original` MCP tools (default on; `--no-context-tools`). */
+  contextTools?: boolean;
+  /** Where originals of shortened text are kept (shared with the proxy). */
+  originalsDir?: string;
+  /** Team (federated) search: on when a team file is given (`--team`; docs/FEDERATION.md). */
+  team?: import('./federation/team.ts').TeamConfig | null;
+  /** The credential executor's folder, for peers whose keys it holds. */
+  credentialsDir?: string;
 }
 
 /**
@@ -39,6 +53,8 @@ export interface ServerContext {
   readonly clock: () => number;
   /** True when this context created `inkwright.json` (the folder was not a vault yet). */
   readonly createdVault: boolean;
+  /** Optional features and their settings. */
+  readonly features?: ServerFeatures;
   /** Drops stale caches after external changes (another device, the app, a sync client). */
   refresh(): Promise<void>;
   /** A search index that reflects the vault's current files. */
@@ -111,6 +127,7 @@ export async function createContext(opts: ContextOptions): Promise<ServerContext
     readOnly,
     clock,
     createdVault,
+    ...(opts.features ? { features: opts.features } : {}),
     policy,
     trust,
     async refresh() {

@@ -7,6 +7,7 @@ import { PenNib, argbToCss } from './PenNib.tsx';
 import { IconButton, Popover, Segmented, Slider, cx } from './primitives.tsx';
 import { HIGHLIGHT_PALETTE, INK_PALETTE, useSettings } from '../state/settings.ts';
 import { modKey } from '../platform/env.ts';
+import { FingerDrawButton, StylusSwitchPrompt } from './FingerDraw.tsx';
 
 export interface DockProps {
   tool: Tool;
@@ -39,6 +40,9 @@ export function PenDock(p: DockProps) {
   const moreBtn = useRef<HTMLButtonElement>(null);
 
   const editingPreset = s.tray.find((x) => x.id === editing) ?? null;
+  // The side tray sits away from the writing hand; its popovers open towards the page.
+  const leftHanded = p.vertical && s.hand === 'left';
+  const side = p.vertical ? (leftHanded ? 'left' : 'right') : 'above';
 
   const choosePen = (id: string) => {
     if (p.tool === 'pen' && p.activePresetId === id) setEditing(id);
@@ -53,7 +57,7 @@ export function PenDock(p: DockProps) {
   };
 
   return (
-    <div className={cx('dock', p.vertical ? 'is-vertical' : 'is-horizontal', p.compact && 'is-compact')} role="toolbar" aria-label="Writing tools" aria-orientation={p.vertical ? 'vertical' : 'horizontal'}>
+    <div className={cx('dock', p.vertical ? 'is-vertical' : 'is-horizontal', p.compact && 'is-compact', leftHanded && 'is-right-edge')} role="toolbar" aria-label="Writing tools" aria-orientation={p.vertical ? 'vertical' : 'horizontal'}>
       {!p.compact && (
         <>
           <div className="dock-group">
@@ -97,17 +101,19 @@ export function PenDock(p: DockProps) {
         </button>
         <IconButton label="Lasso select" shortcut="L" active={p.tool === 'lasso'} onClick={() => p.onTool('lasso')}><Lasso size={20} /></IconButton>
         <IconButton label="Text" shortcut="T" active={p.tool === 'text'} onClick={() => p.onTool('text')}><Type size={20} /></IconButton>
+        <FingerDrawButton />
         <button ref={moreBtn} type="button" className={cx('icon-btn', (p.tool === 'hand' || p.tool === 'laser' || p.tool === 'tape') && 'is-active')} aria-label="More tools" title="More tools" onClick={() => setMoreOpen(true)}>
           {p.tool === 'laser' ? <Crosshair size={20} /> : p.tool === 'hand' ? <Hand size={20} /> : p.tool === 'tape' ? <Bandage size={20} /> : <Wand2 size={20} />}
         </button>
       </div>
 
+      <StylusSwitchPrompt />
       {editingPreset && (
-        <Popover anchor={refs.current.get(editingPreset.id) ?? null} open onClose={() => setEditing(null)} title="Pen settings" placement={p.vertical ? 'right' : 'above'}>
+        <Popover anchor={refs.current.get(editingPreset.id) ?? null} open onClose={() => setEditing(null)} title="Pen settings" placement={side}>
           <PenEditor preset={editingPreset} onClose={() => setEditing(null)} />
         </Popover>
       )}
-      <Popover anchor={eraserBtn.current} open={eraserOpen} onClose={() => setEraserOpen(false)} title="Eraser" placement={p.vertical ? 'right' : 'above'}>
+      <Popover anchor={eraserBtn.current} open={eraserOpen} onClose={() => setEraserOpen(false)} title="Eraser" placement={side}>
         <div className="pop-section">
           <Segmented label="Eraser mode" value={s.eraserMode} onChange={(v) => s.update(() => ({ eraserMode: v }))} options={[
             { value: 'stroke', label: 'Whole strokes' },
@@ -118,10 +124,10 @@ export function PenDock(p: DockProps) {
           <button type="button" className="btn btn-danger-ghost" onClick={() => { setEraserOpen(false); p.onClearPage(); }}><Trash2 size={16} /> Clear page</button>
         </div>
       </Popover>
-      <Popover anchor={eraserBtn.current} open={filterOpen} onClose={() => setFilterOpen(false)} title="Erase" placement={p.vertical ? 'right' : 'above'}>
+      <Popover anchor={eraserBtn.current} open={filterOpen} onClose={() => setFilterOpen(false)} title="Erase" placement={side}>
         <EraserFilterList onPick={() => { setFilterOpen(false); p.onTool('eraser'); }} />
       </Popover>
-      <Popover anchor={moreBtn.current} open={moreOpen} onClose={() => setMoreOpen(false)} title="More tools" placement={p.vertical ? 'right' : 'above'}>
+      <Popover anchor={moreBtn.current} open={moreOpen} onClose={() => setMoreOpen(false)} title="More tools" placement={side}>
         <div className="menu">
           <button type="button" className={cx('menu-item', p.tool === 'hand' && 'is-on')} onClick={() => { p.onTool('hand'); setMoreOpen(false); }}><span className="menu-icon"><Hand size={16} /></span><span className="menu-label">Pan and zoom</span><span className="menu-hint">H</span></button>
           <button type="button" className={cx('menu-item', p.tool === 'laser' && 'is-on')} onClick={() => { p.onTool('laser'); setMoreOpen(false); }}><span className="menu-icon"><Crosshair size={16} /></span><span className="menu-label">Laser pointer</span><span className="menu-hint">K</span></button>

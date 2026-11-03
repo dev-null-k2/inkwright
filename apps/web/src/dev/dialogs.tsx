@@ -23,7 +23,7 @@ export function CodePickerDialog({ open, onPick, onClose }: { open: boolean; onP
   const hits = useMemo(() => searchSymbols(graphs, q, { limit: 12 }).map((h) => h.symbol), [graphs, q]);
   return (
     <Dialog open={open} title="Link to code" onClose={onClose}>
-      {!graphs.length ? <p className="muted">Add a code source first (Settings › Developer).</p> : (
+      {!graphs.length ? <p className="muted">Add a code source first (Settings › Extend › Code & runbooks).</p> : (
         <div className="dev-picker">
           <input autoFocus className="input" placeholder="Function, class, route…" value={q} aria-label="Search code"
             onChange={(e) => { setQ(e.target.value); setActive(0); }}

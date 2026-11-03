@@ -5,7 +5,7 @@
  * other) so budgets hold across devices and the AI usage page shows the whole picture.
  *
  * Prices are list prices in USD per million tokens; they change, and contracts differ, so the
- * table is only a starting point: `policy.prices` overrides any entry (Settings › AI › Routing &
+ * table is only a starting point: `policy.prices` overrides any entry (Settings › Privacy & trust › Routing &
  * privacy › Prices). Calls to models on the device cost nothing. Unknown cloud models are
  * metered in tokens with cost shown as unknown, never guessed.
  */

@@ -12,6 +12,9 @@ import { Dialog, Segmented } from '../ui/primitives.tsx';
 import { admitGuest, attachEditor, inviteToNote, sendInk, sendPresence, stopLive, useLive, type LivePeer } from './collab.ts';
 import type { PendingOffer } from './connect.ts';
 import { ReadCode, ShowCode } from './CodeExchange.tsx';
+import { CodeCard, hostStatus } from './CodeSheets.tsx';
+import { cancelLiveCode, codeWaiting, setLiveCodePermission, startLiveCode, useLiveCodes } from './liveCodes.ts';
+import { usePeer } from './identity.ts';
 
 interface Args {
   doc: NoteDocument | null;
@@ -32,6 +35,8 @@ export function useLiveEditor({ doc, engine, host, view }: Args): { parts: React
 
   // Bind the document to the live session for this note (and re-bind when the session starts).
   const live = !!session && !session.ended;
+  // A short code still showing for this note (the sheet may be closed meanwhile).
+  const waiting = useLiveCodes((s) => codeWaiting(noteId ? s[noteId] : undefined));
   useEffect(() => {
     if (!doc || !live) return;
     return attachEditor(doc) ?? undefined;
@@ -92,11 +97,11 @@ export function useLiveEditor({ doc, engine, host, view }: Args): { parts: React
   const parts = (
     <>
       {doc && engine && live && <PresenceLayer doc={doc} engine={engine} peers={peers} view={view} />}
-      {doc && live && (
+      {doc && (live || waiting) && (
         <div className="live-pill" role="status">
           <Radio size={13} />
-          <span>{session!.role === 'host' ? (peers.length ? `Live with ${peers.map((p) => p.author.name).join(', ')}` : 'Live — waiting for people') : session!.permission === 'write' ? `Live with ${peers.map((p) => p.author.name).join(', ') || 'the host'}` : 'Watching live · view only'}</span>
-          <button type="button" className="live-pill-btn" onClick={() => setOpen(true)}>{session!.role === 'host' ? 'Invite' : 'Leave'}</button>
+          <span>{!live || session!.role === 'host' ? (peers.length ? `Live with ${peers.map((p) => p.author.name).join(', ')}` : 'Waiting for someone to join') : session!.permission === 'write' ? `Live with ${peers.map((p) => p.author.name).join(', ') || 'the host'}` : 'Watching live · view only'}</span>
+          <button type="button" className="live-pill-btn" onClick={() => setOpen(true)}>{!live || session!.role === 'host' ? (waiting ? 'Show code' : 'Invite') : 'Leave'}</button>
         </div>
       )}
       {doc && <ShareDialog open={open} onClose={() => setOpen(false)} doc={doc} />}
@@ -109,7 +114,72 @@ export function useLiveEditor({ doc, engine, host, view }: Args): { parts: React
 }
 
 function ShareDialog({ open, onClose, doc }: { open: boolean; onClose: () => void; doc: NoteDocument }) {
-  const session = useLive((s) => s.sessions[doc.meta.id]);
+  const noteId = doc.meta.id;
+  const session = useLive((s) => s.sessions[noteId]);
+  const code = useLiveCodes((s) => s[noteId]);
+  const network = usePeer((s) => s.network);
+  const available = !!(network.relayUrl.trim() || network.publicRelay.trim());
+  const guest = session?.role === 'guest';
+  const peers = Object.values(session?.peers ?? {});
+
+  // Opening the sheet shows a code at once (a fresh one when the last was used up or ended).
+  useEffect(() => {
+    if (!open || guest || !available) return;
+    const c = useLiveCodes.getState()[noteId];
+    if (!c || c.error || (c.state && c.state.phase !== 'waiting' && c.state.phase !== 'connecting')) void startLiveCode(doc, c?.permission ?? 'write');
+    // Only when the sheet opens: a used-up code stays visible ("Priya joined") until asked for again.
+  }, [open]);
+
+  const status = code?.error
+    ? { text: code.error, tone: 'error' as const }
+    : code?.joined && code.state?.phase === 'done'
+      ? { text: `${code.joined} joined.`, tone: 'done' as const }
+      : hostStatus(code?.state ?? null, 'them');
+  const ended = !!code && (!!code.error || code.state?.phase === 'ended' || code.state?.phase === 'failed');
+  const used = code?.state?.phase === 'done';
+  return (
+    <Dialog open={open} onClose={onClose} title={guest ? 'Live note' : 'Share this note live'} actions={
+      <>
+        {session && !session.ended && <button type="button" className="btn btn-danger" onClick={() => { cancelLiveCode(noteId); stopLive(noteId); onClose(); }}>{guest ? 'Leave' : 'Stop sharing'}</button>}
+        <button type="button" className="btn" onClick={onClose}>Done</button>
+      </>
+    }>
+      {guest ? (
+        <p>You are {session!.permission === 'write' ? 'writing on' : 'watching'} a note shared by {peers[0]?.author.name ?? 'someone'}. When you leave, your copy stays in your notes.</p>
+      ) : (
+        <div className="share-sheet">
+          {peers.length > 0 && (
+            <ul className="live-people" aria-label="People in this note">
+              {peers.map((p) => <li key={p.author.id}><span className={`live-dot is-hue-${p.hue}`} aria-hidden />{p.author.name}<span className="muted small"> · {p.permission === 'write' ? 'can write' : 'can view'}</span></li>)}
+            </ul>
+          )}
+          {!available ? (
+            <p className="muted">Short codes need a relay to meet through, and none is set (Settings › Sync & devices › Devices & sharing › Network). You can still share with the long codes below.</p>
+          ) : (
+            <>
+              {!used && !ended && (code?.host
+                ? <CodeCard code={code.host.code.value} link={code.link} expiresAt={code.host.expiresAt} relay={code.relay} shareText={`Join “${doc.meta.title}” in Inkwright.`} />
+                : <div className="code-card is-placeholder" aria-hidden />)}
+              {!used && <Segmented label="What they can do" value={code?.permission ?? 'write'} onChange={(p) => setLiveCodePermission(noteId, p)} options={[{ value: 'write', label: 'Can write' }, { value: 'view', label: 'Can view' }]} />}
+              <p role="status" className={`peer-status is-${status.tone}`}>{status.text}</p>
+              {(used || ended) && <button type="button" className="btn" onClick={() => void startLiveCode(doc, code?.permission ?? 'write')}>{used ? 'Invite someone else' : 'New code'}</button>}
+            </>
+          )}
+          <details className="peer-advanced" open={!available}>
+            <summary>Advanced: share without a relay</summary>
+            <LongCodeInvite doc={doc} />
+          </details>
+        </div>
+      )}
+    </Dialog>
+  );
+}
+
+/**
+ * The offline fallback: a long invite code shown here, and the guest's long answer code typed or
+ * scanned back. Needs no relay at all — the two people are the signalling channel.
+ */
+function LongCodeInvite({ doc }: { doc: NoteDocument }) {
   const toast = useApp((s) => s.toast);
   const [permission, setPermission] = useState<CollabPermission>('write');
   const [pending, setPending] = useState<PendingOffer | null>(null);
@@ -117,7 +187,6 @@ function ShareDialog({ open, onClose, doc }: { open: boolean; onClose: () => voi
   const pendingRef = useRef<PendingOffer | null>(null);
   pendingRef.current = pending;
   useEffect(() => () => pendingRef.current?.cancel(), []);
-  useEffect(() => { if (!open) setPending(null); }, [open]);
 
   const makeInvite = async () => {
     setBusy(true);
@@ -140,40 +209,18 @@ function ShareDialog({ open, onClose, doc }: { open: boolean; onClose: () => voi
     }
     setBusy(false);
   };
-  const guest = session?.role === 'guest';
-  const peers = Object.values(session?.peers ?? {});
-  return (
-    <Dialog open={open} onClose={onClose} title={guest ? 'Live note' : 'Share live'} actions={
-      <>
-        {session && !session.ended && <button type="button" className="btn btn-danger" onClick={() => { stopLive(doc.meta.id); onClose(); }}>{guest ? 'Leave' : 'Stop sharing'}</button>}
-        <button type="button" className="btn" onClick={onClose}>Done</button>
-      </>
-    }>
-      {guest ? (
-        <p>You are {session!.permission === 'write' ? 'writing on' : 'watching'} a note shared by {peers[0]?.author.name ?? 'someone'}. When you leave, your copy stays in your notes.</p>
-      ) : (
-        <>
-          <p className="muted">People you invite see this note and every stroke as it is written, directly from this device and end to end encrypted. Each invite works once.</p>
-          {peers.length > 0 && (
-            <ul className="live-people">
-              {peers.map((p) => <li key={p.author.id}><span className={`live-dot is-hue-${p.hue}`} aria-hidden />{p.author.name}<span className="muted small"> · {p.permission === 'write' ? 'can write' : 'can view'}</span></li>)}
-            </ul>
-          )}
-          {!pending ? (
-            <div className="live-invite">
-              <Segmented label="What they can do" value={permission} onChange={setPermission} options={[{ value: 'write', label: 'Can write' }, { value: 'view', label: 'Can view' }]} />
-              <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void makeInvite()}>Make an invite</button>
-            </div>
-          ) : (
-            <div className="peer-flow">
-              <h3 className="peer-flow-title">Show this to the person you’re inviting</h3>
-              <ShowCode code={pending.code} label="Invitation code" />
-              <ReadCode label="Then enter the code their device shows" busy={busy} onCode={(c) => void admit(c)} />
-            </div>
-          )}
-        </>
-      )}
-    </Dialog>
+  return !pending ? (
+    <div className="live-invite">
+      <p className="muted small">You each copy or scan a long code, one each way. Works with no internet relay, for example on the same network.</p>
+      <Segmented label="What they can do" value={permission} onChange={setPermission} options={[{ value: 'write', label: 'Can write' }, { value: 'view', label: 'Can view' }]} />
+      <button type="button" className="btn" disabled={busy} onClick={() => void makeInvite()}>Make an invite</button>
+    </div>
+  ) : (
+    <div className="peer-flow">
+      <h3 className="peer-flow-title">Show this to the person you’re inviting</h3>
+      <ShowCode code={pending.code} label="Invitation code" />
+      <ReadCode label="Then enter the code their device shows" busy={busy} onCode={(c) => void admit(c)} />
+    </div>
   );
 }
 

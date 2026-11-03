@@ -1,0 +1,89 @@
+{
+ "description": "Conformance cases for spec/personal-context/v1.md. Every file in valid/ must be accepted; every file in invalid/ must be rejected with an error at `path`. `schemaCatches`: whether the JSON Schema alone rejects it (the other rules are in v1.md section 6).",
+ "valid": [
+  "full.json",
+  "minimal.json"
+ ],
+ "invalid": [
+  {
+   "file": "wrong-format.json",
+   "path": "/format",
+   "schemaCatches": true
+  },
+  {
+   "file": "missing-memory.json",
+   "path": "/memory",
+   "schemaCatches": true
+  },
+  {
+   "file": "bad-id.json",
+   "path": "/id",
+   "schemaCatches": true
+  },
+  {
+   "file": "bad-date.json",
+   "path": "/createdAt",
+   "schemaCatches": false
+  },
+  {
+   "file": "unknown-property.json",
+   "path": "/producer",
+   "schemaCatches": true
+  },
+  {
+   "file": "bad-tag.json",
+   "path": "/compiled/0/claims/0/tag",
+   "schemaCatches": true
+  },
+  {
+   "file": "extracted-without-source.json",
+   "path": "/compiled/0/claims/0/sources",
+   "schemaCatches": true
+  },
+  {
+   "file": "confidence-out-of-range.json",
+   "path": "/compiled/0/claims/0/confidence",
+   "schemaCatches": true
+  },
+  {
+   "file": "page-zero.json",
+   "path": "/compiled/0/claims/0/sources/0/page",
+   "schemaCatches": true
+  },
+  {
+   "file": "link-mismatch.json",
+   "path": "/compiled/0/claims/0/sources/0/link",
+   "schemaCatches": false
+  },
+  {
+   "file": "recording-without-ms.json",
+   "path": "/compiled/0/claims/1/sources/0",
+   "schemaCatches": true
+  },
+  {
+   "file": "duplicate-note.json",
+   "path": "/notes/1/id",
+   "schemaCatches": false
+  },
+  {
+   "file": "negative-page-index.json",
+   "path": "/notes/0/pages/0/index",
+   "schemaCatches": true
+  },
+  {
+   "file": "image-path.json",
+   "path": "/images/0/name",
+   "schemaCatches": true
+  },
+  {
+   "file": "image-not-image.json",
+   "path": "/images/0/mediaType",
+   "schemaCatches": true
+  },
+  {
+   "file": "bad-base64.json",
+   "path": "/images/0/base64",
+   "schemaCatches": true
+  }
+ ]
+}

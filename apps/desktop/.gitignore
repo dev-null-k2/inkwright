@@ -1,0 +1,6 @@
+build/
+src-tauri/target/
+src-tauri/gen/
+# Built by `npm run sidecar` (scripts/build-sidecar.mjs); ~100 MB, never committed.
+src-tauri/binaries/inkwright-mcp-*
+src-tauri/tauri.release.json

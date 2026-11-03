@@ -49,7 +49,7 @@ test('SR-01: a plugin that arrives with the vault does not run until it is revie
 
   // Settings › Plugins says why, and offers a review.
   await page.goto('/?e2e#settings/plugins');
-  await page.locator('.set-nav .nav-item', { hasText: 'Plugins' }).click();
+  await expect(page.getByRole('tab', { name: 'Plugins', selected: true })).toBeVisible();
   const card = page.locator('.plg-card', { hasText: 'Arrived' });
   await expect(card).toContainText('Review it to run it here');
   await card.getByRole('button', { name: 'Review' }).click();
@@ -61,7 +61,7 @@ test('SR-01: a plugin that arrives with the vault does not run until it is revie
   // Changing its code elsewhere (a sync bringing a different main.js) needs a new review.
   await writeVault(page, { [`plugins/${id}/main.js`]: code.replace("'v1'", "'v2'") });
   await page.reload();
-  await page.locator('.set-nav .nav-item', { hasText: 'Plugins' }).click();
+  await expect(page.getByRole('tab', { name: 'Plugins', selected: true })).toBeVisible();
   await expect(page.locator('.plg-card', { hasText: 'Arrived' })).toContainText('Review it to run it here', SLOW);
   await page.waitForTimeout(2000);
   expect(await ran(page, id)).toBe('v1');
@@ -115,7 +115,7 @@ test('SR-12: a plugin without the network permission cannot open a WebRTC connec
   });
   await openApp(page);
   await page.goto('/?e2e#settings/plugins');
-  await page.locator('.set-nav .nav-item', { hasText: 'Plugins' }).click();
+  await expect(page.getByRole('tab', { name: 'Plugins', selected: true })).toBeVisible();
   await page.getByLabel('Link to a plugin (its manifest.json, folder or .zip)').fill('https://plugins.test/rtc/');
   await page.locator('form.plg-url').getByRole('button', { name: 'Install' }).click();
   await page.getByRole('dialog', { name: 'Install RTC probe?' }).getByRole('button', { name: 'Install' }).click();

@@ -8,7 +8,7 @@ import { aiCanSee } from '../lib/trust/state.ts';
  * Local-only notes are routed to an on-device model by the gateway itself.
  */
 export async function aiForNote(note: Pick<NoteMeta, 'id' | 'title' | 'notebookId' | 'tags'> | null, opts: AICallOptions & { needVision?: boolean } = {}): Promise<ActiveAI> {
-  if (note && !aiCanSee(note.id)) throw new Error('AI is not allowed to read this note (Settings › AI › Access).');
+  if (note && !aiCanSee(note.id)) throw new Error('AI is not allowed to read this note (Settings › Privacy & trust › Routing & privacy).');
   const ai = await getActiveAI({ ...opts, ...(note ? { notes: [{ id: note.id, title: note.title, notebookId: note.notebookId, tags: note.tags }] } : {}) });
   if (!ai) throw new Error('Connect an AI first: add your own key for any provider in Settings › AI.');
   if (opts.needVision && !ai.vision) throw new Error(`${ai.label} can’t read images. Choose a vision model in Settings › AI, or recognize the handwriting first.`);

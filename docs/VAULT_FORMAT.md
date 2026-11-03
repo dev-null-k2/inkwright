@@ -30,6 +30,9 @@ reference implementation is `packages/core/src/codec.ts` + `vault.ts`.
   ai/lessons.json                       lessons proposed from coding-agent sessions (see "Code sources")
   code/sources/<sourceId>/source.json   a mounted repository: where it came from, last scan (see "Code sources")
   code/sources/<sourceId>/graph.json    its code graph: symbols with signature hashes, edges
+  dev/shell/runners/<runnerId>.json     a computer offering to run runbook shell blocks (see "Runbook shell blocks")
+  dev/shell/requests/<id>.json          a signed approval to run one shell block there
+  dev/shell/results/<id>.json           what happened: status, exit code, shortened output
   notes/<noteId>/assets/provenance.json where each AI-written sentence of the note came from (see "Context compiler")
   ai/compiler/config.json, state.json   context compiler: sources, settings, compiled pages
   ai/compiler/proposals/<id>.json       compiled-wiki changes waiting for review (and decided ones)
@@ -46,6 +49,11 @@ reference implementation is `packages/core/src/codec.ts` + `vault.ts`.
   ai/usage/<YYYY-MM>/<device>.json      AI usage meter: tokens, cost and savings per day and provider
   ai/audit/<device>/<YYYY-MM>.jsonl     audit trail: signed, hash-chained record of what AI saw and did
   branches/<branchId>.json              a branch of proposed changes: per note its base and head (see "Branches")
+  recall/config.json                    memory timeline settings shared by devices (see "Memory timeline")
+  recall/<YYYY-MM-DD>/<HH>-<device>.jsonl  memory timeline captures: redacted text, one per line
+  recall/erased-<device>.jsonl          what a device erased from the timeline (hides copies sync brings back)
+  ai/journal/config.json                journal that writes itself: style, timeline use, imported calendars
+  ai/journal/calendars/<id>.ics         an imported or subscribed calendar, as its iCalendar file
 ```
 
 Rules
@@ -146,6 +154,7 @@ don't understand.
 
 { "type": "math", "id", "x", "y", "createdAt",
   "input": "2x + 3 = 7", "latex": "2x+3=7", "result": "x = 2", "steps": ["…"],
+  "stepsBy?": "solver|ai", "readBy?": "ML Kit on this device",
   "fontSize": 22, "color": "#FF1B1F24", "source": ["<stroke ids>"], "origin": "solver|ai" }
 
 { "type": "graph", "id", "x", "y", "createdAt", "width": 320, "height": 220,
@@ -173,6 +182,11 @@ text, else recognized text.
 from, in a handwriting-style font with a faint wash so they are never mistaken for the user's ink.
 `input` is plain ASCII maths. `origin` is `solver` when the device read and solved it, `ai` when
 an AI read the handwriting (the answer is still checked by the on-device solver when it can).
+Optional: `readBy` names who read the handwriting, for people ("ML Kit on this device",
+"Inkwright’s built-in reader on this device", or the AI's name); `stepsBy` says whether `steps`
+were computed by the on-device solver or written by an AI (absent in older notes, where steps
+always came from an AI). Sync merges objects whole, by id, so both travel with their object;
+readers that don't know them ignore them. See docs/MATH.md.
 
 **Sticky notes and tape** are *overlays*: drawn over the ink and typed text, in list order.
 
@@ -285,6 +299,48 @@ kept on each device only, encrypted with the app's WebCrypto secret store, and n
 Paper styles: `blank ruled_narrow ruled_wide dot_grid square_grid graph_mm isometric cornell music
 planner_day planner_week todo`. Tints: `white ivory cream recycled kraft mint blush slate midnight`.
 Textures: `smooth standard toothy`.
+
+## Documents (`document`, typed and formatted notes)
+
+A **document** is a note of typed, formatted text that can carry ink on top (the Documents module:
+headings, bold/italic/underline/strike, links, bullet, numbered and check lists, tables, pictures,
+quotes, code, rules and page breaks). It is an ordinary paged note with one extra field:
+
+```jsonc
+// note.json
+{ "kind": "paged", "document": { "width": 720 }, "pageSize": { "name": "Document", "width": 720, "height": 1018 }, … }
+```
+
+Its first page holds the body as one text box marked `"role": "document"`:
+
+```jsonc
+// pages/<id>.ink.json
+{ "texts": [{ "id": "…", "role": "document", "x": 48, "y": 56, "width": 624, "fontSize": 16, "font": "sans",
+              "color": "#FF1B1F24", "createdAt": 0, "text": "# Plan\n\nWe leave on **Friday**.\n\n- [ ] Tent\n" }],
+  "strokes": [ … ] }   // ink annotations
+```
+
+- `text` is GitHub-flavoured Markdown (CommonMark + tables, task lists, `~~strike~~`), with three
+  HTML additions for what Markdown has no syntax for: `<u>…</u>` (underline),
+  `<div class="page-break"></div>` (a manual page break, on a line of its own) and `<br>` inside
+  table cells. Pictures are `![alt](assets/<name>)`, files in the note's `assets/` folder — the
+  path is relative to the note folder, so `note.md` and other Markdown tools show them too. Writers
+  produce it deterministically (apps/web/src/documents/markdown.ts): saving an unchanged document
+  rewrites nothing.
+- Keeping the body in a text box means search, `note.md`, agents' `read_note`, the MCP server,
+  Obsidian export, version history and sync treat a document's words like any typed text. Readers
+  that don't know `role` show the Markdown as a text box; nothing is lost.
+- **Ink annotations** are the first page's `strokes`, in CSS pixels of a column `document.width`
+  wide (the body's layout width, not the page size). Apps show the document at that width while
+  ink is visible (scaling it on narrower screens) so marks stay on the words they were made on.
+- Text that other features add to the page as a separate box (an assistant answer "inserted on
+  the page", dictation) belongs at the end of the document; apps fold it in.
+- Undo of typing is the text editor's own; saving the body is not an ink undo step.
+- `note.md` of a document is its Markdown under the usual front matter (`kind: document`), followed
+  by a link to the page SVG when it has ink.
+
+Sync merges a body edited on two devices paragraph by paragraph against the base (see "Sync").
+Exports: PDF, Word (.docx), Markdown (a .zip with `assets/` when it has pictures) and HTML.
 
 ## Links, tags and daily notes
 
@@ -453,7 +509,11 @@ Sync engines (Google Drive, WebDAV, local folder) mirror this tree file-for-file
 images/objects are unioned by id with deletions honoured from either side; authorship chain events
 are unioned and ordered by time (including collaborators' events with `by`; an item's `author`
 is part of its content, so it merges like any other field); scalar metadata takes the most
-recent `updatedAt`. `forms` merges per PDF and per field (filling different fields on two devices
+recent `updatedAt`. A document body (a text box with `role: "document"`) edited on both sides is
+merged block by block (blank-line separated Markdown blocks, fenced code kept whole) against the
+base: paragraphs changed on different devices both survive, a paragraph changed differently on both
+is kept in both versions (local first), and a deletion on one side wins over an unchanged block
+(packages/sync/src/merge-document.ts). `forms` merges per PDF and per field (filling different fields on two devices
 keeps both; the newer note wins a field both changed). `codeRefs` merges per link the same way. Transcripts merge too: within the same `run`,
 segments are unioned by id (one-sided edits and deletions honoured, the newer file wins a segment
 both changed) and `complete` is true if either side finished; different runs (one device
@@ -553,7 +613,7 @@ update) → put `before` back if the text box still holds `after`; `external {se
 a change in a connected app, listed only. The newest 300 runs are kept (and fewer days when the
 AI policy's `retention.activityDays` says so; none are removed under legal hold).
 
-**AI policy** — `ai/policy.json`, written by Settings › AI › Routing & privacy (or by hand). Only
+**AI policy** — `ai/policy.json`, written by Settings › Privacy & trust › Routing & privacy (or by hand). Only
 fields that differ from the defaults are present; every field is optional and readers fill in the
 defaults. The full schema and defaults are in docs/TRUST.md › The policy file:
 
@@ -620,7 +680,8 @@ Repositories the developer module has read (docs/DEVELOPERS.md). Written by the 
 // code/sources/<id>/source.json
 { "id": "shop", "name": "shop", "kind": "folder|zip|tarball|cli|graphify|generic",
   "origin": "shop-main.zip", "createdAt", "scannedAt",
-  "stats": { "files": 42, "symbols": 310, "edges": 512, "skipped?": 3 }, "formatVersion": 1 }
+  "stats": { "files": 42, "symbols": 310, "edges": 512, "skipped?": 3 }, "formatVersion": 1,
+  "head?": { "ref": "refs/heads/main", "commit": "<sha>" } }   // the git commit scanned (runner's HEAD watch); optional
 
 // code/sources/<id>/graph.json (compact JSON)
 { "formatVersion": 1, "sourceId": "shop", "name": "shop", "scannedAt",
@@ -655,6 +716,35 @@ symbols and edges (by path, line, id) so the same code always gives the same fil
 
 Accepted lessons are appended to the `AGENTS.md` note as text; decided ones stay (newest 300) so
 the same lesson is not proposed twice.
+
+### Runbook shell blocks (`dev/shell/`)
+
+The app and the always-on runner talk through these files (protocol and checks:
+`packages/core/src/dev/shellrun.ts`, docs/DEVELOPERS.md › Runbooks). Nothing here is enough to
+run a command: the runner also needs the approving device's fingerprint in its own, local
+configuration. Each file is whole-file, last writer wins in sync; they never conflict, since
+each id is written by one side.
+
+```jsonc
+// dev/shell/runners/<runnerId>.json — written by a runner every minute while it runs
+{ "v": 1, "id": "sh-<hash of computer and vault>", "label": "Ana's MacBook", "platform": "darwin",
+  "allow": ["/Users/ana/code"], "shells": ["sh", "bash", "zsh"], "timeoutSeconds": 120,
+  "trusted": ["<fingerprint>"], "heartbeatAt": 1730000000000 }
+
+// dev/shell/requests/<id>.json — written by the app when the person approves a run (deleted once answered)
+{ "v": 1, "id": "<24 base64url>", "runner": "sh-…", "command": "systemctl --user restart shop",
+  "dialect": "sh|bash|zsh|pwsh", "cwd?": "~/code/shop",
+  "note": { "id", "title" }, "block": { "line": 3, "codeHash": "<32 hex: SHA-256 of the command>" },
+  "requestedAt", "expiresAt",                      // at most 5 minutes apart
+  "device": { "publicJwk": { "kty": "EC", "crv": "P-256", "x", "y" }, "fingerprint", "name?" },
+  "sig": "<base64url ECDSA P-256 SHA-256 over 'inkwright-shell-run/1\n' + canonical JSON of the rest>" }
+
+// dev/shell/results/<id>.json — written by the runner ("running" first, so a request runs once)
+{ "v": 1, "id", "runner", "status": "running|done|failed|timeout|refused", "reason?",
+  "exitCode?", "signal?", "startedAt?", "finishedAt?", "cwd?",
+  "output?": "<stdout and stderr, shortened like a log when long>", "outputBytes?", "shortened?",
+  "originalRef?": "<16 hex: the full output, kept on the runner's computer>" }
+```
 
 ## Context compiler
 
@@ -760,7 +850,7 @@ also keeps, outside the vault (browser storage `inkwright.plugins.consent.v1`), 
 of the manifest and entry script and the permissions approved **on that device**; a plugin runs
 there only while its files match that fingerprint and `granted` asks for nothing more. A plugin
 installed, updated or granted more by another device, a sync remote or a restored backup waits
-for a review in Settings › Plugins (security review SR-01, docs/PLUGINS.md › Plugins for users).
+for a review in Settings › Extend › Plugins (security review SR-01, docs/PLUGINS.md › Plugins for users).
 
 ## API keys (`api/keys.json`)
 
@@ -864,3 +954,68 @@ asset once one is matched.
   "pdf": "01JD….pdf"
 }
 ```
+
+## Memory timeline (`recall/`)
+
+Written only when the memory timeline module is on (docs/MEMORY_TIMELINE.md). Code:
+`packages/core/src/recall/format.ts` and `store.ts`. Everything here is text: screenshots and
+audio are never stored, and every value was redacted before it was written.
+
+**Captures** (`recall/<YYYY-MM-DD>/<HH>-<device>.jsonl`). One JSON object per line. Day and hour
+are the capturing device's local time; `at` is authoritative for ordering. Each file has one
+writer, the device in its name (`[0-9A-Za-z_-]{1,24}`), which only appends, so two devices never
+write the same file. Readers skip malformed lines.
+
+```jsonc
+{ "id": "01JD…", "at": 1730000000000, "kind": "screen",           // or "audio" (with "end")
+  "app": "Terminal", "title": "zsh — make bench", "url": "https://example.com/path",  // origin + path only
+  "text": "$ make bench\nmailto [email]", "redacted": { "email": 1 },  // counts per kind, never values
+  "engine": "tesseract.js 7 · eng", "device": "k3v9x0aq" }
+```
+
+**Settings** (`recall/config.json`), shared by every device; whether a computer captures, and
+pauses, are kept on that device only and never sync.
+
+```jsonc
+{ "formatVersion": 1, "retentionDays": 14, "intervalSec": 20, "excludedApps": ["Slack"],
+  "excludedTitles": ["bank"], "microphone": false, "updatedAt": 1730000000000 }
+```
+
+**Erasure records** (`recall/erased-<device>.jsonl`). Appended by a device when the user erases
+moments (`ids`), a day or everything (`from`/`to`: every capture with `from ≤ at < to`). Readers
+hide every capture a record covers; pruning deletes those lines and drops records older than the
+retention period.
+
+```jsonc
+{ "at": 1730000000000, "ids": ["01JD…"] }
+{ "at": 1730000500000, "from": 1729980000000, "to": 1730000500001 }
+```
+
+Retention: any device running the app deletes captures older than `retentionDays` (whole day
+folders, then lines of the day that straddles the cutoff).
+
+### Sync
+
+- Capture files merge three-way by capture id: a capture in the base and missing on one side was
+  erased there and stays out; otherwise both sides' captures are kept.
+- Sync lets an edit beat a deletion, so a capture file deleted by "erase this day" on one device
+  comes back if its device appended to it meanwhile. The erasure records exist for this: the
+  returned lines are hidden at once and deleted at the next prune (on start, then every six hours).
+- Erasure files merge as a union of their lines. `recall/config.json` follows the default
+  newest-wins rule.
+
+## Journal (`ai/journal/`)
+
+Written only when the journal module is on (docs/MEMORY_TIMELINE.md § The journal that writes
+itself). Code: `apps/web/src/journal/config.ts`.
+
+- `ai/journal/config.json`: `style` (`"ink"` or `"typed"`), `hand` (`"script"` or `"print"`),
+  `includeTimeline`, and `calendars` — `{ id, name, source: "file"|"url", host?, events,
+  updatedAt }` per calendar. A subscribed calendar's address is a secret (it grants read access),
+  so only its `host` is here; the address stays in the encrypted secret store of the device that
+  added it. Newest wins in sync.
+- `ai/journal/calendars/<id>.ics`: the calendar exactly as imported or last fetched (RFC 5545).
+- Drafts are ordinary notes tagged `journal` in the Journal notebook, written with `origin: "ai"`
+  (AI ink or typed text). A draft is the day's daily note (`daily`) when there was none, otherwise
+  a note titled `<YYYY-MM-DD> · journal`. Its sentences' sources are in the note's
+  `provenance.json` under `ink:<first stroke id>` or `text:<box id>`.

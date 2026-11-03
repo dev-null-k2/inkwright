@@ -11,7 +11,11 @@ import { initNativeAI, nativeSpeechAvailable, nativeSpeechOnDevice, useNativeAI 
 import { Switch } from '../primitives.tsx';
 import { AGENT_VIEWS, AgentView, type AgentViewId } from './shared.tsx';
 
-export function AgentSettings() {
+/**
+ * `exclude` leaves screens out of the list (Settings shows the trust screens under Privacy & trust);
+ * a request to open one of them (from a toast or a link) is still honoured here.
+ */
+export function AgentSettings({ exclude = [] }: { exclude?: readonly AgentViewId[] } = {}) {
   const [open, setOpen] = useState<AgentViewId | null>(null);
   const counts = useCounts();
   useEffect(() => hostAgentViews((v) => setOpen(v as AgentViewId)), []);
@@ -30,7 +34,7 @@ export function AgentSettings() {
       <section className="set-group">
         <h2>Assistant</h2>
         <div className="set-card ag-nav">
-          {AGENT_VIEWS.map((v) => (
+          {AGENT_VIEWS.filter((v) => !exclude.includes(v.id)).map((v) => (
             <button key={v.id} type="button" className="ag-nav-row" onClick={() => setOpen(v.id)}>
               <span className="nav-icon">{v.icon}</span>
               <span className="ag-nav-text"><span className="row-label">{v.label}</span><span className="row-hint">{v.hint}</span></span>

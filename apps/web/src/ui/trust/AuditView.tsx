@@ -1,5 +1,5 @@
 /**
- * Settings › AI › Audit trail: what AI saw and did, newest first — model calls (where they went,
+ * Settings › Privacy & trust › Audit trail: what AI saw and did, newest first — model calls (where they went,
  * why, which notes they carried, what was kept private), notes agents read and changed, policy
  * changes and blocks. Export writes every device's chain as JSONL; Verify checks the hashes and
  * signatures here, and the same check runs offline with `inkwright-agent audit verify`.

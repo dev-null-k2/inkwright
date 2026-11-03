@@ -4,5 +4,5 @@
     "types": ["vite/client"],
     "jsx": "react-jsx"
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "e2e/**/*.ts", "e2e-android/**/*.ts", "vite.config.ts", "playwright.config.ts", "playwright.android.config.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "evals/**/*.ts", "e2e/**/*.ts", "e2e-android/**/*.ts", "vite.config.ts", "playwright.config.ts", "playwright.android.config.ts"]
 }

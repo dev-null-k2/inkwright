@@ -7,12 +7,12 @@ the evals — what it does well and where it falls short.
 
 | You want | Inkwright does | Where |
 |---|---|---|
-| Cheap and private work to stay on the device, hard work to go to a strong model | Routes each kind of task by rules you set | Settings › AI › Routing & privacy |
+| Cheap and private work to stay on the device, hard work to go to a strong model | Routes each kind of task by rules you set | Settings › Privacy & trust › Routing & privacy |
 | Some notebooks or tags never to reach a cloud AI, or not to be visible to AI at all | Per-notebook and per-tag rules, enforced for the assistant, routines, the MCP server, A2A and the runner | same, `ai/policy.json` |
-| No surprise bills | Per-provider monthly budgets across all devices; a usage page with cost and savings | Settings › AI › AI usage |
+| No surprise bills | Per-provider monthly budgets across all devices; a usage page with cost and savings | Settings › Privacy & trust › AI usage |
 | Fewer tokens without worse answers | Reversible context shortening with originals kept on the device | automatic |
 | No personal data or keys in prompts | A privacy firewall that redacts (or blocks) and puts values back in the answer | automatic |
-| Proof of what AI saw and did | A signed, hash-chained audit trail you can export and verify | Settings › AI › Audit trail |
+| Proof of what AI saw and did | A signed, hash-chained audit trail you can export and verify | Settings › Privacy & trust › Audit trail |
 | Agents that can't be talked into damage by a note or web page | Spotlighting, tool rules and a confirmation guard; dry run | automatic / Routing & privacy |
 
 ## One choke point
@@ -210,7 +210,7 @@ Kinds: `ai_call` (where, why, which notes' content it carried, redaction counts,
 with this device's non-extractable authorship key; the server with `--audit-key` (a P-256 JWK the
 operator controls) or a key per process.
 
-**Verify** in Settings › AI › Audit trail, or offline:
+**Verify** in Settings › Privacy & trust › Audit trail, or offline:
 `inkwright-agent audit --verify export.jsonl [--expect-head <hash>]… [--trusted-key <fingerprint>]…`
 (exit code 1 when it fails). Edited, removed, inserted or reordered events break the chain; a
 forged event fails its signature. Limits: whoever holds a device's private key can rewrite that

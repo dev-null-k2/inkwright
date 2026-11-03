@@ -23,7 +23,7 @@ import { createContext } from './context.ts';
 import { applyServerRetention, logPolicy, trustedAI } from './trust.ts';
 import { RoutineRunner } from './runner/runner.ts';
 import { currentPlatform, decodeServiceContent, serviceFile, type ServicePlatform } from './runner/services.ts';
-import { aiFromOptions, serveHttp } from './serve.ts';
+import { aiFromOptionsAsync, featuresFromOptions, serveHttp } from './serve.ts';
 import { VERSION } from './version.ts';
 
 export const AGENT_USAGE = `inkwright-agent — runs your Inkwright routines on this computer, even when the app is closed
@@ -42,6 +42,12 @@ run options:
   --http, --host, --public-url, --token, --oauth-*, --a2a   (as for inkwright-mcp --help)
   --tick <seconds>         How often to check time and date triggers (default 60).
   --log-file <path>        Append the log to a file as well as stderr.
+  --watch-repo <folder>    Re-scan this repository into the vault when its git HEAD moves (repeatable).
+  --shell-allow <folder>   Run runbook shell blocks approved in the app, in this folder or below
+                           (repeatable; off without it). See docs/DEVELOPERS.md.
+  --shell-trust <fp>       Accept approvals signed by this device (its fingerprint, from the app's
+                           Settings › Code & runbooks; repeatable).
+  --shell-timeout <s>      Stop a command after this many seconds (default 120).
 
 The app and the runner never both run a trigger: the runner holds a lease in the vault
 (ai/leases/routines.json) and the app leaves automatic routines to it while it is alive.
@@ -63,6 +69,10 @@ const AGENT_OPTIONS = {
   verify: { type: 'string' },
   'expect-head': { type: 'string', multiple: true },
   'trusted-key': { type: 'string', multiple: true },
+  'watch-repo': { type: 'string', multiple: true },
+  'shell-allow': { type: 'string', multiple: true },
+  'shell-trust': { type: 'string', multiple: true },
+  'shell-timeout': { type: 'string' },
 } as const;
 
 export interface AgentCommand {
@@ -83,10 +93,14 @@ export interface AgentCommand {
   trustedKeys: string[];
   /** The flags to pass to `run` from a service (install). */
   runArgs: string[];
+  /** Repositories to re-scan when their HEAD moves. */
+  watchRepos: string[];
+  /** Runbook shell blocks: folders, trusted device fingerprints, timeout. Off when `allow` is empty. */
+  shell: { allow: string[]; trust: string[]; timeoutSeconds: number };
 }
 
 /** Flags that configure `run` and are copied into service files by `install`. */
-const RUN_FLAGS = new Set(['vault', 'config', 'read-only', 'http', 'host', 'public-url', 'oauth-issuer', 'oauth-audience', 'oauth-jwks-url', 'oauth-read-scope', 'oauth-write-scope', 'a2a', 'ai-provider', 'ai-model', 'ai-base-url', 'ai-key-env', 'ai-on-premises', 'policy', 'audit-key', 'tick', 'no-watch']);
+const RUN_FLAGS = new Set(['vault', 'config', 'read-only', 'http', 'host', 'public-url', 'oauth-issuer', 'oauth-audience', 'oauth-jwks-url', 'oauth-read-scope', 'oauth-write-scope', 'a2a', 'ai-provider', 'ai-model', 'ai-base-url', 'ai-key-env', 'ai-on-premises', 'ai-credential', 'credentials-dir', 'team', 'policy', 'audit-key', 'tick', 'no-watch', 'watch-repo', 'shell-allow', 'shell-trust', 'shell-timeout']);
 
 export function parseAgentCli(argv: string[], env: NodeJS.ProcessEnv = process.env): AgentCommand {
   const [first, ...rest] = argv;
@@ -107,14 +121,22 @@ export function parseAgentCli(argv: string[], env: NodeJS.ProcessEnv = process.e
   for (const t of tokens) {
     if (t.kind !== 'option' || !t.name || !RUN_FLAGS.has(t.name)) continue;
     runArgs.push(`--${t.name}`);
-    if (t.value !== undefined) runArgs.push(['vault', 'config', 'policy', 'audit-key'].includes(t.name) ? path.resolve(expandHome(t.value)) : t.value);
+    if (t.value !== undefined) runArgs.push(['vault', 'config', 'policy', 'audit-key', 'credentials-dir', 'team', 'watch-repo', 'shell-allow'].includes(t.name) ? path.resolve(expandHome(t.value)) : t.value);
   }
+  const cfg = values.config ? (JSON.parse(readFileSync(expandHome(String(values.config)), 'utf8')) as { runner?: { watchRepos?: string[]; shell?: { allow?: string[]; trust?: string[]; timeoutSeconds?: number } } }).runner : undefined;
+  const dirs = (v: unknown, fallback: string[] | undefined) => ((v as string[] | undefined) ?? fallback ?? []).map((d) => path.resolve(expandHome(d)));
+  const shellTimeout = Number(values['shell-timeout'] ?? cfg?.shell?.timeoutSeconds ?? 120);
+  if (!Number.isFinite(shellTimeout) || shellTimeout < 1 || shellTimeout > 3600) throw new CliError('--shell-timeout is 1 to 3600 seconds.');
+  const shell = { allow: dirs(values['shell-allow'], cfg?.shell?.allow), trust: ((values['shell-trust'] as string[] | undefined) ?? cfg?.shell?.trust ?? []).map((f) => f.trim()).filter(Boolean), timeoutSeconds: shellTimeout };
+  if (shell.allow.length && !shell.trust.length) throw new CliError('--shell-allow needs at least one --shell-trust <device fingerprint>: only approvals from devices you name here are run.');
   const platform = (values.platform as string | undefined) ?? currentPlatform();
   if (!['macos', 'linux', 'windows'].includes(platform)) throw new CliError('--platform is macos, linux or windows.');
   return {
     command: values.help ? 'help' : command,
     options,
     tickMs: tick * 1000,
+    watchRepos: dirs(values['watch-repo'], cfg?.watchRepos),
+    shell,
     ...(values['log-file'] ? { logFile: path.resolve(expandHome(String(values['log-file']))) } : {}),
     platform: platform as ServicePlatform,
     dryRun: Boolean(values['dry-run']),
@@ -152,16 +174,30 @@ function needVault(o: CliOptions): string {
 
 async function run(c: AgentCommand): Promise<void> {
   const log = makeLog(c.logFile);
-  const ctx = await createContext({ root: needVault(c.options), readOnly: c.options.readOnly, watch: c.options.watch, ...(c.options.policyFile ? { managedPolicyFile: c.options.policyFile } : {}), ...(c.options.auditKey ? { auditKeyFile: c.options.auditKey } : {}) });
+  const ctx = await createContext({ root: needVault(c.options), readOnly: c.options.readOnly, watch: c.options.watch, features: await featuresFromOptions(c.options, log), ...(c.options.policyFile ? { managedPolicyFile: c.options.policyFile } : {}), ...(c.options.auditKey ? { auditKeyFile: c.options.auditKey } : {}) });
   logPolicy(ctx, log);
   if (!ctx.readOnly) void applyServerRetention(ctx).catch((e) => log(`Retention: ${(e as Error).message}`));
   // The runner's AI goes through the trust layer (routing, privacy firewall, meter, audit).
-  const ai = trustedAI(aiFromOptions(c.options, log), ctx.trust);
+  const ai = trustedAI(await aiFromOptionsAsync(c.options, log), ctx.trust);
   if (!ai) log('No AI configured: routines will be logged as failed until you add --ai-provider (see docs/AGENTS.md).');
   const runner = new RoutineRunner({ ctx, ai, log, tickMs: c.tickMs, watch: c.options.watch });
   let http: Awaited<ReturnType<typeof serveHttp>> | null = null;
   if (c.options.http !== undefined) http = await serveHttp(ctx, c.options, ai, log);
   await runner.start();
+  // Optional: re-scan repositories when their HEAD moves; run approved runbook shell blocks.
+  let repos: import('./runner/repowatch.ts').RepoWatcher | null = null;
+  if (c.watchRepos.length) {
+    const { RepoWatcher } = await import('./runner/repowatch.ts');
+    repos = new RepoWatcher({ ctx, repos: c.watchRepos.map((p) => ({ path: p })), log });
+    await repos.start().catch((e) => log(`Watching repositories: ${(e as Error).message}`));
+  }
+  let shell: import('./runner/shell.ts').ShellService | null = null;
+  if (c.shell.allow.length) {
+    const { ShellService } = await import('./runner/shell.ts');
+    const { DiskContentStore, defaultOriginalsDir } = await import('./proxy/originals.ts');
+    shell = new ShellService({ ctx, allow: c.shell.allow, trusted: c.shell.trust, timeoutSeconds: c.shell.timeoutSeconds, originals: new DiskContentStore(c.options.originalsDir ?? defaultOriginalsDir()), log });
+    await shell.start().catch((e) => { log(`Runbook shell blocks: ${(e as Error).message}`); shell = null; });
+  }
   log(`Watching ${ctx.root} — routines run here while this keeps running.`);
   let stopping = false;
   const stop = async () => {
@@ -169,6 +205,9 @@ async function run(c: AgentCommand): Promise<void> {
     stopping = true;
     log('Stopping; handing routines back to the app.');
     await runner.stop();
+    repos?.stop();
+    await shell?.stop();
+    ai?.close?.();
     if (http) {
       http.services.tasks.close();
       await http.services.activity.flush();

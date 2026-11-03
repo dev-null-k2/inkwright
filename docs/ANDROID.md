@@ -110,6 +110,8 @@ First run notes:
 
 **`recognize({ language, lines })`** → `{ lines }` with one string per input line. It runs off the main thread. Each line is recognized with `WritingArea(width, height)` and a pre-context: the line's `preContext` if the web layer sent one, otherwise the previous recognized line plus a space (the last 20 characters). It rejects with code `NOT_READY` if the model is not on the device yet.
 
+**`recognizeSymbols({ language, inks, maxCandidates })`** → `{ results: [{ candidates: [{ text, score }] }] }`, one entry per ink. The handwritten-maths reader sends one ink per symbol (strokes it grouped itself) and gets ML Kit's ranked candidates for each, with an empty pre-context and the problem's size as the writing area; `score` is ML Kit's (lower is likelier) or `null` when the model gives none. Candidates are trimmed, de-duplicated and capped by `InkPayload.candidates` (JVM-tested). See docs/MATH.md.
+
 **`stylusButton` event** `{ pressed, keyCode }`: `MainActivity.dispatchKeyEvent` forwards `KEYCODE_STYLUS_BUTTON_PRIMARY/SECONDARY/TERTIARY/TAIL` (308–311; AOSP has no other stylus key codes). It sends one `pressed: true` per press and ignores auto-repeat and duplicate downs. It sends one `pressed: false` per release, plus a synthetic release if the window loses focus mid-press. These keys are consumed, so the WebView does not also see them. The editor uses them as the external button (`Editor.tsx` → `engine.setExternalButton`).
 
 **Opening files from other apps** ("Open with Inkwright", "Share to Inkwright"): `AndroidManifest.xml`
@@ -231,6 +233,10 @@ has no AICore phone and no GPU emulator image:
 - the microphone permission prompt from `speechStart`.
 
 Logs: `adb logcat -s InkwrightAI GeminiNano LiteRtEngine`.
+
+For the pen, the screen and latency, Settings › About › **Check this device** measures them in the
+app itself and shares a report through Android's share sheet (docs/TESTING.md, "Testing on a
+device").
 
 ## The Moto Pen Ultra's buttons
 

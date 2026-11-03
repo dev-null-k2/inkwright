@@ -14,6 +14,7 @@ const SCOPE_TEXT: Record<ApiScope, string> = {
   'routines:run': 'Run routines',
   webhooks: 'Manage webhooks',
   admin: 'Manage API keys',
+  'federation:search': 'Team search only (for a teammate’s server)',
 };
 
 const LINKS: [string, string][] = [

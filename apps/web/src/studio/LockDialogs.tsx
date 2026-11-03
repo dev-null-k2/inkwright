@@ -68,7 +68,7 @@ export function LockNoteDialog({ open, onClose, onLock }: { open: boolean; onClo
   return (
     <Dialog open={open} title="Lock this note" onClose={onClose} actions={<>
       <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
-      <button type="button" className="btn btn-primary" disabled={!ready} onClick={() => void lock()}>{busy ? 'Locking…' : 'Lock note'}</button>
+      <button type="button" className="btn btn-primary" disabled={!ready} title={ready || busy ? undefined : a.length < MIN_PASSCODE ? `Type a passcode of at least ${MIN_PASSCODE} characters` : a !== b ? 'Type the same passcode twice' : 'Tick “I understand” below first'} onClick={() => void lock()}>{busy ? 'Locking…' : 'Lock note'}</button>
     </>}>
       <div className="lock-form">
         <p>The pages, pictures, recordings and history of this note are encrypted with your passcode, here and in every synced copy. Search and the assistant skip it. The title stays visible in your library.</p>

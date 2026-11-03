@@ -61,11 +61,14 @@ async function hello(purpose: LinkPurpose, extra: Record<string, unknown> = {}) 
   return { device: id.info, features: [purpose], ...extra };
 }
 
-/** Starts a connection: an offer to show. For `sync`, `expect` is the paired device it must be. */
-export async function startConnection(purpose: LinkPurpose, opts: { invite?: CollabInvite; expect?: PairedDevice } = {}): Promise<PendingOffer> {
+/**
+ * Starts a connection: an offer to show. For `sync`, `expect` is the paired device it must be.
+ * With `pakePsk` (a short code's key, shortcode.ts) the offer carries no secret of its own.
+ */
+export async function startConnection(purpose: LinkPurpose, opts: { invite?: CollabInvite; expect?: PairedDevice; pakePsk?: Uint8Array } = {}): Promise<PendingOffer> {
   const id = await deviceIdentity();
   const rtc = await rtcOffer(await iceServers());
-  const started = await createOffer({ device: id.info, purpose, sdp: rtc.sdp, ...(opts.invite ? { invite: opts.invite } : {}) });
+  const started = await createOffer({ device: id.info, purpose, sdp: rtc.sdp, ...(opts.invite ? { invite: opts.invite } : {}), ...(opts.pakePsk ? { pakePsk: opts.pakePsk } : {}) });
   let used = false;
   let linked = false;
   return {
@@ -98,11 +101,11 @@ export const readCode = decodeCode;
  * The answering side: checks who is asking, answers, and connects. Returns the answer code at
  * once (to show back) and the connection when it opens.
  */
-export async function answerConnection(offer: PeerOffer, opts: LinkOptions = {}): Promise<{ answerCode: string; answer: PeerAnswer; connected: Promise<Connected> }> {
+export async function answerConnection(offer: PeerOffer, opts: LinkOptions & { pakePsk?: Uint8Array } = {}): Promise<{ answerCode: string; answer: PeerAnswer; connected: Promise<Connected> }> {
   const id = await deviceIdentity();
   if (offer.purpose === 'sync' && !pairedByKey(offer.from.key)) throw new PairingError(`“${offer.from.name}” is not paired with this device. Pair the devices first.`);
   const rtc = await rtcAnswer(offer.sdp, await iceServers());
-  const { answer, keys } = await answerOffer({ offer, identity: id.key, device: id.info, sdp: rtc.sdp });
+  const { answer, keys } = await answerOffer({ offer, identity: id.key, device: id.info, sdp: rtc.sdp, ...(opts.pakePsk ? { pakePsk: opts.pakePsk } : {}) });
   const connectedP = (async () => {
     const transport = await rtc.channel;
     const link = await PeerLink.open(transport, keys, await hello(offer.purpose, opts.hello), { answering: true, ...(opts.setup ? { setup: opts.setup } : {}) });
@@ -128,7 +131,7 @@ async function connected(link: PeerLink, purpose: LinkPurpose, from: DeviceInfo,
 async function relay(): Promise<RelayClient | null> {
   const url = usePeer.getState().network.relayUrl.trim();
   if (!url) return null;
-  return new RelayClient({ url, token: (await getRelayToken()) ?? undefined });
+  return new RelayClient({ url, getToken: getRelayToken });
 }
 
 /** Mailbox for messages *to* `toId`, sealed with the pair's shared secret. */
@@ -183,9 +186,11 @@ export async function listenViaRelay(opts: { signal: AbortSignal; setup: (link: 
   const listen = async (device: PairedDevice) => {
     const inbox = await mailbox(client, device, id.info.id);
     const outbox = await mailbox(client, device, device.id);
-    let cursor = await latestSeq(inbox);
+    let cursor: number | null = null;
     while (!opts.signal.aborted && pairedByKey(device.key)) {
       try {
+        // Inside the loop: a relay that is down or refuses at first must not end the listener.
+        cursor ??= await latestSeq(inbox);
         const m = await inbox.receive(cursor, opts.signal);
         cursor = m.seq;
         const v = await decodeCode(m.text);

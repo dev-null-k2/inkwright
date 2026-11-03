@@ -55,6 +55,9 @@ import org.json.JSONObject
  *  - confirm()                      → crisp confirmation tick (non-blocking)
  *  - prepareRecognizer({ language }) → { state: 'ready' | 'downloading' | 'failed' | 'unsupported' }
  *  - recognize({ language, lines }) → { lines: string[] } (ML Kit Digital Ink, on device)
+ *  - recognizeSymbols({ language, inks, maxCandidates }) → { results: [{ candidates: [{ text, score }] }] }
+ *                                     each ink (one handwritten maths symbol) on its own, with ML Kit's
+ *                                     ranked candidates; score is null when the model gives none
  *  - event 'stylusButton'           → { pressed, keyCode } (forwarded by [MainActivity])
  *  - takeSharedFiles()              → { files: [{ name, mimeType, path }] } files Android opened or
  *                                     shared to Inkwright, copied into the cache (see [IncomingFiles])
@@ -282,6 +285,34 @@ class InkwrightNativePlugin : Plugin() {
                 call.reject(e.message, "NOT_READY")
             } catch (e: Exception) {
                 Log.w(TAG, "recognize failed", e)
+                call.reject(e.message ?: "Recognition failed", "RECOGNITION_FAILED", e)
+            }
+        }
+    }
+
+    @PluginMethod
+    fun recognizeSymbols(call: PluginCall) {
+        val language = call.getString("language")?.takeIf { it.isNotBlank() } ?: DEFAULT_LANGUAGE
+        val raw = call.getArray("inks")
+        if (raw == null) {
+            call.reject("'inks' is required", "INVALID_ARGUMENT")
+            return
+        }
+        val max = call.getInt("maxCandidates") ?: 6
+        scope.launch {
+            try {
+                val results = recognizer.recognizeCandidates(language, parseLines(raw), max)
+                val out = JSArray()
+                for (list in results) {
+                    val cands = JSArray()
+                    for (c in list) cands.put(JSObject().put("text", c.text).put("score", c.score?.toDouble() ?: JSONObject.NULL))
+                    out.put(JSObject().put("candidates", cands))
+                }
+                call.resolve(JSObject().put("results", out))
+            } catch (e: HandwritingRecognizer.NotReadyException) {
+                call.reject(e.message, "NOT_READY")
+            } catch (e: Exception) {
+                Log.w(TAG, "recognizeSymbols failed", e)
                 call.reject(e.message ?: "Recognition failed", "RECOGNITION_FAILED", e)
             }
         }

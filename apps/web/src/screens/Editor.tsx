@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowLeft, Camera, CloudUpload, Undo2, Redo2, Download, FileImage, FileText, FileType2, Files, Image as ImageIcon, Layers,
+  ArrowLeft, Camera, CloudUpload, Undo2, Redo2, FileImage, FileText, FileType2, Files, Layers,
   AudioLines, Mic, MoreHorizontal, Pause, Play, Sparkles, Square, Tag, Trash2, Maximize2, FilePlus2, Copy, Scan, Search,
-  Signature, FileUp, Captions, MicVocal, Fingerprint,
+  Signature, FileUp, Captions, MicVocal, Fingerprint, Pointer, SunMoon,
 } from 'lucide-react';
 import { newId, NoteLockedError, PAGE_SIZE_PRESETS, pagePaper, pageSizeOf, type ImageItem, type InkStroke, type TextBox } from '@inkwright/core';
 import { InkEngine, type SelectionInfo, type Tool, type ToolState } from '../canvas/engine.ts';
@@ -25,7 +25,9 @@ import { PagesPanel } from '../ui/PagesPanel.tsx';
 import { PaperPicker } from '../ui/NewNoteSheet.tsx';
 import { FeelPanel } from '../ui/FeelPanel.tsx';
 import { AIPanel, type AIRequest } from '../ui/AIPanel.tsx';
-import { IconButton, Menu, Popover, cx, useMediaQuery } from '../ui/primitives.tsx';
+import { IconButton, Popover, cx, useMediaQuery } from '../ui/primitives.tsx';
+import { MenuTree } from '../ui/MenuTree.tsx';
+import { buildEditorMenu } from '../ui/editorMenu.tsx';
 import { askConfirm, askText } from '../ui/prompts.tsx';
 import { isAIReady, transcribePage } from '../lib/ai.ts';
 import { FillLayer, FilledExportDialog, noteHasPdf } from '../fill/FillLayer.tsx';
@@ -50,6 +52,13 @@ import { isModuleOn, useModules } from '../modules/registry.ts';
 import { useInkActions } from '../inkactions/EditorParts.tsx';
 import { useEditorBridge } from '../plugins/editorBridge.ts';
 import { useEditorPlugins } from '../plugins/EditorPlugins.tsx';
+import { ThemeToggle, THEME_NAMES, nextTheme, switchTheme } from '../ui/ThemeToggle.tsx';
+import { NewNoteButton } from '../ui/NewNoteButton.tsx';
+import { useFingerDraw } from '../ui/FingerDraw.tsx';
+import { takeFillRequest } from '../fill/signIntent.ts';
+
+// Document notes (documents/) open in the rich-text editor, loaded only when one is opened.
+const DocumentEditor = lazy(() => import('../documents/DocumentEditor.tsx'));
 
 declare const __E2E__: boolean;
 /** Test builds (`vite build --mode e2e`) expose the document to end-to-end tests; releases never do. */
@@ -65,6 +74,9 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   const narrow = useMediaQuery('(max-width: 699px)');
   // A side dock only where there's room beside the page; foldables and tablets use the bottom tray.
   const sideDock = useMediaQuery('(min-width: 1100px)');
+  // The quick theme switch sits in the top bar where there's room; on narrow phones it's the first row of •••.
+  const roomForTheme = useMediaQuery('(min-width: 600px)');
+  const finger = useFingerDraw();
   const host = useRef<HTMLDivElement>(null);
   const [session, setSession] = useState<EditorSession | null>(null);
   const [engine, setEngine] = useState<InkEngine | null>(null);
@@ -78,7 +90,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   const [panel, setPanel] = useState<'pages' | 'ai' | 'transcript' | 'links' | null>(null);
   const [aiRequest, setAiRequest] = useState<AIRequest | null>(null);
   const [paperOpen, setPaperOpen] = useState(false);
-  const [menu, setMenu] = useState<'export' | 'insert' | 'more' | 'feel' | null>(null);
+  const [menu, setMenu] = useState<'more' | 'feel' | null>(null);
   const [, bump] = useState(0);
   const feel = useMemo(() => new PaperFeel(settings.feel), []); // eslint-disable-line react-hooks/exhaustive-deps
   const inkTip = useMemo(() => new NativeInkTip(), []);
@@ -93,7 +105,8 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   const latestText = useRef<TextBox | null>(null);
   const btn = { more: useRef<HTMLButtonElement>(null) };
   // Fill & sign (PDF notes): the form layer and its export dialog.
-  const [fill, setFill] = useState(false);
+  // Opened through "Sign a document": start with the form layer on.
+  const [fill, setFill] = useState(() => takeFillRequest(noteId));
   const [fillExport, setFillExport] = useState(false);
   // Smart ink (tables, solving, dates) and proof of authorship.
   const smartApi = useRef<SmartApi | null>(null);
@@ -500,6 +513,13 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   const openWikiLink = (title: string) => kb.follow(title);
 
   // ---- Render ----------------------------------------------------------------------------------
+  if (session && session.doc.meta.document && on('documents')) {
+    return (
+      <Suspense fallback={<div className="editor"><div className="ed-loading" aria-live="polite">Opening…</div></div>}>
+        <DocumentEditor session={session} onBack={() => navigate({ name: 'library' })} />
+      </Suspense>
+    );
+  }
   if (lockedGate && vault) {
     return <LockGate vault={vault} noteId={noteId} onUnlocked={() => setOpenTick((t) => t + 1)} onBack={() => navigate({ name: 'library' })} />;
   }
@@ -536,6 +556,9 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
             {recording != null ? <Square size={16} fill="currentColor" /> : <Mic size={19} />}
           </IconButton>}
           {recording != null && <span className="rec-time">{formatDuration(Date.now() - recording)}</span>}
+          {roomForTheme && <ThemeToggle repaint={() => engine?.invalidate()} />}
+          <NewNoteButton meta={doc?.meta ?? null} flush={async () => { await session?.flush(); }}
+            onNewPage={doc && engine && doc.meta.kind === 'paged' ? () => { const i = doc.addPage(engine.currentPageIndex + 1); setTimeout(() => engine.scrollToPage(i), 30); } : undefined} />
           {!studio.locked && on('assistant') && <button type="button" className={cx('ai-btn', panel === 'ai' && 'is-on')} onClick={() => setPanel(panel === 'ai' ? null : 'ai')} aria-pressed={panel === 'ai'} aria-label="AI" title="AI assistant">
             <Sparkles size={17} /><span>AI</span>
           </button>}
@@ -646,63 +669,71 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
         </div>
       </Popover>
 
-      <Popover anchor={btn.more.current} open={menu === 'insert'} onClose={() => setMenu(null)} title="Insert" placement="below">
-        <Menu onClose={() => setMenu(null)} items={[
-          { label: 'Image', icon: <FileImage size={16} />, onClick: () => void insertImages() },
-          { label: 'Photo from camera', icon: <Camera size={16} />, onClick: () => void insertImages(true) },
-          { label: 'Scan document', icon: <Scan size={16} />, hint: 'Camera', onClick: () => void insertImages(true) },
-          { label: 'PDF pages', icon: <FileType2 size={16} />, onClick: () => void insertPdfPages() },
-          { label: 'Blank page', icon: <FilePlus2 size={16} />, onClick: () => { if (doc && engine) { const i = doc.addPage(engine.currentPageIndex + 1); setTimeout(() => engine.scrollToPage(i), 30); } } },
-          { label: 'Text box', icon: <FileText size={16} />, hint: 'T', onClick: () => setTool('text') },
-        ]} />
-      </Popover>
-
-      <Popover anchor={btn.more.current} open={menu === 'export'} onClose={() => setMenu(null)} title="Export" placement="below">
-        <Menu onClose={() => setMenu(null)} items={[
-          { label: 'PDF', icon: <FileType2 size={16} />, hint: 'All pages, vector', onClick: () => void doExport('pdf') },
-          { label: 'PNG image', icon: <FileImage size={16} />, hint: 'This page', onClick: () => void doExport('png') },
-          { label: 'SVG', icon: <FileImage size={16} />, hint: 'This page', onClick: () => void doExport('svg') },
-          { label: 'Markdown', icon: <FileText size={16} />, hint: 'Text + recognized handwriting', onClick: () => void doExport('md') },
-          ...(noteHasPdf(doc) && on('fill-sign') ? [{ label: 'Filled form', icon: <Signature size={16} />, hint: 'The original document, filled in', onClick: () => setFillExport(true) }] : []),
-          ...plugins.exportItems,
-        ]} />
-      </Popover>
-
       {doc && vault && session && <FilledExportDialog open={fillExport} onClose={() => setFillExport(false)} doc={doc} vault={vault} session={session} />}
       {doc && vault && <AuthorshipDialog open={authOpen} onClose={() => setAuthOpen(false)} doc={doc} vault={vault} onVerifyFile={() => { setAuthOpen(false); void session?.flush().then(() => navigate({ name: 'settings', section: 'authorship' })); }} />}
 
       {plugins.popover}
-      <Popover anchor={btn.more.current} open={menu === 'more'} onClose={() => setMenu(null)} title="More" placement="below">
-        <Menu onClose={() => setMenu(null)} items={[
-          ...(noteHasPdf(doc) && on('fill-sign') ? [{ label: fill ? 'Stop filling in' : 'Fill & sign', icon: <Signature size={16} />, onClick: () => setFill(!fill) }] : []),
-          ...(on('search') ? [{ label: 'Search everything', icon: <Search size={16} />, hint: `${modKey}K`, onClick: () => openPalette({ query: '' }) }] : []),
-          { label: 'Pages', icon: <Layers size={16} />, hint: doc && doc.pageCount > 1 ? `${doc.pageCount}` : undefined, onClick: () => setPanel('pages') },
-          ...(!isArtifact && on('listen') ? [
-            { label: 'Transcript', icon: <Captions size={16} />, hint: listening ? 'Live' : clips.length ? `${clips.length}` : undefined, onClick: () => setPanel('transcript') },
-            { label: 'Dictate', icon: <MicVocal size={16} />, hint: recording != null ? 'Not while recording' : undefined, disabled: recording != null, onClick: () => void startDictation('page') },
-          ] : []),
-          ...(on('knowledge') ? [kb.menuItem()] : []),
-          { label: 'Paper', icon: <Files size={16} />, onClick: () => setTimeout(() => setPaperOpen(true), 0) },
-          { label: 'Writing sound & feel', icon: <AudioLines size={16} />, hint: settings.feel.sound ? `${Math.round(settings.feel.soundVolume * 100)}%` : 'Off', onClick: () => setTimeout(() => setMenu('feel'), 0) },
-          { label: 'Insert', icon: <ImageIcon size={16} />, onClick: () => setTimeout(() => setMenu('insert'), 0) },
-          ...(on('studio') ? studio.menuItems : []),
-          ...dev.menuItems,
-          ...ink.menuItems,
-          ...(on('compiler') ? compiler.menuItems : []),
-          ...liveShare.menuItems,
-          ...plugins.menuItems,
-          ...(narrow && !isArtifact ? [{ label: recording != null ? 'Stop recording' : 'Record audio', icon: <Mic size={16} />, onClick: () => void toggleRecording() }] : []),
-          { label: 'Export and share', icon: <Download size={16} />, onClick: () => setTimeout(() => setMenu('export'), 0) },
-          ...(on('authorship') ? [{ label: 'Authorship', icon: <Fingerprint size={16} />, hint: doc?.meta.certificate ? 'Signed' : undefined, onClick: () => setAuthOpen(true) }] : []),
-          'sep' as const,
-          { label: 'Tags', icon: <Tag size={16} />, hint: meta?.tags.join(', ') || 'None', onClick: async () => { if (!doc) return; const t = await askText('Tags', 'Comma-separated', doc.meta.tags.join(', ')); if (t != null) { doc.setTags(t.split(',')); await session?.flush(); await setTags(doc.meta.id, doc.meta.tags); } } },
-          { label: 'Fit to width', icon: <Maximize2 size={16} />, hint: `${modKey}0`, onClick: () => engine?.fitWidth() },
-          { label: 'Duplicate note', icon: <Copy size={16} />, onClick: async () => { await session?.flush(); await duplicateNote(noteId); toast({ text: 'Duplicated', tone: 'success' }); } },
-          ...(on('knowledge') ? [kb.templateMenuItem()] : []),
-          { label: 'Save now', icon: <CloudUpload size={16} />, hint: `${modKey}S`, onClick: () => void session?.flush().then(() => toast({ text: 'Saved', tone: 'success' })) },
-          'sep',
-          { label: 'Move to Trash', icon: <Trash2 size={16} />, danger: true, onClick: async () => { await session?.flush(); await trashNote(noteId); navigate({ name: 'library' }); } },
-        ]} />
+      <Popover anchor={btn.more.current} open={menu === 'more'} onClose={() => setMenu(null)} title="More" placement="below" className="more-pop">
+        {/* Where each entry goes is decided in ui/editorMenu.tsx; this lists what the editor can do. */}
+        <MenuTree label="More" onClose={() => setMenu(null)} items={buildEditorMenu({
+          top: [
+            ...(!roomForTheme ? [{ label: `Theme: ${THEME_NAMES[settings.theme]}`, icon: <SunMoon size={16} />, hint: `Tap for ${THEME_NAMES[nextTheme(settings.theme)].toLowerCase()}`, onClick: () => switchTheme(nextTheme(settings.theme), () => engine?.invalidate()) }] : []),
+            ...(noteHasPdf(doc) && on('fill-sign') ? [{ label: fill ? 'Stop filling in' : 'Fill & sign', icon: <Signature size={16} />, onClick: () => setFill(!fill) }] : []),
+            ...(on('search') ? [{ label: 'Search everything', icon: <Search size={16} />, hint: `${modKey}K`, onClick: () => openPalette({ query: '' }) }] : []),
+            { label: 'Pages', icon: <Layers size={16} />, hint: doc && doc.pageCount > 1 ? `${doc.pageCount}` : undefined, onClick: () => setPanel('pages') },
+          ],
+          own: {
+            insert: [
+              { label: 'Image', icon: <FileImage size={16} />, onClick: () => void insertImages() },
+              { label: 'Photo from camera', icon: <Camera size={16} />, onClick: () => void insertImages(true) },
+              { label: 'Scan document', icon: <Scan size={16} />, hint: 'Camera', onClick: () => void insertImages(true) },
+              { label: 'PDF pages', icon: <FileType2 size={16} />, onClick: () => void insertPdfPages() },
+              { label: 'Blank page', icon: <FilePlus2 size={16} />, onClick: () => { if (doc && engine) { const i = doc.addPage(engine.currentPageIndex + 1); setTimeout(() => engine.scrollToPage(i), 30); } } },
+              { label: 'Text box', icon: <FileText size={16} />, hint: 'T', onClick: () => setTool('text') },
+            ],
+            page: [
+              { label: 'Paper', icon: <Files size={16} />, onClick: () => setTimeout(() => setPaperOpen(true), 0) },
+              { label: 'Writing sound & feel', icon: <AudioLines size={16} />, hint: settings.feel.sound ? `${Math.round(settings.feel.soundVolume * 100)}%` : 'Off', onClick: () => setTimeout(() => setMenu('feel'), 0) },
+              { label: 'Fit to width', icon: <Maximize2 size={16} />, hint: `${modKey}0`, onClick: () => engine?.fitWidth() },
+              { label: 'Draw with finger', icon: <Pointer size={16} />, hint: finger.on ? 'On' : 'Off', onClick: finger.toggle },
+            ],
+            audio: [
+              ...(narrow && !isArtifact ? [{ label: recording != null ? 'Stop recording' : 'Record audio', icon: <Mic size={16} />, onClick: () => void toggleRecording() }] : []),
+              ...(!isArtifact && on('listen') ? [
+                { label: 'Transcript', icon: <Captions size={16} />, hint: listening ? 'Live' : clips.length ? `${clips.length}` : undefined, onClick: () => setPanel('transcript') },
+                { label: 'Dictate', icon: <MicVocal size={16} />, hint: recording != null ? 'Not while recording' : undefined, disabled: recording != null, onClick: () => void startDictation('page') },
+              ] : []),
+            ],
+            share: [
+              { label: 'PDF', icon: <FileType2 size={16} />, hint: 'All pages', onClick: () => void doExport('pdf') },
+              { label: 'PNG image', icon: <FileImage size={16} />, hint: 'This page', onClick: () => void doExport('png') },
+              { label: 'SVG', icon: <FileImage size={16} />, hint: 'This page', onClick: () => void doExport('svg') },
+              { label: 'Markdown', icon: <FileText size={16} />, hint: 'Text and handwriting', onClick: () => void doExport('md') },
+              ...(noteHasPdf(doc) && on('fill-sign') ? [{ label: 'Filled form', icon: <Signature size={16} />, hint: 'The original, filled in', onClick: () => setFillExport(true) }] : []),
+              ...plugins.exportItems,
+            ],
+            note: [
+              ...(on('knowledge') ? [kb.menuItem()] : []),
+              { label: 'Tags', icon: <Tag size={16} />, hint: meta?.tags.join(', ') || 'None', onClick: async () => { if (!doc) return; const t = await askText('Tags', 'Comma-separated', doc.meta.tags.join(', ')); if (t != null) { doc.setTags(t.split(',')); await session?.flush(); await setTags(doc.meta.id, doc.meta.tags); } } },
+              'sep',
+              { label: 'Duplicate note', icon: <Copy size={16} />, onClick: async () => { await session?.flush(); await duplicateNote(noteId); toast({ text: 'Duplicated', tone: 'success' }); } },
+              ...(on('knowledge') ? [kb.templateMenuItem()] : []),
+              { label: 'Save now', icon: <CloudUpload size={16} />, hint: `${modKey}S`, onClick: () => void session?.flush().then(() => toast({ text: 'Saved', tone: 'success' })) },
+            ],
+          },
+          features: {
+            studio: on('studio') ? studio.menuItems : [],
+            ink: ink.menuItems,
+            compiler: on('compiler') ? compiler.menuItems : [],
+            live: liveShare.menuItems,
+            dev: dev.menuItems,
+            plugins: plugins.menuItems,
+          },
+          after: {
+            share: on('authorship') ? [{ label: 'Authorship', icon: <Fingerprint size={16} />, hint: doc?.meta.certificate ? 'Signed' : undefined, onClick: () => setAuthOpen(true) }] : [],
+          },
+          end: [{ label: 'Move to Trash', icon: <Trash2 size={16} />, danger: true, onClick: async () => { await session?.flush(); await trashNote(noteId); navigate({ name: 'library' }); } }],
+        })} />
       </Popover>
     </div>
   );

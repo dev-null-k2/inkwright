@@ -102,6 +102,8 @@ export interface CodeSource {
   scannedAt: number;
   stats: { files: number; symbols: number; edges: number; skipped?: number };
   formatVersion: number;
+  /** The git commit the scan was made at, when known (the runner's HEAD watch; docs/DEVELOPERS.md). */
+  head?: { ref: string | null; commit: string };
 }
 
 /** Lines of source kept per symbol. */

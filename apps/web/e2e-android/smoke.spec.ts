@@ -55,6 +55,14 @@ test('library loads with the welcome note', async ({ app: { page } }) => {
     await page.evaluate(() => { location.hash = ''; });
   }
   await expect(page.locator('.library')).toBeVisible();
+  // A fresh install opens with the first-run welcome over the library; its own test is
+  // e2e/welcome.spec.ts. Skipping marks it done for good.
+  const welcome = page.locator('.welcome');
+  if (await welcome.isVisible()) {
+    screencap('welcome-light');
+    await welcome.getByRole('button', { name: 'Skip' }).click();
+    await expect(welcome).toHaveCount(0);
+  }
   await expect(page.locator('.note-title', { hasText: 'Welcome to Inkwright' })).toBeVisible();
   setSystemDarkMode(false);
   await page.waitForTimeout(1500);
@@ -98,6 +106,7 @@ test('a real stylus stroke (MotionEvents) inks through the WebView and the nativ
 
 test('writing feel popover opens and previews natively', async ({ app: { page } }) => {
   await page.getByRole('button', { name: 'More', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Page', exact: true }).click();
   await page.getByRole('menuitem', { name: /Writing sound & feel/ }).click();
   const pop = page.locator('.feel-pop');
   await expect(pop).toBeVisible();

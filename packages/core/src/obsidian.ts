@@ -14,7 +14,7 @@
 import { exportPageSvg, pageText, wrapText } from './export.ts';
 import { newId as defaultNewId } from './ids.ts';
 import { formatWikiLink, liveInkLinks, normalizeTitle, parseTags, parseWikiLinks, parseWikiTarget, resolveWikiTarget } from './links.ts';
-import { VAULT_FORMAT_VERSION, newPage, type ImageItem, type NoteMeta, type NotebookMeta, type PageInk, type PageSize, type PaperSpec, type TextBox } from './model.ts';
+import { VAULT_FORMAT_VERSION, newPage, type ImageItem, type NoteMeta, type NotebookMeta, type PageInk, type PageSize, type PaperSpec, type TextBox, type ContentOrigin } from './model.ts';
 import type { Vault } from './vault.ts';
 import { emitYaml, splitFrontmatter, type YamlValue } from './yaml.ts';
 
@@ -243,6 +243,8 @@ export interface ObsidianImportOptions {
   parentNotebookId?: string;
   newId?: () => string;
   onProgress?: (done: number, total: number) => void;
+  /** Mark text and images as coming from another app (`import`) for authorship. */
+  origin?: ContentOrigin;
 }
 
 export interface ObsidianImportReport {
@@ -382,6 +384,8 @@ export interface LayoutContext {
   /** Writes an embedded file into the note; returns its asset name. */
   asset: (file: VaultFile) => Promise<string>;
   pdfPageSizes?: (bytes: Uint8Array) => Promise<{ width: number; height: number }[]>;
+  /** Authorship origin for the text boxes and images made (other apps' notes: `import`). */
+  origin?: ContentOrigin;
 }
 
 /** Lays text and embeds out on pages, top to bottom, starting a new page when one is full. */
@@ -396,7 +400,7 @@ export async function layoutBlocks(blocks: readonly MdBlock[], ctx: LayoutContex
   const used = () => (page.texts?.length ?? 0) + (page.images?.length ?? 0) > 0;
   const nextPage = () => { pages.push(page); page = newPage(ctx.newId()); y = margin; };
   const addText = (text: string) => {
-    const box: TextBox = { id: ctx.newId(), x: margin, y, width: W, text, fontSize, color: '#FF1B1F24', font: 'sans', createdAt: ctx.now };
+    const box: TextBox = { id: ctx.newId(), x: margin, y, width: W, text, fontSize, color: '#FF1B1F24', font: 'sans', createdAt: ctx.now, ...(ctx.origin ? { origin: ctx.origin } : {}) };
     page.texts = [...(page.texts ?? []), box];
     y += textHeight(text, W, fontSize) + fontSize;
   };
@@ -420,7 +424,7 @@ export async function layoutBlocks(blocks: readonly MdBlock[], ctx: LayoutContex
       const k = Math.min(1, W / want, (H * 0.8) / (dim.height * (want / dim.width))) * (want / dim.width);
       const w = dim.width * k, h = dim.height * k;
       if (y + h > margin + H && used()) nextPage();
-      const im: ImageItem = { id: ctx.newId(), x: margin, y, width: w, height: h, asset: await ctx.asset(b.file), rotation: 0, createdAt: ctx.now };
+      const im: ImageItem = { id: ctx.newId(), x: margin, y, width: w, height: h, asset: await ctx.asset(b.file), rotation: 0, createdAt: ctx.now, ...(ctx.origin ? { origin: ctx.origin } : {}) };
       page.images = [...(page.images ?? []), im];
       y += h + fontSize;
     } else if (b.kind === 'pdf' && ctx.pdfPageSizes) {
@@ -518,7 +522,7 @@ export async function importObsidianVault(vault: Vault, input: readonly VaultFil
     const noteId = id();
     const assetNames = new Map<VaultFile, string>();
     const pages = await layoutBlocks(blocks, {
-      pageSize: opts.pageSize, now, newId: id, pdfPageSizes: opts.pdfPageSizes,
+      pageSize: opts.pageSize, now, newId: id, pdfPageSizes: opts.pdfPageSizes, ...(opts.origin ? { origin: opts.origin } : {}),
       asset: async (file) => {
         const known = assetNames.get(file);
         if (known) return known;

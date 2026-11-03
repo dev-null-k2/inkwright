@@ -15,6 +15,8 @@ import { isNative } from '../platform/env.ts';
 import { AssetCache } from '../canvas/assets.ts';
 import { renderPageStandalone } from '../canvas/engine.ts';
 import { seedWelcome } from './welcome.ts';
+import { isDesktop } from '../desktop/bridge.ts';
+import { DesktopFS } from '../desktop/fs.ts';
 
 /**
  * The app's single gateway to the vault: storage backend for this platform, search index and
@@ -60,7 +62,11 @@ export class AppVault {
     let persistent = true;
     try {
       if (isNative) fs = new CapacitorFS(Filesystem as any, { directory: 'DATA', root: 'Inkwright' });
-      else {
+      // The desktop app: a real folder on disk, shared with the MCP sidecar (docs/DESKTOP.md).
+      else if (isDesktop) {
+        fs = new DesktopFS();
+        await fs.list('');
+      } else {
         const idb = new IndexedDBFS({ dbName: 'inkwright-vault' });
         await idb.list(''); // probe: throws when IndexedDB is unavailable (some sandboxes)
         fs = idb;

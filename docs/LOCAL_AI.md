@@ -299,7 +299,7 @@ service / sent to a provider), and the transcript file records it (`where`).
   assistant's AI (on the device unless a provider was chosen) and appear in Pages, optionally as a
   text note on the page. "When a recording ends" routines start after the transcript and summaries
   are saved and receive them in their context.
-- **Dictation.** ••• › Dictate puts speech on the page as a text box; the mic in the text editor's
+- **Dictation.** ••• › Audio › Dictate puts speech on the page as a text box; the mic in the text editor's
   toolbar inserts at the caret. Same engines, shorter windows; no audio is kept.
 
 ## Next steps (researched, not built)

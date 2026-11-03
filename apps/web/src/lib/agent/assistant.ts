@@ -163,6 +163,15 @@ export async function prepareAgentRun(o: PrepareOptions): Promise<PreparedRun> {
     }
   }
 
+  // Documents (documents/agent.ts): read_document, and edit_document when the run may write.
+  {
+    const { isModuleOn } = await import('../../modules/registry.ts');
+    if (isModuleOn('documents')) {
+      const d = await import('../../documents/agent.ts').then((m) => m.documentAgentTools({ vault: o.vault, openDoc: o.openDoc ?? null, run, record: recorder.record, write: o.notes === 'write' })).catch(() => null);
+      if (d) { tools.push(...d.tools); sections.push(d.prompt); }
+    }
+  }
+
   // Developer module (dev/agent.ts): verified diagrams and the code graph, when it is on.
   if (o.notes === 'write') {
     const dev = await import('../../dev/agent.ts').then((m) => m.devAgentTools({ vault: o.vault, openDoc: o.openDoc ?? null, host })).catch(() => null);

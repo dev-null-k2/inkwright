@@ -86,13 +86,40 @@ Sync (`@inkwright/sync`) compares content hashes with the last-synced state and 
   (`launchQueue`), the POST share target (the service worker stashes files in Cache Storage), and
   Android intents. Text and Markdown become typed notes.
 
+- **Sign a document:** `signFlow.ts` is the front door (library New menu, the editor's "+", the
+  search palette, the welcome): a photo of a page is wrapped in a one-page PDF with pdf-lib, the file
+  is imported as a note, and `signIntent.ts` asks the editor to open it with the form layer on.
+
+## Documents (`apps/web/src/documents/`, core `richdoc.ts`, sync `merge-document.ts`)
+
+- **Storage:** a document is a paged note with `NoteMeta.document`; its body is a `role: "document"`
+  text box of Markdown on page 0 and its ink annotations are that page's strokes
+  (docs/VAULT_FORMAT.md › Documents). Everything that reads typed text (search, `note.md`,
+  `read_note`, MCP, history, sync) works unchanged.
+- **Editor:** `DocumentEditor.tsx` is a lazy chunk with Tiptap 3 (ProseMirror, MIT) configured in
+  `extensions.ts` (StarterKit, task lists, tables, images with an `asset` attribute, a page-break
+  node). `markdown.ts` serialises the editor's JSON to deterministic Markdown and renders Markdown
+  (marked + DOMPurify) into the editor's schema. Typing is saved with `NoteDocument.adjust` (not an
+  ink undo step); outside changes (assistant, sync, history) reload the editor; stray text boxes are
+  folded into the body.
+- **Ink:** `InkLayer.tsx` draws strokes as SVG over the sheet in its layout coordinates and adds
+  them with `NoteDocument.addStroke`. The sheet keeps `document.width` while ink shows (CSS `zoom`
+  on narrow screens) so marks stay on their words.
+- **Export:** `pdf.ts` reads the browser's layout (each word's box through DOM ranges, pictures,
+  cells, rules, checkboxes, list markers) and redraws it as vector text in pdf-lib, cut into A4 pages
+  between lines (`planPages`) and at page breaks; words the standard fonts can't encode are embedded
+  as images. `docx.ts` writes and reads WordprocessingML with fflate. Markdown and HTML exports,
+  printing (`@media print`; on Android the PDF goes to the share sheet).
+- **Assistant:** `agent.ts` serves `read_document` / `edit_document` (packages/ai `tools/documents.ts`)
+  under the AI policy; edits record `text_replaced`, so Activity undoes them.
+
 ## Smart ink (`apps/web/src/smart/`, core `objects.ts`, `tables.ts`, `inkcues.ts`, `mathexpr.ts`)
 
 - **Noticing:** `SmartLayer.tsx` watches the document for new handwritten strokes and, ~1 s after
   the pen rests, runs the geometric detectors in core: a drawn grid (`detectTable` — strict, with
   tests for near misses), a trailing "=" (`detectTrailingEquals`), a loop around writing
   (`detectEnclosure`), handwritten checkboxes (`detectChecklist`). At most one chip is offered;
-  writing on or × dismisses it. Settings › Pen & touch › Smart ink suggestions turns it off.
+  writing on or × dismisses it. Settings › Writing › Pen & touch › Smart ink suggestions turns it off.
 - **Objects:** tables, solved results and graphs are `PageInk.objects`, committed through
   `NoteDocument.editObjects` (undoable; automatic follow-ups like a table growing to fit its ink
   use `adjust`, which is not an undo step). Canvas (`smart/render.ts`, called from the engine's
@@ -100,7 +127,7 @@ Sync (`@inkwright/sync`) compares content hashes with the last-synced state and 
   the same picture.
 - **Reading ink:** `smart/read.ts` uses on-device recognition first; the active AI's vision
   (`getActiveAI()`, whichever provider — cloud or on-device) with strict JSON prompts for maths and
-  tables, automatically only when Settings › Handwriting allows AI, otherwise on a tap.
+  tables, automatically only when Settings › Writing › Handwriting allows AI, otherwise on a tap.
 - **Solving:** `smart/math.ts` — nerdamer-prime (equations, systems, derivatives, integrals,
   limits) and mathjs (units), both lazy-loaded; every symbolic answer is checked numerically with
   core's own parser, and a numeric root finder covers transcendental equations. Offline.
@@ -118,7 +145,7 @@ model so every one of them undoes, syncs, exports and enters the authorship chai
   the dock to choose.
 - **Layers** (`layers.ts`): strokes carry `layer`; `visibleStrokes` gives drawing order (drawing layer
   under writing) without hidden layers and is used by the canvas, SVG and PDF; `editableStroke` keeps
-  the eraser, lasso and scratch-out off locked or hidden layers. ••• › View picks the layer to write on.
+  the eraser, lasso and scratch-out off locked or hidden layers. ••• › Page › View picks the layer to write on.
 - **Calligraphy pen** (`outline.ts`: `calligraphyOutline`): a broad nib as a Minkowski sum with a
   rectangle at the stroke's `nib` angle; `strokeOutline` routes to it, so every renderer and export
   draws it. It has its own paper-feel profile; it is not in the native ink-tip list (its width
@@ -132,7 +159,7 @@ model so every one of them undoes, syncs, exports and enters the authorship chai
   centre and margins, and the paper's lines (thinned by zoom); `snapMove`/`snapScale`/`snapSize`
   return the adjusted drag and guides. The engine snaps lasso moves and resizes and exposes
   `snapDrag` to the table and sticky handles; guides are a jade SVG over the canvas. Alt or a second
-  finger on the page turns it off for that drag; Settings and ••• › View turn it off altogether.
+  finger on the page turns it off for that drag; Settings and ••• › Page › View turn it off altogether.
 - **Two-page view** (`canvas/layout.ts`: `layoutPages(…, { spreads })`): pages pair up side by side;
   input mapping, scrolling and culling already go through page slots. `fitWidth` fits a whole
   spread; the current page in a spread is the one last written on or scrolled to. Auto mode
@@ -153,7 +180,7 @@ model so every one of them undoes, syncs, exports and enters the authorship chai
 Strokes record their input device; AI/solver/recognized/imported content carries an `origin`;
 `NoteDocument.commit` appends content-digest events to a per-page hash chain. Certificates (claim
 + evidence + ES256 signature with a non-extractable device key in IndexedDB) are made in the
-editor's Authorship panel and embedded in exported PDFs; Settings › Authorship verifies PDFs and
+editor's Authorship panel and embedded in exported PDFs; Settings › Privacy & trust › Authorship verifies PDFs and
 JSON offline. Details and limits: [AUTHORSHIP.md](AUTHORSHIP.md).
 
 ## AI (`@inkwright/ai`, `apps/web/src/lib/ai.ts`)
@@ -266,7 +293,7 @@ as "what was said" passages. Details in docs/LOCAL_AI.md § Speech to text.
   to follow it — only the arrow takes taps, so writing over linked ink is unaffected.
 - **Index.** `KnowledgeIndex` (in `AppVault.knowledge`, updated wherever search is) answers
   backlinks with the linking line, unlinked mentions (typed and handwritten), outgoing links, tags
-  and keyword relatedness. The Links panel (••• › Links) shows them and links a mention in one tap.
+  and keyword relatedness. The Links panel (••• › Note › Links) shows them and links a mention in one tap.
 - **Related notes** go through `RelatedNotesProvider` (`lib/related.ts`): a registered provider,
   else the on-device semantic memory (mean of each note's passage embeddings, `AppMemory.noteVector`),
   else shared keywords/tags. The panel and the graph never know which.
@@ -282,7 +309,7 @@ as "what was said" passages. Details in docs/LOCAL_AI.md § Speech to text.
 
 ## Developer module (`packages/core/src/dev/`, `apps/web/src/dev/`, see [DEVELOPERS.md](DEVELOPERS.md))
 
-Optional (Settings › Developer). Repositories become code graphs in the vault (`code/sources/`)
+Optional (Settings › Extend › Code & runbooks). Repositories become code graphs in the vault (`code/sources/`)
 through deterministic tree-sitter extraction (web-tree-sitter in the page or in Node, the same
 grammars); `[[code:path#Symbol]]` links and ink links carry the signature they were written against
 (`NoteMeta.codeRefs`) so a re-scan flags drift without touching the note; diagrams are a typed IR
@@ -315,7 +342,7 @@ Notes that maintain themselves and can be trusted (details: [COMPILER.md](COMPIL
 - **Modules** (`modules/registry.ts`, `builtin.ts`): every major feature declares its id,
   dependencies, contributions (menu items, palette actions, panels, page objects, assistant tools,
   importers/exporters, routine templates, settings sections, screens, background work), lazy
-  `activate` (returns its stop) and `aiTools`. Settings › Modules switches them with dependency
+  `activate` (returns its stop) and `aiTools`. Settings › Extend › Modules switches them with dependency
   handling and presets; the editor, library, settings and palette ask `isModuleOn`. Turning a
   module off never edits notes; their data still renders. See docs/PLUGINS.md.
 - **Plugins**: manifest + one ES module, stored in the vault (`plugins/`), run in
@@ -323,12 +350,12 @@ Notes that maintain themselves and can be trusted (details: [COMPILER.md](COMPIL
   from `sandbox-runtime.ts`). Frames speak the versioned postMessage protocol of
   `@inkwright/plugin-api`; `dispatcher.ts` checks every call against the `METHODS` table, the
   granted permissions (live), the note scope and the network allowlist. `host.ts` loads plugins,
-  activates them on first use, routes contributions (palette, ••• › Plugins, side panels,
+  activates them on first use, routes contributions (palette, ••• › Tools › Plugins, side panels,
   exporters, importers, assistant tools) and events, and installs, updates, revokes and
   uninstalls. Plugin writes go through `AppNoteToolHost` + `RecordingNoteToolHost`, so they are
   live in an open note, undoable and logged in Activity under the plugin's name.
 - **Automation API** (`developer/automation.ts`): `window.inkwright` is the plugin API over an
-  in-process channel to the same dispatcher, with permissions chosen in Settings › Developer.
+  in-process channel to the same dispatcher, with permissions chosen in Settings › Extend › Developer.
 - **Links** (`developer/deeplinks.ts`): `inkwright://`, `web+inkwright://` and `?action=` URLs
   (Android intent filter, PWA `protocol_handlers`, the launch URL).
 - **REST API** (`apps/mcp-server/src/api/`): routes declared once with zod (`routes.ts`) →
@@ -360,6 +387,10 @@ See [COLLABORATION.md](COLLABORATION.md) for the protocol and threat model.
 - **Device sync**: `PeerRemote` makes the other device's vault a `Remote`, so the ordinary
   `SyncEngine` merges and guards exactly as with Drive or WebDAV; the other side serves its vault
   through `servePeerVault`. Optional signalling through `inkwright-mcp --signal-token`.
+- **Short codes** (`peer/{cpace,shortcode,rendezvous}.ts`): an eight-character code whose last
+  five characters are a CPace password (ristretto255, draft-irtf-cfrg-cpace test vectors); the
+  offer and answer travel sealed under its key through ntfy (ntfy.sh by default) or the
+  self-hosted mailbox, and the key becomes the peer handshake's pairing secret.
 - **Live sharing**: `CollabReplica` turns `NoteDocument` edits into LWW-register ops with
   fractional positions and applies others' ops as commits with an `author`; the editor streams
   strokes in progress (`engine.liveStroke`) and cursors (`engine.pageAtScreen`).
@@ -367,6 +398,23 @@ See [COLLABORATION.md](COLLABORATION.md) for the protocol and threat model.
   swapping it in as the app's vault makes the library, search and graph show that moment.
 - **Branches**: `BranchStore` + `OverlayFS` keep proposals' changes as shadow copies (blobs shared
   with version history); `mergeBranchNote` (sync) merges them back three-way.
+
+## App shell: the editor menu, Settings, first run (`apps/web/src/{ui/editorMenu.tsx,ui/MenuTree.tsx,settings,welcome,devicecheck}`)
+
+- **Editor ••• menu**: features hand the editor flat item lists; `buildEditorMenu` decides where
+  each goes (Insert, Page, Audio, Study, Share & export, Note, Tools), so the top level stays at
+  about ten entries whatever is switched on. A new feature's items land in its source's fallback
+  section until placed in `RULES`. `MenuTree` opens sub-sheets in place (one popover or bottom
+  sheet, never a cascading flyout) with the WAI-ARIA menu keys. Commands that act on a lasso
+  selection live in the selection bar only.
+- **Settings**: eight groups (`settings/groups.ts`), each with its sections as tabs. Section ids
+  are the stable deep links (`#settings/<id>`) and what modules own; group ids also work as links.
+  `SETTINGS_INDEX` feeds the search field; an e2e checks that every entry is where it says.
+- **First run**: `welcome/` shows four skippable steps once per device (`settings.onboardingDone`);
+  people updating from an earlier version (saved settings or notes of their own) skip it.
+- **Device check** (`devicecheck/`, module `device-check`): measures pen input, latency, frames,
+  the screen, system bars, hardware, graphics and audio on the real device and shares a report;
+  the analysis is pure and unit-tested.
 
 ## Platforms
 

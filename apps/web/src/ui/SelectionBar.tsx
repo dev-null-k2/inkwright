@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Copy, CopyPlus, Link2, Link2Off, Palette, Pencil, Scissors, Sparkles, Trash2, Type } from 'lucide-react';
 import type { SelectionInfo } from '../canvas/engine.ts';
 import { INK_PALETTE } from '../state/settings.ts';
@@ -28,13 +28,25 @@ export function SelectionBar({ sel, onDelete, onDuplicate, onCopy, onCut, onReco
   const [colors, setColors] = useState(false);
   const colorBtn = useRef<HTMLButtonElement>(null);
   const top = sel.screen.y > 70 ? sel.screen.y - 56 : sel.screen.y + sel.screen.h + 12;
-  const left = sel.screen.x + sel.screen.w / 2;
+  const center = sel.screen.x + sel.screen.w / 2;
+  // Centred on the selection, but never past the edges of the page area: a selection near a side
+  // (or wider than the screen) would otherwise push half the bar off screen.
+  const bar = useRef<HTMLDivElement>(null);
+  const [left, setLeft] = useState(center);
+  useLayoutEffect(() => {
+    const el = bar.current;
+    const host = el?.offsetParent as HTMLElement | null;
+    if (!el || !host) return;
+    const half = el.offsetWidth / 2, room = host.clientWidth, pad = 8;
+    const next = room < 2 * (half + pad) ? room / 2 : Math.min(room - half - pad, Math.max(half + pad, center));
+    if (Math.abs(next - left) > 0.5) setLeft(next);
+  });
   return (
     <>
       <div className="sel-box" style={{ left: sel.screen.x - 8, top: sel.screen.y - 8, width: sel.screen.w + 16, height: sel.screen.h + 16 }} aria-hidden>
         <span className="sel-handle" />
       </div>
-      <div className="sel-bar" style={{ left, top }} role="toolbar" aria-label={`${sel.count} selected`}>
+      <div ref={bar} className="sel-bar" style={{ left, top }} role="toolbar" aria-label={`${sel.count} selected`}>
         {sel.texts === 1 && sel.count === 1 && onEditText && <button type="button" className="sel-btn" onClick={onEditText}><Pencil size={16} /><span>Edit</span></button>}
         {links.slice(0, 2).map((l) => <button key={l} type="button" className="sel-btn" onClick={() => onOpenLink?.(l)} title={`Open “${l}”`}><Link2 size={16} /><span>{l.length > 18 ? l.slice(0, 17) + '…' : l}</span></button>)}
         {sel.strokes > 0 && <button type="button" className="sel-btn" onClick={onConvert} title="Turn handwriting into typed text"><Type size={16} /><span>To text</span></button>}
