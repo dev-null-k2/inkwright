@@ -21,7 +21,7 @@ import {
 import { newId, pageText, type TextBox } from '@inkwright/core';
 import type { InkEngine } from '../canvas/engine.ts';
 import type { EditorSession } from '../lib/session.ts';
-import { getActiveAI, transcribePage, type ActiveAI } from '../lib/ai.ts';
+import { getActiveAI, transcribeWithSource, type ActiveAI } from '../lib/ai.ts';
 import { pageImageForAI } from '../lib/exporter.ts';
 import { useApp } from '../state/app.ts';
 import { useSettings } from '../state/settings.ts';
@@ -160,9 +160,10 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
       if (kind === 'transcribe') {
         push({ role: 'user', text: `Transcribe the handwriting on page ${pageIndex + 1}` });
         const id = push({ role: 'assistant', text: 'Reading your handwriting…' });
-        const text = (await transcribePage(vault, doc, pageIndex, undefined, 'markdown')) ?? '';
-        doc.setRecognizedText(doc.page(pageIndex).id, text, ai?.label ?? 'ai');
-        patch(id, { text: text || '_No handwriting found on this page._', actions: text ? [{ label: 'Insert as text', run: () => insertText(text) }, { label: 'Copy', run: () => void navigator.clipboard?.writeText(text) }] : [] });
+        const read = await transcribeWithSource(vault, doc, pageIndex, undefined, 'markdown');
+        const text = read?.text ?? '';
+        doc.setRecognizedText(doc.page(pageIndex).id, text, read?.by ?? 'ai');
+        patch(id, { text: text ? `${text}\n\n_Read by ${read!.by === 'This device' ? 'this device' : read!.by}._` : '_No handwriting found on this page._', actions: text ? [{ label: 'Insert as text', run: () => insertText(text) }, { label: 'Copy', run: () => void navigator.clipboard?.writeText(text) }] : [] });
         return;
       }
       const a = ensureAI();

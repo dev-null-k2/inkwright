@@ -28,6 +28,7 @@ import {
   type NoteMeta,
   type PageInk,
   type TextBox,
+  textQuality,
 } from '@inkwright/core';
 import { claudeRuntime } from '../platform/env.ts';
 import { useApp } from '../state/app.ts';
@@ -39,6 +40,7 @@ import { recognizeLocally } from './recognition.ts';
 import { chatChoice, isInstalled, localActiveAI, pickAssistant } from './localai.ts';
 import { nativeEngineReady, nativeProofread } from './native-ai.ts';
 import { snapshotBeforeAgentEdit } from '../studio/versions.ts';
+import { sendsImagesTo } from './assistant/context.ts';
 
 export const CLAUDE_BUILTIN_ID = '__claude_builtin__';
 
@@ -294,14 +296,33 @@ function textBox(x: number, y: number, width: number, text: string, origin: 'ai'
 
 export { textBoxHeight };
 
+/** Text read from handwriting, and who read it (shown with the result and stored on the page). */
+export interface TranscribedText {
+  text: string;
+  /** "This device" (on-device recognition) or the AI's label. */
+  by: string;
+  engine: 'device' | 'ai';
+}
+
 /**
- * Handwriting → text for a page or a selection. Uses a vision model when one is configured
- * (best for messy handwriting), otherwise the on-device recognizer.
+ * Handwriting → text for a page or a selection, by the same rule as the assistant: stroke
+ * recognition on the device first (ML Kit Digital Ink on Android, the browser's recognizer
+ * elsewhere; private, offline), then — only when that is unavailable or its reading is mostly
+ * unreadable — a picture to a strong vision model (a cloud provider or a server the person runs).
+ * Small on-device models never get pictures: their reading of a sketch is worse than the
+ * recognizer's. Null when there is no handwriting to read.
  */
-export async function transcribePage(vault: AppVault, doc: NoteDocument, pageIndex: number, strokes?: InkStroke[], mode: 'plain' | 'markdown' = 'plain'): Promise<string | null> {
-  const ai = await getActiveAI({ task: 'vision', source: 'handwriting', notes: [doc.meta] }).catch(() => null);
+export async function transcribeWithSource(vault: AppVault, doc: NoteDocument, pageIndex: number, strokes?: InkStroke[], mode: 'plain' | 'markdown' = 'plain'): Promise<TranscribedText | null> {
   const page = doc.page(pageIndex);
-  if (ai?.vision) {
+  const ink = strokes ?? page.strokes;
+  if (!ink.length) return null;
+  const local = await recognizeLocally(ink).catch(() => null);
+  // On Gemini Nano phones, ML Kit's proofreading fixes recognition slips (unchanged elsewhere).
+  const localText = local?.text.trim() ? await nativeProofread(local.text) : '';
+  const confident = !!localText && textQuality(localText).ratio >= 0.5;
+  if (confident) return { text: localText, by: 'This device', engine: 'device' };
+  const ai = await getActiveAI({ task: 'vision', source: 'handwriting', notes: [doc.meta] }).catch(() => null);
+  if (sendsImagesTo(ai)) {
     let region: { minX: number; minY: number; maxX: number; maxY: number } | undefined;
     if (strokes?.length) {
       const pts = strokes.flatMap((s) => s.points);
@@ -311,10 +332,16 @@ export async function transcribePage(vault: AppVault, doc: NoteDocument, pageInd
     const pages = doc.pages.map((p, i) => (i === pageIndex ? onlyInk : p));
     const img = await pageImageForAI(vault, doc.meta, pages, pageIndex, region);
     const lang = useSettings.getState().recognition.language;
-    return runSkill(transcribeHandwriting, ai.provider, ai.model, { image: { mediaType: img.mediaType, data: img.base64 }, mode, languageHint: lang, context: doc.meta.title });
+    const text = await runSkill(transcribeHandwriting, ai!.provider, ai!.model, { image: { mediaType: img.mediaType, data: img.base64 }, mode, languageHint: lang, context: doc.meta.title });
+    return { text, by: ai!.label, engine: 'ai' };
   }
-  const local = await recognizeLocally(strokes ?? page.strokes);
-  // On Gemini Nano phones, ML Kit's proofreading fixes recognition slips (unchanged elsewhere).
-  if (local) return nativeProofread(local.text);
-  throw new Error('Add an AI provider with vision in Settings › AI (or use the Android app for on-device recognition) to convert handwriting.');
+  // A shaky local reading is still better than nothing when no strong vision model is set up.
+  if (localText) return { text: localText, by: 'This device', engine: 'device' };
+  if (local) return { text: '', by: 'This device', engine: 'device' };
+  throw new Error('Handwriting can’t be read on this device. Use the Android app (on-device recognition), or add a vision AI (Gemini, GPT, Claude) in Settings › AI.');
+}
+
+/** Handwriting → text (see `transcribeWithSource`), for callers that only need the text. */
+export async function transcribePage(vault: AppVault, doc: NoteDocument, pageIndex: number, strokes?: InkStroke[], mode: 'plain' | 'markdown' = 'plain'): Promise<string | null> {
+  return (await transcribeWithSource(vault, doc, pageIndex, strokes, mode))?.text ?? null;
 }
