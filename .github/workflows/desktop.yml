@@ -176,8 +176,10 @@ jobs:
           done
           if [ "$RUNNER_OS" = macOS ] && [ "$HAS_APPLE_CERT" != true ]; then export APPLE_SIGNING_IDENTITY=-; fi
           # The MSI format only takes numeric pre-release versions (1.2.3-4), so a beta such as
-          # 1.2.3-beta.1 ships the NSIS installer (.exe) alone on Windows.
+          # 1.2.3-beta.1 ships the NSIS installer (.exe) alone on Windows. Full releases ship all.
           if [ "$RUNNER_OS" = Windows ] && [[ "$VERSION" == *-* ]]; then ARGS="$ARGS --bundles nsis"; fi
+          # RPM versions can't contain "-" either: a Linux beta ships .deb and .AppImage.
+          if [ "$RUNNER_OS" = Linux ] && [[ "$VERSION" == *-* ]]; then ARGS="$ARGS --bundles deb,appimage"; fi
           # Runs the web build and the sidecar first (beforeBuildCommand in tauri.conf.json).
           npx tauri build $ARGS --config src-tauri/tauri.release.json
 
