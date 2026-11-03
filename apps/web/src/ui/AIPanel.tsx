@@ -63,6 +63,8 @@ const TOOL_LABELS: Record<string, string> = {
   remember: 'Suggested something to remember',
   check_background_task: 'Checked a background task',
   search_memory: 'Searched everything you wrote',
+  read_document: 'Read a document',
+  edit_document: 'Edited a document',
 };
 
 /** Label for a tool row: note tools by name, connected-app tools as "Used X in App". */

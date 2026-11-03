@@ -115,6 +115,8 @@ function noteView(n: NoteInfo & { pageCount?: number; notebookName?: string }) {
   if (n.pageCount != null) o.page_count = n.pageCount;
   o.updated = iso(n.updatedAt);
   if (n.summary) o.summary = n.summary;
+  // Documents are edited with read_document / edit_document (tools/documents.ts).
+  if (n.kind === 'document') o.kind = 'document';
   return o;
 }
 
