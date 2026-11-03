@@ -57,13 +57,16 @@ test('recognized handwriting is searchable and the hit highlights the exact stro
   const hit = page.locator('.pal-row', { hasText: 'handwriting' }).first();
   await expect(hit).toBeVisible({ timeout: 10000 }); // after the autosave re-indexes the page
   await hit.click();
-  const box = await flashed(page);
-  const expected = await page.evaluate((b) => (window as any).__inkwright.engine.pageRectToScreen(0, b), bounds);
-  const canvas = await page.locator('.ed-canvas').boundingBox();
-  // The highlight surrounds the stroke the line was recognized from (6px padding).
-  expect(Math.abs(box!.x - (canvas!.x + expected.x - 6))).toBeLessThan(3);
-  expect(Math.abs(box!.y - (canvas!.y + expected.y - 6))).toBeLessThan(3);
-  expect(Math.abs(box!.width - (expected.w + 12))).toBeLessThan(3);
+  await flashed(page);
+  // The highlight surrounds the stroke the line was recognized from (6px padding). It is placed
+  // on each frame while the page scrolls to the hit, so compare once the view has settled.
+  await expect.poll(async () => {
+    const box = await page.locator('.ink-flash').boundingBox();
+    const expected = await page.evaluate((b) => (window as any).__inkwright.engine.pageRectToScreen(0, b), bounds);
+    const canvas = await page.locator('.ed-canvas').boundingBox();
+    if (!box || !canvas) return Infinity;
+    return Math.max(Math.abs(box.x - (canvas.x + expected.x - 6)), Math.abs(box.y - (canvas.y + expected.y - 6)), Math.abs(box.width - (expected.w + 12)));
+  }, { timeout: 2000 }).toBeLessThan(3);
 });
 
 test('text of imported PDFs is searchable and opens on the right page', async ({ page }) => {
