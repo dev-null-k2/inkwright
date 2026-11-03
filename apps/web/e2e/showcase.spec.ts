@@ -279,6 +279,8 @@ for (const s of ['light', 'dark'] as Scheme[]) {
     await page.keyboard.press('Escape');
     await page.keyboard.press('p');
     await shot(page, 'solve-fold', s);
+    // Scrolled so the handwritten equation and its result sit just above the steps dialog.
+    await view(page, 1.0, 175);
     await result.click();
     await page.getByRole('menuitem', { name: 'Show steps' }).click();
     await expect(page.getByRole('dialog', { name: 'Steps' })).toContainText('Worked out exactly on this device');
@@ -390,7 +392,7 @@ for (const s of ['light', 'dark'] as Scheme[]) {
 // ── Engineers: a sketch that runs, and notes that know the code ─────────────────────────────────
 
 const LATENCY_CSV = 'service,p99_ms\ncheckout,412\nsearch,188\nauth,265\npayments,301\nprofile,120\nfeed,233\n';
-const STATUS = 'Checkout (412 ms), payments (301 ms) and auth (265 ms) are over the 250 ms budget since the 14:05 deploy. Checkout is worst; rolling back its cache change now. Next update in 30 minutes.';
+const STATUS = 'Checkout, payments and auth are over the 250 ms p99 budget since the 14:05 deploy. Rolling back the checkout cache change; next update in 30 min.';
 
 const typeBox = (page: Page, text: string, x: number, y: number, width = 170) => page.evaluate(({ text, x, y, width }) => {
   const d = (window as any).__inkwright.doc;
@@ -407,7 +409,7 @@ for (const s of ['light', 'dark'] as Scheme[]) {
     await openNote(page, 'Checkout latency');
     await view(page, 1, 40);
     // Boxes and arrows drawn with the pen, a little wobbly, the way a whiteboard sketch is.
-    const W = 250, H = 62;
+    const W = 250, H = 58;
     const box = async (x: number, y: number) => {
       const [a, b] = await toScreen(page, x, y), [c, d] = await toScreen(page, x + W, y + H);
       const j = (p: Pt[], i: number): Pt[] => p.map(([px, py], n) => [px + Math.sin(n / 5 + i) * 1.2, py + Math.cos(n / 6 + i) * 1.2]);
@@ -419,17 +421,17 @@ for (const s of ['light', 'dark'] as Scheme[]) {
       const ang = Math.atan2(f1 - t1, e1 - s1), L = 12;
       await pen(page, [[e1 - L * Math.cos(ang - 0.5), f1 - L * Math.sin(ang - 0.5)], [e1, f1], [e1 - L * Math.cos(ang + 0.5), f1 - L * Math.sin(ang + 0.5)]], { pressure: 0.6 });
     };
-    const X = 80, Y = [200, 330, 460, 590];
+    const X = 80, Y = [170, 290, 410];
     for (const y of Y) await box(X, y);
-    const labels = ['fetch metrics.internal.test/latency.csv', 'filter p99_ms > 250', 'sort by p99_ms desc', 'draft a status update for #incidents'];
-    for (let i = 0; i < 4; i++) await typeBox(page, labels[i]!, X + 14, Y[i]! + 12, W - 28);
-    for (let i = 0; i < 3; i++) await arrow(X + W / 2, Y[i]! + H + 6, X + W / 2 + 2, Y[i + 1]! - 6);
+    const labels = ['fetch metrics.internal.test/latency.csv', 'filter p99_ms > 250', 'draft a status update for #incidents'];
+    for (let i = 0; i < 3; i++) await typeBox(page, labels[i]!, X + 14, Y[i]! + 12, W - 28);
+    for (let i = 0; i < 2; i++) await arrow(X + W / 2, Y[i]! + H + 6, X + W / 2 + 2, Y[i + 1]! - 6);
     await page.keyboard.press(`${await modKey(page)}+a`);
     await page.getByRole('toolbar', { name: /selected/ }).getByRole('button', { name: 'Run' }).click();
     const bar = page.getByRole('region', { name: 'Run the diagram' });
-    await expect(bar).toContainText('4 steps, 3 arrows');
+    await expect(bar).toContainText('3 steps, 2 arrows');
     await bar.getByRole('button', { name: 'Run', exact: true }).click();
-    await expect(page.getByRole('group', { name: /Step: draft a status update/ })).toContainText('rolling back', { timeout: 20_000 });
+    await expect(page.getByRole('group', { name: /Step: draft a status update/ })).toContainText('Rolling back', { timeout: 20_000 });
     await page.keyboard.press('p');
     await shot(page, 'pipeline-laptop', s);
   });

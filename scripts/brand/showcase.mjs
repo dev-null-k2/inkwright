@@ -64,10 +64,8 @@ function css(t) {
   *{box-sizing:border-box}
   html,body{margin:0}
   body{width:1760px;font-family:'Hanken',system-ui,sans-serif;color:${t.ink};-webkit-font-smoothing:antialiased}
-  .card{position:relative;overflow:hidden;width:1760px;background:
-      radial-gradient(1100px 620px at 78% 18%, ${t.glow}, transparent 70%),
-      radial-gradient(900px 600px at 8% 100%, ${t.glow}, transparent 70%),
-      linear-gradient(180deg, ${t.desk}, ${t.desk2});border-radius:36px}
+  /* Flat stone with one gentle fall-off: broad radial glows band badly once the PNG is palettised. */
+  .card{position:relative;overflow:hidden;width:1760px;background:linear-gradient(180deg, ${t.desk} 30%, ${t.desk2});border-radius:36px}
   .card::after{content:'';position:absolute;inset:0;border-radius:36px;box-shadow:inset 0 0 0 2px ${t.ink}14;pointer-events:none}
   .copy{position:absolute;left:96px;top:84px;width:1560px}
   .eyebrow{display:flex;align-items:center;gap:14px;font:600 26px/1 'Hanken';color:${t.iron};letter-spacing:.01em}
@@ -165,8 +163,8 @@ function cards(scheme, mcp) {
     },
     engineers: {
       height: 1180,
-      html: copy('For engineers', 'Sketches that <em>run.</em> Notes that know your code.', 'Draw boxes and arrows and press Run: fetch, filter, sort, then an AI step. Link a note to a function and it is flagged when the signature changes. Agents read it all over MCP.')
-        + at(s('pipeline-laptop', { width: 900, crop: [240, 50, 700, 560], kind: 'window' }), 96, 420)
+      html: copy('For engineers', 'Sketches that <em>run.</em> Notes that know your code.', 'Draw boxes and arrows and press Run: fetch a CSV, filter it, then an AI step. Link a note to a function and it is flagged when the signature changes. Agents read it all over MCP.')
+        + at(s('pipeline-laptop', { width: 900, crop: [240, 46, 700, 580], kind: 'window' }), 96, 420)
         + at(s('drift-fold', { width: 640, crop: F }), 1024, 410),
     },
     researchers: {
