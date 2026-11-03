@@ -4,6 +4,32 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 
 ## Unreleased
 
+### Writing on a phone or a fold
+- **Draw with finger**: one tap in the pen dock (also ••• › Page and the search palette) lets one
+  finger write while two fingers scroll and zoom; remembered per device, the same setting as the
+  welcome's "With my finger". Touching the screen with a stylus offers to switch back.
+- **One-tap theme**: Light, Dark or System from the library and editor top bars, with a short
+  cross-fade (instant with reduced motion). On narrow phones it is the first row of •••.
+- **"+" on every page**: a new note with the same notebook and paper; press and hold (or
+  right-click) for a new page, a template, a document or a PDF to sign. The library's New menu
+  is reachable on screens below 900 px too.
+
+### Documents and signing
+- **Documents**: a rich-text note type (headings, lists, checklists, tables, pictures, quotes,
+  code, page breaks) with an outline and word count, which you can also mark up with the pen.
+  Stored as Markdown in the note (docs/VAULT_FORMAT.md › Documents), merged paragraph by paragraph
+  when two devices edit it. Export to PDF, Word, Markdown and HTML; open or insert .docx, .md and
+  .html files; print. The assistant reads and edits documents (`read_document`, `edit_document`,
+  undoable from AI activity).
+- **Sign a document** from the library's New menu, the editor's "+", the search palette and the
+  welcome: pick a PDF or a photo of a page, fill it in, place a saved signature, export or share.
+
+### Fixes
+- Disabled buttons now say why (Query data, Photo to ink, Lock note, plugin install from a link,
+  the AI panel without a provider); "List all fonts" reports when the browser declines.
+- Opening a note with typed text straight from a reload no longer throws before the context
+  compiler starts.
+
 ### Agents and the server
 - Credential executor: provider keys and connector tokens held by a separate process that makes
   calls with them, policy-checked and audited, and never hands a key out (docs/CREDENTIALS.md).
@@ -20,7 +46,7 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 - Importers for Notion, Evernote, OneNote and GoodNotes/Notability PDFs, and a web clipper
   bookmarklet (docs/IMPORTERS.md); OpenClaw and pi transcripts in agent session import.
 
-### Fixes
+### Fixes (agents)
 - REST keyword search no longer returns notes the AI policy hides from agents.
 
 ## 1.0.0 — first public release

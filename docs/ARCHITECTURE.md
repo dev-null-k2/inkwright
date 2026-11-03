@@ -86,6 +86,33 @@ Sync (`@inkwright/sync`) compares content hashes with the last-synced state and 
   (`launchQueue`), the POST share target (the service worker stashes files in Cache Storage), and
   Android intents. Text and Markdown become typed notes.
 
+- **Sign a document:** `signFlow.ts` is the front door (library New menu, the editor's "+", the
+  search palette, the welcome): a photo of a page is wrapped in a one-page PDF with pdf-lib, the file
+  is imported as a note, and `signIntent.ts` asks the editor to open it with the form layer on.
+
+## Documents (`apps/web/src/documents/`, core `richdoc.ts`, sync `merge-document.ts`)
+
+- **Storage:** a document is a paged note with `NoteMeta.document`; its body is a `role: "document"`
+  text box of Markdown on page 0 and its ink annotations are that page's strokes
+  (docs/VAULT_FORMAT.md › Documents). Everything that reads typed text (search, `note.md`,
+  `read_note`, MCP, history, sync) works unchanged.
+- **Editor:** `DocumentEditor.tsx` is a lazy chunk with Tiptap 3 (ProseMirror, MIT) configured in
+  `extensions.ts` (StarterKit, task lists, tables, images with an `asset` attribute, a page-break
+  node). `markdown.ts` serialises the editor's JSON to deterministic Markdown and renders Markdown
+  (marked + DOMPurify) into the editor's schema. Typing is saved with `NoteDocument.adjust` (not an
+  ink undo step); outside changes (assistant, sync, history) reload the editor; stray text boxes are
+  folded into the body.
+- **Ink:** `InkLayer.tsx` draws strokes as SVG over the sheet in its layout coordinates and adds
+  them with `NoteDocument.addStroke`. The sheet keeps `document.width` while ink shows (CSS `zoom`
+  on narrow screens) so marks stay on their words.
+- **Export:** `pdf.ts` reads the browser's layout (each word's box through DOM ranges, pictures,
+  cells, rules, checkboxes, list markers) and redraws it as vector text in pdf-lib, cut into A4 pages
+  between lines (`planPages`) and at page breaks; words the standard fonts can't encode are embedded
+  as images. `docx.ts` writes and reads WordprocessingML with fflate. Markdown and HTML exports,
+  printing (`@media print`; on Android the PDF goes to the share sheet).
+- **Assistant:** `agent.ts` serves `read_document` / `edit_document` (packages/ai `tools/documents.ts`)
+  under the AI policy; edits record `text_replaced`, so Activity undoes them.
+
 ## Smart ink (`apps/web/src/smart/`, core `objects.ts`, `tables.ts`, `inkcues.ts`, `mathexpr.ts`)
 
 - **Noticing:** `SmartLayer.tsx` watches the document for new handwritten strokes and, ~1 s after

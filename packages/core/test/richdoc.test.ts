@@ -141,3 +141,15 @@ describe('edits', () => {
     expect(() => applyDocumentEdit(DOC, { op: 'replace_section', heading: 'Nope', markdown: '' })).toThrow(/headings are: "trip plan", "packing", "budget"/);
   });
 });
+
+describe('note.md of a document', () => {
+  it('is the document\'s own Markdown, with its ink linked after it', async () => {
+    const { exportMarkdown, newNote } = await import('../src/index.ts');
+    const note = { ...newNote({ id: 'D', title: 'Plan', pageId: 'P', now: 0 }), document: { width: 720 } };
+    const page = { id: 'P', formatVersion: 2, strokes: [{ id: 's', pen: 'fountain' as const, color: '#FF000000', size: 2, createdAt: 0, points: [{ x: 1, y: 1, t: 0, p: 0.5, tilt: -1, orient: -1 }] }], texts: [{ id: 'B', role: 'document' as const, x: 0, y: 0, width: 600, text: '## Goals\n\n- [ ] Ship\n', fontSize: 16, color: '#FF000000', font: 'sans' as const, createdAt: 0 }] };
+    const md = exportMarkdown(note, [page]);
+    expect(md).toContain('kind: document');
+    expect(md).toContain('# Plan\n\n## Goals\n\n- [ ] Ship\n\nInk on this document: ![Annotations](pages/P.svg)');
+    expect(md).not.toContain('## Page 1');
+  });
+});

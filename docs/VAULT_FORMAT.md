@@ -294,6 +294,48 @@ Paper styles: `blank ruled_narrow ruled_wide dot_grid square_grid graph_mm isome
 planner_day planner_week todo`. Tints: `white ivory cream recycled kraft mint blush slate midnight`.
 Textures: `smooth standard toothy`.
 
+## Documents (`document`, typed and formatted notes)
+
+A **document** is a note of typed, formatted text that can carry ink on top (the Documents module:
+headings, bold/italic/underline/strike, links, bullet, numbered and check lists, tables, pictures,
+quotes, code, rules and page breaks). It is an ordinary paged note with one extra field:
+
+```jsonc
+// note.json
+{ "kind": "paged", "document": { "width": 720 }, "pageSize": { "name": "Document", "width": 720, "height": 1018 }, … }
+```
+
+Its first page holds the body as one text box marked `"role": "document"`:
+
+```jsonc
+// pages/<id>.ink.json
+{ "texts": [{ "id": "…", "role": "document", "x": 48, "y": 56, "width": 624, "fontSize": 16, "font": "sans",
+              "color": "#FF1B1F24", "createdAt": 0, "text": "# Plan\n\nWe leave on **Friday**.\n\n- [ ] Tent\n" }],
+  "strokes": [ … ] }   // ink annotations
+```
+
+- `text` is GitHub-flavoured Markdown (CommonMark + tables, task lists, `~~strike~~`), with three
+  HTML additions for what Markdown has no syntax for: `<u>…</u>` (underline),
+  `<div class="page-break"></div>` (a manual page break, on a line of its own) and `<br>` inside
+  table cells. Pictures are `![alt](assets/<name>)`, files in the note's `assets/` folder — the
+  path is relative to the note folder, so `note.md` and other Markdown tools show them too. Writers
+  produce it deterministically (apps/web/src/documents/markdown.ts): saving an unchanged document
+  rewrites nothing.
+- Keeping the body in a text box means search, `note.md`, agents' `read_note`, the MCP server,
+  Obsidian export, version history and sync treat a document's words like any typed text. Readers
+  that don't know `role` show the Markdown as a text box; nothing is lost.
+- **Ink annotations** are the first page's `strokes`, in CSS pixels of a column `document.width`
+  wide (the body's layout width, not the page size). Apps show the document at that width while
+  ink is visible (scaling it on narrower screens) so marks stay on the words they were made on.
+- Text that other features add to the page as a separate box (an assistant answer "inserted on
+  the page", dictation) belongs at the end of the document; apps fold it in.
+- Undo of typing is the text editor's own; saving the body is not an ink undo step.
+- `note.md` of a document is its Markdown under the usual front matter (`kind: document`), followed
+  by a link to the page SVG when it has ink.
+
+Sync merges a body edited on two devices paragraph by paragraph against the base (see "Sync").
+Exports: PDF, Word (.docx), Markdown (a .zip with `assets/` when it has pictures) and HTML.
+
 ## Links, tags and daily notes
 
 - **Wiki links** are text: `[[Title]]`, `[[Title#Page 2]]`, `[[Title|alias]]`, `[[Folder/Title]]`,
@@ -461,7 +503,11 @@ Sync engines (Google Drive, WebDAV, local folder) mirror this tree file-for-file
 images/objects are unioned by id with deletions honoured from either side; authorship chain events
 are unioned and ordered by time (including collaborators' events with `by`; an item's `author`
 is part of its content, so it merges like any other field); scalar metadata takes the most
-recent `updatedAt`. `forms` merges per PDF and per field (filling different fields on two devices
+recent `updatedAt`. A document body (a text box with `role: "document"`) edited on both sides is
+merged block by block (blank-line separated Markdown blocks, fenced code kept whole) against the
+base: paragraphs changed on different devices both survive, a paragraph changed differently on both
+is kept in both versions (local first), and a deletion on one side wins over an unchanged block
+(packages/sync/src/merge-document.ts). `forms` merges per PDF and per field (filling different fields on two devices
 keeps both; the newer note wins a field both changed). `codeRefs` merges per link the same way. Transcripts merge too: within the same `run`,
 segments are unioned by id (one-sided edits and deletions honoured, the newer file wins a segment
 both changed) and `complete` is true if either side finished; different runs (one device
