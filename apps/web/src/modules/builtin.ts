@@ -210,9 +210,9 @@ export const BUILTIN_MODULES: ModuleDefinition[] = [
     contributes: {
       settingsSections: ['devices'],
       menuItems: ['Share live'],
-      paletteActions: ['peer.devices'],
+      paletteActions: ['peer.devices', 'peer.join'],
       panels: ['Live sharing', 'Collaborators’ cursors and ink'],
-      background: ['Answering paired devices through your signalling server (when one is set)'],
+      background: ['Answering paired devices through your signalling server (when one is set)', 'Listening on the short-code relay while a code you made is showing'],
     },
     whenOff: 'Paired devices are remembered but can’t connect; live sessions end. Notes others wrote with you stay, marked as theirs.',
     async activate() {
@@ -251,9 +251,9 @@ export const BUILTIN_MODULES: ModuleDefinition[] = [
   {
     id: 'device-check',
     name: 'Device check',
-    description: 'Settings › About › Check this device: measures the pen, the screen and how fast ink appears on this device, and makes a report to copy or share.',
+    description: 'Settings › About › Check this device: measures the pen, the screen and how fast ink appears on this device, and makes a report to copy or share. Also records handwriting samples to tune how your writing is read.',
     defaultEnabled: true,
-    contributes: { panels: ['Check this device'] },
+    contributes: { panels: ['Check this device', 'Record handwriting samples'] },
   },
   // Notes from other apps, the web clipper, and runbook shell blocks on a computer.
   ...IMPORT_MODULES,

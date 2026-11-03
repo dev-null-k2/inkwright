@@ -52,3 +52,4 @@ export * from './recall/index.ts';
 export * from './icalendar.ts';
 export * from './importers/index.ts';
 export * from './textquality.ts';
+export * from './mathink/index.ts';

@@ -36,6 +36,12 @@ export interface PeerNetwork {
   turn: { url: string; username: string } | null;
   /** Optional self-hosted signalling relay (apps/mcp-server --signal-token). */
   relayUrl: string;
+  /**
+   * The ntfy server short codes meet through when no self-hosted relay is set (shortcode.ts):
+   * the public ntfy.sh by default, your own ntfy, or empty for none (then only the long codes
+   * under "Advanced" work).
+   */
+  publicRelay: string;
 }
 
 interface PeerStored {
@@ -47,9 +53,18 @@ interface PeerStored {
 /** Google's public STUN server: only tells each device its public address; sees no content. */
 export const DEFAULT_STUN = ['stun:stun.l.google.com:19302'];
 
+declare const __E2E__: boolean;
+
+/**
+ * The public relay for short codes: ntfy.sh, a free, account-free, open-source pub/sub service.
+ * It sees hashed room names and sealed messages only (docs/PRIVACY.md). Test builds contact no
+ * public service: their specs run a relay of their own.
+ */
+export const DEFAULT_PUBLIC_RELAY = typeof __E2E__ !== 'undefined' && __E2E__ ? '' : 'https://ntfy.sh';
+
 const KEY = 'inkwright.peer.v1';
 
-const NETWORK_DEFAULTS: PeerNetwork = { stun: DEFAULT_STUN, turn: null, relayUrl: '' };
+const NETWORK_DEFAULTS: PeerNetwork = { stun: DEFAULT_STUN, turn: null, relayUrl: '', publicRelay: DEFAULT_PUBLIC_RELAY };
 
 function load(): PeerStored {
   try {

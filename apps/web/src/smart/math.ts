@@ -1,6 +1,7 @@
 import {
   asFunctionOfX, compileNode, findRoots, formatMath, formatMathNumber, normalizeMath, parseMath, variablesOf, type MathNode,
 } from '@inkwright/core';
+import { equationSteps, exactArithmetic, systemSteps, type Q } from './steps.ts';
 
 /**
  * "Write an equation and it solves itself": the computer-algebra side. Works fully offline:
@@ -21,7 +22,16 @@ export interface MathSolution {
   result: string;
   /** Functions worth plotting (y = …, f(x) = …, an expression in x). */
   plot?: { expr: string; label: string }[];
+  /** Worked steps, computed exactly on this device (steps.ts); absent when there is no short way to show them. */
+  steps?: string[];
 }
+
+/** "15%" → (15/100), "20% of 50" → (20/100)*50: percentages as people write them. */
+export function expandPercent(s: string): string {
+  return s.replace(/(\d+(?:\.\d+)?)\s*%\s*of\s*/gi, '($1/100)*').replace(/(\d+(?:\.\d+)?)\s*%/g, '($1/100)');
+}
+
+const showQ = (q: Q) => q.toString().replace(/^-/, '−');
 
 let nerdamerP: Promise<any> | null = null;
 /** nerdamer with the Algebra, Calculus and Solve add-ons (the all-in-one ES build). */
@@ -111,7 +121,7 @@ const readable = (s: string) => s.length <= 40 && !/\d{7,}/.test(s) && !/\bi\b/.
  * input cannot be read as maths.
  */
 export async function solveMath(src: string): Promise<MathSolution> {
-  const lines = src.split(/\s*(?:\r?\n|;)\s*/).map((l) => normalizeMath(l).replace(/\s*=\s*\??\s*$/, '').trim()).filter(Boolean);
+  const lines = src.split(/\s*(?:\r?\n|;)\s*/).map((l) => expandPercent(normalizeMath(l)).replace(/\s*=\s*\??\s*$/, '').trim()).filter(Boolean);
   if (!lines.length) throw new Error('Nothing to solve');
   if (lines.length > 1 && lines.every((l) => l.includes('='))) return solveSystem(lines);
   let s = lines.join(' ');
@@ -137,6 +147,17 @@ export async function solveMath(src: string): Promise<MathSolution> {
   const node = parseMath(s);
   const vars = variablesOf(node);
   if (!vars.size) {
+    // Exactly, with steps, when it is rational arithmetic ("1/2 + 1/3" is 5/6, not 0.8333).
+    const exact = exactArithmetic(node);
+    if (exact) {
+      const q = exact.value, dec = q.value();
+      const terminating = (() => { let d = q.d; for (const p of [2n, 5n]) while (d % p === 0n) d /= p; return d === 1n; })();
+      const decimal = formatMathNumber(dec);
+      const result = q.isInt() ? `= ${showQ(q)}`
+        : /[/÷]/.test(src) ? `= ${showQ(q)} ${terminating && decimal === String(dec) ? '=' : '≈'} ${decimal.replace(/^-/, '−')}`
+          : `= ${terminating && decimal === String(dec) ? decimal.replace(/^-/, '−') : `${showQ(q)} ≈ ${decimal.replace(/^-/, '−')}`}`;
+      return { kind: 'value', problem: prettyMath(toCas(node)), result, steps: exact.steps.length ? exact.steps : undefined };
+    }
     const v = evalNumber(node);
     if (!Number.isFinite(v)) throw new Error('That has no finite value');
     const frac = s.includes('/') ? asFraction(v) : null;
@@ -189,6 +210,13 @@ async function equation(lhs: string, rhs: string): Promise<MathSolution> {
   const v = vars.has('x') ? 'x' : [...vars].sort()[0]!;
   const diff = compileNode({ t: 'bin', op: '-', a, b });
   const others = [...vars].filter((x) => x !== v);
+  // Linear and quadratic equations with rational coefficients: exact answer and steps.
+  const worked = others.length ? null : equationSteps(a, b, v);
+  if (worked?.solutions) {
+    const result = worked.solutions.length ? `${v} = ${worked.solutions.map(showQ).join(', ')}` : `no real solution for ${v}`;
+    return { kind: 'equation', problem, result, steps: worked.steps };
+  }
+  const steps = worked?.steps;
   const n = await cas();
   let symbolic: string[] = [];
   try {
@@ -219,7 +247,7 @@ async function equation(lhs: string, rhs: string): Promise<MathSolution> {
     });
     // Decimals the solver found numerically are approximations, not exact answers.
     const approx = shown.every((t) => /^−?\d+\.\d+$/.test(t)) && exact.some((e) => !Number.isInteger(e.value * 1e4));
-    return { kind: 'equation', problem, result: `${v} ${approx ? '≈' : '='} ${shown.join(', ')}` };
+    return { kind: 'equation', problem, result: `${v} ${approx ? '≈' : '='} ${shown.join(', ')}`, steps };
   }
   // Transcendental or messy: find real roots numerically.
   const near = findRoots(f, -20, 20, 8000);
@@ -227,15 +255,19 @@ async function equation(lhs: string, rhs: string): Promise<MathSolution> {
   const roots = [...near, ...far].sort((p, q) => p - q);
   if (!roots.length) return { kind: 'equation', problem, result: `no real solution for ${v}` };
   const list = roots.slice(0, 6).map(formatMathNumber).join(', ') + (roots.length > 6 ? ', …' : '');
-  return { kind: 'equation', problem, result: `${v} ≈ ${list}` };
+  return { kind: 'equation', problem, result: `${v} ≈ ${list}`, steps };
 }
 
 async function solveSystem(lines: string[]): Promise<MathSolution> {
+  const parsed = lines.map((l) => { const [a, b] = l.split('='); return [parseMath(a!), parseMath(b!)] as [MathNode, MathNode]; });
+  const vars = [...new Set(parsed.flatMap(([a, b]) => [...variablesOf(a), ...variablesOf(b)]))].sort();
+  // Two linear equations in two unknowns: exact, with elimination steps.
+  const worked = vars.length === 2 ? systemSteps(parsed, vars as [string, string]) : null;
+  if (worked?.solution) {
+    return { kind: 'system', problem: lines.map((l) => prettyMath(l)).join('; '), result: `${vars[0]} = ${showQ(worked.solution[0])}, ${vars[1]} = ${showQ(worked.solution[1])}`, steps: worked.steps };
+  }
   const n = await cas();
-  const eqs = lines.map((l) => {
-    const [a, b] = l.split('=');
-    return `${toCas(parseMath(a!))}=${toCas(parseMath(b!))}`;
-  });
+  const eqs = parsed.map(([a, b]) => `${toCas(a)}=${toCas(b)}`);
   let res: any;
   try { res = n.solveEquations(eqs); } catch { throw new Error('That system has no single solution'); }
   if (!res || (Array.isArray(res) && !res.length)) throw new Error('That system has no single solution');

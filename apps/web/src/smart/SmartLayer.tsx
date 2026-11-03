@@ -110,12 +110,12 @@ export function SmartLayer({ doc, engine, vault, host, tool, apiRef }: SmartLaye
       if (dismissed.current.has(key)) return;
       void (async () => {
         // Locked notes are never sent to an AI on their own.
-        const auto0 = await canReadAutomatically();
+        const auto0 = await canReadAutomatically(doc);
         const auto = doc.meta.lock && auto0 === 'ai' ? false : auto0;
         if (auto) {
           const c = await readForActions(ctx, pageIndex, enc.enclosedIds, auto === 'ai').catch(() => null);
           if (c && (c.event || c.links.length || c.tasks)) setCard({ ...c, anchor: enc.rect });
-        } else if (await canRead()) {
+        } else if (await canRead(doc)) {
           offer({ key, pageIndex, anchor: enc.rect, label: 'Read circled writing', icon: 'read', run: () => run('Reading…', async () => {
             const c = await readForActions(ctx, pageIndex, enc.enclosedIds, true);
             if (c) setCard({ ...c, anchor: enc.rect });
@@ -163,7 +163,7 @@ export function SmartLayer({ doc, engine, vault, host, tool, apiRef }: SmartLaye
   useEffect(() => { if (!suggestions) setChip(null); }, [suggestions]);
 
   const announceSolved = (obj: MathObject) => {
-    toast({ text: `${obj.result}`, action: { label: 'Undo', run: () => engine.undo() } });
+    toast({ text: `${obj.result}${obj.readBy ? ` · read by ${obj.readBy}` : ''}`, action: { label: 'Undo', run: () => engine.undo() } });
   };
 
   // ---- Selection actions and the text tool --------------------------------------------------------------
@@ -444,7 +444,7 @@ export function SmartLayer({ doc, engine, vault, host, tool, apiRef }: SmartLaye
         const s = scr(pageIndex, { minX: m.x - 4, minY: m.y, maxX: m.x + Math.max(m.fontSize, m.result.length * m.fontSize * 0.5 + m.fontSize * 0.6) + 4, maxY: m.y + m.fontSize * 1.5 });
         if (!onScreen(s)) return null;
         return <button key={m.id} type="button" className="smart-math" style={{ left: s.x, top: s.y, width: s.w, height: s.h }}
-          aria-label={`Result ${m.result}${m.origin === 'ai' ? ' (read by AI)' : ''}`} title={m.origin === 'ai' ? 'Read by AI, solved on this device' : 'Solved on this device'}
+          aria-label={`Result ${m.result}${m.origin === 'ai' ? ' (read by AI)' : ''}`} title={resultTitle(m)}
           onClick={(e) => setMathMenu({ pageIndex, id: m.id, el: e.currentTarget })} />;
       })}
       <Popover anchor={mathMenu?.el ?? null} open={!!mathMenu && !!menuObj} onClose={() => setMathMenu(null)} title="Result" placement="below">
@@ -462,7 +462,7 @@ export function SmartLayer({ doc, engine, vault, host, tool, apiRef }: SmartLaye
           <div className="smart-steps">
             <p className="smart-steps-problem">{stepsObj.input} <span aria-hidden>→</span> <strong>{stepsObj.result}</strong></p>
             <ol>{stepsObj.steps?.map((st, i) => <li key={i}>{st}</li>)}</ol>
-            <p className="set-note">Steps written by your AI; the answer was checked on this device.</p>
+            <p className="set-note">{stepsObj.stepsBy === 'solver' ? 'Worked out exactly on this device.' : 'Steps written by your AI; the answer was checked on this device.'}{stepsObj.readBy ? ` Read by ${stepsObj.readBy}.` : ''}</p>
           </div>
         )}
       </Dialog>
@@ -518,6 +518,12 @@ export function SmartLayer({ doc, engine, vault, host, tool, apiRef }: SmartLaye
 }
 
 /** Functions a result object can plot: y = f(x), or the input when it is an expression in x. */
+/** Who read and who solved a result, in plain words (its tooltip). */
+function resultTitle(m: MathObject): string {
+  const read = m.readBy ? `Read by ${m.readBy}` : m.origin === 'ai' ? 'Read by AI' : 'Read on this device';
+  return `${read}, solved on this device`;
+}
+
 function plottable(m: MathObject): { expr: string; label: string }[] | null {
   const fn = asFunctionOfX(m.input.replace(/\s*=\s*$/, ''));
   return fn ? [fn] : null;

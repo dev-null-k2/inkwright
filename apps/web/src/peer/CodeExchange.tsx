@@ -81,7 +81,18 @@ export function ReadCode({ label, onCode, busy }: { label: string; onCode: (code
   );
 }
 
-function Scanner({ onCode, onClose }: { onCode: (c: string) => void; onClose: () => void }) {
+/** True when this browser can read QR codes with the camera. */
+export async function canScanQr(): Promise<boolean> {
+  try {
+    const formats = await (Barcode as unknown as { getSupportedFormats?: () => Promise<string[]> })?.getSupportedFormats?.();
+    return !!formats?.includes('qr_code') && !!navigator.mediaDevices?.getUserMedia;
+  } catch {
+    return false;
+  }
+}
+
+/** The camera, reading QR codes until one passes `accept` (long codes start with `ink` by default). */
+export function Scanner({ onCode, onClose, accept = (v) => v.startsWith('ink') }: { onCode: (c: string) => void; onClose: () => void; accept?: (raw: string) => boolean }) {
   const video = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -96,7 +107,7 @@ function Scanner({ onCode, onClose }: { onCode: (c: string) => void; onClose: ()
         await video.current!.play();
         while (!stop) {
           const found = await detector.detect(video.current!).catch(() => []);
-          const code = found.find((f) => f.rawValue.startsWith('ink'))?.rawValue;
+          const code = found.find((f) => accept(f.rawValue))?.rawValue;
           if (code) return onCode(code);
           await new Promise((r) => setTimeout(r, 250));
         }
@@ -108,6 +119,7 @@ function Scanner({ onCode, onClose }: { onCode: (c: string) => void; onClose: ()
       stop = true;
       stream?.getTracks().forEach((t) => t.stop());
     };
+    // `accept` is a filter, not a reason to restart the camera.
   }, [onCode]);
   return (
     <div className="peer-scan">

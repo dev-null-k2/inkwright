@@ -85,3 +85,42 @@
   .branch-cols { grid-template-columns: 1fr; }
   .branch-col-head:nth-child(2) { display: none; }
 }
+
+/* ---- Short codes (CodeSheets.tsx): the code card, the code field, the share sheet ------------ */
+.code-card { display: flex; gap: var(--s-4); align-items: center; flex-wrap: wrap; }
+.code-card .peer-qr { width: min(168px, 42vw); }
+.code-card.is-placeholder { min-height: 168px; border-radius: var(--r-control); background: var(--chrome); }
+.code-card-side { flex: 1 1 220px; display: flex; flex-direction: column; gap: var(--s-3); align-items: flex-start; min-width: 0; }
+.code-card-side p { margin: 0; }
+.code-big {
+  font-family: var(--font-mono);
+  font-size: clamp(1.75rem, 6vw, 2.4rem);
+  font-weight: 560;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  user-select: all;
+  line-height: 1.1;
+}
+.code-input {
+  width: 100%;
+  max-width: 16ch;
+  font-family: var(--font-mono);
+  font-size: 1.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: var(--s-2) var(--s-3);
+  color: var(--ink);
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+}
+.code-input:focus-visible { outline: 2px solid var(--iron); outline-offset: 1px; }
+.code-input::placeholder { color: var(--ink-3); letter-spacing: 0.1em; }
+.join-sheet, .share-sheet { display: flex; flex-direction: column; gap: var(--s-3); align-items: stretch; }
+.join-sheet > .row-buttons, .share-sheet > .btn { align-self: flex-start; }
+.join-sheet > p, .share-sheet > p { margin: 0; }
+.peer-advanced { margin-top: var(--s-2); }
+.peer-advanced > summary { cursor: pointer; color: var(--ink-2); font-size: var(--t-sm); padding: var(--s-1) 0; }
+.peer-advanced[open] > summary { margin-bottom: var(--s-2); }
+.peer-status.is-wait { color: var(--ink-2); }

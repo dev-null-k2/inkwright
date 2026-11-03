@@ -16,7 +16,7 @@
  */
 import { create } from 'zustand';
 import { CollabReplica, fromBase64Url, newId, newNote, newPage, pagesFromSnapshot, type CollabOp, type CollabSnapshot, type ItemAuthor, type NoteDocument, type NoteMeta, type PenType } from '@inkwright/core';
-import { isOffer, keyFingerprint, type CollabPermission, type PeerLink } from '@inkwright/sync';
+import { isOffer, keyFingerprint, type CollabPermission, type PeerLink, type PeerOffer } from '@inkwright/sync';
 import { useApp } from '../state/app.ts';
 import { answerConnection, readCode, startConnection, type Connected, type PendingOffer } from './connect.ts';
 import { deviceIdentity, shortKeyId } from './identity.ts';
@@ -153,8 +153,11 @@ function broadcast(rt: Runtime, name: string, payload: Record<string, unknown>):
 
 // ---- Host -------------------------------------------------------------------------------------------
 
-/** Starts (or continues) sharing the open note and makes a one-time invite with a permission. */
-export async function inviteToNote(doc: NoteDocument, permission: CollabPermission): Promise<PendingOffer> {
+/**
+ * Starts (or continues) sharing the open note and makes a one-time invite with a permission.
+ * `pakePsk`: the invite answers a short code (shortcode.ts) and carries no secret of its own.
+ */
+export async function inviteToNote(doc: NoteDocument, permission: CollabPermission, opts: { pakePsk?: Uint8Array } = {}): Promise<PendingOffer> {
   const noteId = doc.meta.id;
   let rt = runtimes.get(noteId);
   if (!rt) {
@@ -165,7 +168,7 @@ export async function inviteToNote(doc: NoteDocument, permission: CollabPermissi
     runtimes.set(noteId, rt);
     useLive.setState((s) => ({ sessions: { ...s.sessions, [noteId]: { noteId, role: 'host', permission: 'write', title: doc.meta.title, peers: {}, ended: null } } }));
   }
-  return startConnection('collab', { invite: { noteId, title: doc.meta.title, permission } });
+  return startConnection('collab', { invite: { noteId, title: doc.meta.title, permission }, ...(opts.pakePsk ? { pakePsk: opts.pakePsk } : {}) });
 }
 
 /** Host: completes an invite with the guest's answer; the guest gets the note and joins. */
@@ -209,7 +212,13 @@ export interface JoinStart {
 /** Reads an invite code (scanned or pasted). */
 export async function readInvite(code: string): Promise<JoinStart> {
   const offer = await readCode(code);
-  if (!isOffer(offer) || offer.purpose !== 'collab' || !offer.invite) throw new Error('That is not an invitation to a live note.');
+  if (!isOffer(offer)) throw new Error('That is not an invitation to a live note.');
+  return inviteFromOffer(offer);
+}
+
+/** An invite from an offer: a long code's, or one a short code delivered (with its `pakePsk`). */
+export function inviteFromOffer(offer: PeerOffer, pakePsk?: Uint8Array): JoinStart {
+  if (offer.purpose !== 'collab' || !offer.invite) throw new Error('That is not an invitation to a live note.');
   const invite = offer.invite;
   return {
     from: offer.from.name,
@@ -219,6 +228,7 @@ export async function readInvite(code: string): Promise<JoinStart> {
       let welcomed!: (w: Welcome) => void;
       const welcome = new Promise<Welcome>((r) => (welcomed = r));
       const r = await answerConnection(offer, {
+        ...(pakePsk ? { pakePsk } : {}),
         setup: (link) => {
           link.rpc.on('collab.welcome', (p) => welcomed(p as Welcome));
         },

@@ -4,6 +4,15 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 
 ## Unreleased
 
+### Sharing and pairing
+- Share live, pair a device and Sync now with one short code (`K7PM-2Q9X`), a QR code or a link
+  sent from the share sheet — typed one way, no code back. The code is a CPace password, so the
+  relay (ntfy.sh by default, your own ntfy, or `inkwright-mcp --signal-token`) learns nothing it
+  could use; codes work once, for ten minutes, and lock after five wrong tries. The long codes
+  remain under Advanced for use without any relay (docs/COLLABORATION.md).
+- Paired devices keep listening on a self-hosted relay even if it refused them at first (the
+  token is read for each request).
+
 ### Agents and the server
 - Credential executor: provider keys and connector tokens held by a separate process that makes
   calls with them, policy-checked and audited, and never hands a key out (docs/CREDENTIALS.md).
@@ -19,6 +28,17 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 ### Notes from other apps
 - Importers for Notion, Evernote, OneNote and GoodNotes/Notability PDFs, and a web clipper
   bookmarklet (docs/IMPORTERS.md); OpenClaw and pi transcripts in agent session import.
+
+### Handwritten maths
+- Solve reads the strokes on the device: symbols are grouped from the ink, recognized with ML Kit
+  on Android (ranked candidates per symbol), the browser's handwriting API or a built-in
+  classifier, and parsed in 2-D — fractions, exponents, roots, systems — choosing the reading
+  that is valid maths. A picture goes to an AI only when that reading is unsure, and only to a
+  strong cloud model, never a small on-device one. Results say who read them (docs/MATH.md).
+- Exact answers and worked steps computed on the device: fractions, order of operations,
+  percentages, linear and quadratic equations, 2 × 2 systems.
+- Settings › About › Check this device › Record handwriting samples saves your strokes and what
+  you meant to a file you can share, for tuning the reader.
 
 ### Fixes
 - REST keyword search no longer returns notes the AI policy hides from agents.

@@ -9,38 +9,52 @@ Reference implementation:
 | Part | Where |
 |---|---|
 | Encryption, framing, handshake, RPC, the peer `Remote` | `packages/sync/src/peer/` |
+| Short codes: CPace, code format and lockout, the rendezvous protocol and relays | `packages/sync/src/peer/{cpace,shortcode,rendezvous}.ts` |
 | Live-collaboration CRDT and its bridge to `NoteDocument` | `packages/core/src/collab.ts` |
 | WebRTC, pairing, device sync and live sessions in the app | `apps/web/src/peer/` |
-| Optional signalling relay | `apps/mcp-server/src/signal.ts` (`inkwright-mcp --signal-token`) |
-| Tests | `packages/sync/test/peer.test.ts`, `packages/core/test/collab.test.ts`, `apps/mcp-server/test/signal.test.ts`, `apps/web/e2e/peer.spec.ts` |
+| Short codes in the app: relay choice, links, the share, pair and join sheets | `apps/web/src/peer/{shortcode,liveCodes,joinStash}.ts`, `CodeSheets.tsx` |
+| Optional self-hosted relay | `apps/mcp-server/src/signal.ts` (`inkwright-mcp --signal-token`) |
+| Tests | `packages/sync/test/{peer,shortcode}.test.ts`, `packages/core/test/collab.test.ts`, `apps/mcp-server/test/{signal,rendezvous}.test.ts`, `apps/web/src/peer/shortcode.test.ts`, `apps/web/e2e/peer.spec.ts` |
 
 Both features are the **Devices & live sharing** module (Settings › Extend › Modules) and can be switched
 off; the vault keeps everything they wrote.
 
 ## What you can do
 
-- **Pair a device** — Settings › Sync & devices › Devices & sharing › *Pair a new device* shows a QR code (and the
-  same code as text). On the other device, scan it (where the browser has a camera barcode
-  reader: Chrome on Android, ChromeOS and macOS) or paste it, confirm, and show the answer back
-  the same way. Both devices then remember each other's public key; *Remove* forgets it.
-- **Sync two devices directly** — *Sync now* next to a paired device. Without a signalling server
-  this is one more exchange of codes; with one (below), it happens by itself while Inkwright is
-  open on both. The sync is the same engine as Google Drive or WebDAV sync, with the same
-  three-way merge of ink and text, conflict copies for images, and the same safety stops (an
-  empty or wiped device is never mistaken for "delete everything").
-- **Share a page live** — Editor › ••• › Share & export › *Share live* makes a one-time invite, *can write* or
-  *can view*. The other person enters it in Settings › Sync & devices › Devices & sharing and shows their answer
-  back. Strokes appear as they are being drawn, cursors show where everyone is (name and a calm
-  colour), and edits made at the same moment on different devices never conflict. A guest's
+Everything starts with **one short code, passed one way**: eight letters and digits like
+`K7PM-2Q9X`, with a QR code and a link next to it. The other person types the code, scans the QR
+code (any phone camera opens the link), or taps the link you sent — and they are connected. No
+code comes back.
+
+- **Share a page live** — Editor › ••• › Share & export › *Share live* shows a code at once, with
+  *Send link* (the Android share sheet, or Web Share in browsers: WhatsApp, Messages, mail…) and
+  *Can write* / *Can view*, which you can change until someone joins. The other person chooses
+  *Join with a code* (Settings › Sync & devices › Devices & sharing, or the search palette) or opens
+  the link. Your sheet says "Priya joined" and lists who is in. Strokes appear as they are being
+  drawn, cursors show where everyone is (name and a calm colour), and edits made at the same
+  moment on different devices never conflict. *Invite someone else* makes the next code. A guest's
   copy is an ordinary note in their own vault; when the session ends it stays, like a photocopy.
+- **Pair a device** — Devices & sharing › *Pair a device* shows a code; on the other device,
+  *Join with a code*, enter it, and confirm "Pair with “Laptop”?" (pairing lets the devices sync
+  everything, so the joining device always asks). Both devices then remember each other's public
+  key and show the same six digits; *Remove* forgets a device.
+- **Sync two devices directly** — *Sync now* next to a paired device. With a self-hosted relay
+  (below) it happens by itself while Inkwright is open on both; otherwise it shows a short code to
+  enter on the other device. The sync is the same engine as Google Drive or WebDAV sync, with the
+  same three-way merge of ink and text, conflict copies for images, and the same safety stops (an
+  empty or wiped device is never mistaken for "delete everything").
+- **Without any relay** — *Advanced* (in the share sheet and in Devices & sharing) keeps the
+  original long codes: one device shows an offer, the other shows an answer back, as QR codes or
+  pasted text. Nothing but the two devices is involved.
 
 ## What is peer-to-peer, and what is not
 
 | Step | How | Needs a server? |
 |---|---|---|
 | Finding each other's addresses | ICE with **STUN** (default `stun:stun.l.google.com:19302`, configurable, can be empty) | A STUN server sees the devices' public IP addresses, nothing else. Empty STUN list: same network only. |
-| Exchanging the offer and answer (signalling) | QR codes or pasted text, in both directions | **No.** You are the signalling channel. |
-| … optionally, automatically | A **relay you run**: `inkwright-mcp --http <port> --signal-token <secret>` | Yes, but it only ever holds sealed, unlinkable messages (below). |
+| Meeting by short code (signalling) | A **relay**: [ntfy.sh](https://ntfy.sh) by default, your own ntfy server, or `inkwright-mcp --signal-token` | Yes — but it sees a hashed room name, PAKE values that reveal nothing, and sealed messages (below). |
+| … or by long codes (Advanced) | QR codes or pasted text, in both directions | **No.** You are the signalling channel. |
+| Paired devices finding each other by themselves | A **relay you run**: `inkwright-mcp --http <port> --signal-token <secret>` | Yes, but it only ever holds sealed, unlinkable messages (below). |
 | The connection itself | WebRTC data channel (SCTP over DTLS over UDP), device to device | No — unless the network blocks it (next section). |
 | Your notes and strokes | End-to-end encrypted on top of DTLS | Never pass through anything that can read them. |
 
@@ -71,9 +85,97 @@ the encrypted secret store, never in the vault). A TURN relay sees connection me
 addresses talk, when, how much) and ciphertext; it cannot read or alter content (see the threat
 model). Managed TURN services (Twilio, Cloudflare Calls, Metered) work the same way.
 
+## Short codes: how a few characters are enough
+
+A WebRTC connection needs both devices' session descriptions (about a kilobyte each), and the
+end-to-end encryption needs both devices' keys. A short code can't carry those, and a short
+secret sent as a hash would be guessed offline in milliseconds by whoever relays it. So the code
+is used as the password of a **PAKE** (password-authenticated key exchange), and everything
+else travels through a relay, sealed under the key the PAKE produces.
+
+**The code.** Eight characters of Crockford's base 32 (digits and capitals without I, L, O and
+U; when typing, case, spaces and dashes don't matter, `O` reads as `0`, `I` and `L` as `1`). The
+first three are the **nameplate** (15 bits): they only choose where to meet. The relay room is
+`iw1` + SHA-256("inkwright.rendezvous.v1 " + nameplate), so the relay never sees the typed
+characters — but anyone can compute a room from three characters, and the design does not rely
+on the nameplate being secret. The last five are the **password** (25 bits); they never leave
+the device. Before showing a code, the host checks that its room was unused for ten minutes and
+posts an opaque claim, so two codes rarely share a room (and if they do, each host still accepts
+only its own code).
+
+**The exchange** (`packages/sync/src/peer/rendezvous.ts`):
+
+```
+guest → room   a: sid, Ya                               (CPace share; sid = 16 random bytes)
+host  → room   b: sid, Yb, tagHost, seal(offer)         (counts one attempt)
+guest          checks tagHost — a wrong code stops here (and tells the host at once)
+guest → room   c: sid, tagGuest, seal(answer)
+host           checks tagGuest — the code is now used up; the host stops listening
+then           WebRTC device to device, and the Noise handshake below with psk = K(ISK)
+```
+
+- **CPace** (draft-irtf-cfrg-cpace-12, ristretto255 and SHA-512, `cpace.ts`): the generator is
+  derived from the password, the channel identifier (protocol label and room) and the session id;
+  each side sends one group element and both derive the intermediate session key **ISK**. We
+  chose CPace because the IRTF CFRG selected it as the recommended balanced PAKE, it has a
+  security proof without a trusted setup, and it is small. SPAKE2 needs two fixed points with
+  unknown discrete logs, which RFC 9382 does not define for ristretto255; OPAQUE is for
+  client/server, not two equal devices. No vetted JavaScript CPace library exists, so `cpace.ts`
+  composes audited primitives — `@noble/curves` (ristretto255 and RFC 9496 element derivation;
+  independently audited by Cure53 in 2024, whose scope included ed25519, its add-ons and
+  hash-to-curve, and by Trail of Bits in 2023) and `@noble/hashes` (Cure53, 2022); both are pinned
+  to exact versions — and its tests reproduce the
+  draft's published test vectors (generator, both shares, K, ISK and the session-id output).
+- **Key confirmation**: each side proves it holds the same ISK with an HMAC tag that differs per
+  role, before anything else is used.
+- **Everything else is sealed** with AES-256-GCM under keys derived from ISK: the host's offer
+  and the guest's answer are the same offers and answers as the long codes, with identity keys,
+  ephemeral keys and the SDP including the **DTLS fingerprints**.
+- **Bound to the peer link**: the offer's pairing secret is not sent at all (`auth: 'pake'`);
+  both devices derive it from ISK. It goes into the Noise handshake's key schedule and the
+  answer's MAC, and the transcript hashed into the session keys contains both SDPs. A relay that
+  swaps an SDP, a key or a PAKE value gets different keys, and the link fails to open.
+- **One-time, ten minutes, five tries.** The host counts every attempt it answers — answering is
+  what lets a guesser test a guess — and locks the code after five; a code expires after ten
+  minutes and is used up by the first guest who proves it. Each attempt gets its own WebRTC
+  offer, closed when the attempt fails.
+
+**Guessing bound.** CPace gives an active attacker one guess per attempt and a passive one none
+(the shares are uniformly random group elements). With 25 bits and five attempts, the chance
+of getting into someone's live code is at most 5 / 2²⁵ ≈ **1.5 × 10⁻⁷** per code, within its
+ten minutes. Offline guessing from what the relay saw is not possible.
+
+### Which relay, and why ntfy.sh
+
+The relay must be reachable from a browser and an Android WebView, free, and need no account —
+and since it learns almost nothing, its job is availability. We compared:
+
+| Option | For | Against |
+|---|---|---|
+| **ntfy** ([ntfy.sh](https://ntfy.sh), open source, self-hostable) | Plain HTTPS: publish is a CORS "simple request", subscribe is one streaming `GET /<topic>/json`; caches messages so a reconnect with `since=` loses nothing; one Go binary to self-host | One operator for the public instance; per-IP rate limits; 4 KB messages |
+| PeerJS cloud server | Built for WebRTC signalling | Its protocol registers peer ids; the public server is often overloaded; messages to a peer that isn't connected yet are dropped |
+| Nostr relays | Many independent relays | Every event must be signed (Schnorr/secp256k1); relays differ in policy (ephemeral kinds, proof of work, auth), so behaviour is unpredictable |
+| Public MQTT brokers over WSS (EMQX, HiveMQ, Mosquitto) | Simple pub/sub | Offered explicitly for testing only; needs an MQTT client |
+| Public WebSocket echo/relay services | Simple | No guarantees, most are demos |
+
+So Inkwright uses **ntfy.sh** by default, through `NtfyTransport`: room names are topics, every
+message is one JSON envelope (fragmented under 3,000 characters, inside ntfy's limit), publishing
+retries rate limits and server errors with backoff (honouring `Retry-After`), and subscriptions
+resume from the last message id after a drop. Settings › Sync & devices › Devices & sharing ›
+Network › *Relay for short codes* takes any ntfy server — run your own with the official
+`binwiederhier/ntfy` image — or nothing (then only the long codes work). If a **self-hosted
+`inkwright-mcp` relay** is set there too, short codes use it instead (`MailboxTransport`).
+
+A link names the host's relay when it is not the default (`#join=K7PM-2Q9X&ntfy=…`, or
+`&relay=…&token=…` for a self-hosted mailbox), so a guest reaches the same relay without
+changing settings; it is used for that join only and never saved, and only `https` relays (or
+`http` to this computer) are accepted. The code is in the URL **fragment**, which browsers do not
+send to the server hosting the app. On Android the link opens the hosted web app
+(`dev-null-k2.github.io/inkwright/app/`), or the code can be typed in the app.
+
 ## Signalling without a server — and with one you run
 
-**No server.** The device that starts a connection shows an *offer* code; the other device
+**No server (Advanced).** The device that starts a connection shows an *offer* code; the other device
 answers with an *answer* code. Each code carries a complete WebRTC session description with all
 its ICE candidates (non-trickle: each side waits up to 3 s for candidates), the device's identity
 key, a fresh ephemeral key and a nonce — and, for pairing and invites, a one-time secret.
@@ -138,6 +240,8 @@ answering device sends its hello only after the first one arrives.
 | Someone on the network, a STUN server | see that two IP addresses exchange encrypted UDP | read or change anything |
 | A TURN relay | see and drop or delay ciphertext, timing and sizes | read, forge or replay messages; learn the keys |
 | A signalling relay (yours, or a compromised one) | see that sealed messages are posted to unlinkable rooms; drop or delay them | read offers or answers; swap in its own keys (the transcript, the pairing secret and the identity keys all go into the session keys) |
+| A short-code relay (ntfy.sh, yours, or a compromised one) — or anyone who posts to its rooms | see a hashed room name, when a code is used, IP addresses and message sizes; make **one guess per attempt** (≤ 5 per code: ≤ 1.5 × 10⁻⁷ to succeed); lock a live code with five wrong guesses or drop messages (denial of service) | learn the code or test guesses offline; read the offer, answer, note title or names; swap SDPs or keys unnoticed (the link fails to open) |
+| Anyone who sees the code or link before your guest uses it (a group chat, over a shoulder) | join instead of the person you meant, within its ten minutes | do so unnoticed — the sheet shows who joined and their device's name; *Stop sharing* ends it. Send the code only to that person |
 | Someone who photographs a pairing QR code within its ten minutes | answer it before you do: the device that showed it accepts the first valid answer | do so unnoticed — the answering device's name is shown, and the six-digit code then differs from the one on your other device. Compare it when it matters. |
 | A paired device | sync your whole vault (that is what pairing means) | anything after you *Remove* it: its key is no longer accepted |
 | A live-session guest with *can view* | see the note and its live strokes | change it: the host ignores their edits (and their device rolls them back) |
@@ -145,7 +249,7 @@ answering device sends its hello only after the first one arrives.
 | Someone with your unlocked device | everything the app can do | read the identity private key out through the app (non-extractable), though they can use it while the browser profile is theirs. A copy of the profile's files does contain it (IndexedDB stores the key bytes), which is why the Android app allows no cloud backup |
 
 **Not protected:** metadata (who connects to whom, when, how much — visible to STUN/TURN/relay
-operators at the IP level); availability (any relay can refuse service); a compromised device or
+operators at the IP level; the short-code relay additionally sees when codes are made and used); availability (any relay can refuse service); a compromised device or
 browser (end-to-end encryption protects the path, not the ends). Forward secrecy holds per
 connection (ephemeral keys); if an identity key leaks, past sessions stay sealed, but the holder
 could impersonate that device until it is removed.
@@ -226,4 +330,9 @@ changed it.
 - X25519 in WebCrypto is required: Chrome/Edge 133+, Firefox 130+, Safari 17+ (and the Android
   WebView that follows Chrome). Older browsers are told to update.
 - In a private window the identity key lasts only the session, so pairing does not survive it.
-- Scanning QR codes needs the camera barcode reader (`BarcodeDetector`); elsewhere, paste the code.
+- Scanning QR codes in the app needs the camera barcode reader (`BarcodeDetector`); a phone's own
+  camera app opens the join link from the QR code anyway, and the code can always be typed.
+- ntfy.sh limits requests per IP address. Many phones behind one carrier or office address can
+  hit it; Inkwright retries, and says so plainly if the relay stays busy. A self-hosted ntfy or
+  `inkwright-mcp` relay has no such limit.
+- Short codes need both devices to reach the same relay; long codes (Advanced) need nothing.
