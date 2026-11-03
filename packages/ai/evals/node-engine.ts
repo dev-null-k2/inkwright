@@ -36,9 +36,10 @@ export async function createNodeEngine(): Promise<NodeEngine> {
     if (!p) {
       p = (async () => ({ tokenizer: await T.AutoTokenizer.from_pretrained(ref.repo), model: await T.AutoModelForCausalLM.from_pretrained(ref.repo, {
         dtype: ref.dtype,
-        // No arena: ONNX Runtime's CPU arena keeps the largest activation ever allocated, which on a
-        // shared 8 GB machine is the difference between finishing and being killed.
-        session_options: { enableCpuMemArena: false, enableMemPattern: false },
+        // No arena (ONNX Runtime's CPU arena keeps the largest activation ever allocated) and no
+        // weight prepacking (it keeps a second, repacked copy of the 4-bit weights): Qwen3 1.7B
+        // then needs 2.8 GB instead of 4.1 GB, which fits beside other work on an 8 GB machine.
+        session_options: { enableCpuMemArena: false, enableMemPattern: false, extra: { session: { disable_prepacking: '1' } } },
       }) }))();
       loaded.set(ref.id, p);
     }

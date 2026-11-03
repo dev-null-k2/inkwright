@@ -271,7 +271,13 @@ export function isDeflection(reply: string): boolean {
 export function extractiveAnswer(question: string, g: Pick<Grounding, 'sources'>): string | null {
   if (!g.sources.length) return null;
   const words = questionKeywords(question);
-  const lines = g.sources.flatMap((s) => s.text.split(/\n+/).map((line) => ({ s, line: line.trim(), score: overlap(line, words) + (s.kind === 'selection' ? 0.5 : s.kind === 'page' ? 0.25 : 0) })));
+  // Single lines and pairs of neighbouring lines (a heading and its value: "Budget" / "Car 4000$").
+  const lines = g.sources.flatMap((s) => {
+    const ls = s.text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+    const cands = [...ls, ...ls.slice(0, -1).map((l, i) => `${l} ${ls[i + 1]}`).filter((c) => c.length <= 200)];
+    const bonus = s.kind === 'selection' ? 0.5 : s.kind === 'page' ? 0.25 : 0;
+    return cands.map((line) => ({ s, line, score: overlap(line, words) + bonus + (/\d/.test(line) && /\b(how much|how many|budget|cost|price|total|amount|when|date|time|number)\b/i.test(question) ? 0.5 : 0) }));
+  });
   const best = lines.filter((l) => l.line).sort((a, b) => b.score - a.score)[0];
   if (!best || (best.score < 1 && best.s.kind !== 'selection' && best.s.kind !== 'page')) return null;
   return `Here is what your notes say: “${clip(best.line, 240)}” [${best.s.n}]`;

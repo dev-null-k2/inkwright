@@ -220,6 +220,8 @@ export async function downloadNative(target: string, attempt = 0): Promise<boole
   let retry = false;
   try {
     await p.aiDownload({ target, language: noteLanguage() });
+    // Done (the plugin's `done` event usually got here first).
+    useNativeAI.setState((s) => { const downloads = { ...s.downloads }; delete downloads[target]; return { downloads }; });
     return true;
   } catch (e) {
     const err = e as { code?: string; message?: string };
