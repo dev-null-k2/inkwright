@@ -119,6 +119,8 @@ test('SR-12: a plugin without the network permission cannot open a WebRTC connec
   await page.getByLabel('Link to a plugin (its manifest.json, folder or .zip)').fill('https://plugins.test/rtc/');
   await page.locator('form.plg-url').getByRole('button', { name: 'Install' }).click();
   await page.getByRole('dialog', { name: 'Install RTC probe?' }).getByRole('button', { name: 'Install' }).click();
+  // Installed (written to the vault) before the reload below, or the reload can cut the write short.
+  await expect(page.locator('.plg-card', { hasText: 'RTC probe' })).toBeVisible(SLOW);
   await openApp(page);
   await newNote(page);
   await page.keyboard.press(`${await modKey(page)}+k`);
