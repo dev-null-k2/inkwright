@@ -154,6 +154,7 @@ don't understand.
 
 { "type": "math", "id", "x", "y", "createdAt",
   "input": "2x + 3 = 7", "latex": "2x+3=7", "result": "x = 2", "steps": ["…"],
+  "stepsBy?": "solver|ai", "readBy?": "ML Kit on this device",
   "fontSize": 22, "color": "#FF1B1F24", "source": ["<stroke ids>"], "origin": "solver|ai" }
 
 { "type": "graph", "id", "x", "y", "createdAt", "width": 320, "height": 220,
@@ -181,6 +182,11 @@ text, else recognized text.
 from, in a handwriting-style font with a faint wash so they are never mistaken for the user's ink.
 `input` is plain ASCII maths. `origin` is `solver` when the device read and solved it, `ai` when
 an AI read the handwriting (the answer is still checked by the on-device solver when it can).
+Optional: `readBy` names who read the handwriting, for people ("ML Kit on this device",
+"Inkwright’s built-in reader on this device", or the AI's name); `stepsBy` says whether `steps`
+were computed by the on-device solver or written by an AI (absent in older notes, where steps
+always came from an AI). Sync merges objects whole, by id, so both travel with their object;
+readers that don't know them ignore them. See docs/MATH.md.
 
 **Sticky notes and tape** are *overlays*: drawn over the ink and typed text, in list order.
 

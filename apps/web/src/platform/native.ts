@@ -47,6 +47,12 @@ export interface InkwrightNativePlugin {
   confirm(): Promise<void>;
   prepareRecognizer(opts: { language: string }): Promise<{ state: 'ready' | 'downloading' | 'failed' | 'unsupported' }>;
   recognize(opts: { language: string; lines: { strokes: { x: number[]; y: number[]; t: number[] }[]; width: number; height: number; preContext: string }[] }): Promise<{ lines: string[] }>;
+  /**
+   * Each ink (one handwritten maths symbol) recognized on its own, with ML Kit's ranked
+   * candidates; `score` is lower-is-better, null when the model gives none. Absent in app
+   * builds before the maths reader (smart/inkmath.ts falls back to `recognize`).
+   */
+  recognizeSymbols?(opts: { language: string; inks: { strokes: { x: number[]; y: number[]; t: number[] }[]; width: number; height: number; preContext: string }[]; maxCandidates: number }): Promise<{ results: { candidates: { text: string; score: number | null }[] }[] }>;
   addListener(event: 'stylusButton', cb: (e: { pressed: boolean; keyCode: number }) => void): Promise<PluginListenerHandle>;
   /**
    * Files Android handed to Inkwright ("Open with", share sheet) that the web layer hasn't taken

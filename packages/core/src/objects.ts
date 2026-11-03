@@ -73,8 +73,12 @@ export interface MathObject extends ObjectBase {
   latex?: string;
   /** The answer shown on the page ("x = 2"). */
   result: string;
-  /** Worked steps, when an AI explained them. */
+  /** Worked steps: computed by the on-device solver, or explained by an AI (see `stepsBy`). */
   steps?: string[];
+  /** Who worked the steps out; absent in notes from before 1.x, where steps always came from an AI. */
+  stepsBy?: 'solver' | 'ai';
+  /** Who read the handwriting, for people: "ML Kit on this device", or the AI's name. */
+  readBy?: string;
   fontSize: number;
   color: string;
   /** Strokes of the handwritten problem (informational; the result does not follow them). */
