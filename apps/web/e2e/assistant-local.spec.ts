@@ -145,18 +145,19 @@ test.describe('assistant with an on-device model', () => {
     expect(first.messages[0].content).not.toMatch(/### trash_note|### list_notebooks/);
   });
 
-  test('Qwen-style tool call creates a note; the reply confirms it', async ({ page }) => {
+  test('Qwen-style tool call creates a note; the confirmation comes from the tool run', async ({ page }) => {
     await installFakes(page, {
       replies: [
         { when: 'Groceries', text: '<tool_call>\n{"name": "create_note", "arguments": {"title": "Groceries", "text": "- [ ] milk\\n- [ ] eggs"}}\n</tool_call>' },
-        { text: 'I created the note Groceries with milk and eggs.' },
       ],
     });
     await openApp(page);
     await newNote(page);
     await page.locator('.ai-btn').click();
     await ask(page, 'Make a new note called Groceries with milk and eggs');
-    await expect(page.locator('.ai-msg.is-assistant').last()).toContainText('I created the note Groceries');
+    // The confirmation is written from what the tool did, not by the model.
+    await expect(page.locator('.ai-msg.is-assistant').last()).toContainText('Created the note “Groceries”.');
+    expect(await generates(page)).toHaveLength(1);
     await expect(page.locator('.ai-tool').first()).toContainText('Created a note');
     for (const t of await page.locator('.ai-log').allInnerTexts()) expect(t).not.toMatch(RAW);
     // An action asks the small model for a tool call on the first turn.

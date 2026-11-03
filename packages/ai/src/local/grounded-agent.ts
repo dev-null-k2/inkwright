@@ -1,4 +1,4 @@
-import { runAgent, type AgentEvent, type AgentResult, type AgentTool } from '../agent.ts';
+import { runAgent, type AgentEvent, type AgentResult, type AgentTool, type ToolRun } from '../agent.ts';
 import type { ChatMessage, Provider, ToolCall } from '../types.ts';
 import {
   compactTools,
@@ -65,7 +65,9 @@ export async function runGroundedTurn(o: GroundedTurnOptions): Promise<GroundedT
     system,
     messages,
     tools,
-    maxSteps: 4,
+    // An action is one tool call; the confirmation is written from what the tools did (below),
+    // which is faster on a phone than a second generation and can't embellish ("2 cups of milk").
+    maxSteps: action ? 1 : 4,
     temperature: 0.2,
     ...(action ? { firstToolChoice: 'required' as const } : {}),
     maxTokens: 400,
@@ -76,6 +78,10 @@ export async function runGroundedTurn(o: GroundedTurnOptions): Promise<GroundedT
   let text = agent.text.trim();
   let by: GroundedTurnResult['by'] = 'model';
   const acted = agent.toolRuns.some((r) => r.ok);
+  if (action && acted) {
+    const done = describeActions(agent.toolRuns, o.openNote ?? null);
+    return { text: done, by: 'model', agent, remember: [{ role: 'user', content: o.question }, { role: 'assistant', content: done }] };
+  }
   if (action && !acted && !o.signal?.aborted) {
     // Asked to do something and nothing was done: say so plainly instead of pretending.
     const tried = agent.toolRuns.find((r) => !r.ok);
@@ -102,4 +108,35 @@ export async function runGroundedTurn(o: GroundedTurnOptions): Promise<GroundedT
   }
   if (!text) text = acted ? 'Done.' : nothingFoundReply(o.grounding);
   return { text, by, agent, remember: [{ role: 'user', content: o.question }, { role: 'assistant', content: text }] };
+}
+
+const quote = (s: unknown, n = 80) => {
+  const t = String(s ?? '').replace(/\s+/g, ' ').trim();
+  return t.length > n ? `${t.slice(0, n - 1)}…` : t;
+};
+
+/**
+ * What an action turn did, in plain words, from the tool runs themselves (never from the model's
+ * own account of them): "Created the note “Groceries”." / "Added to this note: “- [ ] call…”".
+ */
+export function describeActions(runs: readonly ToolRun[], openNote: { id: string; title: string } | null): string {
+  const lines: string[] = [];
+  for (const r of runs) {
+    const a = r.call.arguments as Record<string, unknown>;
+    const here = openNote && a.note_id === openNote.id;
+    if (!r.ok) {
+      if (r.denied) lines.push('One change was not made because you declined it.');
+      continue;
+    }
+    switch (r.call.name) {
+      case 'create_note': lines.push(`Created the note “${quote(a.title, 60)}”.`); break;
+      case 'append_to_note': lines.push(`Added to ${here ? 'this note' : 'the note'}: “${quote(a.text)}”.`); break;
+      case 'edit_document': lines.push(`Updated ${here ? `the document “${quote(openNote!.title, 60)}”` : 'the document'}${a.operation === 'append' && a.markdown ? `: added “${quote(a.markdown)}”` : ''}.`); break;
+      case 'update_note': lines.push(`Updated ${here ? 'this note' : 'the note'}.`); break;
+      case 'write_in_ink': lines.push('Wrote it on the page in ink.'); break;
+      case 'remember': lines.push(`Suggested remembering “${quote(a.text)}” — approve it to keep it.`); break;
+      default: lines.push('Done.');
+    }
+  }
+  return [...new Set(lines)].join(' ') || 'Done.';
 }

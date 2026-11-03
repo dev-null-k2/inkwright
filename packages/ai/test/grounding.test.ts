@@ -144,7 +144,8 @@ describe('runGroundedTurn', () => {
       model: 'm', question: 'Make a new note called Groceries with milk and eggs', history: [], grounding: g, tools: [create], contextTokens: 4096,
     });
     expect(created).toEqual([{ title: 'Groceries', text: '- milk\n- eggs' }]);
-    expect(r.text).toBe('Created the note Groceries.');
+    expect(r.text).toBe('Created the note “Groceries”.');
+    expect(seen).toHaveLength(1); // the confirmation comes from the tool run, not a second generation
     expect(String(seen[0]!.messages[0]!.content)).toMatch(/You must call at least one tool now/);
   });
 });
@@ -182,7 +183,7 @@ describe('document notes', () => {
     const g = buildGrounding({ question: 'Add a to-do to this note: call the hotel', openNote: { id: 'd1', title: 'Trip plan', currentPage: 1, pages: [{ page: 1, text: '# Trip plan' }] } });
     const r = await runGroundedTurn({ provider, model: 'm', question: 'Add a to-do to this note: call the hotel', history: [], grounding: g, tools, contextTokens: 4096, openNote: { id: 'd1', title: 'Trip plan', currentPage: 1, kind: 'document' } });
     expect(edits).toEqual([{ note_id: 'd1', operation: 'append', markdown: '- [ ] call the hotel' }]);
-    expect(r.text).toBe('Added the to-do to Trip plan.');
+    expect(r.text).toBe('Updated the document “Trip plan”: added “- [ ] call the hotel”.');
     expect(String(seen[0]!.messages.at(-1)!.content)).toMatch(/document "Trip plan" \(note_id: d1\); change it with edit_document/);
   });
 });

@@ -95,7 +95,11 @@ async function greedy(T: any, model: any, prompt: bigint[], maxNew: number, eos:
   let past: Record<string, any> | null = null;
   let total = 0;
   const seen = new Set<number>();
+  const cap = Number(process.env.INKWRIGHT_EVAL_MAX_RSS_MB || 4800) * 1e6;
   const step = async (ids: bigint[]): Promise<number> => {
+    // A shared 7 GB machine has no swap: stop a case cleanly (it is reported as not fitting)
+    // rather than let the kernel kill the whole run.
+    if (process.memoryUsage().rss > cap) throw new Error(`Over the eval's memory budget (${Math.round(cap / 1e6)} MB); this prompt doesn't fit this machine.`);
     total += ids.length;
     const feeds: Record<string, unknown> = {
       input_ids: new T.Tensor('int64', BigInt64Array.from(ids), [1, ids.length]),
