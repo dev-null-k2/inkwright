@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileUp, Infinity as InfinityIcon, NotebookPen } from 'lucide-react';
+import { FileText, FileUp, Infinity as InfinityIcon, NotebookPen, Signature } from 'lucide-react';
 import { PAGE_SIZE_PRESETS, PAPER_STYLES, PAPER_TINTS, PAPER_TEXTURES, type NoteKind, type PageSize, type PaperSpec, type PaperStyle, type PaperTint, type PaperTexture } from '@inkwright/core';
 import { Popover, Segmented, cx } from './primitives.tsx';
 import { PaperPreview } from './PaperPreview.tsx';
@@ -7,6 +7,7 @@ import { useSettings } from '../state/settings.ts';
 import { useApp } from '../state/app.ts';
 import { createNote } from '../lib/actions.ts';
 import { TemplateChoices } from './knowledge/TemplateChoices.tsx';
+import { isModuleOn, useModules } from '../modules/registry.ts';
 
 export const STYLE_ORDER: PaperStyle[] = ['blank', 'ruled_narrow', 'ruled_wide', 'dot_grid', 'square_grid', 'graph_mm', 'isometric', 'cornell', 'todo', 'planner_day', 'planner_week', 'music'];
 
@@ -46,6 +47,7 @@ export function NewNoteSheet({ anchor, open, onClose, notebookId, onImport }: { 
   const [paper, setPaper] = useState<PaperSpec>(s.defaultPaper);
   const [size, setSize] = useState<PageSize>(s.defaultPageSize);
   const [remember, setRemember] = useState(false);
+  const mods = useModules((m) => m.enabled);
 
   const create = async () => {
     if (remember) s.update(() => ({ defaultPaper: paper, defaultPageSize: size }));
@@ -75,6 +77,12 @@ export function NewNoteSheet({ anchor, open, onClose, notebookId, onImport }: { 
           <span>Use this paper for new notes</span>
         </label>
         <TemplateChoices open={open} notebookId={notebookId} onCreated={(id) => { onClose(); navigate({ name: 'editor', noteId: id }); }} />
+        {(isModuleOn('documents', mods) || isModuleOn('fill-sign', mods)) && (
+          <div className="new-sheet-more" role="group" aria-label="Other ways to start">
+            {isModuleOn('documents', mods) && <button type="button" className="btn btn-ghost" onClick={() => { onClose(); void import('../documents/create.ts').then((m) => m.newDocument(notebookId)); }}><FileText size={16} /> New document</button>}
+            {isModuleOn('fill-sign', mods) && <button type="button" className="btn btn-ghost" onClick={() => { onClose(); void import('../fill/signFlow.ts').then((m) => m.startSigning(notebookId)); }}><Signature size={16} /> Sign a document</button>}
+          </div>
+        )}
         <div className="new-sheet-actions">
           <button type="button" className="btn" onClick={onImport}><FileUp size={16} /> Open file</button>
           <button type="button" className="btn btn-primary" onClick={() => void create()}>Create</button>
