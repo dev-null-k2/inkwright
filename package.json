@@ -18,6 +18,7 @@
     "e2e:all": "npm run e2e:all -w @inkwright/web",
     "e2e:android": "npm run e2e:android -w @inkwright/web",
     "evals": "vitest run --project evals",
+    "eval:local": "tsx --import ./packages/ai/evals/raw-imports.mjs packages/ai/evals/run-local-model.ts",
     "build:preview": "npm run build:single -w @inkwright/web && node apps/web/scripts/artifact.mjs",
     "art": "node --experimental-strip-types scripts/brand/readme-art.mjs",
     "audit:deps": "node scripts/audit-deps.mjs",

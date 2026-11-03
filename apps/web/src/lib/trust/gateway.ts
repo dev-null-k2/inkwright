@@ -89,5 +89,6 @@ export async function guardActiveAI(base: ActiveAI | null, opts: AICallOptions =
     local: initial?.local ?? false,
     budgetKey: initial?.budgetKey ?? 'device',
     trust: run,
+    ...(initial?.contextTokens ? { contextTokens: initial.contextTokens } : {}),
   };
 }

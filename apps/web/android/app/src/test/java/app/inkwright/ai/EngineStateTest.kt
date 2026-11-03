@@ -65,4 +65,15 @@ class EngineStateTest {
         assertEquals("failed", other.code)
         assertTrue(other.message!!.endsWith("engine said no"))
     }
+
+    @Test
+    fun aicoreDisconnectsAreTransientNotFailures() {
+        // Verbatim from a Razr Fold while Android was still downloading Gemini Nano (Nov 2026).
+        val raw = "[ErrorCode 6] AICore failed with error type 1-DOWNLOAD_ERROR and error code 6-IPC_ERROR: AICore service disconnected"
+        val e = GenAiErrors.describe(6, raw)
+        assertEquals("service", e.code)
+        assertTrue(e.retryable)
+        assertEquals(raw, e.message)
+        assertEquals("download", GenAiErrors.describe(6, "AICore failed with error type 1-DOWNLOAD_ERROR and error code 3-NETWORK").code)
+    }
 }

@@ -1,0 +1,147 @@
+import { runAgent, type AgentEvent, type AgentResult, type AgentTool, type ToolRun } from '../agent.ts';
+import type { ChatMessage, Provider, ToolCall } from '../types.ts';
+import {
+  compactTools,
+  condenseHistory,
+  extractiveAnswer,
+  groundedSystemPrompt,
+  groundedUserMessage,
+  actionUserMessage,
+  isActionRequest,
+  isDeflection,
+  nothingFoundReply,
+  type Grounding,
+} from './grounding.ts';
+
+const NOT_FOUND = /couldn.?t find|could not find|does not contain|doesn.?t contain|no (numeric|information|answer)/i;
+
+export interface GroundedTurnOptions {
+  provider: Provider;
+  model: string;
+  question: string;
+  /** Earlier turns of this chat (any shape; condensed for the model). */
+  history: readonly ChatMessage[];
+  grounding: Grounding;
+  /** The note open on screen (its id lets append/update tools act on "this note"). */
+  openNote?: { id: string; title: string; currentPage: number; /** `document` for typed documents (edited with edit_document). */ kind?: string } | null;
+  /** The app's tools; a compact subset sized to the model is offered. */
+  tools?: AgentTool[];
+  /** The model's context window in tokens (sizes tools and history). */
+  contextTokens: number;
+  appName?: string;
+  today?: string;
+  signal?: AbortSignal;
+  onEvent?: (e: AgentEvent) => void;
+  confirm?: (call: ToolCall, tool: AgentTool) => Promise<boolean> | boolean;
+}
+
+export interface GroundedTurnResult {
+  /** The reply to show (never empty, never tool syntax). */
+  text: string;
+  /** Who produced `text`: the model, the model after a nudge, a quoted passage, or the plain "not found". */
+  by: 'model' | 'retry' | 'extractive' | 'nothing-found';
+  agent: AgentResult;
+  /** The turn as it should be remembered: the plain question and the final reply. */
+  remember: ChatMessage[];
+}
+
+/**
+ * One assistant turn for a small model, retrieval first (see grounding.ts): the gathered context
+ * and the question in one user turn, earlier turns condensed, a compact tool set for actions, a
+ * low temperature. Then the answer guardrails:
+ *  - the model dodged ("please provide more context") or said nothing while the context has text →
+ *    one nudge without tools ("the answer is in the context");
+ *  - still nothing usable → the best-matching line of the context, quoted and cited;
+ *  - no context at all → a plain "I couldn't find that", with what to do next.
+ */
+export async function runGroundedTurn(o: GroundedTurnOptions): Promise<GroundedTurnResult> {
+  const tools = o.tools?.length ? compactTools(o.tools, o.contextTokens, { document: o.openNote?.kind === 'document' }) : [];
+  const action = tools.length > 0 && isActionRequest(o.question);
+  const system = groundedSystemPrompt({ appName: o.appName, today: o.today, memory: o.grounding.memory, hasTools: tools.length > 0, action });
+  const historyTurns = o.contextTokens <= 4096 ? 4 : 8;
+  const user = action ? actionUserMessage(o.question, o.openNote, o.grounding) : groundedUserMessage(o.question, o.grounding);
+  const messages: ChatMessage[] = [...condenseHistory(o.history, { maxTurns: historyTurns, maxChars: o.contextTokens <= 4096 ? 300 : 600 }), { role: 'user', content: user }];
+  const agent = await runAgent({
+    provider: o.provider,
+    model: o.model,
+    system,
+    messages,
+    tools,
+    // An action is one tool call; the confirmation is written from what the tools did (below),
+    // which is faster on a phone than a second generation and can't embellish ("2 cups of milk").
+    maxSteps: action ? 1 : 4,
+    temperature: 0.2,
+    ...(action ? { firstToolChoice: 'required' as const } : {}),
+    maxTokens: 400,
+    ...(o.signal ? { signal: o.signal } : {}),
+    ...(o.onEvent ? { onEvent: o.onEvent } : {}),
+    ...(o.confirm ? { confirm: o.confirm } : {}),
+  });
+  let text = agent.text.trim();
+  let by: GroundedTurnResult['by'] = 'model';
+  const acted = agent.toolRuns.some((r) => r.ok);
+  if (action && acted) {
+    const done = describeActions(agent.toolRuns, o.openNote ?? null);
+    return { text: done, by: 'model', agent, remember: [{ role: 'user', content: o.question }, { role: 'assistant', content: done }] };
+  }
+  if (action && !acted && !o.signal?.aborted) {
+    // Asked to do something and nothing was done: say so plainly instead of pretending.
+    const tried = agent.toolRuns.find((r) => !r.ok);
+    const text = tried?.denied ? 'Okay, I didn’t make that change.' : 'I couldn’t do that on this device’s model. Try saying exactly what to create or add, or use a cloud AI in Settings › AI.';
+    return { text, by: 'model', agent, remember: [{ role: 'user', content: o.question }, { role: 'assistant', content: text }] };
+  }
+  // On a selection, "not found" is a dodge too: the question is about text the model was given.
+  const onSelection = o.grounding.sources.some((src) => src.kind === 'selection');
+  const dodged = isDeflection(text) || (onSelection && NOT_FOUND.test(text));
+  if (dodged && !acted && o.grounding.hasContent && !o.signal?.aborted) {
+    const nudge = await o.provider.chat({
+      model: o.model,
+      messages: [{ role: 'system', content: system }, ...messages, { role: 'assistant', content: text || '…' }, { role: 'user', content: onSelection ? 'The question is about the text I selected. Answer it from that text now (if it is a sum or an equation, work it out), in one or two sentences.' : 'The answer is in the context above. Answer the question from it now, in one or two sentences, citing the source number.' }],
+      temperature: 0.1,
+      maxTokens: 300,
+      ...(o.signal ? { signal: o.signal } : {}),
+    });
+    if (!isDeflection(nudge.text) && !(onSelection && NOT_FOUND.test(nudge.text))) {
+      text = nudge.text.trim();
+      by = 'retry';
+    }
+  }
+  if ((isDeflection(text) || (onSelection && NOT_FOUND.test(text))) && !acted) {
+    const quoted = o.grounding.hasContent ? extractiveAnswer(o.question, o.grounding) : null;
+    text = quoted ?? nothingFoundReply(o.grounding);
+    by = quoted ? 'extractive' : 'nothing-found';
+  }
+  if (!text) text = acted ? 'Done.' : nothingFoundReply(o.grounding);
+  return { text, by, agent, remember: [{ role: 'user', content: o.question }, { role: 'assistant', content: text }] };
+}
+
+const quote = (s: unknown, n = 80) => {
+  const t = String(s ?? '').replace(/\s+/g, ' ').trim();
+  return t.length > n ? `${t.slice(0, n - 1)}…` : t;
+};
+
+/**
+ * What an action turn did, in plain words, from the tool runs themselves (never from the model's
+ * own account of them): "Created the note “Groceries”." / "Added to this note: “- [ ] call…”".
+ */
+export function describeActions(runs: readonly ToolRun[], openNote: { id: string; title: string } | null): string {
+  const lines: string[] = [];
+  for (const r of runs) {
+    const a = r.call.arguments as Record<string, unknown>;
+    const here = openNote && a.note_id === openNote.id;
+    if (!r.ok) {
+      if (r.denied) lines.push('One change was not made because you declined it.');
+      continue;
+    }
+    switch (r.call.name) {
+      case 'create_note': lines.push(`Created the note “${quote(a.title, 60)}”.`); break;
+      case 'append_to_note': lines.push(`Added to ${here ? 'this note' : 'the note'}: “${quote(a.text)}”.`); break;
+      case 'edit_document': lines.push(`Updated ${here ? `the document “${quote(openNote!.title, 60)}”` : 'the document'}${a.operation === 'append' && a.markdown ? `: added “${quote(a.markdown)}”` : ''}.`); break;
+      case 'update_note': lines.push(`Updated ${here ? 'this note' : 'the note'}.`); break;
+      case 'write_in_ink': lines.push('Wrote it on the page in ink.'); break;
+      case 'remember': lines.push(`Suggested remembering “${quote(a.text)}” — approve it to keep it.`); break;
+      default: lines.push('Done.');
+    }
+  }
+  return [...new Set(lines)].join(' ') || 'Done.';
+}

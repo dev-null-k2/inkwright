@@ -263,7 +263,8 @@ class AiBridge(context: Context, private val scope: CoroutineScope, private val 
     private fun asAi(e: Throwable): AiException = when (e) {
         is AiException -> e
         is OutOfMemoryError -> AiException("memory", "Not enough memory for on-device AI right now. Close other apps or choose a smaller model.")
-        else -> AiException("failed", e.message ?: "On-device AI failed.", retryable = true, cause = e)
+        // A status read or download that hit AICore while it restarts arrives here unwrapped.
+        else -> GenAiErrors.fromDetail(e.message ?: e.javaClass.simpleName, e)
     }
 
     companion object {

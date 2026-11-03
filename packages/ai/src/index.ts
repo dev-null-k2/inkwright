@@ -9,6 +9,7 @@ export * from './providers/anthropic.ts';
 export * from './providers/gemini.ts';
 export * from './providers/callback.ts';
 export * from './providers/prompt-tools.ts';
+export * from './providers/tool-dialects.ts';
 export * from './providers/claude-sample.ts';
 export * from './providers/registry.ts';
 export * from './agent.ts';

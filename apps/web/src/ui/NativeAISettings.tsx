@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Check, Download, Mic, Sparkles, Trash2, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Check, Mic, Sparkles, Trash2, X } from 'lucide-react';
 import { formatBytes } from '@inkwright/ai';
 import type { NativeModelInfo } from '../ai/native/plugin.ts';
 import {
@@ -7,6 +7,7 @@ import {
   type NativeDownload,
 } from '../lib/native-ai.ts';
 import { askConfirm } from './prompts.tsx';
+import { DownloadButton, DownloadIssueLine } from './assistant/DownloadControls.tsx';
 import { IconButton, Segmented } from './primitives.tsx';
 
 /**
@@ -45,6 +46,7 @@ export function NativeAISettings() {
 }
 
 function Progress({ d }: { d: NativeDownload }) {
+  if (d.phase === 'retrying' || d.phase === 'failed') return null;
   const verifying = d.phase === 'verify';
   const pct = d.total > 0 ? Math.min(100, (d.loaded / d.total) * 100) : 0;
   return (
@@ -84,14 +86,12 @@ function NanoRow() {
         </span>
         {active && <Progress d={dl} />}
         {state === 'downloading' && !active && <span className="muted">Android is downloading it. This can take a while on mobile data.</span>}
-        {dl?.phase === 'failed' && <p className="lai-error" role="alert">{dl.error}</p>}
+        {/* While Android downloads it, an error from our request is AICore restarting, not a failure. */}
+        {state !== 'downloading' && <DownloadIssueLine what="Gemini Nano" progress={dl} onRetry={() => void downloadNative('gemini-nano')} />}
       </div>
       <div className="prov-acts">
-        {state === 'available' ? (
-          <span className="lai-ok"><Check size={14} /> Ready</span>
-        ) : state === 'downloadable' && !active ? (
-          <button type="button" className="btn btn-sm" onClick={() => void downloadNative('gemini-nano')}><Download size={14} /> Download</button>
-        ) : null}
+        <DownloadButton what="Gemini Nano" ready={state === 'available'} progress={dl} systemDownloading={state === 'downloading'}
+          onStart={() => void downloadNative('gemini-nano')} onCancel={() => cancelNativeDownload('gemini-nano')} />
       </div>
     </div>
   );
@@ -105,13 +105,43 @@ const TASKS = [
 
 function TasksRow() {
   const st = useNativeAI();
+  // Downloads still to start (they run one after another): the button stays "Downloading…" between them.
+  const [queued, setQueued] = useState<string[]>([]);
+  const [batch, setBatch] = useState(0);
+  const cancelled = useRef(false);
   const states = TASKS.map((t) => ({ ...t, state: taskState(t.task, st), dl: st.downloads[`task:${t.task}`] }));
   const shown = states.filter((t) => t.state !== 'unavailable');
   if (!shown.length) return null;
   const ready = shown.filter((t) => t.state === 'available');
   const missing = shown.filter((t) => t.state === 'downloadable' && !(t.dl && t.dl.phase !== 'failed'));
-  const busy = shown.find((t) => t.dl && t.dl.phase !== 'failed');
-  const failed = shown.find((t) => t.dl?.phase === 'failed');
+  const busy = shown.find((t) => t.dl && t.dl.phase !== 'failed' && t.dl.phase !== 'retrying');
+  const issue = shown.find((t) => t.dl?.phase === 'failed' || t.dl?.phase === 'retrying');
+  // One button for all of them: overall progress across the batch, while any is still to come.
+  const active = shown.filter((t) => t.dl && t.dl.phase !== 'failed');
+  const pending = active.length > 0 || queued.length > 0;
+  const cur = active.find((t) => t.dl!.phase !== 'retrying')?.dl;
+  const done = Math.max(0, batch - queued.length);
+  const fraction = cur && cur.total > 0 ? Math.min(1, cur.loaded / cur.total) : 0;
+  const loaded = Math.round(((done + fraction) / Math.max(1, batch)) * 1000);
+  const total = batch > 0 ? 1000 : 0;
+  const phase = active.some((t) => t.dl!.phase === 'retrying') ? 'retrying' : done > 0 || cur?.phase === 'download' ? 'download' : cur?.phase ?? 'started';
+  const start = () => void (async () => {
+    const list = missing.map((t) => `task:${t.task}`);
+    setBatch(list.length);
+    setQueued(list);
+    for (const target of list) {
+      if (cancelled.current) break;
+      await downloadNative(target);
+      setQueued((q) => q.filter((x) => x !== target));
+    }
+    cancelled.current = false;
+    setQueued([]);
+  })();
+  const cancel = () => {
+    cancelled.current = true;
+    setQueued([]);
+    for (const t of shown) if (t.dl) cancelNativeDownload(`task:${t.task}`);
+  };
   return (
     <div className="lai-row">
       <div className="lai-row-main">
@@ -121,14 +151,13 @@ function TasksRow() {
           {ready.length ? ` Ready: ${ready.map((t) => t.label).join(', ')}.` : ''}
         </span>
         {busy?.dl && <Progress d={busy.dl} />}
-        {failed?.dl && <p className="lai-error" role="alert">{failed.dl.error}</p>}
+        <DownloadIssueLine what="the writing tools" progress={issue?.dl} onRetry={start} />
       </div>
       <div className="prov-acts">
-        {missing.length > 0 ? (
-          <button type="button" className="btn btn-sm" onClick={() => void (async () => { for (const t of missing) await downloadNative(`task:${t.task}`); })()}><Download size={14} /> Download</button>
-        ) : ready.length === shown.length ? (
-          <span className="lai-ok"><Check size={14} /> Ready</span>
-        ) : null}
+        <DownloadButton what="the writing tools" ready={ready.length === shown.length}
+          progress={pending ? { phase, loaded, total } : null}
+          systemDownloading={!pending && shown.some((t) => t.state === 'downloading')}
+          onStart={start} onCancel={cancel} />
       </div>
     </div>
   );
@@ -186,22 +215,20 @@ function ModelRow() {
           {model.loaded && model.backend ? ` · running on the ${model.backend === 'gpu' ? 'graphics chip' : 'processor'}` : ''}
         </span>
         {active && <Progress d={dl} />}
-        {dl?.phase === 'failed' && <p className="lai-error" role="alert">{dl.error}</p>}
+        <DownloadIssueLine what={model.label} progress={dl} onRetry={async () => { if (await confirmModelDownload(model)) await downloadNative(target); }} />
       </div>
       <div className="prov-acts">
         {installed ? (
           <>
-            <span className="lai-ok"><Check size={14} /> On this phone</span>
+            <span className="lai-ok" data-state="ready"><Check size={14} /> On this phone</span>
             <IconButton label={`Delete ${model.label}`} onClick={async () => {
               if (await askConfirm(`Delete ${model.label}?`, `Frees ${formatBytes(model.bytes)}. You can download it again later.`, 'Delete', true)) await deleteNativeModel(model.id);
             }}><Trash2 size={16} /></IconButton>
           </>
-        ) : active ? (
-          <button type="button" className="btn btn-sm" onClick={() => cancelNativeDownload(target)}><X size={14} /> Cancel</button>
         ) : (
-          <button type="button" className="btn btn-sm" onClick={async () => { if (await confirmModelDownload(model)) await downloadNative(target); }}>
-            <Download size={14} /> {model.partialBytes > 0 ? `Resume · ${formatBytes(Math.max(0, model.bytes - model.partialBytes))}` : `Download · ${formatBytes(model.bytes)}`}
-          </button>
+          <DownloadButton what={model.label} ready={false} progress={dl}
+            startLabel={model.partialBytes > 0 ? `Resume · ${formatBytes(Math.max(0, model.bytes - model.partialBytes))}` : `Download · ${formatBytes(model.bytes)}`}
+            onStart={async () => { if (await confirmModelDownload(model)) await downloadNative(target); }} onCancel={() => cancelNativeDownload(target)} />
         )}
       </div>
     </div>
@@ -264,7 +291,7 @@ export function NativeAIOffer({ kind, onReady, compact }: { kind: 'nano' | 'mode
           </p>
         </div>
       </div>
-      {active ? (
+      {active && dl.phase !== 'retrying' ? (
         <div className="lai-progress" role="status" aria-live="polite">
           <div className="lai-bar"><span style={{ width: `${dl.total > 0 ? Math.min(100, (dl.loaded / dl.total) * 100).toFixed(1) : 0}%` }} /></div>
           <span className="lai-progress-text">{dl.phase === 'verify' ? 'Checking the download…' : dl.total > 0 ? `${formatBytes(dl.loaded)} of ${formatBytes(dl.total)}` : 'Starting…'}</span>
@@ -274,10 +301,10 @@ export function NativeAIOffer({ kind, onReady, compact }: { kind: 'nano' | 'mode
         <p className="muted small">Android is downloading Gemini Nano. It’s ready when this message goes away.</p>
       ) : (
         <div className="lai-offer-actions">
-          <button type="button" className="btn btn-primary" onClick={() => void start()}>
-            {kind === 'nano' ? 'Download Gemini Nano' : model && model.partialBytes > 0 ? `Resume download (${formatBytes(Math.max(0, model.bytes - model.partialBytes))} left)` : `Download ${formatBytes(model?.bytes ?? 0)}`}
+          <button type="button" className="btn btn-primary" disabled={dl?.phase === 'retrying'} onClick={() => void start()}>
+            {dl?.phase === 'retrying' ? 'Retrying…' : kind === 'nano' ? 'Download Gemini Nano' : model && model.partialBytes > 0 ? `Resume download (${formatBytes(Math.max(0, model.bytes - model.partialBytes))} left)` : `Download ${formatBytes(model?.bytes ?? 0)}`}
           </button>
-          {dl?.phase === 'failed' && <p className="lai-error" role="alert">{dl.error}</p>}
+          <DownloadIssueLine what={kind === 'nano' ? 'Gemini Nano' : model?.label ?? 'the model'} progress={dl} onRetry={() => void start()} />
           <p className="muted small">{kind === 'nano' ? 'Managed by Android · shared with other apps.' : `One-time download · ${model?.licence} licence · remove it any time in Settings › AI.`}</p>
         </div>
       )}

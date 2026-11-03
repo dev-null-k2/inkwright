@@ -19,6 +19,7 @@ import { bucketSegmentsByPage, inkForSegment, type RecordingTranscript } from '.
 import { formatAnchor, type SourceAnchor } from './provenance.ts';
 import { sentenceHash, splitSentences, stripMarkdown } from './text.ts';
 import { hashText } from '../memory.ts';
+import { isReadableLine } from '../textquality.ts';
 
 export type UnitKind = 'text' | 'handwriting' | 'pdf' | 'speech';
 
@@ -131,6 +132,8 @@ export function extractSource(note: NoteMeta, pages: readonly PageInk[], opts: E
       }
     }
     for (const l of handwritingLines(page)) {
+      // Scribbles the recognizer turned into symbol soup are not sentences anyone wrote.
+      if (!isReadableLine(l.text)) continue;
       const hasRect = l.bounds.maxX > l.bounds.minX || l.bounds.maxY > l.bounds.minY;
       for (const s of splitSentences(l.text)) add({ pageIndex, kind: 'handwriting', text: s.text, ...(hasRect ? { rect: l.bounds } : {}), ...(l.strokeIds.length ? { strokeIds: l.strokeIds } : {}) });
     }

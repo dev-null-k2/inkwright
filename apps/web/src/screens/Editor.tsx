@@ -29,7 +29,7 @@ import { IconButton, Popover, cx, useMediaQuery } from '../ui/primitives.tsx';
 import { MenuTree } from '../ui/MenuTree.tsx';
 import { buildEditorMenu } from '../ui/editorMenu.tsx';
 import { askConfirm, askText } from '../ui/prompts.tsx';
-import { isAIReady, transcribePage } from '../lib/ai.ts';
+import { isAIReady, transcribeWithSource } from '../lib/ai.ts';
 import { FillLayer, FilledExportDialog, noteHasPdf } from '../fill/FillLayer.tsx';
 import { insertFilesIntoNote, useFileDrop } from '../lib/openFiles.ts';
 import { KnowledgeEditorParts, useKnowledgeEditor } from '../ui/knowledge/EditorParts.tsx';
@@ -475,7 +475,8 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
     if (!items || !doc || !vault || !engine) return;
     toast({ text: 'Converting handwriting…' });
     try {
-      const text = await transcribePage(vault, doc, items.pageIndex, items.strokes);
+      const read = await transcribeWithSource(vault, doc, items.pageIndex, items.strokes);
+      const text = read?.text;
       if (!text?.trim()) return toast({ text: 'No text recognized in the selection', tone: 'error' });
       const b = items.strokes.reduce((r, s) => ({ minX: Math.min(r.minX, ...s.points.map((p) => p.x)), minY: Math.min(r.minY, ...s.points.map((p) => p.y)), maxX: Math.max(r.maxX, ...s.points.map((p) => p.x)) }), { minX: Infinity, minY: Infinity, maxX: -Infinity });
       const box: TextBox = { id: newId(), x: b.minX, y: b.minY, width: Math.max(160, b.maxX - b.minX), text: text.trim(), fontSize: 18, color: items.strokes[0]?.color ?? '#FF1B1F24', font: 'sans', createdAt: Date.now(), origin: 'recognized' };
@@ -485,7 +486,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
         texts: { removed: [], added: [{ index: (doc.page(items.pageIndex).texts ?? []).length, item: box }] },
       });
       engine.clearSelection();
-      toast({ text: 'Converted to text', action: { label: 'Undo', run: () => engine.undo() } });
+      toast({ text: read!.engine === 'device' ? 'Converted to text on this device' : `Converted to text by ${read!.by}`, action: { label: 'Undo', run: () => engine.undo() } });
     } catch (e) {
       toast({ text: (e as Error).message, tone: 'error' });
     }

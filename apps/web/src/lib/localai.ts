@@ -298,6 +298,8 @@ export interface LocalActiveAI {
   label: string;
   vision: boolean;
   tools: boolean;
+  /** Context window in tokens (retrieval-first prompts are sized to it). */
+  contextTokens?: number;
 }
 
 /** Decides who answers, given what the app knows about configured providers. */
@@ -323,16 +325,16 @@ export async function pickAssistant(ctx: { providerConfigured: boolean; builtinC
 export function localActiveAI(kind: 'device' | 'chrome' | 'native'): LocalActiveAI | null {
   if (kind === 'native') {
     const n = nativeLLM();
-    return n ? { provider: createNativeProvider(n), model: n.id, label: n.label, vision: false, tools: true } : null;
+    return n ? { provider: createNativeProvider(n), model: n.id, label: n.label, vision: false, tools: true, contextTokens: n.contextTokens ?? 4096 } : null;
   }
   if (kind === 'chrome') {
     const lm = chromeLanguageModel();
-    return lm ? { provider: createChromeAIProvider(lm), model: 'gemini-nano', label: 'Chrome built-in AI (Gemini Nano)', vision: false, tools: true } : null;
+    return lm ? { provider: createChromeAIProvider(lm), model: 'gemini-nano', label: 'Chrome built-in AI (Gemini Nano)', vision: false, tools: true, contextTokens: 4096 } : null;
   }
   const c = chatChoice();
   if (!c || !isInstalled(c)) return null;
   const ref = refOf(c);
-  return { provider: createLocalProvider(localEngine(), ref, { contextTokens: c.spec.contextTokens, label: `On this device · ${c.spec.label}` }), model: ref.id, label: `On this device · ${c.spec.label}`, vision: false, tools: true };
+  return { provider: createLocalProvider(localEngine(), ref, { contextTokens: c.spec.contextTokens, label: `On this device · ${c.spec.label}` }), model: ref.id, label: `On this device · ${c.spec.label}`, vision: false, tools: true, contextTokens: c.spec.contextTokens ?? 4096 };
 }
 
 /**

@@ -71,12 +71,12 @@ export const BUILTIN_MODULES: ModuleDefinition[] = [
   {
     id: 'assistant',
     name: 'Assistant & routines',
-    description: 'The AI panel, routines that run on a schedule, Agent Skills, memory, connected apps (MCP) and the activity log with undo.',
+    description: 'The AI panel with chats kept per note, routines that run on a schedule, Agent Skills, memory, connected apps (MCP) and the activity log with undo.',
     defaultEnabled: true,
     contributes: {
       menuItems: ['AI'],
       paletteActions: ['assistant'],
-      panels: ['Assistant'],
+      panels: ['Assistant', 'Chats'],
       aiTools: ['note tools', 'load_skill', 'remember', 'connected-app tools'],
       routineTemplates: ['file-notes', 'todos-to-tasks', 'exam-flashcards', 'email-draft'],
       background: ['Routines on schedule', 'Connected apps'],

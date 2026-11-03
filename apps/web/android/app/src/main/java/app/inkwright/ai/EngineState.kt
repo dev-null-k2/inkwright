@@ -82,6 +82,25 @@ object GenAiErrors {
         REQUEST_TOO_SMALL -> AiException("too-small", "There isn’t enough text for this yet.", cause = cause)
         INVALID_INPUT_IMAGE -> AiException("bad-image", "Gemini Nano couldn’t read that image.", cause = cause)
         CANCELLED -> AiException("cancelled", "Stopped.", cause = cause)
-        else -> AiException("failed", "On-device AI failed${detail?.takeIf { it.isNotBlank() }?.let { ": $it" } ?: "."}", retryable = true, cause = cause)
+        else -> fromDetail(detail, cause)
     }
+
+    /**
+     * Errors whose int code says little but whose text says what happened. AICore reports a dropped
+     * binder connection (it restarts while it installs Gemini Nano) as e.g. "[ErrorCode 6] AICore
+     * failed with error type 1-DOWNLOAD_ERROR and error code 6-IPC_ERROR: AICore service
+     * disconnected" — a transient state, not a failure, so it gets its own code (`service`) that the
+     * web layer retries with backoff and describes calmly. The raw text stays in the message for
+     * the "Details" disclosure.
+     */
+    fun fromDetail(detail: String?, cause: Throwable? = null): AiException {
+        val d = detail.orEmpty()
+        return when {
+            SERVICE_GONE.containsMatchIn(d) -> AiException("service", d.ifBlank { "AICore service disconnected." }, retryable = true, cause = cause)
+            d.contains("DOWNLOAD_ERROR") -> AiException("download", d, retryable = true, cause = cause)
+            else -> AiException("failed", "On-device AI failed${d.takeIf { it.isNotBlank() }?.let { ": $it" } ?: "."}", retryable = true, cause = cause)
+        }
+    }
+
+    private val SERVICE_GONE = Regex("IPC_ERROR|service disconnected|DeadObjectException|binder died|not connected to (the )?service", RegexOption.IGNORE_CASE)
 }
