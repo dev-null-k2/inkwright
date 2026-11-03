@@ -42,8 +42,8 @@ export class VaultEvents {
   /** Starts periodic scans (the first establishes the baseline). */
   start(): void {
     if (this.timer) return;
-    void this.scan();
-    this.timer = setInterval(() => void this.scan(), this.opts.intervalMs ?? 5000);
+    void this.scan().catch(() => []);
+    this.timer = setInterval(() => void this.scan().catch(() => []), this.opts.intervalMs ?? 5000);
     this.timer.unref?.();
   }
 
@@ -52,7 +52,7 @@ export class VaultEvents {
     if (this.pokeTimer) return;
     this.pokeTimer = setTimeout(() => {
       this.pokeTimer = null;
-      void this.scan();
+      void this.scan().catch(() => []);
     }, 150);
     this.pokeTimer.unref?.();
   }

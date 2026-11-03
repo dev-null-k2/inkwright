@@ -221,6 +221,11 @@ describe('security review: MCP and HTTP surface', () => {
       await expect(fs.readText('notes/EVIL/note.json')).rejects.toThrow(/escapes vault/);
       await expect(fs.writeText('notes/EVIL/x.json', 'x')).rejects.toThrow(/escapes vault/);
       expect(await ctx.vault.readNote('EVIL').catch(() => null)).toBeNull();
+      // The linked folder is skipped; the rest of the vault still lists.
+      ctx.vault.invalidate();
+      const listed = await ctx.vault.listNotes({ includeTrashed: true });
+      expect(listed.length).toBeGreaterThan(0);
+      expect(listed.map((n) => n.id)).not.toContain('EVIL');
     } finally {
       await rm(outside, { recursive: true, force: true });
     }

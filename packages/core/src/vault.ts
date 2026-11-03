@@ -140,9 +140,11 @@ export class Vault {
       const cache = new Map<string, NoteMeta>();
       for (const e of await this.fs.list(VaultLayout.NOTES_DIR)) {
         if (e.kind !== 'dir') continue;
-        const text = await this.fs.readText(VaultLayout.noteMeta(e.name));
-        if (text == null) continue;
         try {
+          // A folder that can't be read (one linked out of the vault, a permissions problem)
+          // is skipped like a corrupt file: one bad entry must not hide every other note.
+          const text = await this.fs.readText(VaultLayout.noteMeta(e.name));
+          if (text == null) continue;
           const n = decodeNote(text);
           // The folder name is the id; a note.json claiming another (or unsafe) id is ignored.
           if (n.id !== e.name || !isSafeId(n.id)) continue;
