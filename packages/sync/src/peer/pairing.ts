@@ -51,6 +51,11 @@ export interface PeerOffer {
   sdp: string;
   /** One-time pairing secret (pairing and invites only), base64url. */
   psk?: string;
+  /**
+   * `pake`: the pairing secret is not in the offer — both devices derived it from a short code
+   * with CPace (rendezvous.ts), and the offer travelled sealed under that key.
+   */
+  auth?: 'pake';
   invite?: CollabInvite;
   /** Epoch ms after which the offer is refused. */
   expires: number;
@@ -130,7 +135,9 @@ function validate(v: unknown): PeerOffer | PeerAnswer {
     if (o.purpose !== 'pair' && o.purpose !== 'sync' && o.purpose !== 'collab') throw new PairingError('Unknown kind of connection.');
     if (typeof o.expires !== 'number') throw new PairingError('The code is incomplete or damaged; copy it again.');
     if (o.psk !== undefined && (!isStr(o.psk, 64) || fromBase64Url(o.psk).length !== 32)) throw new PairingError('The code is incomplete or damaged; copy it again.');
-    if (o.purpose !== 'sync' && !o.psk) throw new PairingError('This invitation has no pairing secret.');
+    if (o.auth !== undefined && o.auth !== 'pake') throw new PairingError('Unknown kind of connection.');
+    if (o.auth === 'pake' && o.psk !== undefined) throw new PairingError('The code is incomplete or damaged; copy it again.');
+    if (o.purpose !== 'sync' && !o.psk && o.auth !== 'pake') throw new PairingError('This invitation has no pairing secret.');
     if (o.invite && (!isStr(o.invite.noteId, 64) || !isStr(o.invite.title, 300) || (o.invite.permission !== 'view' && o.invite.permission !== 'write'))) throw new PairingError('The invitation is damaged.');
     if (o.purpose === 'collab' && !o.invite) throw new PairingError('The invitation is damaged.');
   } else if (o.mac !== undefined && !isStr(o.mac, 64)) throw new PairingError('The code is incomplete or damaged; copy it again.');
@@ -157,10 +164,14 @@ export interface StartedOffer {
   psk?: Uint8Array;
 }
 
-/** Starts a connection: a new ephemeral key, a nonce, and a pairing secret unless `purpose` is `sync`. */
-export async function createOffer(o: { device: DeviceInfo; purpose: LinkPurpose; sdp: string; invite?: CollabInvite; now?: number; ttlMs?: number }): Promise<StartedOffer> {
+/**
+ * Starts a connection: a new ephemeral key, a nonce, and a pairing secret unless `purpose` is
+ * `sync`. With `pakePsk` (a short code's CPace key) that key is the pairing secret and is left
+ * out of the offer: the other device derives it from the code too.
+ */
+export async function createOffer(o: { device: DeviceInfo; purpose: LinkPurpose; sdp: string; invite?: CollabInvite; now?: number; ttlMs?: number; pakePsk?: Uint8Array }): Promise<StartedOffer> {
   const ephemeral = await generateKeyPair();
-  const psk = o.purpose === 'sync' ? undefined : randomBytes(32);
+  const psk = o.pakePsk ?? (o.purpose === 'sync' ? undefined : randomBytes(32));
   const offer: PeerOffer = {
     t: 'offer',
     v: PEER_PROTOCOL_VERSION,
@@ -171,7 +182,8 @@ export async function createOffer(o: { device: DeviceInfo; purpose: LinkPurpose;
     sdp: o.sdp,
     expires: (o.now ?? Date.now()) + (o.ttlMs ?? OFFER_TTL_MS),
   };
-  if (psk) offer.psk = toBase64Url(psk);
+  if (o.pakePsk) offer.auth = 'pake';
+  else if (psk) offer.psk = toBase64Url(psk);
   if (o.invite) offer.invite = o.invite;
   return { offer, ephemeral, ...(psk ? { psk } : {}) };
 }
@@ -180,14 +192,15 @@ export async function createOffer(o: { device: DeviceInfo; purpose: LinkPurpose;
  * The answering side: checks the offer, builds the answer (with proof of the secret) and
  * derives the session keys. The caller decides beforehand whether to trust `offer.from`.
  */
-export async function answerOffer(o: { offer: PeerOffer; identity: KeyPair; device: DeviceInfo; sdp: string; now?: number }): Promise<{ answer: PeerAnswer; keys: SessionKeys }> {
+export async function answerOffer(o: { offer: PeerOffer; identity: KeyPair; device: DeviceInfo; sdp: string; now?: number; pakePsk?: Uint8Array }): Promise<{ answer: PeerAnswer; keys: SessionKeys }> {
   const { offer } = o;
   if ((o.now ?? Date.now()) > offer.expires) throw new PairingError('This code has expired; ask for a new one.');
+  if (offer.auth === 'pake' && !o.pakePsk) throw new PairingError('This connection needs the short code it was made with.');
   if (offer.from.key === o.device.key) throw new PairingError('That code is from this device.');
   const ephemeral = await generateKeyPair();
   const answer: PeerAnswer = { t: 'answer', v: PEER_PROTOCOL_VERSION, from: o.device, eph: toBase64Url(ephemeral.publicRaw), nonce: toBase64Url(randomBytes(16)), sdp: o.sdp };
   const transcript = transcriptBytes(offer, answer);
-  const psk = offer.psk ? fromBase64Url(offer.psk) : undefined;
+  const psk = offer.auth === 'pake' ? o.pakePsk : offer.psk ? fromBase64Url(offer.psk) : undefined;
   if (psk) answer.mac = toBase64Url(await pairingMac(psk, transcript));
   const keys = await deriveSessionKeys({ role: 'responder', identity: o.identity, ephemeral, peerIdentity: fromBase64Url(offer.from.key), peerEphemeral: fromBase64Url(offer.eph), transcript, ...(psk ? { psk } : {}) });
   return { answer, keys };
