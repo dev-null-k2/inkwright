@@ -1,5 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { modKey, newNote, openApp, pen, settingsGroup, word } from './helpers.ts';
+import { editorMenu, modKey, newNote, openApp, pen, settingsGroup, word } from './helpers.ts';
 
 /**
  * Time travel across the vault (version history read as the past) and branches for dry-run
@@ -35,8 +35,7 @@ test('show my notes as of a date: the library and a note read the past, read-onl
   // Version history saves a version as it opens: one line, titled, at nine. The closing snapshot
   // would too, but it is written after leaving the note, and on a busy machine it can land after
   // the clock below has moved on three hours.
-  await page.getByRole('button', { name: 'More', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Version history' }).click();
+  await editorMenu(page, 'Note', 'Version history');
   const history = page.getByRole('dialog', { name: 'Version history' });
   await expect(history.locator('.history-item')).toHaveCount(2); // opened (blank) and now
   await page.keyboard.press('Escape');
