@@ -9,7 +9,8 @@
 Local-first. Bring your own model, or none. Open source. No server of ours, anywhere.
 
 [Open the app](https://dev-null-k2.github.io/inkwright/app/) ·
-[Download for Android](https://github.com/dev-null-k2/inkwright/releases/latest) ·
+[Android, Windows, Mac, Linux](https://github.com/dev-null-k2/inkwright/releases) ·
+[For engineers](#for-software-engineers) ·
 [Docs](docs/ARCHITECTURE.md) ·
 [API](docs/API.md) ·
 [中文](docs/i18n/README.zh-CN.md) · [日本語](docs/i18n/README.ja.md) · [Español](docs/i18n/README.es.md)
@@ -31,6 +32,20 @@ Inkwright starts from the pen. Ink appears under the nib before the next frame. 
 
 It was built for a foldable phone with a stylus (Razr Fold + Moto Pen Ultra), and it works just as well on an iPad, a Windows tablet or a laptop with a mouse.
 
+### What's new here
+
+Handwriting apps are good at ink and closed to everything else. Knowledge tools and agent tooling are open, but you can't write in them. Inkwright puts both in one open-source app. As far as we know, nothing else does all of the following together:
+
+| | |
+|---|---|
+| **Your handwriting is an API.** | The notebook is an MCP server, an A2A agent and a REST API with webhooks. Claude Code, Cursor or your own scripts can search, read and (with your approval) write in what you wrote by hand. |
+| **The AI answers in ink, and shows its work.** | Answers are written on the page in a second, unmistakable ink. Every AI sentence links back to the stroke it came from, and every change can be undone. |
+| **It works with no cloud at all.** | Handwriting is read on the device, maths is solved exactly on the device, and small local models (Gemma, Qwen, Gemini Nano) answer from your notes with citations. |
+| **Your notes are plain files.** | The vault is documented JSON, SVG and Markdown in a folder you own, synced through your own Drive, WebDAV or devices paired with an 8-character code. |
+| **Measured, not claimed.** | Every quality number in this README comes from an eval in the repository that you can re-run, including the weak ones. |
+
+<p align="center"><img src="docs/media/screens/assistant-local.png" alt="The assistant running Gemma on the device: asked about a budget written in a note, it searches the notes and answers that the car budget is 4000 dollars, with a citation" width="880"></p>
+
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/section-features-dark.svg"><img alt="What it does" src="docs/media/section-features-light.svg" height="52"></picture>
 
 <table>
@@ -41,14 +56,15 @@ It was built for a foldable phone with a stylus (Razr Fold + Moto Pen Ultra), an
 - **Paper you can feel.** Synthesised nib-on-paper sound that follows speed and pressure. Haptic grain on Android. Three paper surfaces and nine tints.
 - **Erase like paper.** Scribble over a word to delete it: it catches 99.6 % of scribbles and never erased a neighbouring word in 580 test cases. The pen button switches to the eraser.
 - **Pens and tools.** Fountain, calligraphy nib, pencil, brush, highlighter, tape, sticky notes, layers, two-page spreads, snapping, locked and encrypted notes.
-- **Every page you need.** Ruled, dot, Cornell, music and planner paper. Any PDF becomes pages you can write on, fill in and sign.
+- **Every page you need.** Ruled, dot, Cornell, music and planner paper. Any PDF or photo of a page becomes something you can fill in and sign.
+- **Documents too.** A rich-text editor (headings, tables, checklists) with the pen on top. It opens and exports Word, PDF, Markdown and HTML.
 
 </td><td width="50%" valign="top">
 
 ### 🧠 Think
 - **Any AI, or none.** OpenAI, Claude, Gemini, OpenRouter, Groq, Mistral, DeepSeek, Ollama, LM Studio or any compatible server. Or **on-device models** that use your phone's or laptop's GPU, with nothing sent anywhere.
 - **Answers in ink.** Lasso a question and the answer is written beside it in handwriting, in a colour that is never mistaken for yours.
-- **Smart ink.** Draw a grid to get a table. Circle an equation to solve it, and get a live graph. Circle a date to make a calendar event.
+- **Smart ink.** Draw a grid to get a table. Lasso an equation to solve it with steps, read and solved on the device (no AI involved). Circle a date to make a calendar event.
 - **Sketch it, run it.** Draw boxes and arrows and press Run. Each box becomes a step: fetch, filter, sum, chart, or "ask the AI".
 - **Notes that listen.** Lectures are transcribed on the device. Tap any ink to hear what was said while you wrote it.
 
@@ -93,6 +109,34 @@ It was built for a foldable phone with a stylus (Razr Fold + Moto Pen Ultra), an
 </table>
 
 <p align="center"><img src="docs/media/screens/lecture.png" alt="A handwritten lecture page with a sketched square wave and its Fourier approximation" width="49%"> <img src="docs/media/screens/review-dark.png" alt="A design review with typed decisions, red handwritten margin notes and a hand-drawn diagram" width="49%"></p>
+<p align="center"><img src="docs/media/screens/solve.png" alt="Handwritten x + 1 = 3, lassoed and solved: x = 2, with the steps, read by ML Kit and worked out exactly on the device" width="49%"> <img src="docs/media/screens/document.png" alt="A document with a heading, checklist and table, with a pen stroke drawn over it" width="35%"></p>
+
+<a id="for-software-engineers"></a>
+## For software engineers
+
+Inkwright is a notebook for the parts of engineering that happen on paper: design reviews, whiteboard sketches, incident notes, interview prep. It connects them to your code and your agents.
+
+| You want to… | What you do |
+|---|---|
+| **Give your coding agent the decisions you wrote by hand** | `claude mcp add inkwright -- node apps/mcp-server/dist/index.js --vault ~/Notes --read-only`. Claude Code, Cursor or Codex can then search your notebook and cite pages. |
+| **Keep design notes honest** | Link a note to code with `[[code:src/api.ts#createOrder]]`. When that function's signature changes, the note is flagged. `inkwright drift --check` fails CI the same way. |
+| **Turn a whiteboard into a pipeline** | Draw boxes and arrows (fetch → filter → sum → chart) and press Run. You confirm the graph it read before anything runs. |
+| **Run incidents from your notes** | Runbooks hold runnable `http`, `sql`, `js` and shell blocks. Shell blocks run only on a machine you approve, inside folders you allow, and every run goes into the audit trail. |
+| **Ask about a CSV during a meeting** | Drop in a CSV or Excel file and query it with DuckDB in the browser, in plain words or SQL. |
+| **Spend fewer tokens in your agents** | `inkwright-mcp proxy` is a local OpenAI/Anthropic-compatible endpoint that shortens large tool output reversibly and meters the savings ([PROXY.md](docs/PROXY.md)). |
+| **Keep keys out of your agents** | The credential executor holds provider keys in a separate process, checks each call against policy and never hands a key out ([CREDENTIALS.md](docs/CREDENTIALS.md)). |
+| **Work under an NDA** | Mark notebooks "never leaves this device", run models locally, or deploy the air-gapped Docker appliance ([ENTERPRISE.md](docs/ENTERPRISE.md)). |
+| **Learn from your agent sessions** | Import Claude Code and Codex transcripts; their lessons are written into `AGENTS.md`. |
+
+**Worth reading in the code**, if you're here for the engineering:
+
+- **Stroke-level three-way merge** (`packages/sync`): two devices edit the same page offline and both sets of strokes survive. Documents merge paragraph by paragraph.
+- **Pairing with an 8-character code** (`packages/sync/src/peer/cpace.ts`): CPace, a password-authenticated key exchange on ristretto255, so a short code is safe to read aloud. A wrong guess costs one of five tries.
+- **Handwritten maths** (`packages/core/src/mathink`): symbols grouped from raw strokes, a 2D layout parser for fractions, powers and roots, and an exact solver that shows its steps ([MATH.md](docs/MATH.md)).
+- **Tool calls on small models** (`packages/ai`): one parser for every format local models emit (Gemma, Qwen, Llama, Mistral, JSON, Python-style), argument repair, and retrieval before generation so a 0.6B model can answer from your notes ([LOCAL_AI.md](docs/LOCAL_AI.md)).
+- **One checkpoint for every AI call** (`packages/ai/src/trust`): policy routing, reversible PII redaction, context budgeting, cost metering and a signed audit trail ([TRUST.md](docs/TRUST.md)).
+- **An open context format** (`spec/personal-context/v1.md`): context packs with a JSON Schema and a conformance suite, so other tools can produce and read them.
+- **Engineering hygiene**: TypeScript strict across a monorepo, actions pinned by SHA, an independent security review with its fixes ([SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md)), and a startup budget that fails CI on regressions.
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/section-agents-dark.svg"><img alt="For your agents" src="docs/media/section-agents-light.svg" height="52"></picture>
 
@@ -131,13 +175,16 @@ Every number below comes from an eval or test in this repository and can be re-r
 | Prompt-injection detector | **weak on held-out attacks: 29 % detected, 17 % false alarms.** What holds regardless: deletes always ask, dry run and strict mode block writes, local-only notes never reach the cloud | same |
 | Sketch → graph extraction | 1.0 on 120 synthetic sketches (real sketches will do worse; you confirm the graph before it runs) | `packages/core/evals/canvasdag.eval.ts` |
 | Photo → ink | traced strokes within one pen width of the source for tilted, blurred and noisy photos | `packages/core/test/photoink.test.ts` |
+| Handwritten maths | 94.0 % of 350 synthetic handwritten problems solved exactly with ML Kit's symbol reader (77.7 % with the built-in web reader; was 18.3 %). Synthetic strokes: real handwriting will differ | `apps/web/evals/mathink.eval.ts`, [MATH.md](docs/MATH.md) |
+| On-device models answering from notes | Qwen3 0.6B: 11 of 11 grounding, tool-call and "not in your notes" cases (was 4 of 11); Qwen3 1.7B: 11 of 11. Run on a CPU with the app's own engine; Gemma and Gemini Nano are not covered by this eval | `npm run eval:local`, [LOCAL_AI.md](docs/LOCAL_AI.md) |
 | Size and startup | Play download for an arm64 phone 20.7 MB (was 49.9 MB); library interactive in 1.1 s at 4× CPU slowdown (was 1.9 s), 3.4 s adding a mid-tier mobile network (was 8.2 s); a startup budget fails CI on regressions | `npm run perf:budget -w @inkwright/web`, [PERFORMANCE.md](docs/PERFORMANCE.md) |
-| Tests | 1,300+ unit tests and evals, 140+ end-to-end tests on Chromium, WebKit (Safari) and Firefox at phone, foldable and desktop sizes, 150+ Android JVM tests, zero serious accessibility violations (axe) | `npm test`, `npm run e2e:all` |
+| Tests | 1,800+ unit tests and evals, 240+ end-to-end tests (Chromium, plus WebKit and Firefox at phone, foldable and desktop sizes), 158 Android JVM tests, zero serious accessibility violations (axe); a test clicks every button at the Razr Fold's screen size | `npm test`, `npm run e2e:all` |
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/section-start-dark.svg"><img alt="Start in a minute" src="docs/media/section-start-light.svg" height="52"></picture>
 
 - **In a browser:** [open the app](https://dev-null-k2.github.io/inkwright/app/). It installs as an offline app on Mac, Windows, Linux, ChromeOS and iPad. Your notes stay in the browser until you connect Google Drive, WebDAV or a folder.
-- **Android:** download `Inkwright-<version>-arm64-v8a.apk` from [Releases](https://github.com/dev-null-k2/inkwright/releases/latest) (`armeabi-v7a` for older 32-bit phones). Google Play is coming.
+- **Android:** download `Inkwright-<version>-arm64-v8a.apk` from [Releases](https://github.com/dev-null-k2/inkwright/releases) (`armeabi-v7a` for older 32-bit phones). Google Play is coming.
+- **Windows, Mac, Linux:** the desktop app (`.exe`, `.dmg`, `.deb`, `.AppImage`) is on the same [Releases](https://github.com/dev-null-k2/inkwright/releases) page. It adds a memory timeline of what you worked on and a journal that writes itself ([DESKTOP.md](docs/DESKTOP.md)). Beta builds are not code-signed yet, so the first launch asks you to confirm.
 - **From source:**
 
 ```sh
@@ -178,7 +225,7 @@ The vault is documented field by field in [VAULT_FORMAT.md](docs/VAULT_FORMAT.md
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/section-roadmap-dark.svg"><img alt="Where it goes next" src="docs/media/section-roadmap-light.svg" height="52"></picture>
 
-See [ROADMAP.md](ROADMAP.md). Next up: the iOS App Store build, Google Play, live collaboration out of beta, a desktop shell with a local model runner, and real-device evals for pen latency on as many styluses as people will lend us.
+See [ROADMAP.md](ROADMAP.md). Next up: Google Play, the iOS App Store build, signed desktop installers, live collaboration out of beta, a smaller first download (the local-model engine fetched only when you turn it on), and real-device evals for pen latency, handwriting and on-device models on as many phones and styluses as people will lend us.
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/section-story-dark.svg"><img alt="The story" src="docs/media/section-story-light.svg" height="52"></picture>
 

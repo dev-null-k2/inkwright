@@ -133,6 +133,8 @@ test('an equation is solved with steps worked out on this device', async ({ page
   const steps = page.getByRole('dialog', { name: 'Steps' });
   await expect(steps).toContainText('Collect x on the left, numbers on the right: x = 2');
   await expect(steps).toContainText('Worked out exactly on this device. Read by ML Kit on this device.');
+  await expect(page.locator('.toast')).toHaveCount(0, { timeout: 10_000 });
+  await page.waitForTimeout(400);
   await page.screenshot({ path: 'test-results/mathink-steps.png' });
 });
 

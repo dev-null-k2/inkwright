@@ -136,6 +136,7 @@ test.describe('assistant with an on-device model', () => {
     await ask(page, 'I had written a budget, what is it for car');
     await expect(page.locator('.ai-msg.is-assistant').last()).toContainText('Your car budget is 4000$');
     await expect(page.locator('.ai-tool').first()).toContainText('Searched everything you wrote');
+    await page.screenshot({ path: 'test-results/assistant-local.png' });
     for (const t of await page.locator('.ai-log').allInnerTexts()) expect(t).not.toMatch(RAW);
     // Retrieval first: the page's text was in the very first prompt, numbered to cite.
     const first = (await generates(page))[0];
