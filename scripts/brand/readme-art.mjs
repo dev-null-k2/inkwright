@@ -83,7 +83,7 @@ write('hero', (theme) => hero(theme, true));
 write('hero-static', (theme) => hero(theme, false));
 
 // Section headings for the README, written in script.
-const sections = [['why', 'why it exists'], ['features', 'what it does'], ['agents', 'for your agents'], ['start', 'start in a minute'], ['story', 'the story'], ['under', 'under the hood'], ['roadmap', 'where it goes next']];
+const sections = [['why', 'why it exists'], ['features', 'what it does'], ['agents', 'for your agents'], ['start', 'start in a minute'], ['story', 'the story'], ['under', 'under the hood'], ['roadmap', 'where it goes next'], ['work', 'built for how you work']];
 sections.forEach(([id, label], i) =>
   write(`section-${id}`, (theme) => {
     const h = handwrite(label, { x: 0, y: 14, xHeight: 15, style: 'script', seed: 31 + i, messiness: 0.3, startTime: 0 });
