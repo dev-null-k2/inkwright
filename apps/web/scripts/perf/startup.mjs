@@ -116,6 +116,9 @@ async function coldPage(browser, profile) {
     await cdp.send('Network.enable');
     await cdp.send('Network.emulateNetworkConditions', { offline: false, ...profile.network });
   }
+  // A returning person (the budget's case): past the first-run welcome, as the e2e suite starts
+  // (playwright.config.ts). Everything else is still cold: no notes, cache or service worker.
+  await page.addInitScript(() => { try { localStorage.setItem('inkwright.settings.v1', JSON.stringify({ onboardingDone: true })); } catch { /* storage blocked */ } });
   await page.addInitScript(instrument);
   return { context, page };
 }
