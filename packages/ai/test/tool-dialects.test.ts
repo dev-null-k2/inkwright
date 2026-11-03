@@ -203,3 +203,15 @@ describe('withPromptTools end to end', () => {
     expect(r).toMatchObject({ text: 'I can’t search right now.', toolCalls: [] });
   });
 });
+
+describe('required tool calls', () => {
+  it('retries once when the model describes the action instead of calling', async () => {
+    const seen: ChatRequest[] = [];
+    const turns = ['I added the to-do to your note.', '<tool_call>{"name": "append_to_note", "arguments": {"note_id": "n1", "text": "- [ ] call the hotel"}}</tool_call>'];
+    const provider = withPromptTools(new CallbackProvider({ handler: async (r) => { seen.push(r); return turns[seen.length - 1]!; } }));
+    const r = await provider.chat({ model: 'm', messages: [{ role: 'user', content: 'Add a to-do: call the hotel' }], tools: TOOLS, toolChoice: 'required' });
+    expect(r.toolCalls[0]).toMatchObject({ name: 'append_to_note', arguments: { note_id: 'n1' } });
+    expect(String(seen[0]!.messages[0]!.content)).toContain('for example: <tool_call>{"name":"append_to_note","arguments":{"note_id":"…","text":"…"}}</tool_call>');
+    expect(String(seen[1]!.messages.at(-1)!.content)).toMatch(/did not call a tool/);
+  });
+});

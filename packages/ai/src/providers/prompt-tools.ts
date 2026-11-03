@@ -1,11 +1,11 @@
-import type { ChatMessage, ChatRequest, ChatResult, ContentPart, Provider, StreamHandler, ToolCall, ToolDef } from '../types.ts';
+import { textOf, type ChatMessage, type ChatRequest, type ChatResult, type ContentPart, type Provider, type StreamHandler, type ToolCall, type ToolDef } from '../types.ts';
 import { finish, withToolNames } from './common.ts';
 import { parseToolCalls, ToolSyntaxStream } from './tool-dialects.ts';
 
 const OPEN = '<tool_call>';
 const CLOSE = '</tool_call>';
 
-export function toolProtocolInstructions(tools: ToolDef[], required = false): string {
+export function toolProtocolInstructions(tools: ToolDef[], required = false, request = ''): string {
   const list = tools
     .map((t) => `### ${t.name}\n${t.description}\nArguments (JSON Schema): ${JSON.stringify(t.parameters)}`)
     .join('\n\n');
@@ -15,7 +15,7 @@ export function toolProtocolInstructions(tools: ToolDef[], required = false): st
     `${OPEN}{"name": "tool_name", "arguments": {"key": "value"}}${CLOSE}`,
     'After your tool calls, stop writing and wait: the results come back in <tool_result> blocks. You may call several tools at once.',
     required
-      ? 'You must call at least one tool now.'
+      ? `You must call at least one tool now, for example: ${exampleCall(likelyTool(tools, request))}`
       : 'When you have everything you need, answer the user normally with no tool_call blocks. Never invent tool results.',
     '',
     list,
@@ -76,6 +76,36 @@ function sumUsage(a?: ChatResult['usage'], b?: ChatResult['usage']): ChatResult[
   return { inputTokens: a.inputTokens + b.inputTokens, outputTokens: a.outputTokens + b.outputTokens };
 }
 
+/** The retry message when a tool call was required and the model only wrote prose. */
+export function toolRequiredMessage(tools: ToolDef[], request = ''): string {
+  return [
+    'You described the action but did not call a tool, so nothing happened.',
+    `Call the tool now. Write only the call, for example: ${exampleCall(likelyTool(tools, request))}`,
+  ].join('\n');
+}
+
+/** The tool whose name and description share most words with the request (the example to show). */
+export function likelyTool(tools: ToolDef[], request: string): ToolDef {
+  const words = new Set(request.toLowerCase().match(/[a-z]{3,}/g) ?? []);
+  const hint = (t: ToolDef) => {
+    const own = `${t.name.replace(/_/g, ' ')} ${t.description}`.toLowerCase();
+    let n = [...words].filter((w) => own.includes(w)).length;
+    // "add …" to an open note is an append; "make/create/new" is a new note.
+    if (/\b(add|append|put)\b/.test(request.toLowerCase()) && /append|add/.test(t.name)) n += 2;
+    if (/\b(make|create|new)\b/.test(request.toLowerCase()) && /create/.test(t.name)) n += 2;
+    return n;
+  };
+  return [...tools].sort((a, b) => hint(b) - hint(a))[0]!;
+}
+
+/** A call to `tool` with its required arguments as placeholders: a concrete example for small models. */
+export function exampleCall(tool: ToolDef): string {
+  const props = (tool.parameters.properties ?? {}) as Record<string, { type?: unknown }>;
+  const req = ((tool.parameters.required as string[] | undefined) ?? Object.keys(props)).slice(0, 4);
+  const args = Object.fromEntries(req.map((k) => [k, props[k]?.type === 'integer' || props[k]?.type === 'number' ? 1 : props[k]?.type === 'array' ? ['…'] : '…']));
+  return `${OPEN}${JSON.stringify({ name: tool.name, arguments: args })}${CLOSE}`;
+}
+
 /**
  * Gives tool calling to a text-only provider: tools are described in the system prompt, the
  * model writes `<tool_call>{json}</tool_call>` blocks, and those are parsed back into ToolCalls.
@@ -96,16 +126,20 @@ export function withPromptTools(inner: Provider, opts: { id?: string; label?: st
       let messages = renderToolTranscript(req.messages);
       if (tools.length) {
         const forced = req.toolChoice && typeof req.toolChoice === 'object' ? tools.filter((t) => t.name === (req.toolChoice as { name: string }).name) : tools;
-        const instr = toolProtocolInstructions(forced.length ? forced : tools, req.toolChoice === 'required' || typeof req.toolChoice === 'object');
+        const lastUser = [...req.messages].reverse().find((m) => m.role === 'user');
+        const instr = toolProtocolInstructions(forced.length ? forced : tools, req.toolChoice === 'required' || typeof req.toolChoice === 'object', lastUser ? textOf(lastUser.content).slice(-400) : '');
         messages = [{ role: 'system', content: instr }, ...messages];
       }
       const innerReq: ChatRequest = { ...req, messages, tools: undefined, toolChoice: undefined };
       const stream = new ToolSyntaxStream((s) => onEvent?.({ type: 'text', delta: s }), tools);
       let r = await inner.chat(innerReq, onEvent ? (e) => (e.type === 'text' ? stream.push(e.delta) : undefined) : undefined);
       let parsed = tools.length ? parseToolCalls(r.text, tools) : { ...parseToolCalls(r.text), toolCalls: [] };
-      if (tools.length && !parsed.toolCalls.length && parsed.malformed.length && !req.signal?.aborted) {
-        // One repair retry: show the model what could not be read and the exact form to use.
-        const retry: ChatRequest = { ...innerReq, messages: [...messages, { role: 'assistant', content: r.text }, { role: 'user', content: toolRepairMessage(parsed.malformed) }] };
+      const mustCall = req.toolChoice === 'required' || typeof req.toolChoice === 'object';
+      if (tools.length && !parsed.toolCalls.length && (parsed.malformed.length || mustCall) && !req.signal?.aborted) {
+        // One repair retry: show the model what could not be read (or that a call was required)
+        // and the exact form to use. Small models often describe the action instead of calling.
+        const nudge = parsed.malformed.length ? toolRepairMessage(parsed.malformed) : toolRequiredMessage(tools, textOf([...req.messages].reverse().find((m) => m.role === 'user')?.content ?? '').slice(-400));
+        const retry: ChatRequest = { ...innerReq, messages: [...messages, { role: 'assistant', content: r.text || '…' }, { role: 'user', content: nudge }] };
         const again = await inner.chat(retry);
         const reparsed = parseToolCalls(again.text, tools);
         if (reparsed.toolCalls.length || !reparsed.malformed.length) {
