@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { builtInRecognizer, readMathInk, type SymbolRecognizer } from '@inkwright/core';
+import { readFileSync } from 'node:fs';
+import { parseSamplesFile, sampleToInk } from '../src/devicecheck/samples.ts';
 import { solveMath } from '../src/smart/math.ts';
 import { simulatedLineText, simulatedMlKit } from './mathink/mlkitsim.ts';
 import { sameMaths } from './mathink/score.ts';
@@ -89,5 +91,22 @@ describe('handwritten maths', () => {
     console.log(table('After — built-in classifier, by hand (C is not in its templates)', rows, (r) => r.case.hand));
     console.log(failures(rows));
     expect(rate(rows.filter((r) => r.case.hand !== 'C'), (r) => r.exact)).toBeGreaterThan(0.75);
+  });
+
+  // Real handwriting: INKWRIGHT_SAMPLES=path/to/inkwright-handwriting-samples-….json (recorded in
+  // Settings › About › Check this device). Reports what the phone read when the sample was saved
+  // (ML Kit there) and what the built-in classifier reads here, against what the writer meant.
+  it.runIf(!!process.env.INKWRIGHT_SAMPLES)('real samples from a device', async () => {
+    const file = parseSamplesFile(readFileSync(process.env.INKWRIGHT_SAMPLES!, 'utf8'));
+    let device = 0, here = 0;
+    const misses: string[] = [];
+    for (const [i, s] of file.samples.entries()) {
+      if (s.read?.plain && sameMaths(s.read.plain, s.label)) device++;
+      const r = await readMathInk(sampleToInk(s, `s${i}-`), builtInRecognizer);
+      if (sameMaths(r.plain, s.label)) here++;
+      else misses.push(`  ${JSON.stringify(s.label)}: device ${JSON.stringify(s.read?.plain ?? '')}, built-in ${JSON.stringify(r.plain)}`);
+    }
+    const n = file.samples.length;
+    console.log(`Real samples (${n}, ${file.device.platform}): on the device ${pct(device, n)}, built-in classifier ${pct(here, n)}\n${misses.slice(0, 20).join('\n')}`);
   });
 });
