@@ -1,5 +1,8 @@
 import { datasetToCsv, quoteIdent, type Cell, type ColumnType, type Dataset, type SqlResult } from '@inkwright/core';
 import { DUCKDB_BUNDLES, SQLITE_WASM_URL } from './engine-assets.ts';
+import { ENGINE_COPY, engine as engineInfo, engineSize, type EngineId } from '../engines/catalog.ts';
+import { engineStatus } from '../engines/store.ts';
+import { downloadEngine } from '../engines/progress.ts';
 
 /**
  * SQL engines for the data sandbox, all in the page and offline:
@@ -65,8 +68,16 @@ export async function openDuckDb(): Promise<SqlEngine> {
   if (!DUCKDB_BUNDLES) throw new Error('DuckDB is not part of this build');
   if (typeof Worker === 'undefined' || typeof WebAssembly === 'undefined') throw new Error('This browser has no Web Workers or WebAssembly');
   const duckdb = await import('@duckdb/duckdb-wasm');
-  const bundle = await duckdb.selectBundle(DUCKDB_BUNDLES);
-  const worker = new Worker(bundle.mainWorker!);
+  // The bundle values are engine ids (engine-assets.ts): fetch only the build this browser runs.
+  const id = (await duckdb.selectBundle(DUCKDB_BUNDLES)).mainModule as EngineId;
+  const files = await downloadEngine(id);
+  const e = engineInfo(id)!;
+  const bundle = {
+    mainModule: files[e.assets.find((a) => a.file.endsWith('.wasm'))!.file]!,
+    mainWorker: files[e.assets.find((a) => a.file.endsWith('.js'))!.file]!,
+    pthreadWorker: null,
+  };
+  const worker = new Worker(bundle.mainWorker);
   const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), worker);
   try {
     await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
@@ -154,8 +165,22 @@ export async function openSqlEngine(): Promise<{ engine: SqlEngine; fallbackReas
   try {
     return { engine: await openDuckDb() };
   } catch (e) {
-    const reason = (e as Error).message || String(e);
+    const reason = await duckDbFallbackReason(e);
     console.warn('DuckDB unavailable, using SQLite', e);
     return { engine: await openSqlJs(), fallbackReason: reason };
   }
+}
+
+/**
+ * Why DuckDB isn't running, in words for the panel. The common case is a first use without a
+ * connection: say plainly that it is a one-time download and that SQLite answers meanwhile.
+ */
+async function duckDbFallbackReason(e: unknown): Promise<string> {
+  const message = (e as Error)?.message || String(e);
+  const ids: EngineId[] = ['duckdb-eh', 'duckdb-mvp'];
+  const stored = await Promise.all(ids.map((id) => engineStatus(id).then((s) => s.state === 'ready', () => false)));
+  const info = engineInfo('duckdb-eh');
+  if (!info || stored.some(Boolean)) return `DuckDB could not start: ${message}`;
+  const mb = Math.max(1, Math.round(engineSize(info).transfer / 1048576));
+  return `${ENGINE_COPY['duckdb-eh'].name} needs a one-time download of about ${mb} MB, which did not finish: ${message}. SQLite answers until then`;
 }

@@ -257,10 +257,14 @@ test.describe('Obsidian', () => {
     await page.locator('.nav-item', { hasText: 'Projects' }).click();
     await expect(page.locator('.note-card')).toHaveCount(2);
     await page.locator('.note-card', { hasText: 'Roadmap' }).locator('.note-open').click();
+    // The editor is its own chunk: wait for it before reading the document through the test hook.
+    await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
     await expect.poll(() => texts(page)).toEqual(['# Roadmap\n\n- Ship the [[Spec]]\n- Review [[Inbox]]']);
     expect(await page.evaluate(() => (window as any).__inkwright.doc.meta.tags)).toEqual(['plan', 'q4']);
     await page.getByRole('button', { name: 'Open “Inbox”' }).click();
     await expect(page.locator('.ed-title-text')).toHaveText('Inbox');
+    // The title shows before the note's document is loaded; wait for the document itself.
+    await page.waitForFunction(() => (window as any).__inkwright?.doc?.meta.title === 'Inbox');
     expect(await page.evaluate(() => (window as any).__inkwright.doc.page(0).images.length)).toBe(1);
     expect((await texts(page)).join('\n')).toContain('See also [[Spec|the spec]].');
   });

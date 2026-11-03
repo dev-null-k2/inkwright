@@ -7,6 +7,7 @@ import type { AppVault } from '../lib/vault.ts';
 import { useApp } from '../state/app.ts';
 import { Dialog, cx } from '../ui/primitives.tsx';
 import { isMac, isIOS } from '../platform/env.ts';
+import { EngineProgressNotice } from '../engines/EngineUI.tsx';
 import { askData, engineFor, invalidateEngine, placeChart, placeResultTable, readQueryLog, runUserSql, type QueryLogEntry } from './data.ts';
 
 /**
@@ -105,7 +106,8 @@ function DataPanel({ vault, doc, engine, onClose }: { vault: AppVault; doc: Note
               ))}
             </ul>
           )}
-          {engineName && <p className="ia-note">Runs on this device in {engineName}{fallback ? ` (DuckDB could not start: ${fallback})` : ''}. Nothing is uploaded.</p>}
+          {!engineName && <EngineProgressNotice ids={['duckdb-eh', 'duckdb-mvp']} />}
+          {engineName && <p className="ia-note">Runs on this device in {engineName}{fallback ? ` (${fallback})` : ''}. Nothing is uploaded.</p>}
         </section>
         <label className="ia-field">
           <span className="field-label">SQL</span>

@@ -6,6 +6,12 @@
 import type { CodeLanguage } from '@inkwright/core';
 
 export const WASM_AVAILABLE = false;
-export const TREE_SITTER_RUNTIME: string | null = null;
-export const GRAMMARS: Record<CodeLanguage, string> | null = null;
 export const SQLITE_WASM: string | null = null;
+
+export async function treeSitterRuntime(): Promise<string> {
+  throw new Error('Scanning code needs the full app.');
+}
+
+export async function grammar(_language: CodeLanguage): Promise<string> {
+  throw new Error('Scanning code needs the full app.');
+}

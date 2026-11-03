@@ -14,6 +14,9 @@
     "cap:sync": "npm run build:native && cap sync",
     "android": "npm run cap:sync && cd android && ./gradlew assembleDebug",
     "build:native": "vite build --mode native",
+    "perf:bundle": "node scripts/perf/bundle-report.mjs dist --why",
+    "perf:startup": "node scripts/perf/startup.mjs dist",
+    "perf:budget": "node scripts/perf/startup.mjs dist --budget perf/budget.json",
     "build:desktop": "vite build --mode desktop"
   },
   "dependencies": {

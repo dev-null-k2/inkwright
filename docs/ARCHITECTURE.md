@@ -436,9 +436,10 @@ See [COLLABORATION.md](COLLABORATION.md) for the protocol and threat model.
 - **A built-in skill:** add `packages/ai/skills/<name>/SKILL.md` and list it in `builtin-skills.ts`.
 - **A routine template:** add it to `ROUTINE_TEMPLATES` in `packages/ai/src/routines.ts`.
 - **A speech engine:** implement `Transcriber` (`packages/ai/src/transcribe.ts`) and return it from `providerTranscriber` in `lib/agent/voice.ts`.
-- **A code language:** add its extension to `languageOf` and an extractor to `EXTRACT` in `packages/core/src/dev/codescan.ts`, its grammar to `apps/web/src/dev/wasm-assets.ts` (and the CLI picks it up from `@vscode/tree-sitter-wasm`), and fixture cases to `packages/core/test/dev/codescan.test.ts`.
+- **A code language:** add its extension to `languageOf` and an extractor to `EXTRACT` in `packages/core/src/dev/codescan.ts`, its grammar to the `tree-sitter` engine in `apps/web/build/engines.ts` (downloaded on first use, docs/PERFORMANCE.md; the CLI picks it up from `@vscode/tree-sitter-wasm`), and fixture cases to `packages/core/test/dev/codescan.test.ts`.
 - **A sync target:** implement `Remote` (`list/read/write/delete`) and the engine does the rest.
 - **A storage backend:** implement `VaultFS` and run the shared conformance suite in `packages/sync/test`.
+- **A large dependency** (WebAssembly, a runtime): add it as an engine in `apps/web/build/engines.ts` so it downloads, verified, on first use instead of growing the install, and get it through `ensureEngine` (`apps/web/src/engines/store.ts`). A screen or overlay is a lazy chunk in `apps/web/src/boot/screens.ts`. The startup budget (`apps/web/perf/budget.json`) fails CI when the first screen grows; see [PERFORMANCE.md](PERFORMANCE.md).
 - **A feature that can be switched off:** declare a module in `apps/web/src/modules/builtin.ts` and gate its entry points with `useModule`/`isModuleOn` (docs/PLUGINS.md).
 - **A plugin API method:** add it to `METHODS` (with its permission) in `packages/plugin-api/src/protocol.ts`, to `InkwrightAPI` and the client, and implement it in `apps/web/src/plugins/dispatcher.ts` with a test.
 - **A REST operation:** add a `defineRoute` in `apps/mcp-server/src/api/routes.ts` with registered schemas; the contract test requires exercising it, and `npm run generate -w @inkwright/sdk` updates the SDK.

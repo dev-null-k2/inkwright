@@ -17,6 +17,33 @@ def hasReleaseKeystore = ['storeFile', 'storePassword', 'keyAlias', 'keyPassword
     keystoreProperties.getProperty(it)?.trim()
 }
 
+// ABIs (docs/PERFORMANCE.md, "Android"). 32-bit x86 is left out everywhere: no supported device
+// runs it. The app bundle carries the rest and Google Play delivers one ABI per device, so they
+// cost nothing in downloads; armeabi-v7a keeps 32-bit phones working (without LiteRT open models,
+// which ship no 32-bit code), x86_64 is for Chromebooks and the emulator.
+// (Not `ndk.abiFilters`: the Android Gradle plugin refuses those together with ABI splits, and
+// splits do not apply to bundles. Packaging excludes, below, apply to APKs and bundles alike.)
+def shippedAbis = ['arm64-v8a', 'armeabi-v7a', 'x86_64']
+def droppedAbis = ['x86', 'riscv64', 'mips', 'mips64', 'armeabi'] - shippedAbis
+// APKs handed out directly are split per ABI for release (app-arm64-v8a-release.apk is the one
+// phones need) instead of one APK carrying all three. Splits only apply to APKs, never to bundles.
+def requested = gradle.startParameter.taskNames
+def releaseApks = requested.any { it ==~ /(?i)(.*:)?(assemble|package)Release/ }
+// With resource shrinking, the plugin cannot build a bundle in the same invocation as split APKs
+// (https://issuetracker.google.com/402800800): it fails late with "Multiple shrunk-resources files".
+// Say so up front instead; separate invocations work in either order (.github/workflows/release.yml).
+if (releaseApks && requested.any { it ==~ /(?i)(.*:)?bundleRelease/ }) {
+    throw new GradleException("Inkwright: run bundleRelease and assembleRelease as two Gradle invocations (release APKs are split per ABI, which the Android Gradle plugin cannot combine with a shrunk bundle in one build). See docs/ANDROID.md.")
+}
+// ABI splits apply to every variant built in the same invocation, which would split the debug APK
+// too (and leave all but arm64-v8a without native code, see debugAbis). Same remedy.
+if (releaseApks && requested.any { it ==~ /(?i)(.*:)?(assemble|package|install)Debug/ }) {
+    throw new GradleException("Inkwright: run assembleDebug and assembleRelease as two Gradle invocations (release APKs are split per ABI, and the split would apply to the debug APK too). See docs/ANDROID.md.")
+}
+// Debug APKs are installed by hand on a phone: arm64-v8a only. The emulator suite adds its own
+// ABI (scripts/android/build-apk.sh passes -Pinkwright.debugAbis=arm64-v8a,x86_64).
+def debugAbis = ((project.findProperty('inkwright.debugAbis') ?: 'arm64-v8a') as String).split(',')*.trim()
+
 android {
     namespace = "app.inkwright"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -47,9 +74,23 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // R8: shrinks, optimizes and obfuscates the Kotlin/Java code, and drops resources
+            // nothing references. Keep rules for reflection and JNI are in proguard-rules.pro;
+            // libraries bring their own (Capacitor, ML Kit, AndroidX). mapping.txt for crash
+            // reports is in build/outputs/mapping/release/.
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig hasReleaseKeystore ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    splits {
+        abi {
+            enable releaseApks
+            reset()
+            include(*shippedAbis)
+            universalApk false
         }
     }
 
@@ -59,6 +100,15 @@ android {
 
     testOptions {
         unitTests.returnDefaultValues = true
+    }
+}
+
+// Every build leaves out `droppedAbis`; debug APKs carry only `debugAbis` (above): the x86_64
+// libraries alone were 36 MB of the old universal debug APK, and no phone uses them.
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        def excluded = droppedAbis + (variant.buildType == 'debug' ? shippedAbis - debugAbis : [])
+        excluded.each { abi -> variant.packaging.jniLibs.excludes.add("lib/${abi}/**") }
     }
 }
 

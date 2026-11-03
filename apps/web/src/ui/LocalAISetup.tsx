@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Cpu, X } from 'lucide-react';
+import { EngineOneTimeNote } from '../engines/EngineUI.tsx';
 import { formatBytes } from '@inkwright/ai';
 import { NativeAIOffer, useNativeOffer } from './NativeAISettings.tsx';
 import { cancelDownload, chatChoice, downloadModel, embedChoice, initLocalAI, isInstalled, localAISupported, modelKey, refOf, useLocalAI } from '../lib/localai.ts';
@@ -52,6 +53,7 @@ export function LocalAISetup({ onReady, compact }: { onReady?: () => void; compa
           </button>
           {dl?.error && <p className="lai-error" role="alert">{dl.error}</p>}
           <p className="muted small">One-time download{embedMissing && embed ? ` (assistant ${formatBytes(chat.variant.bytes)}, search ${formatBytes(embed.variant.bytes)})` : ''} · {chat.spec.licence} licence · remove it any time in Settings › AI.</p>
+          <EngineOneTimeNote id="onnx-runtime" />
         </div>
       )}
     </div>

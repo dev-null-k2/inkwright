@@ -1,0 +1,4 @@
+/* Engines downloaded on first use (src/engines/EngineUI.tsx). */
+.eng-progress { margin-top: 8px; }
+.eng-progress > .lai-progress-text:first-child { flex-basis: 100%; }
+.eng-note { display: block; font-size: var(--t-sm); color: var(--ink-2); }

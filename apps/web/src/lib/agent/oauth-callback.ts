@@ -6,7 +6,7 @@
  */
 import { parseOAuthCallback } from '@inkwright/ai';
 import { safeStorage } from '../../platform/env.ts';
-import { OAUTH_CALLBACK_KEY, OAUTH_CHANNEL } from './mcp.ts';
+import { OAUTH_CALLBACK_KEY, OAUTH_CHANNEL } from './oauth-keys.ts';
 
 /** Returns true when this window only exists to finish a sign-in (don't start the app in it). */
 export function handleOAuthRedirect(): boolean {
