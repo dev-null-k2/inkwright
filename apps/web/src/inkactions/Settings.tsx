@@ -74,7 +74,13 @@ export function ReadingSettings() {
   const [fonts, setFonts] = useState<string[]>(() => availableReadingFonts());
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   useEffect(() => { void listVoices().then(setVoices); }, []);
-  const askFonts = async () => { const all = await queryInstalledFonts(); if (all?.length) setFonts(all); };
+  const toast = useApp((s) => s.toast);
+  // The browser asks before listing fonts; say what happened either way (never a silent button).
+  const askFonts = async () => {
+    const all = await queryInstalledFonts();
+    if (all?.length) { setFonts(all); toast({ text: `${all.length} fonts from this device are in the list`, tone: 'success' }); }
+    else toast({ text: 'This browser didn’t share the device’s fonts. Allow “Fonts” for Inkwright in its site settings and try again.' });
+  };
   const canList = typeof (globalThis as { queryLocalFonts?: unknown }).queryLocalFonts === 'function';
   return (
     <>

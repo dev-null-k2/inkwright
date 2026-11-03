@@ -77,6 +77,14 @@
   /* The height content can really use: the dynamic viewport minus the system bars. */
   --usable-h: calc(100dvh - var(--safe-top) - var(--safe-bottom));
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Typed documents are paper too: they stay light at night (dimmed a little), so ink written on
+     them reads the same as on any page. */
+  --paper: #fdfcf9;
+  --paper-ink: #1f1a23;
+  --paper-ink-2: #574e5d;
+  --paper-line: rgba(31, 26, 35, 0.18);
+  --paper-shade: #f1eef0;
+  --paper-link: #2c5f49;
 }
 
 /* Night: the Duan slate itself. Kept in one place and applied twice (explicit and system). */
@@ -84,6 +92,8 @@
   color-scheme: dark;
   --desk: #1a161c;
   --desk-grain: #1e1a21;
+  --paper: #e9e5de;
+  --paper-shade: #dcd7d1;
   --chrome: #231e26;
   --chrome-2: #2e2833;
   --raised: #2a2430;
@@ -116,6 +126,8 @@
     color-scheme: dark;
     --desk: #1a161c;
     --desk-grain: #1e1a21;
+    --paper: #e9e5de;
+    --paper-shade: #dcd7d1;
     --chrome: #231e26;
     --chrome-2: #2e2833;
     --raised: #2a2430;

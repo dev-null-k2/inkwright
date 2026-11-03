@@ -13,6 +13,7 @@ export * from './providers/claude-sample.ts';
 export * from './providers/registry.ts';
 export * from './agent.ts';
 export * from './tools/notes.ts';
+export * from './tools/documents.ts';
 export * from './tools/memory-host.ts';
 export * from './skills.ts';
 export * from './secrets.ts';

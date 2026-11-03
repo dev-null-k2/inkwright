@@ -10,6 +10,7 @@ import { registerModule, registerPreset, type ModuleDefinition } from './registr
 import { INK_ACTION_MODULES } from '../inkactions/modules.ts';
 import { MEMORY_MODULES, OPT_IN_ONLY } from '../recall/modules.ts';
 import { IMPORT_MODULES } from '../importers/modules.ts';
+import { DOCUMENT_MODULES, registerDocumentPaletteActions } from '../documents/modules.ts';
 
 export const BUILTIN_MODULES: ModuleDefinition[] = [
   {
@@ -17,7 +18,7 @@ export const BUILTIN_MODULES: ModuleDefinition[] = [
     name: 'Fill & sign',
     description: 'Type into PDF form fields, place signatures and checkmarks on flat forms, and export the original document filled in.',
     defaultEnabled: true,
-    contributes: { menuItems: ['Fill & sign', 'Export › Filled form'], panels: ['Form layer', 'Signature library'], exporters: ['Filled PDF form'] },
+    contributes: { menuItems: ['Fill & sign', 'Export › Filled form', 'Sign a document'], paletteActions: ['sign-document'], panels: ['Form layer', 'Signature library'], exporters: ['Filled PDF form'] },
     whenOff: 'Values already typed into forms still show on the page and in exports; they can’t be edited until it is back on.',
   },
   {
@@ -257,6 +258,8 @@ export const BUILTIN_MODULES: ModuleDefinition[] = [
   },
   // Notes from other apps, the web clipper, and runbook shell blocks on a computer.
   ...IMPORT_MODULES,
+  // Typed documents with ink on top (documents/).
+  ...DOCUMENT_MODULES,
 ];
 
 // Presets never switch on modules that only you should turn on (screen capture, journal drafts).
@@ -265,10 +268,10 @@ const without = (...ids: string[]) => ALL.filter((m) => !ids.includes(m));
 
 export const BUILTIN_PRESETS = [
   { id: 'student', name: 'Student', description: 'Lectures that listen, maths and tables, links and daily notes, flashcard routines, proof that the work is yours.', modules: without('developer', 'code') },
-  { id: 'writer', name: 'Writer', description: 'Links and daily notes, the graph, the assistant and authorship certificates; no maths or forms.', modules: ['knowledge', 'graph', 'studio', 'assistant', 'search', 'authorship', 'themes', 'listen', 'deep-links', 'ink-answers', 'accessibility', 'papers', 'desktop'] },
+  { id: 'writer', name: 'Writer', description: 'Links and daily notes, the graph, the assistant and authorship certificates; no maths or forms.', modules: ['knowledge', 'graph', 'studio', 'assistant', 'search', 'authorship', 'themes', 'listen', 'deep-links', 'ink-answers', 'accessibility', 'papers', 'desktop', 'documents'] },
   { id: 'developer', name: 'Developer', description: 'Everything, plus API keys, the automation API and plugin development.', modules: ALL },
   { id: 'researcher', name: 'Researcher', description: 'PDF reading and forms, transcripts, links, the graph, on-device AI and the assistant.', modules: without('authorship', 'developer', 'code') },
-  { id: 'enterprise', name: 'Enterprise', description: 'Forms, authorship and the assistant on managed devices; no third-party plugins or developer access.', modules: ['fill-sign', 'listen', 'knowledge', 'studio', 'assistant', 'local-ai', 'search', 'authorship', 'deep-links', 'code', 'accessibility', 'data-sandbox', 'desktop'] },
+  { id: 'enterprise', name: 'Enterprise', description: 'Forms, authorship and the assistant on managed devices; no third-party plugins or developer access.', modules: ['fill-sign', 'listen', 'knowledge', 'studio', 'assistant', 'local-ai', 'search', 'authorship', 'deep-links', 'code', 'accessibility', 'data-sandbox', 'desktop', 'documents'] },
   { id: 'minimal', name: 'Minimal', description: 'Just paper and pen: writing, pages, notebooks, sync and export.', modules: [] },
 ];
 
@@ -280,4 +283,6 @@ export function registerBuiltinModules(): void {
   registered = true;
   for (const m of BUILTIN_MODULES) registerModule(m);
   for (const p of BUILTIN_PRESETS) registerPreset(p);
+  // Commands available on every screen (search palette): new document, sign a document.
+  registerDocumentPaletteActions();
 }

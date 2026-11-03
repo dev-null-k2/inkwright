@@ -178,6 +178,9 @@ function Welcome() {
         </div>
 
         <footer className="welcome-actions">
+          {last && isModuleOn('fill-sign') && (
+            <button type="button" className="btn btn-ghost welcome-sign" disabled={busy} onClick={() => void finish(() => void import('../fill/signFlow.ts').then((m) => m.startSigning()))}>Sign a document</button>
+          )}
           {last
             ? <button type="button" className="btn btn-primary welcome-next" disabled={busy} onClick={() => void finish()}>{busy ? 'Getting ready…' : 'Start writing'}</button>
             : <button type="button" className="btn btn-primary welcome-next" onClick={() => setStep(step + 1)}>Next</button>}

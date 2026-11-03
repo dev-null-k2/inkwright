@@ -10,6 +10,7 @@ export * from './outline.ts';
 export * from './paper.ts';
 export * from './export.ts';
 export * from './document.ts';
+export * from './richdoc.ts';
 export * from './feel.ts';
 export * from './search.ts';
 export * from './pagetools.ts';

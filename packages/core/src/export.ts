@@ -162,7 +162,7 @@ export function exportMarkdown(note: NoteMeta, pages: PageInk[]): string {
   const out: string[] = ['---'];
   out.push(`id: ${note.id}`);
   out.push(`title: ${yaml(note.title)}`);
-  out.push(`kind: ${note.kind}`);
+  out.push(`kind: ${note.document ? 'document' : note.kind}`);
   out.push(`created: ${new Date(note.createdAt).toISOString()}`);
   out.push(`updated: ${new Date(note.updatedAt).toISOString()}`);
   if (note.notebookId) out.push(`notebook: ${note.notebookId}`);
@@ -172,6 +172,14 @@ export function exportMarkdown(note: NoteMeta, pages: PageInk[]): string {
   out.push('---', '');
   out.push(`# ${note.title.trim() || 'Untitled'}`, '');
   if (note.summary?.trim()) out.push(`> ${note.summary.trim().replace(/\n/g, '\n> ')}`, '');
+  // A document (richdoc.ts) is already Markdown: its body is the note, ink is noted after it.
+  const body = note.document ? pages[0]?.texts?.find((t) => t.role === 'document') : undefined;
+  if (body) {
+    if (body.text.trim()) out.push(body.text.trim(), '');
+    const ink = pages[0]!;
+    if (ink.strokes.length) out.push(`Ink on this document: ![Annotations](pages/${ink.id}.svg)`, '');
+    return out.join('\n');
+  }
   pages.forEach((page, i) => {
     if (pages.length > 1 || note.kind === 'paged') out.push(`## Page ${i + 1}`, '');
     const text = pageText(page);

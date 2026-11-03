@@ -173,7 +173,7 @@ export function PluginsSettings() {
               <span className="field-label">Link to a plugin (its manifest.json, folder or .zip)</span>
               <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/my-plugin/manifest.json" inputMode="url" autoComplete="off" />
             </label>
-            <button type="submit" className="btn btn-sm" disabled={busy || !url.trim()}><Link2 size={14} /> Install</button>
+            <button type="submit" className="btn btn-sm" disabled={busy || !url.trim()} title={!url.trim() ? 'Paste the plugin’s address first' : undefined}><Link2 size={14} /> Install</button>
           </form>
           <div className="row-buttons">
             <button type="button" className="btn" disabled={busy} onClick={() => void run(async () => {

@@ -7,6 +7,7 @@ import { PenNib, argbToCss } from './PenNib.tsx';
 import { IconButton, Popover, Segmented, Slider, cx } from './primitives.tsx';
 import { HIGHLIGHT_PALETTE, INK_PALETTE, useSettings } from '../state/settings.ts';
 import { modKey } from '../platform/env.ts';
+import { FingerDrawButton, StylusSwitchPrompt } from './FingerDraw.tsx';
 
 export interface DockProps {
   tool: Tool;
@@ -100,11 +101,13 @@ export function PenDock(p: DockProps) {
         </button>
         <IconButton label="Lasso select" shortcut="L" active={p.tool === 'lasso'} onClick={() => p.onTool('lasso')}><Lasso size={20} /></IconButton>
         <IconButton label="Text" shortcut="T" active={p.tool === 'text'} onClick={() => p.onTool('text')}><Type size={20} /></IconButton>
+        <FingerDrawButton />
         <button ref={moreBtn} type="button" className={cx('icon-btn', (p.tool === 'hand' || p.tool === 'laser' || p.tool === 'tape') && 'is-active')} aria-label="More tools" title="More tools" onClick={() => setMoreOpen(true)}>
           {p.tool === 'laser' ? <Crosshair size={20} /> : p.tool === 'hand' ? <Hand size={20} /> : p.tool === 'tape' ? <Bandage size={20} /> : <Wand2 size={20} />}
         </button>
       </div>
 
+      <StylusSwitchPrompt />
       {editingPreset && (
         <Popover anchor={refs.current.get(editingPreset.id) ?? null} open onClose={() => setEditing(null)} title="Pen settings" placement={side}>
           <PenEditor preset={editingPreset} onClose={() => setEditing(null)} />
