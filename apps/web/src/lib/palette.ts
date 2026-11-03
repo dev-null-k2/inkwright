@@ -30,10 +30,28 @@ export function setPaletteActionFilter(f: (id: string) => boolean): void {
   actionFilter = f;
 }
 
+/**
+ * Bumped whenever the actions on offer may have changed: a source registered or went away, or a
+ * source's own list changed (a plugin finished starting and contributed its commands). An open
+ * palette re-reads its results then, so an action that arrives a moment after the palette opened
+ * (modules start in the background after the first screen, src/boot) still shows up.
+ */
+const useActionsVersion = create<{ version: number }>(() => ({ version: 0 }));
+export function paletteActionsChanged(): void {
+  useActionsVersion.setState((s) => ({ version: s.version + 1 }));
+}
+/** React: a number that changes with `paletteActionsChanged`, for use as a memo dependency. */
+export const usePaletteActionsVersion = (): number => useActionsVersion((s) => s.version);
+
 /** Registers a screen's actions (a function, so they are read fresh each time the palette opens). */
 export function registerPaletteActions(source: string, actions: () => PaletteAction[]): () => void {
   sources.set(source, actions);
-  return () => { if (sources.get(source) === actions) sources.delete(source); };
+  paletteActionsChanged();
+  return () => {
+    if (sources.get(source) !== actions) return;
+    sources.delete(source);
+    paletteActionsChanged();
+  };
 }
 
 /** Registers actions for as long as the calling component is mounted (always the latest closures). */

@@ -15,7 +15,7 @@ import { RecordingNoteToolHost, RunRecorder, type AgentTool } from '@inkwright/a
 import { addedPermissions, compareVersions, validateManifest, type ExportOutput, type ImportedNote, type Permission, type PluginManifest } from '@inkwright/plugin-api';
 import { useApp } from '../state/app.ts';
 import { APP_VERSION, isNative, nativePlatform } from '../platform/env.ts';
-import { registerPaletteActions } from '../lib/palette.ts';
+import { paletteActionsChanged, registerPaletteActions } from '../lib/palette.ts';
 import { AppNoteToolHost } from '../lib/ai.ts';
 import { agentHub } from '../lib/agent/hub.ts';
 import { dispatch, type BackendNote, type Caller, type HostEnv, type NotesBackend } from './dispatcher.ts';
@@ -556,6 +556,8 @@ export function startPluginHost(): () => void {
   const disposers: (() => void)[] = [];
   void reloadPlugins().catch((e) => console.warn('Plugins could not load', e));
 
+  // Plugins load asynchronously; their commands must reach a palette that is already open.
+  disposers.push(usePlugins.subscribe((s, prev) => { if (s.plugins !== prev.plugins || s.running !== prev.running) paletteActionsChanged(); }));
   disposers.push(registerPaletteActions('plugins', () => [
     ...pluginCommands().map((c) => ({ id: `plugin:${c.pluginId}:${c.id}`, label: c.title, keywords: `${c.keywords ?? ''} ${c.pluginName} plugin`, hint: c.pluginName, icon: createElement(Puzzle, { size: 16 }), run: () => { void runCommand(c.pluginId, c.id); } })),
     ...pluginPanels().map((x) => ({ id: `plugin-panel:${x.pluginId}:${x.id}`, label: x.title, keywords: `${x.pluginName} plugin panel`, hint: x.pluginName, icon: createElement(Puzzle, { size: 16 }), run: () => openPluginPanel(x.pluginId, x.id) })),

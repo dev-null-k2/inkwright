@@ -1,5 +1,6 @@
+import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { closePalette, findActions, openPalette, registerPaletteActions, usePalette } from './palette.ts';
+import { closePalette, findActions, openPalette, paletteActionsChanged, registerPaletteActions, usePalette, usePaletteActionsVersion } from './palette.ts';
 import { applyFocus } from './focus.ts';
 
 describe('palette actions', () => {
@@ -21,6 +22,21 @@ describe('palette actions', () => {
     expect(findActions('print')).toEqual([]);
     offApp();
     expect(findActions('')).toEqual([]);
+  });
+
+  it('tells an open palette when the actions on offer change (a plugin starting late)', () => {
+    const { result } = renderHook(() => usePaletteActionsVersion());
+    const at = () => result.current;
+    const start = at();
+    let off!: () => void;
+    act(() => { off = registerPaletteActions('late', () => [{ id: 'late', label: 'Late command', run() {} }]); });
+    expect(at()).toBe(start + 1);
+    act(() => paletteActionsChanged()); // a source's own list changed
+    expect(at()).toBe(start + 2);
+    act(() => off());
+    expect(at()).toBe(start + 3);
+    act(() => off()); // unregistering twice changes nothing
+    expect(at()).toBe(start + 3);
   });
 
   it('opens in a mode with a query and closes', () => {
