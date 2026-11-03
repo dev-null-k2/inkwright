@@ -1,3 +1,4 @@
+import './assistant.css';
 import { Check, Download, Loader2, RotateCcw, X } from 'lucide-react';
 import { classifyDownloadError, describeDownloadIssue, downloadButtonState, type ProgressLike } from '../../lib/assistant/download-status.ts';
 import { cx } from '../primitives.tsx';

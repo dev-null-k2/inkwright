@@ -1,3 +1,4 @@
+import './assistant.css';
 import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { History, MessageSquarePlus, NotebookPen, Trash2 } from 'lucide-react';
 import type { ChatMessage } from '@inkwright/ai';
