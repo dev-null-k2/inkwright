@@ -4,24 +4,28 @@ What Inkwright costs to download, install and open, how that is measured, and th
 it from creeping back. Every number here comes from a script in this repository and can be
 re-measured with one command ([How to measure](#how-to-measure)).
 
-Measured on November 2, 2026, before and after the changes described below (before: the security
-review merge `b9d1ca0`). Sizes are decimal (1 MB = 10⁶ bytes), as Vite, `ls --si` and the Play
+Measured on November 2, 2026. Before: `main` at `9c7762b` (the documents, theme and desktop work
+included). After: this work merged with that same `main`. Sizes are decimal (1 MB = 10⁶ bytes), as Vite, `ls --si` and the Play
 Console report them; web sizes are gzip level 9.
 
 ## Summary
 
 | | Before | After | |
 |---|---:|---:|---|
-| **Play download, arm64-v8a phone** | 49.62 MB | **20.39 MB** | −59 % |
-| Play download, armeabi-v7a phone | 38.34 MB | 9.11 MB | −76 % |
-| Release APK people download from GitHub | 116.06 MB (universal) | **37.02 MB** (`arm64-v8a`) | −68 % |
-| App Bundle uploaded to Play | 71.25 MB | 42.24 MB | −41 % (4.02 MB of it is R8's mapping, never installed) |
-| Debug APK (installed by hand on the Razr Fold) | 130.83 MB | 44.39 MB | −66 % |
-| Web: JavaScript before the app runs | 977.4 kB in 41 files | **303.5 kB** in 43 files | −69 % |
-| Web: CSS before the app runs | 30.1 kB | 28.2 kB | |
+| **Play download, arm64-v8a phone** | 49.94 MB | **20.72 MB** | −59 % |
+| Play download, armeabi-v7a phone | 38.66 MB | 9.44 MB | −76 % |
+| Release APK people download from GitHub | 116.37 MB (universal) | **37.35 MB** (`arm64-v8a`) | −68 % |
+| App Bundle uploaded to Play | 71.57 MB | 42.58 MB | −41 % (4.02 MB of it is R8's mapping, never installed) |
+| Debug APK (installed by hand on the Razr Fold) | 132.47 MB | 44.77 MB | −66 % |
+| Web: JavaScript before the app runs | 1,087.1 kB in 50 files | **306.3 kB** in 49 files | −72 % |
+| Web: CSS before the app runs | 33.6 kB | 30.7 kB | |
 | DuckDB, AI runtime, code parsers in the install | 106.8 MB (24.2 MB compressed) | **0**: downloaded, verified, on first use | |
-| Library interactive, 4× CPU slowdown | 1,579 ms | **1,325 ms** | −16 % ([Startup](#startup)) |
-| Library interactive, 4× CPU and a mid-tier mobile network | 7,443 ms | **3,538 ms** | −52 % |
+| Library interactive, 4× CPU slowdown | 1,869 ms | **1,144 ms** | −39 % ([Startup](#startup)) |
+| Library interactive, 4× CPU and a mid-tier mobile network | 8,201 ms | **3,422 ms** | −58 % |
+
+The first measurement, before `main` gained documents and the desktop app (against `b9d1ca0`),
+gave the same picture: Play download 49.62 → 20.39 MB, initial JavaScript 977.4 → 303.5 kB,
+library interactive 1,579 → 1,325 ms at 4× CPU and 7,443 → 3,538 ms with the mobile network.
 
 What changed, in order of effect:
 
@@ -36,7 +40,8 @@ What changed, in order of effect:
 4. **Only the library is in the startup bundle** ([Web](#web-what-loads-first)): the editor,
    Settings, the search palette and the app-wide overlays are separate chunks fetched while the
    library is idle; module start-up waits for the first quiet moment; pdf-lib and the MCP client
-   left the startup path.
+   left the startup path, and so did the device-to-device protocol and its curve cryptography
+   (`@inkwright/sync/storage`).
 5. **No source maps in native builds** (they were 8.8 MB of the debug APK), and interface fonts
    limited to Latin.
 
@@ -59,7 +64,8 @@ node apps/web/scripts/perf/why-initial.mjs pdf-lib @modelcontextprotocol/client
 
 # Android: composition of APKs and bundles, and the Play download per device (bundletool)
 npm run cap:sync -w @inkwright/web
-cd apps/web/android && ./gradlew bundleRelease && ./gradlew assembleRelease assembleDebug && cd ../../..
+# Three invocations: split release APKs can't share one with a shrunk bundle or a debug APK
+cd apps/web/android && ./gradlew bundleRelease && ./gradlew assembleRelease && ./gradlew assembleDebug && cd ../../..
 node apps/web/scripts/perf/android-size.mjs \
   apps/web/android/app/build/outputs/bundle/release/app-release.aab \
   apps/web/android/app/build/outputs/apk/release/app-arm64-v8a-release.apk \
@@ -83,18 +89,22 @@ stylesheet. Everything else is lazy.
 
 | | Before | After |
 |---|---:|---:|
-| Initial JS (gzip) | 977.4 kB, 41 files | 303.5 kB, 43 files |
-| Initial CSS (gzip) | 30.1 kB | 28.2 kB |
-| Lazy JS (gzip) | 935.3 kB, 32 files | 1.66 MB, 87 files |
+| Initial JS (gzip) | 1,087.1 kB, 50 files | 306.3 kB, 49 files |
+| Initial CSS (gzip) | 33.6 kB | 30.7 kB |
+| Lazy JS (gzip) | 1.13 MB, 56 files | 1.98 MB, 135 files |
 | Workers (gzip) | 1.00 MB, 6 files | 0.94 MB, 6 files |
-| Fonts (woff2, by `unicode-range`) | 571.5 kB, 21 files | 525.7 kB, 16 files |
+| Fonts (woff2, by `unicode-range`) | 571.9 kB, 21 files | 525.9 kB, 16 files |
 
-What the 303.5 kB of initial JavaScript is (minified bytes by origin, `perf:bundle --why`):
-react-dom 207 kB, `@inkwright/core` 196 kB, `@inkwright/ai` 103 kB (the settings and provider
-registry the library reads), `@inkwright/sync` 79 kB (the sync loop starts with the library),
-`src/canvas` 57 kB (thumbnails are drawn by the ink engine's renderer), `src/lib` 56 kB, then
-nothing over 21 kB. Before, the same list started with pdf-lib (217 kB), the MCP client (190 kB),
-zod (96 kB) and the editor's whole tree.
+What the 306.3 kB of initial JavaScript is (minified bytes by origin, `perf:bundle --why`):
+react-dom 207 kB, `@inkwright/core` 204 kB, `@inkwright/ai` 103 kB (the settings and provider
+registry the library reads), `src/canvas` 57 kB (thumbnails are drawn by the ink engine's
+renderer), `src/lib` 57 kB, `@inkwright/sync` 51 kB (the vault and the sync loop start with the
+library), then nothing over 21 kB. Before, the same list started with pdf-lib (217 kB), the MCP
+client (190 kB), zod (96 kB), the editor's whole tree and, since short connection codes, the
+device-to-device protocol with `@noble/curves` and `@noble/hashes` (39 kB).
+
+The rich-text documents `main` added (Tiptap and ProseMirror, 139 kB gzip in one chunk) are lazy
+in both builds: the chunk loads when a document is opened, not with the editor or the library.
 
 How:
 
@@ -112,7 +122,15 @@ How:
 - **Startup imports pruned**: pdf-lib loads with PDF export and import (`dev/diagramPdf.ts`,
   `authorship/certificate.ts`); the MCP OAuth redirect handler no longer imports the MCP client
   (`lib/agent/oauth-keys.ts`); the workspace packages declare `"sideEffects": false` so unused
-  exports are dropped.
+  exports are dropped. The first-run welcome, which imports the AI and sync setup screens, loads
+  only for someone who has not been through it.
+- **No barrel on the startup path that drags code in**: a module a barrel re-exports lands in the
+  importer's chunk whichever exports are used. The vault, the sync loop and note merging import
+  `@inkwright/sync/storage` (the package without `peer/`), so pairing and live-sharing code loads
+  with the screens that use them.
+- **Nothing that arrives early is lost**: a join link opened before the join sheet is mounted is
+  kept for it (`peer/joinStash.ts`), and an open palette picks up actions that register after it
+  opened (a plugin finishing its start).
 - **Fonts**: the interface faces (Hanken Grotesk, Brygada 1918) carry Latin and Latin Extended
   only, because the interface is in English (`src/styles/fonts.css`); the faces people write and
   export with (Caveat, Newsreader, JetBrains Mono) keep every script subset. Each subset is a
@@ -136,38 +154,42 @@ slowed down 4× through the DevTools protocol — roughly a mid-range phone.
 Medians in milliseconds. `cpu4`: 4× CPU slowdown, unthrottled network (5 runs per build).
 `mid-tier`: 4× CPU plus Lighthouse's mobile network, 150 ms RTT and 1.6 Mbps down (3 runs per
 build). The before and after builds were measured alternately, run by run, so that both saw the
-same machine (a shared 2-core Linux VM, Chromium 1243 headless; load average 2–8 during the runs).
+same machine (a shared 2-core Linux VM, Chromium 1243 headless; load average 3–5 during the runs).
+Each run is a returning person: past the first-run welcome, with an empty cache.
 
 | | cpu4 before | cpu4 after | mid-tier before | mid-tier after |
 |---|---:|---:|---:|---:|
-| First contentful paint | 940 | **652** | 6,856 | **2,736** |
-| Largest contentful paint | 1,624 | **1,392** | 7,496 | **3,640** |
-| Library visible | 1,095 | **820** | 6,992 | **2,951** |
-| **Library interactive** | 1,579 | **1,325** | 7,443 | **3,538** |
-| Long tasks before interactive | 5 | 5 | 6 | 5 |
-| Blocking time before interactive | 815 | **450** | 776 | **580** |
-| Blocking time in the 4.5 s after FCP, background work included | 334 | 592 | 277 | 636 |
-| JavaScript transferred before interactive | 995 kB | **317 kB** | 995 kB | **317 kB** |
-| Note open, app settled | 679 | 645 | 672 | 692 |
-| Note open, tapped the instant the library appears | 1,144 | 1,442 | 1,092 | 4,520 |
-| Navigation to editor, for that instant tap | 2,239 | 2,262 | 8,084 | 7,471 |
+| First contentful paint | 1,176 | **552** | 7,612 | **2,848** |
+| Largest contentful paint | 1,932 | **1,224** | 8,264 | **3,476** |
+| Library visible | 1,356 | **701** | 7,773 | **3,003** |
+| **Library interactive** | 1,869 | **1,144** | 8,201 | **3,422** |
+| Long tasks before interactive | 6 | 4 | 6 | 5 |
+| Blocking time before interactive | 841 | **381** | 815 | **422** |
+| Blocking time in the 4.5 s after FCP, background work included | 294 | 657 | 264 | 468 |
+| JavaScript transferred before interactive | 1,111 kB | **321 kB** | 1,111 kB | **321 kB** |
+| Note open, app settled | 652 | 562 | 587 | 1,006 |
+| Note open, tapped the instant the library appears | 968 | 1,686 | 1,087 | 4,956 |
+| Navigation to editor, for that instant tap | 2,324 | 2,387 | 8,860 | 7,959 |
 
 What the numbers say:
 
-- The library paints and becomes usable sooner: interactive 16 % sooner on a slow CPU, 52 % sooner
-  on a slow CPU over a mobile network, where the 680 kB of JavaScript no longer downloaded first
-  dominates. Blocking time before interactive almost halves.
+- The library paints and becomes usable much sooner: interactive 39 % sooner on a slow CPU, 58 %
+  sooner on a slow CPU over a mobile network, where the 790 kB of JavaScript no longer downloaded
+  first dominates. Blocking time before interactive more than halves.
 - The work did not disappear; it moved. Module start-up and the preloading of the other screens
   now run after the library is interactive, one chunk per idle period, which is why blocking time
   over the first seconds, background included, is higher. None of it lands in the first 300 ms
   window after the library appears, by design (`BACKGROUND_DELAY_MS`).
-- Opening a note once the app has settled is unchanged: the editor chunk is preloaded and renders
-  without a Suspense fallback (`lazyNamed`, `apps/web/src/boot/lazy.ts`; going through
-  `React.lazy` cost ~300 ms of fallback throttling before that was fixed).
-- The one case that got slower is a tap in the very first moment, before the editor chunk has been
-  preloaded: it then loads on demand (1.4 s on cpu4; 4.5 s on the throttled network, which is
-  mostly the 138 kB chunk crossing a 1.6 Mbps link). Counted from navigation, that person still
-  reaches the editor no later than before (2.26 s vs 2.24 s; 7.5 s vs 8.1 s).
+- Opening a note once the app has settled is as fast as before on a fast network: the editor
+  chunk is preloaded and renders without a Suspense fallback (`lazyNamed`,
+  `apps/web/src/boot/lazy.ts`; going through `React.lazy` cost ~300 ms of fallback throttling
+  before that was fixed). On the slow network the preload has not always finished 4.5 s after the
+  library appears (it starts after the library's quiet period, and the editor is 120 kB over
+  1.6 Mbps), so that tap waits for the rest of it: 1.0 s instead of 0.6 s.
+- A tap in the very first moment, before the editor chunk has been preloaded, loads it on demand
+  (1.7 s on cpu4; 5.0 s on the throttled network, mostly the chunk crossing a 1.6 Mbps link).
+  Counted from navigation, that person reaches the editor about as soon as before on a fast
+  network (2.39 s vs 2.32 s) and sooner on the slow one (7.96 s vs 8.86 s).
 
 Re-measure one build with `npm run perf:startup -w @inkwright/web`, or compare two the way the table
 was made: `node apps/web/scripts/perf/startup.mjs apps/web/dist --against <older build's dist>
@@ -177,7 +199,9 @@ The CI budget (`apps/web/perf/budget.json`, run by `.github/workflows/ci.yml` af
 suite): initial JS ≤ 337,920 bytes gzip, initial CSS ≤ 32,768 bytes, and at 4× CPU the median
 library interactive ≤ 1,500 ms and LCP ≤ 2,000 ms. Bytes are exact; times depend on the machine,
 so `PERF_BUDGET_SLACK=1.5` widens the time budgets (never the bytes) on a slow runner. Raise a
-number only in the change that needs it, and say why.
+number only in the change that needs it, and say why. After merging `main` (documents, desktop
+app, maths) the build is at 306,331 / 337,920 bytes of JavaScript, 30,709 / 32,768 of CSS, and
+1,179 / 1,500 ms and 1,244 / 2,000 ms at 4× CPU: within budget, so the budget is unchanged.
 
 ## Engines downloaded on first use
 
@@ -255,13 +279,13 @@ second copy, so the installed footprint is the APK size.
 | Native, arm64-v8a | 29.80 MB | 29.80 MB | 29.80 MB | 29.80 MB |
 | Web: WebAssembly | 24.20 MB | 106.83 MB | 0.34 MB (SQLite) | 0.69 MB |
 | Native, x86 | 9.18 MB | 9.18 MB | — | — |
-| Dex (Java/Kotlin) | 7.86 MB | 21.21 MB | 2.87 MB | 6.84 MB |
+| Dex (Java/Kotlin) | 7.86 MB | 21.22 MB | 2.87 MB | 6.85 MB |
 | Native, armeabi-v7a | 4.57 MB | 4.57 MB | — | — |
-| Web: JavaScript | 2.92 MB | 9.75 MB | 2.50 MB | 7.92 MB |
+| Web: JavaScript | 3.23 MB | 10.64 MB | 2.82 MB | 8.82 MB |
 | Resources | 0.71 MB | 0.83 MB | 0.66 MB | 0.76 MB |
 | Web: fonts | 0.57 MB | 0.57 MB | 0.53 MB | 0.53 MB |
-| Everything else, and zip overhead | 0.41 MB | 0.86 MB | 0.32 MB | 0.86 MB |
-| **APK** | **116.06 MB** | | **37.02 MB** | |
+| Everything else, and zip overhead | 0.41 MB | 0.89 MB | 0.33 MB | 0.88 MB |
+| **APK** | **116.37 MB** | | **37.35 MB** | |
 
 The native libraries for arm64-v8a are LiteRT-LM (`liblitertlm_jni.so`, 22.69 MB: open models on
 the phone), ML Kit digital ink recognition (`libdigitalink.so`, 6.89 MB) and AndroidX graphics-core
@@ -269,19 +293,19 @@ the phone), ML Kit digital ink recognition (`libdigitalink.so`, 6.89 MB) and And
 `.symtab` or debug sections); the "Unable to strip" line in the Gradle log only means the NDK is
 not installed, and costs nothing.
 
-The App Bundle (42.24 MB) carries all three ABIs and 4.02 MB of `BUNDLE-METADATA` (R8's mapping,
+The App Bundle (42.58 MB) carries all three ABIs and 4.02 MB of `BUNDLE-METADATA` (R8's mapping,
 for the Play Console's crash reports), none of which a phone downloads. What Play sends, per
 `bundletool get-size total`:
 
 | Device | Before | After |
 |---|---:|---:|
-| arm64-v8a (nearly every phone, the Razr Fold) | 49.56–49.62 MB | 20.36–20.40 MB |
-| armeabi-v7a (32-bit phones) | 38.27–38.34 MB | 9.07–9.11 MB |
-| x86_64 (Chromebooks, emulator) | 50.72–50.79 MB | 21.52–21.56 MB |
-| x86 | 39.48–39.55 MB | not shipped |
+| arm64-v8a (nearly every phone, the Razr Fold) | 49.87–49.94 MB | 20.69–20.73 MB |
+| armeabi-v7a (32-bit phones) | 38.59–38.66 MB | 9.41–9.44 MB |
+| x86_64 (Chromebooks, emulator) | 51.03–51.10 MB | 21.85–21.89 MB |
+| x86 | 39.79–39.86 MB | not shipped |
 
-Debug APK: 130.83 MB → 44.39 MB (native 29.80 MB for arm64-v8a only, dex 9.84 MB unshrunk, web
-JavaScript 2.77 MB; source maps 8.77 MB → none).
+Debug APK: 132.47 MB → 44.77 MB (native 29.80 MB for arm64-v8a only, dex 9.85 MB unshrunk, web
+JavaScript 3.12 MB; source maps 10.04 MB → none).
 
 ### ABIs
 
@@ -298,13 +322,15 @@ apply to APKs and bundles alike (`ndk.abiFilters` cannot be combined with ABI sp
   emulator suite passes its image's ABI).
 
 The Android Gradle plugin cannot build split APKs and a shrunk bundle in one invocation
-([issue 402800800](https://issuetracker.google.com/402800800)); the build stops with a message
-saying to run `bundleRelease` and `assembleRelease` separately, as the release workflow does.
+([issue 402800800](https://issuetracker.google.com/402800800)), and ABI splits apply to every
+variant built alongside (the debug APK would be split too). The build stops with a message saying
+to run `bundleRelease`, `assembleRelease` and `assembleDebug` separately, as the release workflow
+does.
 
 ### R8 and resource shrinking
 
 Release builds set `minifyEnabled true` and `shrinkResources true` with
-`proguard-android-optimize.txt`. Dex went from 21.21 MB to 6.84 MB uncompressed.
+`proguard-android-optimize.txt`. Dex went from 21.22 MB to 6.85 MB uncompressed.
 
 Capacitor finds plugins by reflection, which is why it ships with R8 off by default. What has to
 keep its name, and what keeps it:
@@ -312,7 +338,7 @@ keep its name, and what keeps it:
 | Found by name at run time | Kept by |
 |---|---|
 | Capacitor plugin classes listed in `capacitor.plugins.json`, their `@PluginMethod`, `@PermissionCallback` and `@ActivityCallback` methods | Capacitor's consumer rules (`@CapacitorPlugin` classes and annotated methods) |
-| `InkwrightNativePlugin`'s 26 plugin methods and its permission callback | the same rules (it is a `@CapacitorPlugin`) |
+| `InkwrightNativePlugin`'s 27 plugin methods and its permission callback | the same rules (it is a `@CapacitorPlugin`) |
 | `@capgo/capacitor-social-login` (Google sign-in through Credential Manager) | its consumer rules (the plugin, `androidx.credentials`, Google ID). Facebook, Apple and Twitter providers are not compiled in (`android/gradle.properties`) |
 | ML Kit digital ink, ML Kit GenAI task APIs, Play services, AndroidX | their consumer rules |
 | LiteRT-LM: its JNI library looks up Java classes, fields and callbacks by name | `app/proguard-rules.pro`: `com.google.ai.edge.litertlm.**` kept whole (~200 kB of Java) |
@@ -322,13 +348,13 @@ keep its name, and what keeps it:
 `scripts/android/check-r8.mjs` turns this table into a build check: it reads the plugin sources
 and R8's `mapping.txt` and fails if any plugin class Capacitor loads by name was renamed, any
 method JavaScript calls is renamed or gone, or any class in the kept-whole packages was renamed.
-On this build: 8 plugins and 74 methods called by name keep their names; 356 classes reached from
+On this build: 8 plugins and 75 methods called by name keep their names; 356 classes reached from
 native code are intact. The release workflow runs it after building, and publishes the mapping
 with each release (`Inkwright-<version>-r8-mapping.txt`) to read stack traces. Stack traces keep
 line numbers (`-keepattributes SourceFile,LineNumberTable`).
 
 A static check cannot prove the shrunk app runs on a phone. `assembleRelease`, `bundleRelease`
-and `testDebugUnitTest` (153 JVM tests) pass; the native AI paths behind AICore and LiteRT-LM need
+and `testDebugUnitTest` (158 JVM tests) pass; the native AI paths behind AICore and LiteRT-LM need
 a real device, as before (docs/ANDROID.md, `npm run e2e:android`).
 
 ### Where the outputs are
