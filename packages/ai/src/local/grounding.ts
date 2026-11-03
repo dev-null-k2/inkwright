@@ -163,10 +163,14 @@ export function groundedSystemPrompt(opts: { appName?: string; today?: string; m
 }
 
 /** The user turn: the numbered context, then the question. */
-export function groundedUserMessage(question: string, g: Pick<Grounding, 'context' | 'hasContent' | 'unreadInk'>): string {
+export function groundedUserMessage(question: string, g: Pick<Grounding, 'context' | 'hasContent' | 'unreadInk'> & { sources?: readonly GroundingSource[] }): string {
   const ctx = g.hasContent ? g.context : '(Nothing in the notes matched this question.)';
   const note = g.unreadInk ? '\n(The page has handwriting that could not be read as text yet.)' : '';
-  return `Context from my notes:\n${ctx}${note}\n\nQuestion: ${question}`;
+  // A question asked on a lasso is about the selection: say so, with its words, so a short
+  // "How much" over "2+2=" is read as "what is 2+2".
+  const sel = g.sources?.find((s) => s.kind === 'selection');
+  const about = sel ? `\n\nI selected this on the page [${sel.n}]: ${sel.text.replace(/\s+/g, ' ').slice(0, 200)}\nMy question is about it.` : '';
+  return `Context from my notes:\n${ctx}${note}${about}\n\nQuestion: ${question}`;
 }
 
 const ACTION = [

@@ -187,3 +187,16 @@ describe('document notes', () => {
     expect(String(seen[0]!.messages.at(-1)!.content)).toMatch(/document "Trip plan" \(note_id: d1\); change it with edit_document/);
   });
 });
+
+describe('questions on a lasso selection', () => {
+  it('say what was selected, and treat "not found" as a dodge', async () => {
+    const seen: ChatRequest[] = [];
+    const turns = ['I couldn’t find that in your notes. The context does not contain the answer.', '2 + 2 = 4.'];
+    const provider = withPromptTools(new CallbackProvider({ handler: async (r) => { seen.push(r); return turns[seen.length - 1]!; } }));
+    const g = buildGrounding({ question: 'How much', openNote: { id: 'n', title: 'Scratch', currentPage: 1, pages: [{ page: 1, text: '2+2=' }] }, selection: { page: 1, text: '2+2=' } });
+    const r = await runGroundedTurn({ provider, model: 'm', question: 'How much', history: [], grounding: g, contextTokens: 4096 });
+    expect(String(seen[0]!.messages.at(-1)!.content)).toMatch(/I selected this on the page \[1\]: 2\+2=\nMy question is about it\.\n\nQuestion: How much/);
+    expect(String(seen[1]!.messages.at(-1)!.content)).toMatch(/about the text I selected/);
+    expect(r).toMatchObject({ text: '2 + 2 = 4.', by: 'retry' });
+  });
+});

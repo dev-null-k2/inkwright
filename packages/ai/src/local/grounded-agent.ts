@@ -13,6 +13,8 @@ import {
   type Grounding,
 } from './grounding.ts';
 
+const NOT_FOUND = /couldn.?t find|could not find|does not contain|doesn.?t contain|no (numeric|information|answer)/i;
+
 export interface GroundedTurnOptions {
   provider: Provider;
   model: string;
@@ -88,20 +90,23 @@ export async function runGroundedTurn(o: GroundedTurnOptions): Promise<GroundedT
     const text = tried?.denied ? 'Okay, I didn’t make that change.' : 'I couldn’t do that on this device’s model. Try saying exactly what to create or add, or use a cloud AI in Settings › AI.';
     return { text, by: 'model', agent, remember: [{ role: 'user', content: o.question }, { role: 'assistant', content: text }] };
   }
-  if (isDeflection(text) && !acted && o.grounding.hasContent && !o.signal?.aborted) {
+  // On a selection, "not found" is a dodge too: the question is about text the model was given.
+  const onSelection = o.grounding.sources.some((src) => src.kind === 'selection');
+  const dodged = isDeflection(text) || (onSelection && NOT_FOUND.test(text));
+  if (dodged && !acted && o.grounding.hasContent && !o.signal?.aborted) {
     const nudge = await o.provider.chat({
       model: o.model,
-      messages: [{ role: 'system', content: system }, ...messages, { role: 'assistant', content: text || '…' }, { role: 'user', content: 'The answer is in the context above. Answer the question from it now, in one or two sentences, citing the source number.' }],
+      messages: [{ role: 'system', content: system }, ...messages, { role: 'assistant', content: text || '…' }, { role: 'user', content: onSelection ? 'The question is about the text I selected. Answer it from that text now (if it is a sum or an equation, work it out), in one or two sentences.' : 'The answer is in the context above. Answer the question from it now, in one or two sentences, citing the source number.' }],
       temperature: 0.1,
       maxTokens: 300,
       ...(o.signal ? { signal: o.signal } : {}),
     });
-    if (!isDeflection(nudge.text)) {
+    if (!isDeflection(nudge.text) && !(onSelection && NOT_FOUND.test(nudge.text))) {
       text = nudge.text.trim();
       by = 'retry';
     }
   }
-  if (isDeflection(text) && !acted) {
+  if ((isDeflection(text) || (onSelection && NOT_FOUND.test(text))) && !acted) {
     const quoted = o.grounding.hasContent ? extractiveAnswer(o.question, o.grounding) : null;
     text = quoted ?? nothingFoundReply(o.grounding);
     by = quoted ? 'extractive' : 'nothing-found';
