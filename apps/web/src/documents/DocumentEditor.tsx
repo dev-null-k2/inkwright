@@ -162,16 +162,18 @@ export default function DocumentEditor({ session, onBack }: { session: EditorSes
 
   const absorbed = useRef(false);
   const absorb = (d: NoteDocument, strays: TextBox[]) => {
-    save();
-    const page = d.page(0);
-    const list = page.texts ?? [];
-    const body = documentBody(page);
-    const add = strays.map((t) => t.text.trim()).join('\n\n');
-    const next = body ? `${body.text.trimEnd()}\n\n${add}\n` : `${add}\n`;
-    const removed = list.map((t, index) => ({ index, item: t })).filter((x) => strays.includes(x.item) || x.item === body);
-    const bi = body ? list.indexOf(body) : 0;
+    // Quiet while folding in: saving and the commit below notify this same subscriber.
     quiet.current = true;
+    let next = '';
     try {
+      save();
+      const page = d.page(0);
+      const list = page.texts ?? [];
+      const body = documentBody(page);
+      const add = strays.map((t) => t.text.trim()).join('\n\n');
+      next = body ? `${body.text.trimEnd()}\n\n${add}\n` : `${add}\n`;
+      const removed = list.map((t, index) => ({ index, item: t })).filter((x) => strays.includes(x.item) || x.item === body);
+      const bi = body ? list.indexOf(body) : 0;
       d.commit(0, { label: 'Add to document', texts: { removed, added: [{ index: Math.min(bi, list.length - removed.length), item: body ? { ...body, text: next } : documentBodyBox(next) }] } });
     } finally { quiet.current = false; }
     absorbed.current = true;

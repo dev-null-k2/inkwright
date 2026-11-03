@@ -71,8 +71,7 @@ test('write a formatted document; it is saved as Markdown and survives a reload'
 
   await expect.poll(() => body(page), { timeout: 5000 }).toContain('## Budget');
   await expect.poll(() => body(page)).toContain('# Trip plan\n\nWe leave on **Friday**.\n\n- [ ] Tent\n- [ ] Stove');
-  const md = await body(page);
-  expect(md).toMatch(/\| Item \| Cost \|/);
+  await expect.poll(() => body(page)).toMatch(/\| Item \| Cost \|/);
   // The word count follows (shown in the top bar on wide screens).
   await expect(page.locator('.doc-count')).toContainText('words');
 
@@ -245,4 +244,19 @@ test('the assistant reads and edits the open document, and the change can be und
   await expect.poll(() => body(page)).toBe('Sales rose.\n');
   await expect(page.locator('.doc-prose strong')).toHaveCount(0);
   await expect(page.locator('.doc-prose')).toContainText('Sales rose.');
+});
+
+test('typed text another feature drops on the page (dictation, "Insert on page") joins the document', async ({ page }) => {
+  await openApp(page);
+  await newDocument(page);
+  await page.locator('.doc-prose').click();
+  await page.keyboard.type('First paragraph.');
+  await expect.poll(() => body(page)).toBe('First paragraph.\n');
+  await page.evaluate(() => {
+    const d = (window as any).__inkwright.doc;
+    d.upsertText(0, { id: 'stray-1', x: 40, y: 400, width: 300, text: 'Dictated **words**.', fontSize: 16, color: '#FF1B1F24', font: 'sans', createdAt: Date.now() }, 'Dictation');
+  });
+  await expect.poll(() => body(page)).toBe('First paragraph.\n\nDictated **words**.\n');
+  await expect(page.locator('.doc-prose strong')).toHaveText('words');
+  expect(await page.evaluate(() => (window as any).__inkwright.doc.page(0).texts.length)).toBe(1);
 });
