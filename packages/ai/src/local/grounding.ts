@@ -223,13 +223,26 @@ export function compactTools<T extends ToolDef>(tools: readonly T[], contextToke
 function shortDescription<T extends ToolDef>(t: T): T {
   const first = /^[\s\S]*?[.!?](?=\s|$)/.exec(t.description)?.[0] ?? t.description;
   const props = (t.parameters.properties ?? {}) as Record<string, Record<string, unknown>>;
+  const required = new Set((t.parameters.required as string[] | undefined) ?? []);
   const slim: Record<string, Record<string, unknown>> = {};
   for (const [k, v] of Object.entries(props)) {
+    // Optional ids (a notebook to file into) need a lookup small models skip: they invent
+    // "groceries_notebook" and the call fails. Leave them out; the tool's default applies.
+    if (!required.has(k) && (/_id$|Id$/.test(k) || v.type === 'object')) continue;
     const { description, ...rest } = v;
     slim[k] = typeof description === 'string' ? { ...rest, description: clip(description, 80) } : rest;
   }
-  // Keep `execute` and the other fields: the result is still the app's tool.
-  return { ...t, description: clip(first, 160), parameters: { ...t.parameters, properties: slim } };
+  const keep = new Set(Object.keys(slim));
+  // Extra arguments are dropped below rather than rejected, so a stray one doesn't fail the call.
+  const { additionalProperties: _strict, ...params } = t.parameters;
+  const out: T = { ...t, description: clip(first, 160), parameters: { ...params, properties: slim } };
+  // An agent tool keeps working, with any argument outside the slim schema dropped before it runs.
+  const exec = (t as unknown as { execute?: (a: Record<string, unknown>, ctx: unknown) => unknown }).execute;
+  if (typeof exec === 'function') {
+    (out as unknown as { execute: (a: Record<string, unknown>, ctx: unknown) => unknown }).execute = (a, ctx) =>
+      exec.call(t, Object.fromEntries(Object.entries(a ?? {}).filter(([k]) => keep.has(k))), ctx);
+  }
+  return out;
 }
 
 /**

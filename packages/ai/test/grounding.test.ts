@@ -148,3 +148,18 @@ describe('runGroundedTurn', () => {
     expect(String(seen[0]!.messages[0]!.content)).toMatch(/You must call at least one tool now/);
   });
 });
+
+describe('compact tool schemas', () => {
+  it('leave out optional ids small models invent, and drop them if sent anyway', async () => {
+    const got: unknown[] = [];
+    const create: AgentTool = {
+      name: 'create_note', description: 'Create a note.',
+      parameters: { type: 'object', properties: { title: { type: 'string' }, text: { type: 'string' }, notebook_id: { type: 'string' } }, required: ['title', 'text'], additionalProperties: false },
+      execute: async (a) => { got.push(a); return 'ok'; },
+    };
+    const [slim] = compactTools([create], 4096);
+    expect(Object.keys((slim!.parameters as any).properties)).toEqual(['title', 'text']);
+    await slim!.execute({ title: 'Groceries', text: 'milk', notebook_id: 'groceries_notebook' }, { toolCallId: 'c', messages: [] });
+    expect(got).toEqual([{ title: 'Groceries', text: 'milk' }]);
+  });
+});
