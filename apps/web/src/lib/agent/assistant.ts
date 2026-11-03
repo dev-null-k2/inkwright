@@ -124,8 +124,11 @@ export async function prepareAgentRun(o: PrepareOptions): Promise<PreparedRun> {
     run,
     ...(tsvc ? { audit: (e: AuditEntry) => tsvc.audit.record(e) } : {}),
     actor,
+    proposing: !!proposing,
   });
-  const host = new RecordingNoteToolHost(guarded, recorder.record);
+  // In dry run nothing is written, so Activity gets no "Created … Undo" entries: the proposals
+  // show under the reply and in Activity's approval list instead.
+  const host = new RecordingNoteToolHost(guarded, proposing ? () => {} : recorder.record);
   const vision = o.ai.vision;
   const noteTools = createNoteTools(host, o.notes === 'read' ? { include: READ_ONLY_NOTE_TOOLS.filter((t) => vision || t !== 'get_page_image') } : vision ? {} : { exclude: ['get_page_image'] });
   const tools: AgentTool[] = [...noteTools];
@@ -167,7 +170,7 @@ export async function prepareAgentRun(o: PrepareOptions): Promise<PreparedRun> {
   {
     const { isModuleOn } = await import('../../modules/registry.ts');
     if (isModuleOn('documents')) {
-      const d = await import('../../documents/agent.ts').then((m) => m.documentAgentTools({ vault: o.vault, openDoc: o.openDoc ?? null, run, record: recorder.record, write: o.notes === 'write' })).catch(() => null);
+      const d = await import('../../documents/agent.ts').then((m) => m.documentAgentTools({ vault: o.vault, openDoc: o.openDoc ?? null, run, record: recorder.record, write: o.notes === 'write' && !proposing })).catch(() => null);
       if (d) { tools.push(...d.tools); sections.push(d.prompt); }
     }
   }

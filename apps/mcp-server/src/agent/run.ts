@@ -87,9 +87,11 @@ export async function prepareServerAgent(ctx: ServerContext, ai: AgentAI, o: Ser
     run,
     audit: (e: AuditEntry) => audit.record(e),
     actor: { source: o.source, label: o.label },
+    proposing: !!proposing,
   });
   const nbParents = new Map((await ctx.vault.listNotebooks()).map((b) => [b.id, b.parentId] as const));
-  const recording = new RecordingVaultHost(host, recorder.record, ctx.clock, guarded);
+  // In dry run nothing is written, so no undoable "Created …" entries; the proposals are listed.
+  const recording = new RecordingVaultHost(host, proposing ? () => {} : recorder.record, ctx.clock, guarded);
   const writable = o.notes === 'write' && !ctx.readOnly;
   const noteTools = createNoteTools(recording, writable ? (ai.vision ? {} : { exclude: ['get_page_image'] }) : { include: READ_ONLY_NOTE_TOOLS.filter((t) => ai.vision || t !== 'get_page_image') });
   // Tell the recorder which tool is running so ops name it.

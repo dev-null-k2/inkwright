@@ -55,6 +55,8 @@ export interface AccessOptions {
   run?: TrustRun;
   audit?: (e: AuditEntry) => void;
   actor?: AuditEntry['actor'];
+  /** Writes below this host become proposals (dry run): audit them as proposals, not writes. */
+  proposing?: boolean;
 }
 
 const hidden = (id: string) => new AccessDeniedError(`No note with id "${id}" is available to the assistant.`);
@@ -112,7 +114,11 @@ export class AccessControlledNoteToolHost implements NoteToolHost {
   }
 
   private wrote(tool: string, note: { id: string; title?: string } | null, summary?: string): void {
-    this.o.audit?.({ kind: 'write', actor: this.o.actor, tool, ...(note ? { notes: [{ id: note.id, ...(note.title ? { title: note.title } : {}) }] } : {}), ...(summary ? { summary } : {}) });
+    const proposing = !!this.o.proposing;
+    const s = summary ? (proposing ? `Proposed: ${summary}` : summary) : proposing ? 'Proposed a change (waiting for approval)' : undefined;
+    // A proposal's placeholder id names no real note.
+    const real = note && !(proposing && note.id.startsWith('proposal-'));
+    this.o.audit?.({ kind: proposing ? 'proposal' : 'write', actor: this.o.actor, tool, ...(real ? { notes: [{ id: note.id, ...(note.title ? { title: note.title } : {}) }] } : {}), ...(s ? { summary: s } : {}) });
   }
 
   private saw(label: NoteLabel, how: string): void {

@@ -506,4 +506,27 @@ describe('proposals (dry run)', () => {
     expect((await store.get(append.id))!.status).toBe('applied');
     expect((await store.decide(append.id, 'rejected'))!.status).toBe('applied');
   });
+
+  it('a proposed change is audited as a proposal, never as a write', async () => {
+    const host = await MemoryNoteToolHost.create();
+    const n = await host.seed({ title: 'Groceries', text: 'eggs' });
+    const store = new ProposalStore(new MemoryFS());
+    const dry = new ProposingNoteToolHost(host, store, { source: 'assistant', label: 'Assistant' });
+    const audit: { kind: string; summary?: string; notes?: { id: string }[] }[] = [];
+    const acl = new AccessControlledNoteToolHost(dry, {
+      policy: () => parsePolicy({}).policy,
+      labelOf: async (id) => { const m = (await host.readNote(id))?.meta; return m ? { id: m.id, title: m.title, notebookIds: [], tags: m.tags } : null; },
+      notebookParent: () => null,
+      audit: (e) => audit.push(e),
+      proposing: true,
+    });
+    await acl.createNote({ title: 'Plan', text: 'x' });
+    await acl.appendText(n.id, 'milk');
+    expect(audit.map((e) => e.kind)).not.toContain('write');
+    const proposed = audit.filter((e) => e.kind === 'proposal');
+    expect(proposed.length).toBe(2);
+    // The placeholder id of a proposed note is never logged as if it were a note.
+    expect(proposed.flatMap((e) => e.notes ?? []).every((x) => !x.id.startsWith('proposal-'))).toBe(true);
+    expect((await host.readNote(n.id))!.pages[0]!.text).toBe('eggs');
+  });
 });
