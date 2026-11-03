@@ -50,7 +50,7 @@ cd android && ./gradlew assembleDebug     # → app/build/outputs/apk/debug/app-
 | `./gradlew testDebugUnitTest` | JVM unit tests for the plugin's pure logic |
 | `./gradlew lintDebug` | Android lint (report in `app/build/reports/`) |
 | `./gradlew assembleRelease` | release APKs, one per ABI: `app/build/outputs/apk/release/app-arm64-v8a-release.apk` is the one phones need (signed with your key if `keystore.properties` exists, else the debug key) |
-| `./gradlew bundleRelease` | release App Bundle for Google Play → `app/build/outputs/bundle/release/app-release.aab`. Run it on its own, not in the same command as `assembleRelease`: the Android Gradle plugin cannot build split APKs and a shrunk bundle in one invocation, and the build stops with a message saying so |
+| `./gradlew bundleRelease` | release App Bundle for Google Play → `app/build/outputs/bundle/release/app-release.aab`. Run it on its own, not in the same command as `assembleRelease` (nor `assembleRelease` with `assembleDebug`): the Android Gradle plugin cannot build split APKs and a shrunk bundle in one invocation, and ABI splits would apply to the debug APK too. The build stops with a message saying so |
 | `./gradlew signingReport` | SHA-1/SHA-256 of the debug and release keys (needed for Google sign-in) |
 
 Run `npx cap sync android` again after every web build; Gradle only packages what is already in `android/app/src/main/assets/public`. You can also open `apps/web/android` in Android Studio and press Run.

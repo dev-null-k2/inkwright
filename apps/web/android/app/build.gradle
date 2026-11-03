@@ -35,6 +35,11 @@ def releaseApks = requested.any { it ==~ /(?i)(.*:)?(assemble|package)Release/ }
 if (releaseApks && requested.any { it ==~ /(?i)(.*:)?bundleRelease/ }) {
     throw new GradleException("Inkwright: run bundleRelease and assembleRelease as two Gradle invocations (release APKs are split per ABI, which the Android Gradle plugin cannot combine with a shrunk bundle in one build). See docs/ANDROID.md.")
 }
+// ABI splits apply to every variant built in the same invocation, which would split the debug APK
+// too (and leave all but arm64-v8a without native code, see debugAbis). Same remedy.
+if (releaseApks && requested.any { it ==~ /(?i)(.*:)?(assemble|package|install)Debug/ }) {
+    throw new GradleException("Inkwright: run assembleDebug and assembleRelease as two Gradle invocations (release APKs are split per ABI, and the split would apply to the debug APK too). See docs/ANDROID.md.")
+}
 // Debug APKs are installed by hand on a phone: arm64-v8a only. The emulator suite adds its own
 // ABI (scripts/android/build-apk.sh passes -Pinkwright.debugAbis=arm64-v8a,x86_64).
 def debugAbis = ((project.findProperty('inkwright.debugAbis') ?: 'arm64-v8a') as String).split(',')*.trim()
