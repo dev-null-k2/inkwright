@@ -2,7 +2,7 @@
 
 All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org).
 
-## Unreleased (0.9.0-beta.1)
+## Unreleased (0.9.0-beta.2, first beta)
 
 ### On-device AI that answers from what you wrote
 - The assistant never shows raw tool-call syntax. Tool calls are read in every dialect small
