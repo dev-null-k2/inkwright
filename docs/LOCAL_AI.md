@@ -330,7 +330,52 @@ exports compute logits for every prompt position — 1.8 GB for a 3,000-token pr
 152k vocabulary — which is also why short, retrieval-first prompts matter on phones), and ONNX
 Runtime runs without its CPU arena and weight prepacking (Qwen3 1.7B: 2.8 GB instead of 4.1 GB).
 
-Results are recorded below once a run completes.
+**Results on the development machine** (November 2026; 2 CPU cores shared with other builds, one
+ONNX thread, greedy decoding, a 4,096-token budget as on a phone; 11 cases, each run once):
+
+| Case | What it checks | Qwen3 0.6B before | Qwen3 0.6B after | Qwen3 1.7B before | Qwen3 1.7B after |
+|---|---|---|---|---|---|
+| `page-budget` | "What's the budget here?" on handwritten "Budget Car 4000$" | fail | pass | fail | pass |
+| `page-total` | sum two typed amounts on the page | pass | pass | — | pass |
+| `lasso-sum` | "How much" on a lasso around "2+2=" | fail | pass | fail | pass |
+| `lasso-mult` | "Solve this" on "12 x 3 =" | fail | pass | — | pass |
+| `search-notes` | "I had written a budget, what is it for car" (another note) | fail | pass | fail | pass |
+| `create-note` | create a note (tool call) | pass | pass | — | pass |
+| `add-todo` | add a to-do to the open note (tool call) | fail | pass | pass | pass |
+| `follow-up` | "And what is half of that?" (needs the previous turn) | pass | pass | — | pass |
+| `no-hallucination` | a dentist time no note mentions | fail | pass | pass | pass |
+| `memory` | a fact from long-term memory | pass | pass | — | pass |
+| `explain-page` | "Explain this" on handwritten biology | fail | pass | — | pass |
+| **Passed** | | **4 / 11 (36%)** | **11 / 11 (100%)** | **2 / 5** (subset) | **11 / 11 (100%)** |
+
+What the failures before looked like, all with the real model: "The budget here is $5000" for a
+page that says 4000$ (the handwriting had never been turned into text, so the model guessed); "The
+exact content of the note is not transcribed here, but I can help you find it if you share more
+details" for a lasso around "2+2="; "The dentist appointment is scheduled for **10:00 AM**" when no
+note mentions a dentist; and, asked to add a to-do, a numbered explanation of how one *could* call
+`append_to_note`. After the changes the same model, on the same machine, answers each from the
+notes with a citation, calls the tool for both actions, and says "I couldn't find that in your
+notes" for the dentist. No reply in either flow showed raw tool syntax: Qwen writes the Hermes
+format the old parser already read. The Gemma-on-the-phone failure (`<|tool_call>call:…`) is a
+dialect only Gemma writes; it is pinned verbatim in `tool-dialects.test.ts` and in the e2e spec.
+
+Two problems the evals found and fixed on the way: Qwen3 0.6B filed a new note into a notebook
+it made up (`groceries_notebook`), so compact tool schemas leave out optional ids; and after a
+correct `create_note` it described the note as holding "2 cups of milk and 1 dozen eggs", so an
+action turn is now one tool call and its confirmation is written from the tool run.
+
+Qwen3 1.7B's "before" column covers only the five cases that failed on the phone (a full run at
+~8 minutes per 1,800-token prompt on this machine was not worth the time); "—" means not run. Its
+before answers included "[Budget]" for the page budget, "Error: The query must be a valid string"
+for the lasso, and an invented "launch of a new car model" budget for the search. After: 11/11 —
+though one memory answer was clumsy ("I couldn't find that in your notes … However, I know that
+your sister is called Mira"). Results are deterministic (greedy) but one run per case; treat a
+single case as an anecdote, the pattern as the result.
+
+What these evals don't cover: Gemma 4 E2B itself (LiteRT-LM runs only on the phone; the ONNX
+export is 5–10 GB, beyond this machine), Gemini Nano (AICore only), real handwriting recognition
+(the cases give the recognizer's text; recognition quality is the maths/ink work's evals), and
+speed on a phone. Speeds here (0.1–0.5 tokens/s) are a loaded 2-core sandbox, not a phone.
 
 ## Speech to text: notes that listen
 
