@@ -83,10 +83,28 @@ export class NtfyTransport implements RendezvousTransport {
     this.fetchFn = fetchFn ?? ((...a) => globalThis.fetch(...a));
   }
 
+  /**
+   * Publishes one message. Rate limits (429: ntfy.sh limits each IP address, and phones behind a
+   * carrier's shared address can hit that) and server errors are retried a few times with backoff,
+   * honouring Retry-After, before giving up.
+   */
   async post(room: string, text: string, signal?: AbortSignal): Promise<void> {
-    const res = await this.fetchFn(`${this.base}/${room}`, { method: 'POST', body: text, ...(signal ? { signal } : {}) });
-    if (!res.ok) throw relayError(res.status, this.label);
-    await res.body?.cancel().catch(() => {});
+    for (let attempt = 0; ; attempt++) {
+      let res: Response | null = null;
+      try {
+        res = await this.fetchFn(`${this.base}/${room}`, { method: 'POST', body: text, ...(signal ? { signal } : {}) });
+      } catch (e) {
+        if (signal?.aborted || attempt >= 3) throw signal?.aborted ? e : new Error(`Couldn’t reach the relay (${this.label}). Check the connection.`);
+      }
+      if (res?.ok) {
+        await res.body?.cancel().catch(() => {});
+        return;
+      }
+      if (res && res.status !== 429 && res.status < 500) throw relayError(res.status, this.label);
+      if (attempt >= 3) throw relayError(res?.status ?? 0, this.label);
+      const retryAfter = Number(res?.headers.get('retry-after'));
+      await sleep(Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter, 20) * 1000 : 1500 * 2 ** attempt, signal);
+    }
   }
 
   async busy(room: string, signal?: AbortSignal): Promise<boolean> {
@@ -417,8 +435,9 @@ export async function hostShortCode<A extends HostAttempt>(o: HostOptions<A>): P
       if (k === 'a') void onAttempt(s, payload);
       else if (k === 'c') void onConfirm(s, payload);
     }, ac.signal);
-    // Mark the room as taken for other hosts choosing a code (an opaque, random claim).
-    await room.send('h', '', b64(randomBytes(16)), ac.signal);
+    // Mark the room as taken for other hosts choosing a code (an opaque, random claim). Best
+    // effort: without it the code still works, collisions are just a little likelier.
+    await room.send('h', '', b64(randomBytes(16)), ac.signal).catch(() => {});
   } catch (e) {
     stop({ phase: 'failed', error: (e as Error)?.message ?? String(e) });
     throw e;

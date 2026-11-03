@@ -1,5 +1,7 @@
 // First: keeps a web clip (#clip=…) from the address before the app routes (importers/stash.ts).
 import './importers/stash.ts';
+// Also first: keeps a join link's code (#join=…) for the join sheet (peer/joinStash.ts).
+import './peer/joinStash.ts';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@fontsource-variable/hanken-grotesk';
