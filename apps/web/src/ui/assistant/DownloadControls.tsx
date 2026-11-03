@@ -24,7 +24,8 @@ export function DownloadButton({ ready, progress, systemDownloading, onStart, on
   if (st.kind === 'active') {
     return (
       <span className="dl-active" data-state="downloading">
-        <span className="dl-status" role="status" aria-live="polite"><Loader2 size={14} className="dl-spin" aria-hidden /> {st.label}</span>
+        {/* Not a live region: the row's progress bar already announces progress. */}
+        <span className="dl-status"><Loader2 size={14} className="dl-spin" aria-hidden /> {st.label}</span>
         {st.cancellable && onCancel && <button type="button" className="btn btn-sm btn-ghost" aria-label={`Cancel downloading ${what}`} onClick={onCancel}><X size={14} /> Cancel</button>}
       </span>
     );
