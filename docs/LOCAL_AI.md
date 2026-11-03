@@ -223,6 +223,115 @@ into view and highlights it in jade for about two seconds. The assistant's `sear
 returns `#mem/<note>/<page>/<x,y,w,h>` links. A global click handler opens them from any
 assistant reply.
 
+## Small models: answers from what you wrote
+
+The first real-device report (a Razr Fold, Gemma 4 E2B through LiteRT-LM, Qwen3 1.7B in the
+WebView, Gemini Nano through AICore) showed that wiring a small model to the same agent as a cloud
+model does not work. Asked "I had written a budget, what is it for car", the reply bubble showed
+`<|tool_call>call:tool_search_notes{query:{"query": "car budget"}}<tool_call|>`; asked "What's the
+budget here?" on a page with "Budget Car 4000$" in handwriting, it said nothing; a lasso around
+"2+2=" was sent as a picture and came back as "the Roman numeral fifteen followed by a downward
+arrow". Three changes fix the class of problem, not the examples.
+
+**1. Tool calls in every dialect** (`packages/ai/src/providers/tool-dialects.ts`). Text-only engines
+get tools through the prompt, and each model family answers in the format it was trained on:
+
+| Dialect | Written as | Models |
+|---|---|---|
+| `hermes` | `<tool_call>{"name": …, "arguments": {…}}</tool_call>` | Qwen2.5/3, Granite, Hermes |
+| `gemma` | `<\|tool_call>call:name{key:<\|"\|>text<\|"\|>,n:3}<tool_call\|>`; FunctionGemma's `<start_function_call>…` | Gemma 4 |
+| `llama` | `<\|python_tag\|>{"name": …, "parameters": {…}}`, `<function=name>{…}</function>` | Llama 3.1+ |
+| `mistral` | `[TOOL_CALLS][{…}]`, `[TOOL_CALLS]name[ARGS]{…}` | Mistral |
+| `json` | a bare or fenced `{name, arguments}` naming a known tool | small models off-script |
+| `pythonic` | `[search_notes(query="…")]`, ` ```tool_code ` blocks | Llama 3.2, Gemma 3 |
+
+Names models invent (`tool_search_notes`, `default_api.create_note`) map onto the real tools;
+argument shapes are repaired against each tool's JSON Schema (an argument wrapped one level too
+deep, a list where one string goes, `"5"` for an integer); a call that is recognised but can't be
+read gets one repair retry with the exact format; and `ToolSyntaxStream` holds back anything that
+is or may become tool syntax while streaming, so the person never sees it. Free-text forms (bare
+JSON, Python calls) only count when they name one of the offered tools, so an answer that
+contains JSON stays an answer. LiteRT-LM 0.19's Kotlin API also exposes structured function
+calling (`ConversationConfig(tools = …, automaticToolCalling = false)`, `Message.toolCalls`,
+`Content.ToolResponse`); using it is the next step for Gemma on Android (see Next steps).
+
+**2. Retrieval first for on-device engines** (`packages/ai/src/local/grounding.ts`,
+`grounded-agent.ts`, `apps/web/src/lib/assistant/context.ts`). When an on-device engine answers
+(`isSmallModel`: the phone's engines, the WebView model, Chrome's model), the app gathers the
+context *before* generation, deterministically:
+
+- the page on screen: its handwriting is recognized on the device right then if it has no text
+  yet, or has ink newer than its text (`ensurePageRecognized`; ML Kit Digital Ink on Android, the
+  Handwriting Recognition API where the browser has it), and stored on the page for everything else;
+- a lasso selection, as text: the recognized lines of its strokes, or the strokes recognized on
+  their own right away (`selectionText`);
+- other pages of the note that share words with the question, and the best passages from every
+  note the AI may read (the memory index's hybrid search);
+- the memory items that matter: standing instructions always, facts that share a word with the
+  question.
+
+They go into the user turn as numbered sources (`[2] "Budget", page 1 (the page you are on):`),
+sized to the engine's context window (`contextBudget`), with a short system prompt that says
+"here" means the page on screen, sums written in the context are to be worked out, and the model
+must never ask for more context when the context has text. Tools stay for actions, cut to the
+three to seven a model of that size handles (`compactTools`: create_note, append_to_note,
+search_memory, …) with one-sentence descriptions; a request that is clearly an action ("make a new
+note…", "add a to-do…") requires a tool call on the first turn. Cloud models keep the full agent;
+the page is still recognized first, so they read text too.
+
+**Pictures only for models that can read them.** `sendsImagesTo` is true only for vision models
+that are not on-device engines. The lasso's "Ask AI" and "Write the answer here" send the recognized
+text to everyone and a picture only to strong vision models; when nothing could read the
+handwriting and no such model is set up, the person is told so instead of getting a guess.
+
+**3. Guardrails.** A reply that dodges ("please provide more context", "I can't see") or is empty
+while the context has text gets one nudge without tools; if that fails too, the best-matching line
+of the notes is quoted and cited ("Here is what your notes say: “Budget Car 4000$” [1]"). With no
+relevant text at all the reply says so plainly and says what to do (transcribe the page, try other
+words). An action that wasn't carried out is reported as not done, never described as done.
+
+**Conversations.** Every engine gets the earlier turns of the chat: small models a condensed
+history (plain text of the last four to eight turns, tool transcripts dropped), cloud models the
+full transcript. Chats are kept per note and as general threads in IndexedDB on this device
+(`lib/assistant/chats.ts`; not synced, because they can quote local-only notes), reopened when the
+panel opens, and listed under the panel's Chats button with New chat.
+
+**Study from real sentences.** Recognized handwriting is judged by `textQuality` (core): lines of
+symbol soup are left out of compiler units and of the text given to quick actions, and study cards
+and teach-back questions only use recognized sentences with at least three real words
+(`studyUnits`), so a fragment like "ools" never becomes a question.
+
+**Settings › AI on Android.** AICore reports its own restarts as errors ("[ErrorCode 6] … 1-DOWNLOAD_ERROR
+… 6-IPC_ERROR: AICore service disconnected") while it is still installing Gemini Nano. The Kotlin
+bridge gives those the code `service` (`GenAiErrors.fromDetail`); the app retries them with backoff
+(3 s, 8 s, 20 s, 45 s, 90 s), stands down when Android reports the model downloading or ready, and
+shows "Retrying automatically…" in a calm tone, with the raw text only under Details
+(`lib/assistant/download-status.ts`). Every download button in Settings › AI (Gemini Nano, the
+writing tools, open models on the phone, models in the browser) is one `DownloadButton`: Download,
+then "Downloading… 68%" with Cancel, then Ready.
+
+### Real-model evals
+
+`npm run eval:local` runs a real small model on the CPU with the app's own engine code
+(`packages/ai/evals/node-engine.ts`: the worker's transformers.js calls in Node) through the cases
+that failed on the phone and a few more, twice: the assistant as it was before these changes
+(`before`: full agent, page handwriting not recognized before asking, lasso as a picture,
+Hermes-only parser) and as it is now (`after`).
+
+```
+npm run eval:local -- --model qwen3-1.7b --context 4096 --json results.json --resume
+INKWRIGHT_REAL_MODELS=assistant npx vitest run --project evals packages/ai/evals/local-model.eval.ts   # Qwen3 0.6B inside vitest
+```
+
+Weights download once from Hugging Face into `INKWRIGHT_MODEL_CACHE` (default: the OS temp folder),
+never into the repository. CI skips them unless `INKWRIGHT_REAL_MODELS` is set. Two things make
+them fit an 8 GB machine: the prompt is fed in 256-token chunks through the KV cache (these ONNX
+exports compute logits for every prompt position — 1.8 GB for a 3,000-token prompt with Qwen's
+152k vocabulary — which is also why short, retrieval-first prompts matter on phones), and ONNX
+Runtime runs without its CPU arena and weight prepacking (Qwen3 1.7B: 2.8 GB instead of 4.1 GB).
+
+Results are recorded below once a run completes.
+
 ## Speech to text: notes that listen
 
 Recordings get a live transcript lined up with the ink, questions can be asked while a lecture is
@@ -312,6 +421,15 @@ service / sent to a provider), and the transcript file records it (`where`).
   captions instead of a line every pause, once transformers.js supports `moonshine_streaming`.
 - **iOS native model.** Implement `NativeLLM` in the iOS shell with Apple's Foundation Models
   (the Android engines are built; see above).
+- **LiteRT-LM structured function calling for Gemma.** LiteRT-LM 0.19 (the version the app
+  ships) has it in Kotlin: an `OpenApiTool` per tool (its JSON description and an `execute` that
+  is never called), `ConversationConfig(tools = listOf(tool(…)), automaticToolCalling = false)`,
+  the calls in `Message.toolCalls` (name and argument map), results back as
+  `Message.tool(Contents.of(Content.ToolResponse(name, json)))`. Wiring it means sending the tool
+  schemas over `aiGenerate` and returning calls beside the text; until it is built and checked on
+  a phone, Gemma's text syntax is parsed by `tool-dialects.ts`, which is what the phone produced.
+- **Chunked prefill in the WebView worker.** The eval engine's chunked prefill (see Real-model
+  evals) would let the in-app worker take long prompts on phones without the logits spike.
 
 ## Testing
 
@@ -324,6 +442,21 @@ service / sent to a provider), and the transcript file records it (`where`).
   variants, licences, repository file lists, assistant and embedder selection, citation parsing,
   `#mem/` links, the Chrome provider, server detection (including CORS-blocked), provider
   embeddings.
+- `packages/ai/test/tool-dialects.test.ts`: every tool-call dialect from real transcripts (the
+  phone's Gemma output verbatim), name and argument repair, streaming that never shows syntax,
+  the repair retry. `grounding.test.ts`: sources and budgets, memory picks, action detection,
+  dodges, extractive answers, condensed history, compact tools, and grounded turns end to end
+  with a scripted model (nudge, quote, not found, follow-ups, a required tool call in Gemma syntax).
+- `packages/core/test/textquality.test.ts`: readable lines and study-worthy sentences.
+- `apps/web/src/lib/assistant/assistant.test.ts`: download copy and button states, AICore retries
+  with backoff against a fake plugin (success, Android carrying on, cancel, a real failure),
+  chats persisting in IndexedDB, recognizing the page and a selection before asking, which models
+  get pictures.
+- e2e `assistant-local.spec.ts`: a scripted phone model emitting Gemma- and Qwen-style calls (run,
+  never shown), retrieval first with handwriting recognized before asking, a dodge replaced by the
+  page's words, chats surviving a reload with history sent to the model, New chat and past chats,
+  AICore's IPC error retried calmly with the raw text under Details, and download buttons that say
+  "Downloading… n%" then Ready.
 - `apps/web/src/lib/*.test.ts`: AppMemory following the keyword index, background embedding,
   re-embedding only changed passages, Ask with anchored sources, palette actions, focus requests.
 - e2e: `search.spec.ts` covers typed-text hits, the handwriting anchor flashing exactly around its

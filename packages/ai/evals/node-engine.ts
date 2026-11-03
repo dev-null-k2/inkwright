@@ -39,7 +39,7 @@ export async function createNodeEngine(): Promise<NodeEngine> {
         // No arena (ONNX Runtime's CPU arena keeps the largest activation ever allocated) and no
         // weight prepacking (it keeps a second, repacked copy of the 4-bit weights): Qwen3 1.7B
         // then needs 2.8 GB instead of 4.1 GB, which fits beside other work on an 8 GB machine.
-        session_options: { enableCpuMemArena: false, enableMemPattern: false, extra: { session: { disable_prepacking: '1' } } },
+        session_options: { enableCpuMemArena: false, enableMemPattern: false, intraOpNumThreads: Number(process.env.INKWRIGHT_EVAL_THREADS || 1), interOpNumThreads: 1, extra: { session: { disable_prepacking: '1' } } },
       }) }))();
       loaded.set(ref.id, p);
     }
@@ -105,9 +105,13 @@ async function greedy(T: any, model: any, prompt: bigint[], maxNew: number, eos:
     const res = await model.forward(feeds);
     const next: Record<string, any> = {};
     for (const k of Object.keys(res)) if (k.startsWith('present')) next[k.replace('present', 'past_key_values')] = res[k];
+    // Free the previous cache now: it is native memory the JS GC doesn't see (at 1,800 tokens a
+    // 0.6B model's cache is ~400 MB per step), so waiting for GC grows the process by gigabytes.
+    if (past) for (const t of Object.values(past)) if (!Object.values(next).includes(t)) t.dispose?.();
     past = next;
     const [, len, vocab] = res.logits.dims as number[];
-    const row = (res.logits.data as Float32Array).subarray((len! - 1) * vocab!, len! * vocab!);
+    const row = (res.logits.data as Float32Array).slice((len! - 1) * vocab!, len! * vocab!);
+    res.logits.dispose?.();
     let best = 0;
     let bestScore = -Infinity;
     for (let i = 0; i < row.length; i++) {
@@ -119,10 +123,15 @@ async function greedy(T: any, model: any, prompt: bigint[], maxNew: number, eos:
   };
   let next = -1;
   for (let i = 0; i < prompt.length; i += chunk) next = await step(prompt.slice(i, i + chunk));
-  for (let n = 0; n < maxNew; n++) {
-    if (eos.has(next)) return;
-    onToken(next);
-    seen.add(next);
-    next = await step([BigInt(next)]);
+  try {
+    for (let n = 0; n < maxNew; n++) {
+      if (eos.has(next)) return;
+      onToken(next);
+      seen.add(next);
+      next = await step([BigInt(next)]);
+    }
+  } finally {
+    const last: Record<string, any> | null = past;
+    if (last) for (const t of Object.values(last)) t.dispose?.();
   }
 }
