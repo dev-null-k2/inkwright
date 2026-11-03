@@ -356,3 +356,15 @@ prototype-pollution and ReDoS fixes).
 6. Run the Android unit tests and a release build in CI on every change to `apps/web/android`
    (SR-11 was reviewed but not compiled here).
 7. Keep `e2e/security.spec.ts` in the default e2e run: each test is an attack.
+
+## Since this review
+
+- **Short codes for sharing and pairing** (after `27ee5f7`; not part of the reviewed code). They
+  add a public relay (ntfy.sh by default) and a PAKE (CPace on ristretto255) in front of the
+  reviewed peer handshake; the handshake, its transcript binding, AES-GCM framing, view-only
+  enforcement and pairing confirmation are unchanged, and the PAKE key takes the place of the QR
+  code's pairing secret. Design, guessing bound and threat model: COLLABORATION.md › Short codes.
+  Regression tests: `packages/sync/test/shortcode.test.ts` (draft test vectors, wrong code,
+  transcript binding, lockout, tampering and man-in-the-middle relays, what the relay sees) and
+  `apps/web/e2e/peer.spec.ts` (the relay sees no plaintext; view-only guests). Worth a review of
+  its own before release.

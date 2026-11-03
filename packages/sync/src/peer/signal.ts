@@ -19,6 +19,11 @@ export interface RelayConfig {
   url: string;
   /** Bearer token the relay was started with. */
   token?: string;
+  /**
+   * Reads the token for each request instead (it lives in an encrypted store that may be read
+   * before it is ready, or be changed while a listener runs).
+   */
+  getToken?: () => Promise<string | null | undefined>;
 }
 
 export interface RelayMessage {
@@ -38,20 +43,21 @@ export class RelayClient {
     this.fetchFn = fetchFn ?? ((...a) => globalThis.fetch(...a));
   }
 
-  private headers(extra: Record<string, string> = {}): Record<string, string> {
-    return { ...extra, ...(this.cfg.token ? { authorization: `Bearer ${this.cfg.token}` } : {}) };
+  private async headers(extra: Record<string, string> = {}): Promise<Record<string, string>> {
+    const token = this.cfg.getToken ? await this.cfg.getToken() : this.cfg.token;
+    return { ...extra, ...(token ? { authorization: `Bearer ${token}` } : {}) };
   }
 
   async post(room: string, data: Uint8Array, signal?: AbortSignal): Promise<number> {
     if (data.length > RELAY_MAX_BYTES) throw new Error('Message too large for the relay.');
-    const res = await this.fetchFn(`${this.base}/${encodeURIComponent(room)}`, { method: 'POST', headers: this.headers({ 'content-type': 'application/octet-stream' }), body: toBufferView(data), signal });
+    const res = await this.fetchFn(`${this.base}/${encodeURIComponent(room)}`, { method: 'POST', headers: await this.headers({ 'content-type': 'application/octet-stream' }), body: toBufferView(data), signal });
     if (!res.ok) throw new Error(res.status === 401 ? 'The signalling server refused the token.' : `Signalling server error ${res.status}`);
     return ((await res.json()) as { seq: number }).seq;
   }
 
   /** One long poll: messages after `after` (waits up to `waitSec` for the first one). */
   async poll(room: string, after: number, opts: { waitSec?: number; signal?: AbortSignal } = {}): Promise<RelayMessage[]> {
-    const res = await this.fetchFn(`${this.base}/${encodeURIComponent(room)}?after=${after}&wait=${opts.waitSec ?? 25}`, { headers: this.headers(), signal: opts.signal });
+    const res = await this.fetchFn(`${this.base}/${encodeURIComponent(room)}?after=${after}&wait=${opts.waitSec ?? 25}`, { headers: await this.headers(), signal: opts.signal });
     if (!res.ok) throw new Error(res.status === 401 ? 'The signalling server refused the token.' : `Signalling server error ${res.status}`);
     const body = (await res.json()) as { messages?: { seq: number; data: string }[] };
     return (body.messages ?? []).map((m) => ({ seq: m.seq, data: fromBase64Url(m.data) }));

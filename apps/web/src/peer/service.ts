@@ -7,6 +7,7 @@ import { listenViaRelay } from './connect.ts';
 import { usePeer } from './identity.ts';
 import { serveVaultSetup } from './sync.ts';
 import { stopLive, useLive } from './collab.ts';
+import { cancelLiveCode, useLiveCodes } from './liveCodes.ts';
 
 export function startPeerService(): () => void {
   let ac: AbortController | null = null;
@@ -29,5 +30,6 @@ export function startPeerService(): () => void {
     ac?.abort();
     // The module was switched off: live sessions end (the notes stay).
     for (const id of Object.keys(useLive.getState().sessions)) stopLive(id);
+    for (const id of Object.keys(useLiveCodes.getState())) cancelLiveCode(id);
   };
 }

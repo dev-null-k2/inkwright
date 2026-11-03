@@ -210,9 +210,9 @@ export const BUILTIN_MODULES: ModuleDefinition[] = [
     contributes: {
       settingsSections: ['devices'],
       menuItems: ['Share live'],
-      paletteActions: ['peer.devices'],
+      paletteActions: ['peer.devices', 'peer.join'],
       panels: ['Live sharing', 'Collaborators’ cursors and ink'],
-      background: ['Answering paired devices through your signalling server (when one is set)'],
+      background: ['Answering paired devices through your signalling server (when one is set)', 'Listening on the short-code relay while a code you made is showing'],
     },
     whenOff: 'Paired devices are remembered but can’t connect; live sessions end. Notes others wrote with you stay, marked as theirs.',
     async activate() {

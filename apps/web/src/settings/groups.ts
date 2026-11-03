@@ -163,7 +163,7 @@ export const SETTINGS_INDEX: readonly SettingEntry[] = [
   { label: 'WebDAV', section: 'sync', keywords: 'nextcloud owncloud synology server', target: 'WebDAV (Nextcloud, ownCloud, Synology…)' },
   { label: 'A folder on this computer', section: 'sync', keywords: 'dropbox icloud obsidian folder', requires: 'folder-access' },
   { label: 'Backup', section: 'sync', keywords: 'download restore zip export' },
-  { label: 'Pair, sync and join', section: 'devices', keywords: 'pair device phone laptop code' },
+  { label: 'Pair and join', section: 'devices', keywords: 'pair device phone laptop code short join shared note invite' },
   { label: 'Paired devices', section: 'devices', keywords: 'devices remove', optional: true },
   // Knowledge
   { label: 'Daily notes', section: 'knowledge', keywords: 'journal today template' },

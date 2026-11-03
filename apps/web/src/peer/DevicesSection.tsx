@@ -9,10 +9,12 @@ import { useApp } from '../state/app.ts';
 import { relativeTime } from '../ui/primitives.tsx';
 import { askConfirm } from '../ui/prompts.tsx';
 import { answerConnection, connectViaRelay, readCode, relayConfigured, startConnection, type PendingOffer } from './connect.ts';
-import { DEFAULT_STUN, deviceIdentity, forgetDevice, getRelayToken, getTurnCredential, setNetwork, setRelayToken, setTurnCredential, usePeer, type Identity, type PairedDevice } from './identity.ts';
+import { DEFAULT_PUBLIC_RELAY, DEFAULT_STUN, deviceIdentity, forgetDevice, getRelayToken, getTurnCredential, setNetwork, setRelayToken, setTurnCredential, usePeer, type Identity, type PairedDevice } from './identity.ts';
 import { serveVaultSetup, syncOverLink, usePeerSync } from './sync.ts';
 import { readInvite, type JoinStart } from './collab.ts';
 import { ReadCode, ShowCode } from './CodeExchange.tsx';
+import { HostCodeDialog, openJoinSheet } from './CodeSheets.tsx';
+import { shortCodesAvailable } from './shortcode.ts';
 
 function Group({ title, children, note }: { title: string; children: React.ReactNode; note?: React.ReactNode }) {
   return (
@@ -44,10 +46,35 @@ export function DevicesSection() {
         ) : <p className="muted">Preparing this device’s key…</p>}
         <p className="muted small">Change the name in Settings › Privacy & trust › Authorship.</p>
       </Group>
-      {me && <PairFlows />}
+      {me && <Connect />}
       {me && <PairedList />}
+      {me && (
+        <details className="peer-advanced set-group">
+          <summary>Advanced: connect without a relay (long codes)</summary>
+          <PairFlows />
+        </details>
+      )}
       <NetworkSettings />
     </>
+  );
+}
+
+/**
+ * The everyday way in: pair a device or join something with a short code (one code, typed one way;
+ * docs/COLLABORATION.md). Without any relay set up, it points to the long codes instead.
+ */
+function Connect() {
+  const network = usePeer((s) => s.network);
+  const [pairing, setPairing] = useState(false);
+  const available = !!(network.relayUrl.trim() || network.publicRelay.trim());
+  return (
+    <Group title="Pair and join" note={available ? 'Codes work once, for ten minutes. Devices then talk directly, end to end encrypted; the relay only passes sealed messages.' : 'No relay is set for short codes (Network, below). Use the long codes under Advanced instead.'}>
+      <div className="row-buttons">
+        <button type="button" className="btn btn-primary" disabled={!available} onClick={() => setPairing(true)}>Pair a device</button>
+        <button type="button" className="btn" disabled={!available} onClick={() => openJoinSheet()}>Join with a code</button>
+      </div>
+      {pairing && <HostCodeDialog purpose="pair" onClose={() => setPairing(false)} />}
+    </Group>
   );
 }
 
@@ -139,7 +166,7 @@ function PairFlows() {
   };
 
   return (
-    <Group title="Pair, sync and join" note="Codes work once and expire after ten minutes. Show a code as a QR code, or copy it into a message to yourself.">
+    <Group title="Pair, sync and join" note="Long codes need no relay: each device shows one, the other copies or scans it. They work once and expire after ten minutes.">
       {flow.kind === 'none' && (
         <>
           <div className="row-buttons">
@@ -190,6 +217,7 @@ function PairedList() {
   const toast = useApp((s) => s.toast);
   const status = usePeerSync();
   const [manual, setManual] = useState<{ device: PairedDevice; pending: PendingOffer } | null>(null);
+  const [byCode, setByCode] = useState<PairedDevice | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const syncWith = async (d: PairedDevice) => {
@@ -197,6 +225,8 @@ function PairedList() {
     try {
       if (relayConfigured()) {
         await syncOverLink(await connectViaRelay(d));
+      } else if (shortCodesAvailable()) {
+        setByCode(d);
       } else {
         setManual({ device: d, pending: await startConnection('sync', { expect: d }) });
       }
@@ -219,7 +249,7 @@ function PairedList() {
   };
   if (!paired.length) return null;
   return (
-    <Group title="Paired devices" note={relayConfigured() ? 'Sync now reaches the other device through your signalling server; Inkwright must be open there.' : 'Without a signalling server, each sync is started with a code: show it on the other device (Settings › Sync & devices) and enter its answer here.'}>
+    <Group title="Paired devices" note={relayConfigured() ? 'Sync now reaches the other device through your signalling server; Inkwright must be open there.' : shortCodesAvailable() ? 'Sync now shows a short code; enter it on the other device under Join with a code.' : 'Without a relay, each sync is started with a long code: show it on the other device (Settings › Sync & devices) and enter its answer here.'}>
       <ul className="peer-devices">
         {paired.map((d) => (
           <li key={d.key} className="peer-device">
@@ -240,6 +270,7 @@ function PairedList() {
           <button type="button" className="btn btn-sm btn-ghost" onClick={() => { manual.pending.cancel(); setManual(null); }}>Cancel</button>
         </div>
       )}
+      {byCode && <HostCodeDialog purpose="sync" device={byCode} onClose={() => setByCode(null)} />}
       {status.message && <p className={`muted small peer-status is-${status.status}`} role="status">{status.message}</p>}
     </Group>
   );
@@ -265,6 +296,12 @@ function NetworkSettings() {
         <label className="field"><span className="field-label">Username</span><input value={net.turn?.username ?? ''} disabled={!net.turn} onChange={(e) => setNetwork({ turn: { url: net.turn!.url, username: e.target.value } })} /></label>
         <label className="field"><span className="field-label">Credential</span><input type="password" value={turnCred} disabled={!net.turn} onChange={(e) => setTurnCred(e.target.value)} onBlur={() => { if (!turnCred.startsWith('•')) void setTurnCredential(turnCred || null); }} /></label>
       </div>
+      <label className="field">
+        <span className="field-label">Relay for short codes (an ntfy server; empty for none)</span>
+        <input value={net.publicRelay} placeholder="https://ntfy.sh" spellCheck={false} onChange={(e) => setNetwork({ publicRelay: e.target.value.trim() })} />
+      </label>
+      {net.publicRelay !== DEFAULT_PUBLIC_RELAY && DEFAULT_PUBLIC_RELAY && <button type="button" className="btn btn-sm btn-ghost" onClick={() => setNetwork({ publicRelay: DEFAULT_PUBLIC_RELAY })}>Use ntfy.sh</button>}
+      <p className="muted small">Short codes meet through this relay. It sees a hashed room name, when you connect and your IP address — never the code, your notes or who you are. A signalling server below, if set, is used instead.</p>
       <div className="field-pair">
         <label className="field"><span className="field-label">Signalling server (optional)</span><input value={net.relayUrl} placeholder="https://notes.example.com" onChange={(e) => setNetwork({ relayUrl: e.target.value.trim() })} /></label>
         <label className="field"><span className="field-label">Signalling token</span><input type="password" value={relayToken} onChange={(e) => setRelayTokenText(e.target.value)} onBlur={() => { if (!relayToken.startsWith('•')) void setRelayToken(relayToken || null); }} /></label>
