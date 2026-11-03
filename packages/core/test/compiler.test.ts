@@ -100,6 +100,11 @@ describe('extraction', () => {
     expect(a).toMatchObject({ noteId: speech.noteId, page: 0, clip: 'clip1', ms: 12_000, h: speech.hash });
   });
 
+  it('reads "Term - definition" (a spaced hyphen, as people write by hand) as a definition, but not hyphenated words', () => {
+    const d = doc(note('Series', ['Harmonic series - the sum of 1/n, diverges.\np-series - converges when p > 1.\nA well-known result about sums.']));
+    expect(extractDefinitions(d.units).map((x) => [x.term, x.definition])).toEqual([['Harmonic series', 'the sum of 1/n, diverges'], ['p-series', 'converges when p > 1']]);
+  });
+
   it('skips locked and trashed notes', () => {
     const n = note('Secret', ['Budget is $5k.']);
     expect(extractSource({ ...n.meta, trashedAt: 1 }, n.pages).units).toEqual([]);

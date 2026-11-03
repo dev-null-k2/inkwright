@@ -119,7 +119,9 @@ export interface Definition {
   unitId: string;
 }
 
-const DEF_COLON = /^\s*(?:\*\*)?([\p{L}][\p{L}\p{N} '’/-]{1,40}?)(?:\*\*)?\s*(?::|—|–| - |=)\s+(.{8,})$/u;
+// A spaced hyphen ("Term - definition") counts like a dash: `\s*` has already eaten the space before
+// it, so the alternative looks behind for it instead of matching it (" - " could never match).
+const DEF_COLON = /^\s*(?:\*\*)?([\p{L}][\p{L}\p{N} '’/-]{1,40}?)(?:\*\*)?\s*(?::|—|–|(?<=\s)-|=)\s+(.{8,})$/u;
 const DEF_IS = /^\s*(?:an?\s+|the\s+)?([\p{Lu}][\p{L}\p{N}'’/-]*(?:\s+[\p{L}\p{N}'’/-]+){0,3}?)\s+(?:is|are|means|refers to|stands for)\s+((?:an?|the|a kind of|a type of|when|how|what)\b.{6,})$/u;
 /** Labels that look like "Term: text" but are not definitions. */
 const NOT_A_TERM = /^(?:todo|to do|note|notes|action|actions|ai|next|next steps?|q|a|question|answer|date|time|when|where|who|why|attendees|present|participants|agenda|decision|decisions|owner|due|status|re|subject|summary|tl;?dr|ps|update|idea|ideas|follow[- ]?up|priority|cost|price|budget|total|goal|deadline|launch|exam)$/i;
