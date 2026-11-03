@@ -6,7 +6,7 @@ import { buildIcs, foldLine, googleCalendarUrl, icsEscape, icsFileName } from '.
 describe('solving maths', () => {
   it('evaluates arithmetic (with fractions when written as such)', async () => {
     expect((await solveMath('2+3×4 =')).result).toBe('= 14');
-    expect((await solveMath('1/3 + 1/6')).result).toBe('= 1/2 ≈ 0.5');
+    expect((await solveMath('1/3 + 1/6')).result).toBe('= 1/2 = 0.5');
     expect((await solveMath('√(2)')).result).toBe('= 1.4142');
   });
   it('solves linear and quadratic equations exactly', async () => {

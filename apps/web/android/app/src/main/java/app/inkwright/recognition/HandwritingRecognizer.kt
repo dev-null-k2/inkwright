@@ -89,6 +89,32 @@ class HandwritingRecognizer(private val scope: CoroutineScope) {
         }
     }
 
+    /**
+     * Recognizes each ink on its own (no pre-context: they are separate symbols of a maths
+     * expression, not words) and returns up to [max] candidates for each, most likely first.
+     * The web side groups strokes into symbols and decides between the candidates with a maths
+     * grammar; see docs/MATH.md. Throws [NotReadyException] if the model is not on the device.
+     */
+    suspend fun recognizeCandidates(languageTag: String, inks: List<LineInput>, max: Int): List<List<Candidate>> {
+        val state = prepare(languageTag)
+        if (state != State.READY) throw NotReadyException(state, "Handwriting model for '$languageTag' is ${state.wire}")
+        return mutex.withLock {
+            val r = recognizer ?: throw NotReadyException(State.FAILED, "Recognizer closed")
+            inks.map { ink ->
+                if (ink.strokes.isEmpty()) return@map emptyList()
+                val (w, h) = InkPayload.writingArea(ink.width, ink.height, ink.strokes)
+                val context = RecognitionContext.builder().setPreContext("").setWritingArea(WritingArea(w, h)).build()
+                try {
+                    val result = r.recognize(buildInk(ink), context).await()
+                    InkPayload.candidates(result?.candidates.orEmpty().map { it.text to it.score }, max)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Symbol recognition failed", e)
+                    emptyList()
+                }
+            }
+        }
+    }
+
     fun close() {
         recognizer?.close()
         recognizer = null
@@ -99,6 +125,20 @@ class HandwritingRecognizer(private val scope: CoroutineScope) {
 
     private suspend fun recognizeLine(r: DigitalInkRecognizer, line: LineInput, previous: String): String {
         if (line.strokes.isEmpty()) return ""
+        val (w, h) = InkPayload.writingArea(line.width, line.height, line.strokes)
+        val context = RecognitionContext.builder()
+            .setPreContext(InkPayload.preContext(line.preContext, previous))
+            .setWritingArea(WritingArea(w, h))
+            .build()
+        return try {
+            r.recognize(buildInk(line), context).await()?.candidates?.firstOrNull()?.text.orEmpty()
+        } catch (e: Exception) {
+            Log.w(TAG, "Line recognition failed", e)
+            ""
+        }
+    }
+
+    private fun buildInk(line: LineInput): Ink {
         val ink = Ink.builder()
         for (s in line.strokes) {
             val sb = Ink.Stroke.builder()
@@ -108,17 +148,7 @@ class HandwritingRecognizer(private val scope: CoroutineScope) {
             }
             ink.addStroke(sb.build())
         }
-        val (w, h) = InkPayload.writingArea(line.width, line.height, line.strokes)
-        val context = RecognitionContext.builder()
-            .setPreContext(InkPayload.preContext(line.preContext, previous))
-            .setWritingArea(WritingArea(w, h))
-            .build()
-        return try {
-            r.recognize(ink.build(), context).await()?.candidates?.firstOrNull()?.text.orEmpty()
-        } catch (e: Exception) {
-            Log.w(TAG, "Line recognition failed", e)
-            ""
-        }
+        return ink.build()
     }
 
     private suspend fun download(tag: String, model: DigitalInkRecognitionModel) {

@@ -11,7 +11,7 @@ export default defineConfig({
       { test: { name: 'mcp', include: ['apps/mcp-server/test/**/*.test.ts'], environment: 'node' } },
       { test: { name: 'web', include: ['apps/web/src/**/*.test.{ts,tsx}'], environment: 'jsdom', setupFiles: ['apps/web/src/test/setup.ts'] } },
       { test: { name: 'platform', include: ['packages/plugin-api/test/**/*.test.ts', 'packages/sdk/test/**/*.test.ts'], environment: 'node' } },
-      { test: { name: 'evals', include: ['packages/*/evals/**/*.eval.ts'], environment: 'node', testTimeout: 120000 } },
+      { test: { name: 'evals', include: ['packages/*/evals/**/*.eval.ts', 'apps/web/evals/**/*.eval.ts'], environment: 'node', testTimeout: 120000 } },
     ],
   },
 });

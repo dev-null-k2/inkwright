@@ -86,6 +86,18 @@ function drift(r: () => number) {
   };
 }
 
+/**
+ * One glyph of a single-line font as pen paths in font units (y up, baseline 0), with the font's
+ * metrics. The handwritten-maths reader builds its symbol templates from these, and its eval
+ * writes test problems with them. Null when the font has no such glyph.
+ */
+export function singleLineGlyph(ch: string, style: HandwritingStyle = 'print'): { advance: number; paths: number[][]; xHeight: number; capHeight: number } | null {
+  const font = FONTS[style];
+  const g = font.glyphs[ch];
+  if (!g) return null;
+  return { advance: g.a, paths: g.p.map((p) => [...p]), xHeight: font.xHeight, capHeight: font.capHeight };
+}
+
 /** Advance width of a word in page units at the given scale (for wrapping). */
 function wordWidth(font: SingleLineFont, word: string, scale: number) {
   let w = 0;

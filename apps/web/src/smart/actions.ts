@@ -7,7 +7,7 @@ import type { AppVault } from '../lib/vault.ts';
 import { recognizeLocally } from '../lib/recognition.ts';
 import { findEvent, findLinks, findTasks, tasksToMarkdown } from './detect.ts';
 import { solveMath, type MathSolution } from './math.ts';
-import { readMath, readTableCells, readText } from './read.ts';
+import { readMath, readMathWithAI, readTableCells, readText, strongVisionAI, type MathReading } from './read.ts';
 import type { ReadCard } from './store.ts';
 
 /**
@@ -126,15 +126,17 @@ export interface SolveOutcome {
 }
 
 /**
- * Reads the handwritten problem, solves it with the on-device CAS (falling back to the AI's own
- * answer only when the CAS cannot), and writes the result next to it as a result object.
+ * Reads the handwritten problem on this device, solves it with the on-device CAS and writes the
+ * result next to it as a result object. A strong vision AI is asked only when the on-device
+ * reading is unsure (read.ts), or when the solver cannot do the problem — and then the result
+ * says the AI was involved.
  */
 export async function solveInk(ctx: SmartCtx, pageIndex: number, strokeIds: readonly string[], after: Rect): Promise<SolveOutcome> {
   const page = ctx.doc.page(pageIndex);
   const ids = new Set(strokeIds);
   const strokes = page.strokes.filter((s) => ids.has(s.id));
   if (!strokes.length) throw new Error('Nothing to solve');
-  const reading = await readMath(ctx.vault, ctx.doc, pageIndex, strokes);
+  let reading: MathReading = await readMath(ctx.vault, ctx.doc, pageIndex, strokes);
   if (!reading.plain.trim()) throw new Error('No maths found in that writing');
   let solution: MathSolution | null = null;
   let result: string;
@@ -142,18 +144,31 @@ export async function solveInk(ctx: SmartCtx, pageIndex: number, strokeIds: read
     solution = await solveMath(reading.plain);
     result = solution.result;
   } catch (e) {
-    if (!reading.answer) throw e;
-    result = reading.answer.startsWith('=') || /^[a-z]\s*=/.test(reading.answer) ? reading.answer : `= ${reading.answer}`;
+    // The solver can't do it: only now, and only a strong AI, may help — read and answer it.
+    if (reading.by === 'local') {
+      const ai = await strongVisionAI(ctx.doc);
+      const viaAI = ai ? await readMathWithAI(ctx.vault, ctx.doc, pageIndex, strokes, ai).catch(() => null) : null;
+      if (viaAI?.plain) {
+        reading = viaAI;
+        solution = await solveMath(viaAI.plain).catch(() => null);
+      }
+    }
+    if (solution) result = solution.result;
+    else if (reading.answer) result = reading.answer.startsWith('=') || /^[a-z]\s*=/.test(reading.answer) ? reading.answer : `= ${reading.answer}`;
+    else throw new Error(`${(e as Error).message}. Read as “${reading.plain}” (${reading.source}).`);
   }
   const b = boundsOfStrokes(strokes);
   const fontSize = Math.max(14, Math.min(34, (b.maxY - b.minY) * 0.8));
+  const steps = solution?.steps?.length ? solution.steps : reading.steps;
   const obj: MathObject = {
     type: 'math', id: newId(), createdAt: Date.now(),
     x: after.maxX + fontSize * 0.45, y: (after.minY + after.maxY) / 2 - fontSize * 0.75,
-    input: reading.plain, latex: reading.latex, result, steps: reading.steps, fontSize,
+    input: reading.plain, latex: reading.latex, result, steps, fontSize,
     color: strokes[strokes.length - 1]!.color, source: [...ids],
     // The page shows a machine-made answer either way; with AI involved it says so.
     origin: reading.by === 'ai' ? 'ai' : 'solver',
+    readBy: reading.source,
+    stepsBy: steps?.length ? (solution?.steps?.length ? 'solver' : 'ai') : undefined,
   };
   ctx.doc.editObjects(pageIndex, 'Solve', { upsert: [obj] });
   return { obj, solution, aiRead: reading.by === 'ai' };

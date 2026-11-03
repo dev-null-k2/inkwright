@@ -251,9 +251,9 @@ export const BUILTIN_MODULES: ModuleDefinition[] = [
   {
     id: 'device-check',
     name: 'Device check',
-    description: 'Settings › About › Check this device: measures the pen, the screen and how fast ink appears on this device, and makes a report to copy or share.',
+    description: 'Settings › About › Check this device: measures the pen, the screen and how fast ink appears on this device, and makes a report to copy or share. Also records handwriting samples to tune how your writing is read.',
     defaultEnabled: true,
-    contributes: { panels: ['Check this device'] },
+    contributes: { panels: ['Check this device', 'Record handwriting samples'] },
   },
   // Notes from other apps, the web clipper, and runbook shell blocks on a computer.
   ...IMPORT_MODULES,

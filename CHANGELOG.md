@@ -29,6 +29,17 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 - Importers for Notion, Evernote, OneNote and GoodNotes/Notability PDFs, and a web clipper
   bookmarklet (docs/IMPORTERS.md); OpenClaw and pi transcripts in agent session import.
 
+### Handwritten maths
+- Solve reads the strokes on the device: symbols are grouped from the ink, recognized with ML Kit
+  on Android (ranked candidates per symbol), the browser's handwriting API or a built-in
+  classifier, and parsed in 2-D — fractions, exponents, roots, systems — choosing the reading
+  that is valid maths. A picture goes to an AI only when that reading is unsure, and only to a
+  strong cloud model, never a small on-device one. Results say who read them (docs/MATH.md).
+- Exact answers and worked steps computed on the device: fractions, order of operations,
+  percentages, linear and quadratic equations, 2 × 2 systems.
+- Settings › About › Check this device › Record handwriting samples saves your strokes and what
+  you meant to a file you can share, for tuning the reader.
+
 ### Fixes
 - REST keyword search no longer returns notes the AI policy hides from agents.
 

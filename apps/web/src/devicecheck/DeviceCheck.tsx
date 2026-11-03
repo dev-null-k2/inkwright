@@ -7,19 +7,21 @@
  * Nothing is sent anywhere: the report leaves the device only if the person copies or shares it.
  */
 import { useEffect, useRef, useState } from 'react';
-import { Copy, Eraser, Share2, Stethoscope } from 'lucide-react';
+import { Copy, Eraser, PenLine, Share2, Stethoscope } from 'lucide-react';
 import { Dialog } from '../ui/primitives.tsx';
 import { useApp } from '../state/app.ts';
 import { isNative } from '../platform/env.ts';
 import { analyzeFrames, analyzeInput, analyzeLatency, checkFit, reportJson, reportText, type DeviceFacts, type DeviceReport } from './analysis.ts';
 import { collectFacts, collectFitBoxes, readSafeArea, recordPad } from './probe.ts';
+import { SampleRecorderDialog } from './SampleRecorder.tsx';
 
 export function DeviceCheckButton() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<'check' | 'samples' | null>(null);
   return (
     <>
-      <button type="button" className="btn" onClick={() => setOpen(true)}><Stethoscope size={16} /> Check this device</button>
-      {open && <DeviceCheckDialog onClose={() => setOpen(false)} />}
+      <button type="button" className="btn" onClick={() => setOpen('check')}><Stethoscope size={16} /> Check this device</button>
+      {open === 'check' && <DeviceCheckDialog onClose={() => setOpen(null)} onRecordSamples={() => setOpen('samples')} />}
+      {open === 'samples' && <SampleRecorderDialog onBack={() => setOpen('check')} onClose={() => setOpen(null)} />}
     </>
   );
 }
@@ -58,7 +60,7 @@ function useLiveFit(active: boolean) {
   return fit;
 }
 
-function DeviceCheckDialog({ onClose }: { onClose: () => void }) {
+function DeviceCheckDialog({ onClose, onRecordSamples }: { onClose: () => void; onRecordSamples: () => void }) {
   const toast = useApp((a) => a.toast);
   const pad = useRef<HTMLCanvasElement>(null);
   const recorder = useRef<ReturnType<typeof recordPad> | null>(null);
@@ -159,6 +161,7 @@ function DeviceCheckDialog({ onClose }: { onClose: () => void }) {
               : <>Layout: fits this screen ({fit.viewport}, system bars {fit.bars})</>}
           </p>
           <p className="muted small">It also reads the screen, the system bars, memory, graphics and audio. Nothing is sent anywhere.</p>
+          <p className="small">Handwriting misread? <button type="button" className="btn btn-ghost btn-sm" onClick={onRecordSamples}><PenLine size={14} /> Record handwriting samples</button></p>
         </div>
       )}
     </Dialog>

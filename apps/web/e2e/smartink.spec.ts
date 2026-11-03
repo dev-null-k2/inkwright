@@ -135,14 +135,17 @@ test('lasso an equation → Solve → a result object next to it (AI reads, devi
   await expect.poll(async () => (await objects(page)).length).toBe(1);
   const [m] = await objects(page);
   expect(m).toMatchObject({ type: 'math', input: '2x + 3 = 7', result: 'x = 2', origin: 'ai' });
-  expect(m.steps).toHaveLength(2);
+  expect(m.readBy).toContain('mock-vision-1');
+  // The steps shown are the solver's own (computed exactly), not the AI's.
+  expect(m).toMatchObject({ stepsBy: 'solver' });
+  expect(m.steps).toHaveLength(3);
   // The handwriting itself is untouched, and the vision request carried an image.
   expect((await strokes(page)).length).toBe(3);
   expect(JSON.stringify(reqs[0].messages)).toContain('image_url');
   // Its menu shows the steps.
   await page.getByRole('button', { name: /^Result x = 2/ }).click();
   await page.getByRole('menuitem', { name: 'Show steps' }).click();
-  await expect(page.getByRole('dialog', { name: 'Steps' })).toContainText('Divide by 2');
+  await expect(page.getByRole('dialog', { name: 'Steps' })).toContainText('Divide both sides by 2');
 });
 
 test('circle a date → read it → download an .ics event', async ({ page }) => {

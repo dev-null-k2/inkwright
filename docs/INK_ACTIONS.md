@@ -15,6 +15,9 @@ tools and drop handling, and leaves everything it already made in your notes.
 | Reading and read aloud (`accessibility`) | ••• › Audio › Read aloud, ••• › Page › Reading view, Settings › Appearance › Reading | `packages/core/src/readaloud/`, `apps/web/src/a11y/` |
 | Paper workbench (`papers`) | Library › Papers, `[@` in typed text, ••• › Study › Bibliography | `packages/core/src/papers/`, `apps/web/src/papers/` |
 
+Handwritten maths (write, lasso, Solve) belongs to the smart-ink module; how it is read on the
+device, solved, and measured is in docs/MATH.md.
+
 The modules are declared in `apps/web/src/inkactions/modules.ts` and registered with the built-in
 modules (`apps/web/src/modules/builtin.ts`); the editor wiring is one hook,
 `apps/web/src/inkactions/EditorParts.tsx`. Every model call goes through `getActiveAI` (the
