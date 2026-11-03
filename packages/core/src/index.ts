@@ -51,3 +51,4 @@ export * from './readaloud/index.ts';
 export * from './recall/index.ts';
 export * from './icalendar.ts';
 export * from './importers/index.ts';
+export * from './textquality.ts';

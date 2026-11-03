@@ -1,0 +1,31 @@
+/**
+ * `npm run eval:local`: the local-model evals (local-model.ts) in a plain Node process, so a
+ * 1.7B model fits in memory beside nothing else. Prints each case as it finishes and the pass
+ * rates at the end; `--json <file>` also writes every reply and raw model turn.
+ *
+ *   npm run eval:local -- --model qwen3-1.7b --context 4096 --flows before,after --only page-budget,lasso-sum
+ *
+ * Weights are cached in INKWRIGHT_MODEL_CACHE (default: the OS temp folder), never in the repo.
+ */
+import { writeFileSync } from 'node:fs';
+import { parseArgs } from 'node:util';
+import { CASES, describeResult, evaluate, summarize, type EvalResult } from './local-model.ts';
+import { createNodeEngine } from './node-engine.ts';
+
+const { values } = parseArgs({ options: { model: { type: 'string', default: 'qwen3-1.7b' }, context: { type: 'string', default: '4096' }, flows: { type: 'string', default: 'before,after' }, only: { type: 'string' }, json: { type: 'string' } } });
+const settings = { model: values.model!, context: Number(values.context) };
+const flows = values.flows!.split(',').map((s) => s.trim()) as Array<'before' | 'after'>;
+const only = values.only?.split(',').map((s) => s.trim());
+const cases = CASES.filter((c) => !only || only.includes(c.id));
+const engine = await createNodeEngine();
+const results: EvalResult[] = [];
+for (const flow of flows) {
+  for (const c of cases) {
+    const r = await evaluate(flow, c, engine, settings);
+    results.push(r);
+    console.log(describeResult(r));
+  }
+}
+console.log(`\n${summarize(results, settings)}`);
+if (values.json) writeFileSync(values.json, JSON.stringify({ ...settings, at: new Date().toISOString(), results }, null, 2));
+await engine.unload();

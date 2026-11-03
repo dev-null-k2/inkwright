@@ -10,6 +10,7 @@ import {
 } from '../lib/localai.ts';
 import { appMemory, useMemoryStatus } from '../lib/memory.ts';
 import { askConfirm } from './prompts.tsx';
+import { DownloadButton } from './assistant/DownloadControls.tsx';
 import { IconButton, Segmented, cx } from './primitives.tsx';
 import { NativeAISettings } from './NativeAISettings.tsx';
 
@@ -112,12 +113,10 @@ export function ModelPicker({ role, title, current, recommendedId, onChange }: {
               if (await askConfirm(`Delete ${current.spec.label}?`, `Frees ${formatBytes(current.variant.bytes)}. You can download it again later.`, 'Delete', true)) await removeModel(current);
             }}><Trash2 size={16} /></IconButton>
           </>
-        ) : dl && !dl.error ? (
-          <button type="button" className="btn btn-sm" onClick={() => cancelDownload(current)}><X size={14} /> Cancel</button>
         ) : (
-          <button type="button" className="btn btn-sm" onClick={() => void downloadModel(current)}>
-            <Download size={14} /> {partial > 0 ? `Resume · ${formatBytes(Math.max(0, current.variant.bytes - partial))}` : `Download · ${formatBytes(current.variant.bytes)}`}
-          </button>
+          <DownloadButton what={current.spec.label} ready={false} progress={dl && !dl.error ? { phase: dl.total > 0 ? 'download' : 'started', loaded: dl.loaded, total: dl.total } : null}
+            startLabel={partial > 0 ? `Resume · ${formatBytes(Math.max(0, current.variant.bytes - partial))}` : `Download · ${formatBytes(current.variant.bytes)}`}
+            onStart={() => void downloadModel(current)} onCancel={() => cancelDownload(current)} />
         )}
       </div>
     </div>

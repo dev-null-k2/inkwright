@@ -6,13 +6,17 @@ import {
   extractTodos,
   makeFlashcards,
   runAgent,
+  runGroundedTurn,
   runSkill,
   suggestTags,
   suggestTitle,
   summarizeNote,
   translate,
+  type AgentEvent,
+  type AgentTool,
   type ChatMessage,
   type ContentPart,
+  type ToolCall,
 } from '@inkwright/ai';
 import { newId, pageText, type TextBox } from '@inkwright/core';
 import type { InkEngine } from '../canvas/engine.ts';
@@ -35,17 +39,15 @@ import { linkLiveCitations, liveAskContext, useListen } from '../lib/listen/sess
 import { nativeSummary } from '../lib/native-ai.ts';
 import type { Passage } from '@inkwright/core';
 import { inkReplyActions } from '../inkanswer/answer.ts';
+import { contextTokensOf, ensurePageRecognized, gatherGrounding, isSmallModel, noteTextForAI, selectionText, sendsImagesTo } from '../lib/assistant/context.ts';
+import { requireHub } from '../lib/agent/hub.ts';
+import { ChatMenu, usePersistentChat, type PanelItem } from './assistant/ChatMenu.tsx';
 import { collectPassages, explainAnswer, genFor, insertAnswer, notePassages, recordSummaryProvenance } from '../compiler/explain.ts';
 
 export type AIRequest = { kind: 'selection'; pageIndex: number; strokeIds: string[]; textIds: string[]; at: number };
 
-interface Item {
-  id: string;
-  role: 'user' | 'assistant' | 'tool' | 'error';
-  text: string;
-  tool?: { name: string; ok?: boolean; detail?: string };
-  actions?: { label: string; run: () => void }[];
-}
+/** One message in the panel; persisted per chat (lib/assistant/chats.ts) without its actions. */
+type Item = PanelItem;
 
 const TOOL_LABELS: Record<string, string> = {
   list_notes: 'Looked through your notes',
@@ -81,7 +83,10 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
   const history = useRef<ChatMessage[]>([]);
   const abort = useRef<AbortController | null>(null);
   const scroll = useRef<HTMLDivElement>(null);
-  const [attach, setAttach] = useState<{ label: string; parts: ContentPart[] } | null>(null);
+  /** A lasso selection to ask about: as text for every model, as a picture only for strong vision models. */
+  const [attach, setAttach] = useState<{ label: string; parts: ContentPart[]; sel: { pageIndex: number; strokeIds: string[]; textIds: string[] } } | null>(null);
+  // Conversations persist per note (and general ones) across closing the panel and restarts.
+  const chat = usePersistentChat({ scope: doc.meta.id, items, setItems, history, busy });
   const [view, setView] = useState<AgentViewId | null>(null);
   useEffect(() => hostAgentViews((v) => setView(v as AgentViewId)), []);
   // A connected app's prompt was picked: put it in the input to review and send.
@@ -103,8 +108,10 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
       const ys = [...pts.map((p) => p.y), ...tb.flatMap((r) => [r.minY, r.maxY])];
       const region = xs.length ? { minX: Math.min(...xs), minY: Math.min(...ys), maxX: Math.max(...xs), maxY: Math.max(...ys) } : undefined;
       const img = await pageImageForAI(vault, doc.meta, [...doc.pages], request.pageIndex, region);
-      const typed = texts.map((t) => t.text).join('\n');
-      setAttach({ label: `Selection on page ${request.pageIndex + 1}`, parts: [{ type: 'image', mediaType: img.mediaType, data: img.base64 }, ...(typed ? [{ type: 'text' as const, text: `Typed text in the selection:\n${typed}` }] : [])] });
+      // Recognized on the device right away: the text is what small models read (and cloud models get it too).
+      const read = await selectionText(doc, request.pageIndex, request.strokeIds, request.textIds).catch(() => ({ text: texts.map((t) => t.text).join('\n'), unreadInk: strokes.length > 0 }));
+      const sel = { pageIndex: request.pageIndex, strokeIds: request.strokeIds, textIds: request.textIds };
+      setAttach({ label: `Selection on page ${request.pageIndex + 1}`, sel, parts: [{ type: 'image', mediaType: img.mediaType, data: img.base64 }, ...(read.text ? [{ type: 'text' as const, text: `Text in the selection (typed, and handwriting recognized on this device):\n${read.text}` }] : [])] });
     })();
   }, [request]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -145,6 +152,8 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
   const runQuick = async (kind: 'transcribe' | 'summary' | 'todos' | 'cards' | 'translate' | 'title') => {
     if (busy) return;
     setBusy(true);
+    // Handwriting is read on the device first, so every quick action works from text.
+    if (kind !== 'transcribe') for (let i = 0; i < Math.min(doc.pageCount, 20); i++) await ensurePageRecognized(doc, i).catch(() => false);
     abort.current = new AbortController();
     const signal = abort.current.signal;
     try {
@@ -158,7 +167,7 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
       }
       const a = ensureAI();
       if (!a) return;
-      const fullText = doc.pages.map((p) => pageText(p)).filter(Boolean).join('\n\n');
+      const fullText = noteTextForAI(doc);
       if (!fullText.trim() && kind !== 'title') {
         push({ role: 'error', text: 'This note has no typed or recognized text yet. Use “Transcribe page” first so AI can read your handwriting.' });
         return;
@@ -213,9 +222,13 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
     if (!a) return;
     setInput('');
     push({ role: 'user', text: attach ? `${q}\n\n_(with ${attach.label.toLowerCase()})_` : q });
-    const content: ContentPart[] = [{ type: 'text', text: q }, ...(attach && a.vision ? attach.parts : attach ? attach.parts.filter((p) => p.type === 'text') : [])];
+    const small = isSmallModel(a);
+    // Pictures only for strong vision models; everyone gets the selection's recognized text.
+    const content: ContentPart[] = [{ type: 'text', text: q }, ...(attach ? attach.parts.filter((p) => p.type === 'text' || sendsImagesTo(a)) : [])];
+    const sel = attach?.sel ?? null;
     setAttach(null);
-    history.current = [...history.current, { role: 'user', content }];
+    const before = history.current;
+    if (!small) history.current = [...history.current, { role: 'user', content }];
     setBusy(true);
     abort.current = new AbortController();
     let prep: PreparedRun | null = null;
@@ -223,54 +236,65 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
     let reply = '';
     const toolItems = new Map<string, string>();
     const read: Passage[] = []; // what the model read this turn ("Explain this answer")
+    const confirm = async (call: ToolCall, tool: AgentTool) => {
+      // The trust layer asks for writes after the run read something that looks like planted instructions.
+      if (tool.confirmReason && !tool.destructive) return askConfirm('Allow this change?', `${tool.confirmReason} The assistant wants to ${TOOL_LABELS[call.name]?.toLowerCase() ?? call.name}: ${JSON.stringify(call.arguments).slice(0, 200)}`, 'Allow');
+      const app = describeMcpToolName(call.name);
+      if (app) return askConfirm(`Allow ${app.server} to run “${app.tool}”?`, `The assistant wants to use ${app.server}: ${JSON.stringify(call.arguments).slice(0, 300)}`, 'Allow');
+      if (!confirmDestructive) return true;
+      return askConfirm('Allow this action?', `The assistant wants to ${TOOL_LABELS[call.name]?.toLowerCase() ?? call.name}. ${JSON.stringify(call.arguments).slice(0, 200)}`, 'Allow', true);
+    };
+    const onEvent = (e: AgentEvent) => {
+      if (e.type === 'text') {
+        reply += e.delta;
+        if (!replyId) replyId = push({ role: 'assistant', text: reply });
+        else patch(replyId, { text: reply });
+      } else if (e.type === 'tool_start') {
+        reply = '';
+        replyId = null;
+        const q = (e.call.arguments as any)?.query ?? (e.call.arguments as any)?.title ?? '';
+        toolItems.set(e.call.id, push({ role: 'tool', text: toolLabel(e.call.name), tool: { name: e.call.name, detail: q ? String(q) : undefined } }));
+      } else if (e.type === 'tool_result') {
+        collectPassages(e.call.name, e.result, read);
+        const id = toolItems.get(e.call.id);
+        if (id) patch(id, { tool: { name: e.call.name, ok: true, detail: (e.call.arguments as any)?.query ?? (e.call.arguments as any)?.title } });
+      } else if (e.type === 'tool_error') {
+        const id = toolItems.get(e.call.id);
+        if (id) patch(id, { tool: { name: e.call.name, ok: false, detail: e.denied ? 'not allowed' : e.error } });
+      }
+    };
     try {
-      // Note tools (logged for undo), skills, memory and connected apps — shared with routines.
       // While recording, the live transcript so far (with times to cite) joins the note context.
       const live = liveAskContext(doc.meta.id, engine.currentPageIndex, doc.pages[engine.currentPageIndex]);
-      prep = await prepareAgentRun({ ai: a, vault, source: 'assistant', label: 'Assistant', prompt: q, openDoc: doc, notes: 'write', skills: true, remember: true, mcp: 'all', context: live ? `${noteContext()}\n\n${live}` : noteContext() });
-      const res = await runAgent({
-        provider: a.provider,
-        model: a.model,
-        system: prep.system,
-        messages: history.current,
-        tools: prep.tools,
-        maxSteps: 12,
-        signal: abort.current.signal,
-        confirm: async (call, tool) => {
-          // The trust layer asks for writes after the run read something that looks like planted instructions.
-          if (tool.confirmReason && !tool.destructive) return askConfirm('Allow this change?', `${tool.confirmReason} The assistant wants to ${TOOL_LABELS[call.name]?.toLowerCase() ?? call.name}: ${JSON.stringify(call.arguments).slice(0, 200)}`, 'Allow');
-          const app = describeMcpToolName(call.name);
-          if (app) return askConfirm(`Allow ${app.server} to run “${app.tool}”?`, `The assistant wants to use ${app.server}: ${JSON.stringify(call.arguments).slice(0, 300)}`, 'Allow');
-          if (!confirmDestructive) return true;
-          return askConfirm('Allow this action?', `The assistant wants to ${TOOL_LABELS[call.name]?.toLowerCase() ?? call.name}. ${JSON.stringify(call.arguments).slice(0, 200)}`, 'Allow', true);
-        },
-        onEvent: (e) => {
-          if (e.type === 'text') {
-            reply += e.delta;
-            if (!replyId) replyId = push({ role: 'assistant', text: reply });
-            else patch(replyId, { text: reply });
-          } else if (e.type === 'tool_start') {
-            reply = '';
-            replyId = null;
-            const q = (e.call.arguments as any)?.query ?? (e.call.arguments as any)?.title ?? '';
-            toolItems.set(e.call.id, push({ role: 'tool', text: toolLabel(e.call.name), tool: { name: e.call.name, detail: q ? String(q) : undefined } }));
-          } else if (e.type === 'tool_result') {
-            collectPassages(e.call.name, e.result, read);
-            const id = toolItems.get(e.call.id);
-            if (id) patch(id, { tool: { name: e.call.name, ok: true, detail: (e.call.arguments as any)?.query ?? (e.call.arguments as any)?.title } });
-          } else if (e.type === 'tool_error') {
-            const id = toolItems.get(e.call.id);
-            if (id) patch(id, { tool: { name: e.call.name, ok: false, detail: e.denied ? 'not allowed' : e.error } });
-          }
-        },
-      });
-      history.current = res.messages.filter((m) => m.role !== 'system');
-      if (!res.text && !replyId) push({ role: 'assistant', text: 'Done.' });
-      if (replyId && res.text) {
-        const gen = genFor(a);
-        patch(replyId, { actions: [{ label: 'Explain', run: () => void explainAnswer('Answer', res.text, read, gen) }, { label: 'Insert on page', run: () => void insertAnswer(doc, engine.currentPageIndex, res.text, read, gen).then(() => toast({ text: 'Added to the page', action: { label: 'Undo', run: () => engine.undo() } })) }, ...inkReplyActions(doc, engine, res.text, read, gen)] });
+      let text: string;
+      if (small) {
+        // Retrieval first for on-device models (lib/assistant/context.ts): the page recognized now,
+        // the selection as text, the best passages and memory, then a compact agent.
+        const memory = await requireHub().memory.load().catch(() => []);
+        const grounding = await gatherGrounding({ ai: a, vault, question: live ? `${q}\n\n${live}` : q, doc, pageIndex: engine.currentPageIndex, selection: sel, memory });
+        for (const src of grounding.sources) if (src.noteId) read.push({ noteId: src.noteId, title: src.label, pageIndex: Math.max(0, (src.page ?? 1) - 1), text: src.text });
+        prep = await prepareAgentRun({ ai: a, vault, source: 'assistant', label: 'Assistant', prompt: q, openDoc: doc, notes: 'write', skills: false, remember: true, mcp: [] });
+        const res = await runGroundedTurn({ provider: a.provider, model: a.model, question: q, history: before, grounding, openNote: { id: doc.meta.id, title: doc.meta.title, currentPage: engine.currentPageIndex + 1 }, tools: prep.tools, contextTokens: contextTokensOf(a), appName: 'Inkwright', today: new Date().toISOString().slice(0, 10), signal: abort.current.signal, onEvent, confirm });
+        history.current = [...before, ...res.remember];
+        text = res.text;
+        // The guardrails may have replaced what streamed (a dodge, or nothing): show the final reply.
+        if (replyId) patch(replyId, { text });
+        else replyId = push({ role: 'assistant', text });
+      } else {
+        // Cloud models keep the full agent; the page's handwriting is still read on the device first.
+        await ensurePageRecognized(doc, engine.currentPageIndex).catch(() => false);
+        // Note tools (logged for undo), skills, memory and connected apps — shared with routines.
+        prep = await prepareAgentRun({ ai: a, vault, source: 'assistant', label: 'Assistant', prompt: q, openDoc: doc, notes: 'write', skills: true, remember: true, mcp: 'all', context: live ? `${noteContext()}\n\n${live}` : noteContext() });
+        const res = await runAgent({ provider: a.provider, model: a.model, system: prep.system, messages: history.current, tools: prep.tools, maxSteps: 12, signal: abort.current.signal, confirm, onEvent });
+        history.current = res.messages.filter((m) => m.role !== 'system');
+        text = res.text;
+        if (!res.text && !replyId) push({ role: 'assistant', text: 'Done.' });
       }
-      const run = await prep.recorder.finish('done', { reply: res.text });
+      if (replyId && text) {
+        const gen = genFor(a);
+        patch(replyId, { actions: [{ label: 'Explain', run: () => void explainAnswer('Answer', text, read, gen) }, { label: 'Insert on page', run: () => void insertAnswer(doc, engine.currentPageIndex, text, read, gen).then(() => toast({ text: 'Added to the page', action: { label: 'Undo', run: () => engine.undo() } })) }, ...inkReplyActions(doc, engine, text, read, gen)] });
+      }
+      const run = await prep.recorder.finish('done', { reply: text });
       if (run.ops.length) {
         const n = run.ops.length;
         push({ role: 'tool', text: `${n} ${n === 1 ? 'change' : 'changes'} logged in Activity`, tool: { name: 'activity', ok: true }, actions: [
@@ -278,7 +302,7 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
           { label: 'Review', run: () => setView('activity') },
         ] });
       }
-      if (res.text && useVoicePrefs.getState().speakReplies) speak(res.text);
+      if (text && useVoicePrefs.getState().speakReplies) speak(text);
     } catch (e) {
       const aborted = (e as Error).name === 'AbortError' || abort.current?.signal.aborted;
       await prep?.recorder.finish(aborted ? 'cancelled' : 'error', { error: aborted ? undefined : (e as Error).message });
@@ -302,6 +326,7 @@ export function AIPanel({ session, engine, request, onClose, onOpenSettings }: {
       <header className="side-head">
         <h2><Sparkles size={16} /> Assistant</h2>
         <span className="ai-model" title={ai?.label}>{ai === undefined ? '' : ai ? ai.label : 'Not connected'}</span>
+        <ChatMenu scope={doc.meta.id} current={chat.thread} onNew={(scope) => { if (!busy) chat.startNew(scope); }} onOpen={(id) => { if (!busy) void chat.open(id); }} />
         <AgentMenuButton onOpen={setView} />
         <IconButton label="AI settings" onClick={onOpenSettings}><Settings2 size={17} /></IconButton>
         <IconButton label="Close assistant" onClick={onClose}><X size={18} /></IconButton>

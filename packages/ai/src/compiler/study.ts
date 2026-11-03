@@ -13,6 +13,7 @@ import {
   extractDefinitions,
   extractSource,
   gradeAnswer,
+  isStudyWorthy,
   newNote,
   numbersIn,
   stripMarkdown,
@@ -60,7 +61,17 @@ export const CARDS_SYSTEM = [
  * (under half its words, or a number the sentence doesn't have) are dropped; without one (or if
  * nothing survives) the rules write cloze and definition cards.
  */
-export async function makeCards(ai: CompilerAI | null, units: readonly SourceUnit[], opts: { max?: number; signal?: AbortSignal } = {}): Promise<{ cards: CardDraft[]; byModel: boolean; usage?: Usage }> {
+/**
+ * The sentences worth studying: typed and PDF text as is; recognized handwriting and speech only
+ * when they read as real sentences (core `isStudyWorthy`), so a recognizer's fragment ("ools")
+ * never becomes a card or a teach-back question.
+ */
+export function studyUnits(units: readonly SourceUnit[]): SourceUnit[] {
+  return units.filter((u) => (u.kind === 'handwriting' || u.kind === 'speech' ? isStudyWorthy(u.text) : true));
+}
+
+export async function makeCards(ai: CompilerAI | null, allUnits: readonly SourceUnit[], opts: { max?: number; signal?: AbortSignal } = {}): Promise<{ cards: CardDraft[]; byModel: boolean; usage?: Usage }> {
+  const units = studyUnits(allUnits);
   const max = opts.max ?? 12;
   const rules = (): CardDraft[] => {
     const byId = new Map(units.map((u) => [u.id, u]));
@@ -115,7 +126,8 @@ export const TUTOR_ASK_SYSTEM = [
 ].join('\n');
 
 /** Questions about a set of source sentences; with no model, definition and cloze questions. */
-export async function tutorQuestions(ai: CompilerAI | null, units: readonly SourceUnit[], opts: { count?: number; signal?: AbortSignal } = {}): Promise<{ questions: TutorQuestion[]; byModel: boolean }> {
+export async function tutorQuestions(ai: CompilerAI | null, allUnits: readonly SourceUnit[], opts: { count?: number; signal?: AbortSignal } = {}): Promise<{ questions: TutorQuestion[]; byModel: boolean }> {
+  const units = studyUnits(allUnits);
   const count = opts.count ?? 5;
   if (ai && units.length) {
     const { refs, text } = numbered(units);

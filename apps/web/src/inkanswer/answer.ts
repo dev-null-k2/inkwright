@@ -8,12 +8,13 @@ import { isModuleOn } from '../modules/registry.ts';
 import { aiForNote, askOnce } from '../inkactions/ai.ts';
 import { useInkPrefs } from '../inkactions/prefs.ts';
 import { placeTypedAnswer, writeInInk, type PlacedAnswer } from './write.ts';
+import { selectionText, sendsImagesTo } from '../lib/assistant/context.ts';
 
 /**
- * "Write the answer here": the lassoed question (handwriting as a picture for vision models, plus
- * any recognized and typed text) goes to the active AI; the reply is put next to the selection in
- * the form Settings › Ink actions › "Answer on the page in" asks for. Provenance is kept with the
- * note (`ink:<first stroke id>` or `text:<id>` in its provenance file, docs/COMPILER.md), so
+ * "Write the answer here": the lassoed question (its handwriting recognized on the device first,
+ * plus typed text; a picture too for strong vision models only) goes to the active AI; the reply
+ * is put next to the selection in the form Settings › Ink actions › "Answer on the page in" asks
+ * for. Provenance is kept with the note (`ink:<first stroke id>` or `text:<id>` in its provenance file, docs/COMPILER.md), so
  * Explain can say what the model read and who wrote it.
  */
 
@@ -53,16 +54,21 @@ export async function recordAnswerProvenance(doc: NoteDocument, placed: PlacedAn
 export async function answerSelectionHere(o: { vault: AppVault; doc: NoteDocument; engine: InkEngine | null; sel: Selection; signal?: AbortSignal }): Promise<{ text: string; placed: PlacedAnswer }> {
   const { doc, sel } = o;
   const near = selectionBounds(sel);
-  const page = doc.page(sel.pageIndex);
-  const ids = new Set(sel.strokes.map((s) => s.id));
-  const recognized = (page.recognizedLines ?? []).filter((l) => l.strokeIds.some((id) => ids.has(id))).map((l) => l.text).join('\n');
+  // Text first: the selected handwriting is recognized on the device right now (lib/assistant),
+  // so small on-device models read "2+2=" instead of a picture they would misdescribe.
+  const read = await selectionText(doc, sel.pageIndex, sel.strokes.map((s) => s.id), sel.texts.map((t) => t.id));
   const typed = sel.texts.map((t) => t.text).join('\n');
+  const recognized = read.text.split('\n').filter((l) => !typed.includes(l)).join('\n');
   const hasInk = sel.strokes.length > 0;
-  const ai = await aiForNote(doc.meta, { source: 'ink-answer', task: hasInk && !recognized ? 'vision' : 'chat', needVision: hasInk && !recognized && !typed });
-  const parts: ContentPart[] = [{ type: 'text', text: 'Answer what is written in this part of my page.' }];
+  const noText = !read.text.trim();
+  const ai = await aiForNote(doc.meta, { source: 'ink-answer', task: hasInk && noText ? 'vision' : 'chat' });
+  // A picture only to strong vision models (not small on-device ones), and only when it can add something.
+  const picture = hasInk && near && sendsImagesTo(ai);
+  if (noText && !picture) throw new Error(hasInk ? 'I couldn’t read this handwriting on this device. Try writing a little larger, or choose a vision model in Settings › AI.' : 'Select some writing to answer.');
+  const parts: ContentPart[] = [{ type: 'text', text: 'Answer what is written in this part of my page. If it is a sum or an equation, work it out.' }];
   if (typed) parts.push({ type: 'text', text: `Typed there:\n${typed}` });
   if (recognized) parts.push({ type: 'text', text: `Handwriting there (recognized):\n${recognized}` });
-  if (hasInk && ai.vision && near) {
+  if (picture && near) {
     const img = await pageImageForAI(o.vault, doc.meta, [...doc.pages], sel.pageIndex, { minX: near.minX - 8, minY: near.minY - 8, maxX: near.maxX + 8, maxY: near.maxY + 8 });
     parts.push({ type: 'image', mediaType: img.mediaType, data: img.base64 });
   }

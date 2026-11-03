@@ -1,6 +1,6 @@
 import { AIError, abortError } from './errors.ts';
 import { validateArgs } from './schema.ts';
-import type { ChatMessage, ChatRequest, ChatResult, ContentPart, Provider, StopReason, ToolCall, ToolDef, Usage } from './types.ts';
+import type { ChatMessage, ChatRequest, ChatResult, ContentPart, Provider, StopReason, ToolCall, ToolChoice, ToolDef, Usage } from './types.ts';
 
 export interface ToolContext {
   signal?: AbortSignal;
@@ -93,6 +93,11 @@ export interface RunAgentOptions {
   maxToolResultChars?: number;
   /** Stream model output (default true). */
   stream?: boolean;
+  /**
+   * Tool choice for the first model turn only (e.g. `required` when the user clearly asked for an
+   * action and a small model would otherwise just describe it). Later turns are `auto`.
+   */
+  firstToolChoice?: ToolChoice;
 }
 
 function serialize(result: unknown, max: number): ContentPart[] {
@@ -203,6 +208,7 @@ export async function runAgent(opts: RunAgentOptions): Promise<AgentResult> {
     emit({ type: 'step_start', step });
     const req: ChatRequest = { model: opts.model, messages: transcript.slice(), signal: opts.signal };
     if (toolDefs.length) req.tools = toolDefs;
+    if (toolDefs.length && step === 1 && opts.firstToolChoice) req.toolChoice = opts.firstToolChoice;
     if (opts.temperature !== undefined) req.temperature = opts.temperature;
     if (opts.maxTokens !== undefined) req.maxTokens = opts.maxTokens;
     const stream = opts.stream !== false;

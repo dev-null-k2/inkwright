@@ -14,6 +14,7 @@ import './smart/smart.css';
 import './styles/agent.css';
 import './styles/palettes.css';
 import './styles/localai.css';
+import './ui/assistant/assistant.css';
 import './styles/listen.css';
 import './styles/knowledge.css';
 import './studio/studio.css';

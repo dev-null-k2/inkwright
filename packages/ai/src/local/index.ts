@@ -7,4 +7,6 @@ export * from './chrome-ai.ts';
 export * from './servers.ts';
 export * from './select.ts';
 export * from './rag.ts';
+export * from './grounding.ts';
+export * from './grounded-agent.ts';
 export * from './remote-embeddings.ts';

@@ -54,6 +54,8 @@ export interface ActiveAI {
   budgetKey?: string;
   /** The trust run behind a guarded AI (notes seen, injection taint), shared with agent tools. */
   trust?: TrustRun;
+  /** Context window in tokens, when known (on-device engines); sizes retrieval-first prompts. */
+  contextTokens?: number;
 }
 
 /** What a caller tells the AI gateway about a call (see lib/trust/gateway.ts). */

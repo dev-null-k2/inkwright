@@ -6,6 +6,7 @@ import { registerNativeLLM, type NativeLLMAvailability } from '../platform/nativ
 import { useSettings } from '../state/settings.ts';
 import { createNativeLLM, createNativeTranscriber, runNativeTask, startNativeListening, type NativeListening, type NativeTaskRequest } from '../ai/native/bridge.ts';
 import type { DownloadEvent, NativeAIPlugin, NativeAIStatus, NativeModelInfo, NativeTask } from '../ai/native/plugin.ts';
+import { classifyDownloadError, retriesOnItsOwn, retryDelayMs } from './assistant/download-status.ts';
 
 /**
  * The app side of the Android shell's on-device AI: what the phone offers (Gemini Nano through
@@ -26,10 +27,15 @@ export interface NativeAIPrefs {
 }
 
 export interface NativeDownload {
-  phase: DownloadEvent['phase'];
+  /** `retrying`: a transient error (AICore restarting, the connection) and another try is scheduled. */
+  phase: DownloadEvent['phase'] | 'retrying';
   loaded: number;
   total: number;
+  /** The raw error, for Details (the UI words it with describeDownloadIssue). */
   error?: string;
+  code?: string;
+  /** Automatic retries so far. */
+  attempt?: number;
 }
 
 interface NativeAIState extends NativeAIPrefs {
@@ -85,6 +91,8 @@ export function nativeAIPlugin(): NativeAIPlugin | null {
 export function setNativeAIPluginForTests(p: NativeAIPlugin | null) {
   plugin = p;
   init = null;
+  for (const t of retryTimers.values()) clearTimeout(t);
+  retryTimers.clear();
   registerNativeLLM(null);
   useNativeAI.setState({ ...loadPrefs(), ready: false, status: null, downloads: {} });
 }
@@ -121,11 +129,17 @@ export async function refreshNativeAI(): Promise<void> {
 function onDownloadEvent(e: DownloadEvent) {
   useNativeAI.setState((s) => {
     const downloads = { ...s.downloads };
+    const prev = downloads[e.target];
     if (e.phase === 'done' || e.phase === 'cancelled') delete downloads[e.target];
-    else downloads[e.target] = { phase: e.phase, loaded: e.loaded ?? downloads[e.target]?.loaded ?? 0, total: e.total ?? downloads[e.target]?.total ?? 0, error: e.error };
+    // A transient failure is never shown as one: downloadNative schedules the retry.
+    else if (e.phase === 'failed' && retriesOnItsOwn(classifyDownloadError(e.code, e.error)) && (prev?.attempt ?? 0) < MAX_RETRIES) downloads[e.target] = { ...(prev ?? { loaded: 0, total: 0 }), phase: 'retrying', error: e.error, code: e.code };
+    else downloads[e.target] = { phase: e.phase, loaded: e.loaded ?? prev?.loaded ?? 0, total: e.total ?? prev?.total ?? 0, error: e.error, ...(e.code ? { code: e.code } : {}), ...(prev?.attempt ? { attempt: prev.attempt } : {}) };
     return { downloads };
   });
 }
+
+const MAX_RETRIES = 5;
+const retryTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 /** The LiteRT-LM model in use: the chosen one if this phone can run it, else the recommended one. */
 export function chosenModel(s: Pick<NativeAIState, 'status' | 'modelId'> = useNativeAI.getState()): NativeModelInfo | null {
@@ -180,30 +194,79 @@ function registerEngines() {
   engines.forEach(registerNativeLLM);
 }
 
-/** Downloads Gemini Nano, a task feature or a LiteRT model. Resolves true when it is ready. */
-export async function downloadNative(target: string): Promise<boolean> {
+/** Whether a target is ready (or Android is downloading it on its own), per the last status read. */
+function targetState(target: string): string | undefined {
+  const st = useNativeAI.getState().status;
+  if (!st) return undefined;
+  if (target === 'gemini-nano') return st.engines.find((e) => e.id === 'gemini-nano')?.state;
+  if (target.startsWith('task:')) return st.tasks[target.slice(5) as NativeTask];
+  if (target.startsWith('litert:')) return st.models.find((m) => m.id === target.slice(7))?.state;
+  return undefined;
+}
+
+/**
+ * Downloads Gemini Nano, a task feature or a LiteRT model. Resolves true when it is ready.
+ *
+ * Transient errors — AICore's service disconnecting while it installs a model, a dropped
+ * connection — are retried with backoff (3 s … 90 s, five times) while the row says "Retrying…";
+ * if Android reports the model downloading or ready in the meantime, the retry stands down. Only
+ * then, or for a real problem (storage, an AICore update, an unsupported phone), is it a failure.
+ */
+export async function downloadNative(target: string, attempt = 0): Promise<boolean> {
   const p = plugin;
   const current = useNativeAI.getState().downloads[target];
-  if (!p || (current && current.phase !== 'failed')) return false;
-  useNativeAI.setState((s) => ({ downloads: { ...s.downloads, [target]: { phase: 'started', loaded: 0, total: 0 } } }));
+  if (!p || (current && current.phase !== 'failed' && !(attempt > 0 && current.phase === 'retrying'))) return false;
+  useNativeAI.setState((s) => ({ downloads: { ...s.downloads, [target]: { phase: 'started', loaded: s.downloads[target]?.loaded ?? 0, total: s.downloads[target]?.total ?? 0, ...(attempt ? { attempt } : {}) } } }));
+  let retry = false;
   try {
     await p.aiDownload({ target, language: noteLanguage() });
     return true;
   } catch (e) {
     const err = e as { code?: string; message?: string };
+    const kind = classifyDownloadError(err.code, err.message);
+    const delay = retriesOnItsOwn(kind) ? retryDelayMs(attempt + 1) : null;
+    retry = err.code !== 'cancelled' && delay != null;
     useNativeAI.setState((s) => {
       const downloads = { ...s.downloads };
+      const prev = downloads[target];
       if (err.code === 'cancelled') delete downloads[target];
-      else downloads[target] = { phase: 'failed', loaded: downloads[target]?.loaded ?? 0, total: downloads[target]?.total ?? 0, error: err.message || 'Download failed.' };
+      else downloads[target] = { phase: retry ? 'retrying' : 'failed', loaded: prev?.loaded ?? 0, total: prev?.total ?? 0, error: err.message || 'Download failed.', ...(err.code ? { code: err.code } : {}), attempt };
       return { downloads };
     });
+    if (retry) {
+      retryTimers.set(target, setTimeout(() => {
+        retryTimers.delete(target);
+        void (async () => {
+          await refreshNativeAI().catch(() => {});
+          const state = targetState(target);
+          if (useNativeAI.getState().downloads[target]?.phase !== 'retrying') return; // cancelled meanwhile
+          if (state === 'available' || state === 'downloading') {
+            // Android carries on (or finished) by itself: nothing to retry, nothing to report.
+            useNativeAI.setState((s) => { const downloads = { ...s.downloads }; delete downloads[target]; return { downloads }; });
+            return;
+          }
+          await downloadNative(target, attempt + 1);
+        })();
+      }, delay!));
+    }
     return false;
   } finally {
-    await refreshNativeAI().catch(() => {});
+    if (!retry) await refreshNativeAI().catch(() => {});
   }
 }
 
 export function cancelNativeDownload(target: string) {
+  const timer = retryTimers.get(target);
+  if (timer) {
+    clearTimeout(timer);
+    retryTimers.delete(target);
+  }
+  useNativeAI.setState((s) => {
+    if (s.downloads[target]?.phase !== 'retrying' && s.downloads[target]?.phase !== 'failed') return {};
+    const downloads = { ...s.downloads };
+    delete downloads[target];
+    return { downloads };
+  });
   void plugin?.aiCancelDownload({ target });
 }
 
