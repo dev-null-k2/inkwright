@@ -77,8 +77,8 @@ test('memory timeline over synced captures: days, hours, notes written at the ti
   await expect(tl.locator('[data-capture="c-wiki"]')).toContainText('Hidden before saving: 1 email');
   await expect(tl.locator('[data-capture="c-build"] .rc-notes')).toHaveCount(0);
 
-  // Monday.
-  await tl.locator('.rc-day').filter({ hasNotText: /^(Today|Yesterday)$/ }).last().click();
+  // Monday (by date: on a Tuesday or Wednesday it is labelled Today or Yesterday).
+  await tl.locator(`.rc-day[data-day="${seeded.mon}"]`).click();
   await expect(tl.locator('.rc-moment')).toHaveCount(1);
   await expect(tl.locator('.rc-moment')).toContainText('make clean');
 
@@ -94,7 +94,7 @@ test('memory timeline over synced captures: days, hours, notes written at the ti
   await tl.getByLabel('Search the memory timeline').fill('');
 
   // Erase one moment: gone from the view and from the file.
-  await tl.locator('.rc-day').first().click();
+  await tl.locator(`.rc-day[data-day="${seeded.tue}"]`).click();
   await tl.locator('[data-capture="c-build"]').getByRole('button', { name: 'Erase this moment' }).click();
   await expect(tl.locator('[data-capture="c-build"]')).toHaveCount(0);
   const file = await page.evaluate((day) => (window as any).__inkwrightHub.vault.fs.readText(`recall/${day}/15-laptop.jsonl`), seeded.tue);

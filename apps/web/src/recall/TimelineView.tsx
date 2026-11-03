@@ -244,7 +244,7 @@ export function TimelineView() {
           <>
             <nav className="rc-days" aria-label="Days">
               {(days.length ? days : [dayKey(new Date())]).map((d) => (
-                <button key={d} type="button" className={cx('rc-day', d === day && 'is-on')} aria-current={d === day ? 'date' : undefined} onClick={() => { setDay(d); useTimelineUI.setState({ focusAt: null }); }}>{dayLabel(d)}</button>
+                <button key={d} type="button" data-day={d} className={cx('rc-day', d === day && 'is-on')} aria-current={d === day ? 'date' : undefined} onClick={() => { setDay(d); useTimelineUI.setState({ focusAt: null }); }}>{dayLabel(d)}</button>
               ))}
             </nav>
             <div className="rc-hours" role="group" aria-label="Hours">
