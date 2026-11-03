@@ -1,0 +1,36 @@
+/* ---- Founder feedback pass (Nov 2026): finger drawing, quick theme, "+" everywhere ------------- */
+
+/* Quick theme switch: colours cross-fade where view transitions aren't available. */
+html.theme-fading, html.theme-fading * { transition: background-color 0.28s var(--ease-out), color 0.28s var(--ease-out), border-color 0.28s var(--ease-out), fill 0.28s var(--ease-out) !important; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.28s; }
+@media (prefers-reduced-motion: reduce) {
+  html.theme-fading, html.theme-fading * { transition: none !important; }
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+}
+
+/* "Draw with finger" on the stone tray, and the offer to go back to the pen. */
+.dock .finger-toggle.is-active { background: color-mix(in srgb, var(--eye) 26%, transparent); color: var(--stone-ink-strong); }
+.stylus-prompt {
+  position: absolute; left: 50%; bottom: calc(100% + 10px); transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 14px; border-radius: var(--r-pill);
+  background: var(--raised); color: var(--ink); box-shadow: var(--float-shadow); font-size: var(--t-sm);
+  white-space: nowrap; max-width: calc(100vw - 24px);
+}
+.stylus-prompt > span { overflow: hidden; text-overflow: ellipsis; }
+.dock.is-vertical .stylus-prompt { left: calc(100% + 10px); bottom: auto; top: 50%; transform: translateY(-50%); }
+.dock.is-vertical.is-right-edge .stylus-prompt { left: auto; right: calc(100% + 10px); }
+@media (max-width: 480px) { .stylus-prompt { white-space: normal; flex-wrap: wrap; border-radius: var(--r-panel); max-width: calc(100vw - 24px); width: max-content; } }
+
+/* The editor's "+": a small mark says it has more on press and hold. */
+.new-here::after { content: ''; position: absolute; right: 7px; bottom: 7px; border: 3px solid transparent; border-right-color: currentColor; border-bottom-color: currentColor; opacity: 0.45; border-radius: 1px; }
+
+/* New menu: documents and signing next to paper choices. */
+.new-sheet-more { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 4px; border-top: 1px solid var(--line); }
+.new-sheet-more .btn { display: inline-flex; align-items: center; gap: 6px; }
+.template-pick { display: flex; flex-direction: column; gap: 2px; }
+.welcome-actions .welcome-sign { margin-right: auto; }
+
+/* Library top bar on the folded phone: the search field gives way so the theme and New buttons fit. */
+.lib-top .search { min-width: 0; }
+.lib-top > .icon-btn { flex: none; }
+@media (max-width: 440px) { .lib-top { gap: 6px; } .lib-top .search { padding: 0 12px; gap: 8px; } }

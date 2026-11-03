@@ -150,7 +150,7 @@ export async function builtinActiveAI(): Promise<ActiveAI | null> {
 
 // ---- Tool host over the real vault ------------------------------------------------------------
 
-const info = (n: NoteMeta): NoteInfo => ({ id: n.id, title: n.title, tags: n.tags, notebookId: n.notebookId, pinned: n.pinned, updatedAt: n.updatedAt, createdAt: n.createdAt, summary: n.summary } as NoteInfo);
+const info = (n: NoteMeta): NoteInfo => ({ id: n.id, title: n.title, tags: n.tags, notebookId: n.notebookId, pinned: n.pinned, updatedAt: n.updatedAt, createdAt: n.createdAt, summary: n.summary, ...(n.document ? { kind: 'document' } : {}) } as NoteInfo);
 
 /**
  * Gives agents the same powers the user has, through the same code paths: edits to the note that
@@ -223,6 +223,8 @@ export class AppNoteToolHost implements NoteToolHost {
   async appendText(noteId: string, text: string, pageIndex?: number): Promise<{ noteId: string; pageIndex: number; pageId: string; textId: string }> {
     const n = await this.metaOf(noteId);
     if (!n) throw new Error(`No note with id "${noteId}"`);
+    // A document's text is one formatted body: a separate box would be invisible in it.
+    if (n.document) throw new Error(`"${n.title}" is a document: use edit_document (operation "append") to add to it.`);
     const pages = await this.pagesOf(n);
     // Version history: the note as it was before the assistant changed it.
     snapshotBeforeAgentEdit(this.vault, n, pages);

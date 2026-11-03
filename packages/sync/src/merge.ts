@@ -25,9 +25,11 @@ import {
   type NoteMeta,
   type NotebookMeta,
   type PageInk,
+  type TextBox,
 } from '@inkwright/core';
 import { utf8Decode, utf8Encode } from './util.ts';
 import { mergePageSummaries, mergeTranscript } from './merge-listen.ts';
+import { mergeDocumentBodies } from './merge-document.ts';
 import { mergeApiKeys, mergePluginsConfig } from './merge-platform.ts';
 import { mergeCaptureFiles, mergeErasureFiles } from './merge-recall.ts';
 
@@ -283,6 +285,8 @@ export function mergePage(base: PageInk | null, local: PageInk, remote: PageInk,
   coll('images', (p) => p.images);
   coll('links', (p) => p.links);
   coll('objects', (p) => p.objects);
+  // Document bodies edited on both devices merge paragraph by paragraph (merge-document.ts).
+  if (out.texts) out.texts = mergeDocumentBodies(base, local, remote, out.texts as TextBox[]);
   // Authorship chains from both sides are unioned (docs/AUTHORSHIP.md).
   const chain = mergeAuthorship(local.authorship, remote.authorship);
   if (chain) out.authorship = chain;

@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft, Camera, CloudUpload, Undo2, Redo2, FileImage, FileText, FileType2, Files, Layers,
   AudioLines, Mic, MoreHorizontal, Pause, Play, Sparkles, Square, Tag, Trash2, Maximize2, FilePlus2, Copy, Scan, Search,
-  Signature, FileUp, Captions, MicVocal, Fingerprint,
+  Signature, FileUp, Captions, MicVocal, Fingerprint, Pointer, SunMoon,
 } from 'lucide-react';
 import { newId, NoteLockedError, PAGE_SIZE_PRESETS, pagePaper, pageSizeOf, type ImageItem, type InkStroke, type TextBox } from '@inkwright/core';
 import { InkEngine, type SelectionInfo, type Tool, type ToolState } from '../canvas/engine.ts';
@@ -52,6 +52,13 @@ import { isModuleOn, useModules } from '../modules/registry.ts';
 import { useInkActions } from '../inkactions/EditorParts.tsx';
 import { useEditorBridge } from '../plugins/editorBridge.ts';
 import { useEditorPlugins } from '../plugins/EditorPlugins.tsx';
+import { ThemeToggle, THEME_NAMES, nextTheme, switchTheme } from '../ui/ThemeToggle.tsx';
+import { NewNoteButton } from '../ui/NewNoteButton.tsx';
+import { useFingerDraw } from '../ui/FingerDraw.tsx';
+import { takeFillRequest } from '../fill/signIntent.ts';
+
+// Document notes (documents/) open in the rich-text editor, loaded only when one is opened.
+const DocumentEditor = lazy(() => import('../documents/DocumentEditor.tsx'));
 
 declare const __E2E__: boolean;
 /** Test builds (`vite build --mode e2e`) expose the document to end-to-end tests; releases never do. */
@@ -67,6 +74,9 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   const narrow = useMediaQuery('(max-width: 699px)');
   // A side dock only where there's room beside the page; foldables and tablets use the bottom tray.
   const sideDock = useMediaQuery('(min-width: 1100px)');
+  // The quick theme switch sits in the top bar where there's room; on narrow phones it's the first row of •••.
+  const roomForTheme = useMediaQuery('(min-width: 600px)');
+  const finger = useFingerDraw();
   const host = useRef<HTMLDivElement>(null);
   const [session, setSession] = useState<EditorSession | null>(null);
   const [engine, setEngine] = useState<InkEngine | null>(null);
@@ -95,7 +105,8 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   const latestText = useRef<TextBox | null>(null);
   const btn = { more: useRef<HTMLButtonElement>(null) };
   // Fill & sign (PDF notes): the form layer and its export dialog.
-  const [fill, setFill] = useState(false);
+  // Opened through "Sign a document": start with the form layer on.
+  const [fill, setFill] = useState(() => takeFillRequest(noteId));
   const [fillExport, setFillExport] = useState(false);
   // Smart ink (tables, solving, dates) and proof of authorship.
   const smartApi = useRef<SmartApi | null>(null);
@@ -503,6 +514,13 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   const openWikiLink = (title: string) => kb.follow(title);
 
   // ---- Render ----------------------------------------------------------------------------------
+  if (session && session.doc.meta.document && on('documents')) {
+    return (
+      <Suspense fallback={<div className="editor"><div className="ed-loading" aria-live="polite">Opening…</div></div>}>
+        <DocumentEditor session={session} onBack={() => navigate({ name: 'library' })} />
+      </Suspense>
+    );
+  }
   if (lockedGate && vault) {
     return <LockGate vault={vault} noteId={noteId} onUnlocked={() => setOpenTick((t) => t + 1)} onBack={() => navigate({ name: 'library' })} />;
   }
@@ -539,6 +557,9 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
             {recording != null ? <Square size={16} fill="currentColor" /> : <Mic size={19} />}
           </IconButton>}
           {recording != null && <span className="rec-time">{formatDuration(Date.now() - recording)}</span>}
+          {roomForTheme && <ThemeToggle repaint={() => engine?.invalidate()} />}
+          <NewNoteButton meta={doc?.meta ?? null} flush={async () => { await session?.flush(); }}
+            onNewPage={doc && engine && doc.meta.kind === 'paged' ? () => { const i = doc.addPage(engine.currentPageIndex + 1); setTimeout(() => engine.scrollToPage(i), 30); } : undefined} />
           {!studio.locked && on('assistant') && <button type="button" className={cx('ai-btn', panel === 'ai' && 'is-on')} onClick={() => setPanel(panel === 'ai' ? null : 'ai')} aria-pressed={panel === 'ai'} aria-label="AI" title="AI assistant">
             <Sparkles size={17} /><span>AI</span>
           </button>}
@@ -657,6 +678,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
         {/* Where each entry goes is decided in ui/editorMenu.tsx; this lists what the editor can do. */}
         <MenuTree label="More" onClose={() => setMenu(null)} items={buildEditorMenu({
           top: [
+            ...(!roomForTheme ? [{ label: `Theme: ${THEME_NAMES[settings.theme]}`, icon: <SunMoon size={16} />, hint: `Tap for ${THEME_NAMES[nextTheme(settings.theme)].toLowerCase()}`, onClick: () => switchTheme(nextTheme(settings.theme), () => engine?.invalidate()) }] : []),
             ...(noteHasPdf(doc) && on('fill-sign') ? [{ label: fill ? 'Stop filling in' : 'Fill & sign', icon: <Signature size={16} />, onClick: () => setFill(!fill) }] : []),
             ...(on('search') ? [{ label: 'Search everything', icon: <Search size={16} />, hint: `${modKey}K`, onClick: () => openPalette({ query: '' }) }] : []),
             { label: 'Pages', icon: <Layers size={16} />, hint: doc && doc.pageCount > 1 ? `${doc.pageCount}` : undefined, onClick: () => setPanel('pages') },
@@ -674,6 +696,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
               { label: 'Paper', icon: <Files size={16} />, onClick: () => setTimeout(() => setPaperOpen(true), 0) },
               { label: 'Writing sound & feel', icon: <AudioLines size={16} />, hint: settings.feel.sound ? `${Math.round(settings.feel.soundVolume * 100)}%` : 'Off', onClick: () => setTimeout(() => setMenu('feel'), 0) },
               { label: 'Fit to width', icon: <Maximize2 size={16} />, hint: `${modKey}0`, onClick: () => engine?.fitWidth() },
+              { label: 'Draw with finger', icon: <Pointer size={16} />, hint: finger.on ? 'On' : 'Off', onClick: finger.toggle },
             ],
             audio: [
               ...(narrow && !isArtifact ? [{ label: recording != null ? 'Stop recording' : 'Record audio', icon: <Mic size={16} />, onClick: () => void toggleRecording() }] : []),

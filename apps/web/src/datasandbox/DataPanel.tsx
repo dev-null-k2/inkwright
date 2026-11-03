@@ -114,10 +114,10 @@ function DataPanel({ vault, doc, engine, onClose }: { vault: AppVault; doc: Note
           <span id="ia-sql-hint" className="ia-muted">{mod}-Enter runs. Queries only read; nothing can change your data.</span>
         </label>
         <div className="ia-row">
-          <button type="button" className="btn btn-primary" onClick={() => void run()} disabled={!!busy || !sql.trim()}><Play size={15} aria-hidden /> {busy === 'run' ? 'Running…' : 'Run'}</button>
+          <button type="button" className="btn btn-primary" onClick={() => void run()} disabled={!!busy || !sql.trim()} title={!sql.trim() ? 'Write a query first' : undefined}><Play size={15} aria-hidden /> {busy === 'run' ? 'Running…' : 'Run'}</button>
           <form className="ia-ask" onSubmit={(e) => { e.preventDefault(); void ask(); }}>
             <input type="text" value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask in words, e.g. total by region" aria-label="Ask about the data in words" />
-            <button type="submit" className="btn" disabled={!!busy || !question.trim()}><Sparkles size={15} aria-hidden /> {busy === 'ask' ? 'Asking…' : 'Ask'}</button>
+            <button type="submit" className="btn" disabled={!!busy || !question.trim()} title={!question.trim() ? 'Type a question first' : undefined}><Sparkles size={15} aria-hidden /> {busy === 'ask' ? 'Asking…' : 'Ask'}</button>
           </form>
         </div>
         {attempts.length > 0 && (

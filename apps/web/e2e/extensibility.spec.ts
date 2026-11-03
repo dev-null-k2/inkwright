@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { modKey, newNote, openApp, editorMenu, editorMenuCommands } from './helpers.ts';
+import { modKey, newNote, openApp, editorMenu, editorMenuCommands, settingsGroup } from './helpers.ts';
 
 /**
  * The platform: modules (Settings › Modules), sandboxed plugins (install, permissions, panels,
@@ -44,7 +44,11 @@ test('modules switch features off and back, with dependencies and presets', asyn
   await expect(confirm).toContainText('Graph');
   await confirm.getByRole('button', { name: 'Turn off' }).click();
   await expect(await moduleSwitch(page, 'Graph')).not.toBeChecked();
-  await expect(page.locator('.set-nav')).not.toContainText('Knowledge');
+  // Its settings go with it. (The Knowledge group stays: Import & clip lives there too.)
+  await page.locator('.set-nav').getByRole('button', { name: /^Knowledge/ }).click();
+  await expect(page.getByRole('tab', { name: 'Notes & links' })).toHaveCount(0);
+  await expect(page.locator('.set-main')).not.toContainText('Daily notes');
+  await settingsGroup(page, 'Extend', 'Modules');
   // Turning Graph back on brings what it needs.
   await (await moduleSwitch(page, 'Graph')).click({ force: true });
   await expect(await moduleSwitch(page, 'Links & daily notes')).toBeChecked();

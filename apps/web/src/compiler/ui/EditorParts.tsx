@@ -51,7 +51,9 @@ export function useCompilerEditor({ doc, engine, host, view }: { doc: NoteDocume
     return () => { alive = false; off(); };
   }, [noteId, vault]);
   // Extraction of this note must exist for badge positions.
-  useEffect(() => { void allDocs(); }, [noteId]);
+  // Opening a note straight from a link or a reload can come before the compiler has started (it
+  // starts with the other modules once the library is indexed); it extracts every note then.
+  useEffect(() => { void allDocs().catch(() => {}); }, [noteId]);
 
   const explainNote = () => {
     if (!doc) return;
