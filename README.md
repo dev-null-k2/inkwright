@@ -20,7 +20,7 @@ Local-first. Bring your own model, or none. Open source. No server of ours, anyw
 ![Runs on](https://img.shields.io/badge/runs_on-Android_·_iPad_·_Mac_·_Windows_·_Linux_·_web-356b53)
 ![Server](https://img.shields.io/badge/server_required-none-356b53)
 
-<img src="docs/media/screens/ask.png" alt="A question written by hand, answered on the page by the AI in its own blue handwriting" width="880">
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/showcase/hero-dark.png"><img alt="A handwritten meeting note on a foldable with a question answered in the AI’s blue ink, the same note on a laptop, and a terminal where an MCP client searches and reads that note" src="docs/media/showcase/hero-light.png" width="880"></picture>
 
 </div>
 
@@ -44,7 +44,51 @@ Handwriting apps are good at ink and closed to everything else. Knowledge tools 
 | **Your notes are plain files.** | The vault is documented JSON, SVG and Markdown in a folder you own, synced through your own Drive, WebDAV or devices paired with an 8-character code. |
 | **Measured, not claimed.** | Every quality number in this README comes from an eval in the repository that you can re-run, including the weak ones. |
 
-<p align="center"><img src="docs/media/screens/assistant-local.png" alt="The assistant running Gemma on the device: asked about a budget written in a note, it searches the notes and answers that the car budget is 4000 dollars, with a citation" width="880"></p>
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/section-work-dark.svg"><img alt="Built for how you work" src="docs/media/section-work-light.svg" height="52"></picture>
+
+Every screen below is the real app, captured by a test (`apps/web/e2e/showcase.spec.ts`) with handwriting written by the app's own pen. Where an AI answers, a scripted model stands in, so the pictures show what the app does with a reply, not a particular model's wording. The terminal is a real MCP session against the same note (`scripts/brand/showcase-mcp.ts`).
+
+### Students
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/showcase/students-dark.png"><img alt="Left: a handwritten equation 3x + 2 = 14, lassoed and solved on the device with three steps. Right: a flashcard made from a handwritten definition, with the line it came from and FSRS intervals" src="docs/media/showcase/students-light.png" width="880"></picture>
+
+- **Solve what you wrote.** Lasso an equation and press Solve. It is read and solved exactly on the device, with every step, and no AI is asked.
+- **Flashcards from your own pages.** Definitions and facts you wrote become cards, scheduled with FSRS, each linked to the line it came from. "Teach it back" has a tutor quiz you on a notebook and point out the gaps.
+- **Lectures you can replay.** Record while you write; the transcript is made on the device and lines up with your ink, so tapping your ink plays what was said while you wrote it.
+
+### Professionals
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/showcase/professionals-dark.png"><img alt="Left: the assistant answering “what are the action items” from a handwritten meeting note, with a link to the page. Right: a consulting agreement PDF filled in and signed with a handwritten signature" src="docs/media/showcase/professionals-light.png" width="880"></picture>
+
+- **Meeting notes that answer back.** Ask about what you wrote and the answer links to the page it came from. Lasso a question on the page and the answer is written beside it in the AI's own ink; one undo removes it.
+- **Fill and sign any PDF.** Type into its fields, tick its boxes, draw your signature once and place it anywhere, then export a filled PDF.
+- **Documents with a pen on top.** Headings, tables and checklists, annotated by hand, exported to Word, PDF, Markdown or HTML.
+
+### Engineers
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/showcase/engineers-dark.png"><img alt="Left: four hand-drawn boxes joined by arrows (fetch a CSV, filter p99 over 250 ms, sort, draft a status update) run as a pipeline with each step’s output. Right: a design note whose link to createSession is flagged because the function’s signature changed" src="docs/media/showcase/engineers-light.png" width="880"></picture>
+
+- **Sketches that run.** Draw boxes and arrows and press Run. You confirm the graph it read before anything runs. Fetch, filter, sort, sum and chart need no AI; an AI step gets the upstream output as its input.
+- **Notes that know your code.** `[[code:src/auth.ts#createSession]]` links a note to a function. When the signature changes the note is flagged with old and new side by side, and `inkwright drift --check` fails CI the same way.
+- **Your notebook as an MCP server.** Claude Code, Cursor or Codex can search and read what you wrote by hand, and write only with your approval. More in [For software engineers](#for-software-engineers).
+
+### Researchers
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/showcase/researchers-dark.png"><img alt="Left: a compiled wiki proposal where each sentence is tagged Extracted or Ambiguous with its sources. Right: a handwritten methods note flagged because another note reports a different response rate" src="docs/media/showcase/researchers-light.png" width="880"></picture>
+
+- **A wiki that cites itself.** Notes compile into linked pages. Every sentence is tagged *extracted*, *inferred* or *ambiguous* and points to the exact spot it came from, and nothing is written until you accept it.
+- **A linter for contradictions.** "Response rate must stay above 40%" in one note and "averages 23%" in another are flagged, with both sides a tap away (precision 1.00, recall 0.92 on the labelled eval below).
+- **Explain this answer** separates what your notes support from what they don't, and names the model and prompt that wrote it.
+
+### Security and IT
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/showcase/enterprise-dark.png"><img alt="Left: Privacy and trust settings with per-notebook rules: Clients stays on this device, HR is read only, Journal is hidden. Right: the AI audit trail, verified: the record checks out, all entries signed, with emails kept private" src="docs/media/showcase/enterprise-light.png" width="880"></picture>
+
+- **Rules per notebook.** Hidden, read-only, or "stays on this device", and they hold for the assistant, routines, connected agents and the MCP server alike.
+- **Personal data stays home.** Emails, phone numbers and secrets are replaced before a request leaves and restored in the answer you see (precision 100 %, recall 98.2 % on the eval below).
+- **Nothing silent.** Agents can be set to propose changes you approve as a diff; every AI call and every agent read or write goes into a signed audit trail that verifies offline. An air-gapped Docker appliance is available for teams ([ENTERPRISE.md](docs/ENTERPRISE.md)).
+
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/section-features-dark.svg"><img alt="What it does" src="docs/media/section-features-light.svg" height="52"></picture>
 
@@ -107,9 +151,6 @@ Handwriting apps are good at ink and closed to everything else. Knowledge tools 
 
 </td></tr>
 </table>
-
-<p align="center"><img src="docs/media/screens/lecture.png" alt="A handwritten lecture page with a sketched square wave and its Fourier approximation" width="49%"> <img src="docs/media/screens/review-dark.png" alt="A design review with typed decisions, red handwritten margin notes and a hand-drawn diagram" width="49%"></p>
-<p align="center"><img src="docs/media/screens/solve.png" alt="Handwritten x + 1 = 3, lassoed and solved: x = 2, with the steps, read by ML Kit and worked out exactly on the device" width="49%"> <img src="docs/media/screens/document.png" alt="A document with a heading, checklist and table, with a pen stroke drawn over it" width="35%"></p>
 
 <a id="for-software-engineers"></a>
 ## For software engineers
