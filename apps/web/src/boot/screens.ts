@@ -8,7 +8,11 @@
 import { Suspense, createElement } from 'react';
 import { useSettings } from '../state/settings.ts';
 import { lazyNamed, preloadInSequence } from './lazy.ts';
-import { onBackground, scheduleBackground } from './background.ts';
+import { onBackground, releaseBackground, scheduleBackground } from './background.ts';
+import { whenJoinLinkQueued } from '../peer/joinStash.ts';
+
+// A join link opened in the first moment, before the join sheet is mounted: mount it now.
+whenJoinLinkQueued(releaseBackground);
 
 export const Editor = lazyNamed(() => import('../screens/Editor.tsx'), 'Editor');
 export const Settings = lazyNamed(() => import('../screens/Settings.tsx'), 'Settings');
