@@ -4,6 +4,24 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 
 ## Unreleased
 
+### On-device AI that answers from what you wrote
+- The assistant never shows raw tool-call syntax. Tool calls are read in every dialect small
+  models write (Gemma 4 / LiteRT-LM, Qwen/Hermes, Llama, Mistral, JSON, Python-style), invented
+  tool names and wrong argument shapes are repaired, and a call that can't be read gets one retry.
+- With an on-device model the page's handwriting is recognized on the device before asking, and
+  the page, the lasso selection, the best passages from your notes and relevant memory are given
+  to the model as numbered sources. "What's the budget here?" answers from the page; a dodge like
+  "please provide more context" is replaced by what your notes say; nothing found says so plainly.
+- Lasso Ask AI, Write the answer here and Convert to text read handwriting on the device first
+  and send pictures only to strong cloud or self-hosted vision models; Convert says who read it.
+- Chats are kept per note (and as general chats) across restarts, with Chats › New chat and past
+  chats in the assistant panel; every engine gets the earlier turns.
+- Study cards and Teach me back skip recognizer fragments like "ools".
+- Settings › AI on Android: AICore restarting while it installs Gemini Nano is retried
+  automatically and described calmly (raw codes under Details); every download button shows
+  "Downloading… n%" with Cancel, then Ready.
+- `npm run eval:local` runs a real small model on the CPU against these cases (docs/LOCAL_AI.md).
+
 ### Sharing and pairing
 - Share live, pair a device and Sync now with one short code (`K7PM-2Q9X`), a QR code or a link
   sent from the share sheet — typed one way, no code back. The code is a CPace password, so the
