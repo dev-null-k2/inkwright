@@ -229,6 +229,12 @@ export interface TextBox {
   origin?: ContentOrigin;
   /** Typed by a live collaborator (see `InkStroke.author`). */
   author?: ItemAuthor;
+  /**
+   * `"document"`: the body of a document note (richdoc.ts) — Markdown that the document editor
+   * shows as formatted text, rather than a box placed on the page. Optional; readers that don't
+   * know it show it as an ordinary text box.
+   */
+  role?: 'document';
 }
 
 /** An image placed on a page; the bytes live in the note's assets folder. */
@@ -419,6 +425,11 @@ export interface NoteMeta {
    * (packages/core/src/dev/drift.ts). Optional; see docs/VAULT_FORMAT.md › Code sources.
    */
   codeRefs?: Record<string, CodeRefBaseline>;
+  /**
+   * Set on document notes (typed, formatted text with optional ink on top; see richdoc.ts and
+   * docs/VAULT_FORMAT.md › Documents): the layout width ink annotations were written against.
+   */
+  document?: { width: number };
   formatVersion: number;
 }
 
