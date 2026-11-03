@@ -1,6 +1,6 @@
-import { extractJson } from '../json.ts';
 import type { ChatMessage, ChatRequest, ChatResult, ContentPart, Provider, StreamHandler, ToolCall, ToolDef } from '../types.ts';
-import { finish, localCallId, withToolNames } from './common.ts';
+import { finish, withToolNames } from './common.ts';
+import { parseToolCalls, ToolSyntaxStream } from './tool-dialects.ts';
 
 const OPEN = '<tool_call>';
 const CLOSE = '</tool_call>';
@@ -51,71 +51,39 @@ export function renderToolTranscript(messages: ChatMessage[]): ChatMessage[] {
   return out.map(({ fromTool: _f, ...m }) => m);
 }
 
-/** Extracts `<tool_call>` blocks (closed, or one left open at the end) and the remaining prose. */
+/**
+ * Extracts tool calls (every dialect in tool-dialects.ts, not only `<tool_call>` blocks) and the
+ * remaining prose. Kept for callers that only need calls and text.
+ */
 export function parseToolCallText(text: string, tools?: ToolDef[]): { text: string; toolCalls: ToolCall[] } {
-  const calls: ToolCall[] = [];
-  const known = tools ? new Set(tools.map((t) => t.name)) : undefined;
-  const add = (body: string) => {
-    const v = extractJson(body) as any;
-    if (!v || typeof v !== 'object' || typeof v.name !== 'string') return false;
-    let args = v.arguments ?? v.args ?? v.parameters ?? v.input ?? {};
-    if (typeof args === 'string') args = (extractJson(args) as Record<string, unknown>) ?? {};
-    calls.push({ id: localCallId('ptc'), name: v.name, arguments: args && typeof args === 'object' ? args : {} });
-    return true;
-  };
-  let rest = text.replace(/<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/g, (_m, body: string) => (add(body) ? '' : _m));
-  const open = rest.lastIndexOf(OPEN);
-  if (open >= 0 && add(rest.slice(open + OPEN.length))) rest = rest.slice(0, open);
-  // Small models sometimes answer with a bare {"name", "arguments"} object.
-  if (!calls.length && known) {
-    const v = extractJson(text) as any;
-    if (v && typeof v === 'object' && typeof v.name === 'string' && known.has(v.name) && ('arguments' in v || 'args' in v) && text.trim().startsWith('{')) {
-      add(JSON.stringify(v));
-      rest = '';
-    }
-  }
-  return { text: rest.replace(/\n{3,}/g, '\n\n').trim(), toolCalls: calls };
+  const r = parseToolCalls(text, tools);
+  return { text: r.text, toolCalls: r.toolCalls };
 }
 
-/** Streams text deltas through, holding back anything that may be (part of) a tool_call block. */
-class ToolTagFilter {
-  private pending = '';
-  private hidden = false;
-  constructor(private emit: (s: string) => void) {}
-  push(delta: string) {
-    if (this.hidden) return;
-    this.pending += delta;
-    const at = this.pending.indexOf(OPEN);
-    if (at >= 0) {
-      this.out(this.pending.slice(0, at));
-      this.pending = '';
-      this.hidden = true;
-      return;
-    }
-    // Keep a trailing partial "<tool_ca" until we know what it is.
-    let keep = 0;
-    for (let k = Math.min(OPEN.length - 1, this.pending.length); k > 0; k--) {
-      if (OPEN.startsWith(this.pending.slice(-k))) {
-        keep = k;
-        break;
-      }
-    }
-    this.out(this.pending.slice(0, this.pending.length - keep));
-    this.pending = this.pending.slice(this.pending.length - keep);
-  }
-  end() {
-    if (!this.hidden) this.out(this.pending);
-    this.pending = '';
-  }
-  private out(s: string) {
-    if (s) this.emit(s);
-  }
+/** The message that asks a model to rewrite a tool call it got wrong (the one repair retry). */
+export function toolRepairMessage(malformed: string[]): string {
+  return [
+    'Your last message tried to call a tool, but the call could not be read:',
+    malformed.map((m) => m.slice(0, 200)).join('\n'),
+    `Write the call again exactly in this form, with JSON inside: ${OPEN}{"name": "tool_name", "arguments": {"key": "value"}}${CLOSE}`,
+    'Or, if no tool is needed, just answer.',
+  ].join('\n');
+}
+
+function sumUsage(a?: ChatResult['usage'], b?: ChatResult['usage']): ChatResult['usage'] {
+  if (!a) return b;
+  if (!b) return a;
+  return { inputTokens: a.inputTokens + b.inputTokens, outputTokens: a.outputTokens + b.outputTokens };
 }
 
 /**
  * Gives tool calling to a text-only provider: tools are described in the system prompt, the
  * model writes `<tool_call>{json}</tool_call>` blocks, and those are parsed back into ToolCalls.
  * Tool results are fed back as `<tool_result>` user turns. Works with any provider.
+ *
+ * Models trained on another dialect (Gemma 4, Llama, Mistral, bare JSON) are understood too
+ * (tool-dialects.ts); their syntax never reaches the stream, and a call that cannot be read gets
+ * one repair retry before the turn ends as prose.
  */
 export function withPromptTools(inner: Provider, opts: { id?: string; label?: string } = {}): Provider {
   return {
@@ -132,10 +100,20 @@ export function withPromptTools(inner: Provider, opts: { id?: string; label?: st
         messages = [{ role: 'system', content: instr }, ...messages];
       }
       const innerReq: ChatRequest = { ...req, messages, tools: undefined, toolChoice: undefined };
-      const filter = new ToolTagFilter((s) => onEvent?.({ type: 'text', delta: s }));
-      const r = await inner.chat(innerReq, onEvent ? (e) => (e.type === 'text' ? filter.push(e.delta) : undefined) : undefined);
-      const parsed = tools.length ? parseToolCallText(r.text, tools) : { text: r.text, toolCalls: [] };
-      if (parsed.toolCalls.length === 0) filter.end();
+      const stream = new ToolSyntaxStream((s) => onEvent?.({ type: 'text', delta: s }), tools);
+      let r = await inner.chat(innerReq, onEvent ? (e) => (e.type === 'text' ? stream.push(e.delta) : undefined) : undefined);
+      let parsed = tools.length ? parseToolCalls(r.text, tools) : { ...parseToolCalls(r.text), toolCalls: [] };
+      if (tools.length && !parsed.toolCalls.length && parsed.malformed.length && !req.signal?.aborted) {
+        // One repair retry: show the model what could not be read and the exact form to use.
+        const retry: ChatRequest = { ...innerReq, messages: [...messages, { role: 'assistant', content: r.text }, { role: 'user', content: toolRepairMessage(parsed.malformed) }] };
+        const again = await inner.chat(retry);
+        const reparsed = parseToolCalls(again.text, tools);
+        if (reparsed.toolCalls.length || !reparsed.malformed.length) {
+          r = { ...again, usage: sumUsage(r.usage, again.usage) };
+          parsed = reparsed;
+        }
+      }
+      if (!parsed.toolCalls.length) stream.finish(parsed.text);
       for (const call of parsed.toolCalls) onEvent?.({ type: 'tool_call', call });
       const result: ChatResult = {
         text: parsed.text,
