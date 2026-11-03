@@ -18,11 +18,10 @@ import './samples.css';
 let kept: HandwritingSample[] = [];
 
 /** Captures strokes on a canvas: every coalesced pointer event, with pressure and timing. */
-function usePad(pad: React.RefObject<HTMLCanvasElement | null>, onChange: (n: number) => void) {
+function usePad(el: HTMLCanvasElement | null, onChange: (n: number) => void) {
   const strokes = useRef<SampleStroke[]>([]);
   const redraw = useRef<() => void>(() => {});
   useEffect(() => {
-    const el = pad.current;
     if (!el) return;
     const ctx = el.getContext('2d');
     const ink = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim() || 'currentColor';
@@ -58,7 +57,7 @@ function usePad(pad: React.RefObject<HTMLCanvasElement | null>, onChange: (n: nu
     const down = (e: PointerEvent) => {
       if (e.button > 0) return;
       e.preventDefault();
-      el.setPointerCapture?.(e.pointerId);
+      try { el.setPointerCapture(e.pointerId); } catch { /* synthetic or already-lifted pointer */ }
       cur = { s: { createdAt: Date.now(), pointer: e.pointerType || 'mouse', points: [] }, t0: e.timeStamp, id: e.pointerId };
       strokes.current.push(cur.s);
       add(e);
@@ -83,7 +82,7 @@ function usePad(pad: React.RefObject<HTMLCanvasElement | null>, onChange: (n: nu
       el.removeEventListener('pointercancel', up);
       removeEventListener('resize', fit);
     };
-  }, [pad]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [el]); // eslint-disable-line react-hooks/exhaustive-deps
   return {
     take(): SampleStroke[] { const s = strokes.current; strokes.current = []; redraw.current(); onChange(0); return s; },
     clear() { strokes.current = []; redraw.current(); onChange(0); },
@@ -92,11 +91,12 @@ function usePad(pad: React.RefObject<HTMLCanvasElement | null>, onChange: (n: nu
 
 export function SampleRecorderDialog({ onBack, onClose }: { onBack: () => void; onClose: () => void }) {
   const toast = useApp((a) => a.toast);
-  const padRef = useRef<HTMLCanvasElement>(null);
+  // A callback ref: the dialog mounts its content after its own first render.
+  const [padEl, setPadEl] = useState<HTMLCanvasElement | null>(null);
   const [count, setCount] = useState(0);
   const [label, setLabel] = useState('');
   const [samples, setSamples] = useState<HandwritingSample[]>(kept);
-  const pad = usePad(padRef, setCount);
+  const pad = usePad(padEl, setCount);
   useEffect(() => { kept = samples; }, [samples]);
 
   const save = async () => {
@@ -112,7 +112,7 @@ export function SampleRecorderDialog({ onBack, onClose }: { onBack: () => void; 
   };
 
   const share = async () => {
-    const el = padRef.current;
+    const el = padEl;
     const file = samplesFile(samples, {
       app: APP_VERSION,
       device: { userAgent: navigator.userAgent, platform: nativePlatform, screen: { width: screen.width, height: screen.height, dpr: devicePixelRatio || 1 } },
@@ -136,7 +136,7 @@ export function SampleRecorderDialog({ onBack, onClose }: { onBack: () => void; 
       <div className="dc-test hs">
         <p>Write something on the pad as you normally would — a sum, a fraction, one symbol — then type what you meant and save it. The file stays on this device until you share it; it helps tune how Inkwright reads your handwriting.</p>
         <div className="dc-pad-wrap">
-          <canvas ref={padRef} className="dc-pad" aria-label="Sample pad: write here" />
+          <canvas ref={setPadEl} className="dc-pad" aria-label="Sample pad: write here" />
           <span className="dc-count" aria-live="polite">{count ? `${count} ${count === 1 ? 'stroke' : 'strokes'}` : 'Write here'}</span>
           {count > 0 && <button type="button" className="btn btn-ghost btn-sm dc-clear" onClick={() => pad.clear()}><Eraser size={14} /> Clear</button>}
         </div>
