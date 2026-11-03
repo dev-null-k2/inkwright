@@ -31,7 +31,6 @@ export function applyThemeAttribute(mode: ThemeMode, root: HTMLElement = documen
 }
 
 const prefersReducedMotion = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-const twoFrames = () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 
 /**
  * Switches the theme with a short cross-fade. Browsers with view transitions fade the whole screen
@@ -46,10 +45,14 @@ export function switchTheme(mode: ThemeMode, repaint?: () => void): void {
     repaint?.();
   };
   if (prefersReducedMotion()) { set(); return; }
-  const doc = document as Document & { startViewTransition?: (cb: () => Promise<void> | void) => unknown };
+  type Transition = { ready?: Promise<void>; finished?: Promise<void>; updateCallbackDone?: Promise<void> };
+  const doc = document as Document & { startViewTransition?: (cb: () => void) => Transition };
   if (typeof doc.startViewTransition === 'function') {
     try {
-      doc.startViewTransition(async () => { set(); await twoFrames(); });
+      // The new look is live in the transition, so the update is synchronous. A transition the
+      // browser skips (tab hidden, another one starting) rejects its promises: that's not an error.
+      const t = doc.startViewTransition(set);
+      for (const p of [t?.ready, t?.finished, t?.updateCallbackDone]) p?.catch(() => {});
       return;
     } catch { /* fall through to the CSS fade */ }
   }

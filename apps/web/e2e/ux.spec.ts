@@ -49,22 +49,22 @@ test('theme: one tap in the library and the editor cycles Light, Dark, System an
   const lib = themeButton(page, '.lib-top');
   await expect(lib).toHaveAccessibleName(/^Theme: System\. Switch to light/);
   await lib.click();
-  expect(await theme(page)).toBe('light');
+  await expect.poll(() => theme(page)).toBe('light');
   await lib.click();
-  expect(await theme(page)).toBe('dark');
+  await expect.poll(() => theme(page)).toBe('dark');
   await page.reload();
   await expect(page.locator('.library')).toBeVisible();
-  expect(await theme(page)).toBe('dark');
+  await expect.poll(() => theme(page)).toBe('dark');
 
   // In the editor too, next to "+" and AI.
   await newNote(page);
   const ed = themeButton(page, '.ed-top');
   await expect(ed).toHaveAccessibleName(/^Theme: Dark/);
   await ed.click();
-  expect(await theme(page)).toBeNull(); // System: follows the device
+  await expect.poll(() => theme(page)).toBeNull(); // System: follows the device
   await expect(page.locator('.toast')).toContainText('Following your device');
   await ed.click();
-  expect(await theme(page)).toBe('light');
+  await expect.poll(() => theme(page)).toBe('light');
 });
 
 test('theme: with reduced motion the switch is instant (no fade)', async ({ page }) => {
@@ -160,7 +160,7 @@ for (const vp of [{ width: 412, height: 915, name: 'folded (412 px)' }, { width:
       await expect(row).toBeVisible();
       const before = await theme(page);
       await row.click();
-      expect(await theme(page)).not.toBe(before);
+      await expect.poll(() => theme(page)).not.toBe(before);
     } else {
       await expect(themeButton(page, '.ed-top')).toBeVisible();
     }
