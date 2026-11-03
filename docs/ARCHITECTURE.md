@@ -360,6 +360,10 @@ See [COLLABORATION.md](COLLABORATION.md) for the protocol and threat model.
 - **Device sync**: `PeerRemote` makes the other device's vault a `Remote`, so the ordinary
   `SyncEngine` merges and guards exactly as with Drive or WebDAV; the other side serves its vault
   through `servePeerVault`. Optional signalling through `inkwright-mcp --signal-token`.
+- **Short codes** (`peer/{cpace,shortcode,rendezvous}.ts`): an eight-character code whose last
+  five characters are a CPace password (ristretto255, draft-irtf-cfrg-cpace test vectors); the
+  offer and answer travel sealed under its key through ntfy (ntfy.sh by default) or the
+  self-hosted mailbox, and the key becomes the peer handshake's pairing secret.
 - **Live sharing**: `CollabReplica` turns `NoteDocument` edits into LWW-register ops with
   fractional positions and applies others' ops as commits with an `author`; the editor streams
   strokes in progress (`engine.liveStroke`) and cursors (`engine.pageAtScreen`).

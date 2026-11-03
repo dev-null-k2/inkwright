@@ -4,6 +4,15 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 
 ## Unreleased
 
+### Sharing and pairing
+- Share live, pair a device and Sync now with one short code (`K7PM-2Q9X`), a QR code or a link
+  sent from the share sheet — typed one way, no code back. The code is a CPace password, so the
+  relay (ntfy.sh by default, your own ntfy, or `inkwright-mcp --signal-token`) learns nothing it
+  could use; codes work once, for ten minutes, and lock after five wrong tries. The long codes
+  remain under Advanced for use without any relay (docs/COLLABORATION.md).
+- Paired devices keep listening on a self-hosted relay even if it refused them at first (the
+  token is read for each request).
+
 ### Agents and the server
 - Credential executor: provider keys and connector tokens held by a separate process that makes
   calls with them, policy-checked and audited, and never hands a key out (docs/CREDENTIALS.md).

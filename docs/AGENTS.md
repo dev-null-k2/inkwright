@@ -357,7 +357,8 @@ JSON Schema and a conformance suite: [spec/personal-context/v1.md](../spec/perso
 
 `--signal-token <secret>` (or `INKWRIGHT_SIGNAL_TOKEN`, HTTP mode only, ≥ 16 characters) adds a
 tiny mailbox at `/signal/v1` that lets paired Inkwright devices find each other without exchanging
-codes by hand. It has its own token — handing it to a device opens the mailbox, never the vault —
+codes by hand, and carries short codes (sharing and pairing) instead of the public ntfy.sh when
+it is set in the app. It has its own token — handing it to a device opens the mailbox, never the vault —
 and it stores only sealed, unlinkable messages in memory for ten minutes. See
 [COLLABORATION.md](COLLABORATION.md#signalling-without-a-server--and-with-one-you-run).
 

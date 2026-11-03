@@ -14,11 +14,12 @@
  *   weaker model. OPAQUE is augmented (client/server), which does not fit two equal devices.
  * - **No vetted JavaScript CPace library exists**, so this file composes audited primitives:
  *   ristretto255, its element derivation (RFC 9496 §4.3.4) and SHA-512 from `@noble/curves` and
- *   `@noble/hashes` (audited by Cure53 in 2024 and Trail of Bits in 2023). The construction
+ *   `@noble/hashes` (curves: independent audits by Cure53 in 2024, whose scope included ed25519,
+ *   its add-ons and hash-to-curve, and Trail of Bits in 2023; hashes: Cure53 in 2022). The construction
  *   follows draft-irtf-cfrg-cpace-12 for ristretto255/SHA-512 exactly, and the unit tests check it
  *   against the draft's published test vectors (generator, Ya, Yb, K, ISK and sid output).
  *
- * Usage here (shortcode.ts): the guest is the initiator, the host the responder; the channel
+ * Usage here (rendezvous.ts): the guest is the initiator, the host the responder; the channel
  * identifier binds the rendezvous room and protocol, the session id is a fresh random value the
  * guest picks, and the associated data names each role. After CPace, explicit key confirmation
  * (`confirmationTag`) lets each side reject a wrong code before anything else is sent.
