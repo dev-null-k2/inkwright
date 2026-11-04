@@ -116,7 +116,7 @@ export async function makeFixture(): Promise<Fixture> {
     },
     async cleanup() {
       for (const c of contexts) c.close();
-      await rm(dir, { recursive: true, force: true });
+      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }); // a background write (Activity, audit) may still be landing
     },
   };
 }
