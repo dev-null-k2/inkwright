@@ -97,7 +97,7 @@ export const DEFAULT_SETTINGS: Settings = {
   recognition: { engine: 'auto', language: 'en-US', autoAI: false },
   ai: { providers: [], activeId: null, confirmDestructive: true },
   sync: {
-    googleClientId: (import.meta.env?.VITE_GOOGLE_CLIENT_ID as string | undefined) ?? '',
+    googleClientId: builtInGoogleClientId(),
     account: null,
     drive: { enabled: false, folderName: 'Inkwright', lastSync: null },
     webdav: { enabled: false, url: '', username: '', lastSync: null },
@@ -110,6 +110,22 @@ export const DEFAULT_SETTINGS: Settings = {
   smartInk: { suggestions: true },
   authorship: { deviceName: '', attachToPdf: true },
 };
+
+/**
+ * Inkwright's own Google sign-in client (the published Web client; client IDs are public by
+ * design: docs/GOOGLE_SETUP.md). Built into the web app at dev-null-k2.github.io and the Android
+ * app, so anyone can sign in with nothing to paste. A fork sets VITE_GOOGLE_CLIENT_ID instead.
+ * Not built in where Google's web sign-in can't work: the single-file build (opened from disk) and
+ * the desktop app (its window isn't a web address Google accepts); nor in test builds.
+ */
+function builtInGoogleClientId(): string {
+  // (Inside the function: DEFAULT_SETTINGS above calls this before module-level consts exist.)
+  const INKWRIGHT_GOOGLE_CLIENT_ID = '923169809273-h05sf2hkc3l22pn7o72irkkmone242f2.apps.googleusercontent.com';
+  const env = import.meta.env?.VITE_GOOGLE_CLIENT_ID as string | undefined;
+  if (env) return env;
+  const mode = import.meta.env?.MODE as string | undefined;
+  return mode === 'production' || mode === 'native' ? INKWRIGHT_GOOGLE_CLIENT_ID : '';
+}
 
 const KEY = 'inkwright.settings.v1';
 
@@ -127,6 +143,8 @@ function load(): Settings {
       out[k] = d && typeof d === 'object' && !Array.isArray(d) && v && typeof v === 'object' && !Array.isArray(v) ? { ...d, ...v } : v;
     }
     if (!Array.isArray(out.tray) || !out.tray.length) out.tray = DEFAULT_TRAY;
+    // An install from before a client ID was built in saved an empty one: use the built-in one.
+    if (out.sync && !String(out.sync.googleClientId ?? '').trim()) out.sync = { ...out.sync, googleClientId: DEFAULT_SETTINGS.sync.googleClientId };
     return out as Settings;
   } catch {
     return DEFAULT_SETTINGS;

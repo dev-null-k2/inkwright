@@ -37,6 +37,13 @@ Google requires every app that signs users in to register an OAuth client. This 
 
 ## 3. Give Inkwright the web client ID
 
+Inkwright's own builds (the web app at dev-null-k2.github.io and the Android app) already include
+Inkwright's published Web client ID (`apps/web/src/state/settings.ts`), so people just tap **Sign in
+with Google**. Its Android clients are registered for package `app.inkwright` with the upload key's
+SHA-1 (`62:4D:60:8C:…:B5:2A`). A fork with its own Google project replaces it as below. The desktop
+app and the single-file build don't offer Google sign-in (their windows aren't web addresses Google
+accepts): there, sync through the Google Drive for desktop folder instead.
+
 Pick one of these:
 
 - **Build it in (recommended for publishing):** put `VITE_GOOGLE_CLIENT_ID=<your web client id>` in `apps/web/.env`, then rebuild.
