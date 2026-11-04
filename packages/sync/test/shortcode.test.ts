@@ -307,7 +307,9 @@ describe('meeting by short code', () => {
     const s = await share(relay);
     await s.join();
     await until(() => s.states.some((x) => x.phase === 'done'));
-    const secrets = [s.h.code.value, s.h.code.password, formatShortCode(s.h.code), NOTE_TITLE, 'Ada', 'Grace', 'fingerprint', '192.168.1.20', 'v=0', 'ink1:', 'ink0:', s.host.info.key, s.guest.info.key, s.host.info.id];
+    // Device names are checked as JSON strings ("Ada"), which is how they would leak: bare, a
+    // three-letter name turns up by chance in random base64 (salts, nonces) about once in 600 runs.
+    const secrets = [s.h.code.value, s.h.code.password, formatShortCode(s.h.code), NOTE_TITLE, '"Ada"', '"Grace"', 'fingerprint', '192.168.1.20', 'v=0', 'ink1:', 'ink0:', s.host.info.key, s.guest.info.key, s.host.info.id];
     expect(relay.seen.length).toBeGreaterThanOrEqual(4); // claim, a, b, c
     for (const { room, text } of relay.seen) {
       expect(room).toBe(await rendezvousRoom(s.h.code.nameplate));

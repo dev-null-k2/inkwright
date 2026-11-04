@@ -225,6 +225,7 @@ Every number below comes from an eval or test in this repository and can be re-r
 
 - **In a browser:** [open the app](https://dev-null-k2.github.io/inkwright/app/). It installs as an offline app on Mac, Windows, Linux, ChromeOS and iPad. Your notes stay in the browser until you connect Google Drive, WebDAV or a folder.
 - **Android:** download `Inkwright-<version>-arm64-v8a.apk` from [Releases](https://github.com/dev-null-k2/inkwright/releases) (`armeabi-v7a` for older 32-bit phones). Google Play is coming.
+- **Sync with Google Drive:** in the web app or on Android, open Settings › Sync & devices › **Sign in with Google** and pick your account. Notes go to an *Inkwright* folder in your own Drive; the app can't see anything else there. Or pair two devices with an 8-character code, or use WebDAV or a folder.
 - **Windows, Mac, Linux:** the desktop app (`.exe`, `.dmg`, `.deb`, `.AppImage`) is on the same [Releases](https://github.com/dev-null-k2/inkwright/releases) page. It adds a memory timeline of what you worked on and a journal that writes itself ([DESKTOP.md](docs/DESKTOP.md)). Beta builds are not code-signed yet, so the first launch asks you to confirm.
 - **From source:**
 
