@@ -389,6 +389,17 @@ describe('checking and updating', () => {
     expect(useUpdates.getState().phase).toEqual({ kind: 'ready', path: '/cache/updates/Inkwright-900206-arm64-v8a.apk' });
   });
 
+  it('remembers the offer across restarts and forgets it once that version runs', async () => {
+    await checkForUpdates();
+    expect(JSON.parse(localStorage.getItem('inkwright.updates.v1')!).offer.versionCode).toBe(900206);
+    // Updated and relaunched minutes later: no new check, and the old offer goes away.
+    fake.build = '900206';
+    const stop = startUpdateChecks({ firstDelayMs: 60_000 });
+    await vi.waitFor(() => expect(useUpdates.getState().offer).toBeNull());
+    expect(useUpdates.getState().phase).toEqual({ kind: 'up-to-date' });
+    stop();
+  });
+
   it('checks after startup and then every six hours, not on every launch', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'setInterval', 'Date'] });
     const stop = startUpdateChecks({ firstDelayMs: 1000 });

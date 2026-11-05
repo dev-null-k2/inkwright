@@ -54,14 +54,18 @@ interface Persisted {
   cache: ReleasesCache | null;
   /** "Later": the banner for this version (and older) stays hidden until `until`. */
   snooze: { versionCode: number; until: number } | null;
+  /**
+   * The update found by the last check, kept across restarts so a relaunch shortly after (when
+   * GitHub isn't asked again) still offers it. Dropped once the running app is that new.
+   */
+  offer: UpdateOffer | null;
+  note: CheckNote;
 }
 
 export interface UpdatesState extends Persisted {
   /** The running app, from App.getInfo(). */
   current: { version: string; versionCode: number } | null;
-  offer: UpdateOffer | null;
   phase: UpdatePhase;
-  note: CheckNote;
   /** Android 12+ will update without asking (Inkwright installed itself before). */
   silentInstall: boolean;
   /** Android's API level (updates install without asking only from 31, Android 12). */
@@ -71,7 +75,13 @@ export interface UpdatesState extends Persisted {
 const KEY = 'inkwright.updates.v1';
 export const SNOOZE_MS = 24 * 60 * 60 * 1000;
 
-const DEFAULTS: Persisted = { beta: true, lastChecked: null, retryAt: null, cache: null, snooze: null };
+const DEFAULTS: Persisted = { beta: true, lastChecked: null, retryAt: null, cache: null, snooze: null, offer: null, note: null };
+const NOTES: readonly CheckNote[] = ['offline', 'rate-limited', 'error', 'no-apk'];
+
+function validOffer(o: unknown): o is UpdateOffer {
+  const v = o as UpdateOffer | null;
+  return !!v && typeof v.version === 'string' && typeof v.versionCode === 'number' && typeof v.url === 'string' && typeof v.size === 'number' && typeof v.notes === 'string';
+}
 
 function load(): Persisted {
   try {
@@ -83,27 +93,35 @@ function load(): Persisted {
       retryAt: typeof v.retryAt === 'number' ? v.retryAt : null,
       cache: v.cache && typeof v.cache.etag === 'string' && Array.isArray(v.cache.releases) ? v.cache : null,
       snooze: v.snooze && typeof v.snooze.versionCode === 'number' && typeof v.snooze.until === 'number' ? v.snooze : null,
+      offer: validOffer(v.offer) ? v.offer : null,
+      note: NOTES.includes(v.note as CheckNote) ? (v.note as CheckNote) : null,
     };
   } catch {
     return { ...DEFAULTS };
   }
 }
 
+const restingPhase = (p: Pick<Persisted, 'offer' | 'lastChecked'>): UpdatePhase => (p.offer ? { kind: 'available' } : p.lastChecked ? { kind: 'up-to-date' } : { kind: 'idle' });
+
+const initial = load();
+
 export const useUpdates = create<UpdatesState>(() => ({
-  ...load(),
+  ...initial,
   current: null,
-  offer: null,
-  phase: { kind: 'idle' },
-  note: null,
+  phase: restingPhase(initial),
   silentInstall: false,
   sdk: null,
 }));
 
+const PERSISTED = ['beta', 'lastChecked', 'retryAt', 'cache', 'snooze', 'offer', 'note'] as const;
+
 useUpdates.subscribe((s, prev) => {
-  if (s.beta === prev.beta && s.lastChecked === prev.lastChecked && s.retryAt === prev.retryAt && s.cache === prev.cache && s.snooze === prev.snooze) return;
-  const { beta, lastChecked, retryAt, cache, snooze } = s;
-  safeStorage.set(KEY, JSON.stringify({ beta, lastChecked, retryAt, cache, snooze }));
+  if (PERSISTED.every((k) => s[k] === prev[k])) return;
+  safeStorage.set(KEY, JSON.stringify(Object.fromEntries(PERSISTED.map((k) => [k, s[k]]))));
 });
+
+/** Where the updater rests when nothing is under way: the offer, up to date, or never checked. */
+export const settledPhase = (): UpdatePhase => restingPhase(useUpdates.getState());
 
 /** Whether "Later" still hides the banner for `offer`. A newer version than the snoozed one shows at once. */
 export function isSnoozed(s: Pick<UpdatesState, 'snooze'>, offer: UpdateOffer, now = Date.now()): boolean {
@@ -128,5 +146,5 @@ export function snoozeOffer(now = Date.now()): void {
 
 /** Tests only. */
 export function resetUpdatesForTests(): void {
-  useUpdates.setState({ ...DEFAULTS, current: null, offer: null, phase: { kind: 'idle' }, note: null, silentInstall: false, sdk: null });
+  useUpdates.setState({ ...DEFAULTS, current: null, phase: { kind: 'idle' }, silentInstall: false, sdk: null });
 }

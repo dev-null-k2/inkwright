@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react';
 import { useModule } from '../modules/registry.ts';
 import { bannerVisible, useUpdates } from './store.ts';
+import { updaterPlugin } from './plugin.ts';
 
 const UpdateBanner = lazy(() => import('./UpdateBanner.tsx'));
 
@@ -11,8 +12,9 @@ const UpdateBanner = lazy(() => import('./UpdateBanner.tsx'));
  */
 export function LibraryUpdateSlot() {
   const on = useModule('updates');
-  const show = useUpdates((s) => bannerVisible(s));
-  if (!on || !show) return null;
+  // Not before the running version is known: a remembered offer may be the version just installed.
+  const show = useUpdates((s) => s.current != null && bannerVisible(s));
+  if (!on || !show || !updaterPlugin()) return null;
   return (
     <Suspense fallback={null}>
       <UpdateBanner />

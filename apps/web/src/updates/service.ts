@@ -16,7 +16,7 @@ import type { PluginListenerHandle } from '@capacitor/core';
 import { fetchReleases, pickRelease, type FetchDeps } from './github.ts';
 import { reasonFor } from './messages.ts';
 import { errorCode, updaterPlugin, type UpdaterPlugin } from './plugin.ts';
-import { useUpdates, type UpdateOffer, type UpdatePhase } from './store.ts';
+import { settledPhase, useUpdates, type UpdateOffer, type UpdatePhase } from './store.ts';
 
 export const CHECK_EVERY_MS = 6 * 60 * 60 * 1000;
 /** A launch soon after the previous check (reopening the app) doesn't ask GitHub again. */
@@ -37,12 +37,18 @@ let listeners: PluginListenerHandle[] = [];
 let fetchDeps: FetchDeps | undefined;
 
 /** The phase to return to after a check that couldn't finish. */
-const restingPhase = (): UpdatePhase => (useUpdates.getState().offer ? { kind: 'available' } : useUpdates.getState().lastChecked ? { kind: 'up-to-date' } : { kind: 'idle' });
+const restingPhase = settledPhase;
 
 async function readCurrent(p: UpdaterPlugin) {
   const info = await p.appInfo();
   const current = { version: info.version, versionCode: Number(info.build) || 0 };
   set({ current });
+  // The remembered offer is installed now (or something newer is): forget it.
+  const offer = useUpdates.getState().offer;
+  if (offer && offer.versionCode <= current.versionCode) {
+    set({ offer: null });
+    if (settled(phase())) setPhase({ kind: 'up-to-date' });
+  }
   return current;
 }
 
