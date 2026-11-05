@@ -6,6 +6,7 @@
  *
  *   npx tsx scripts/ios/seed-vault.ts <dir>
  *   npx tsx scripts/ios/seed-vault.ts --strokes <dir> <noteId>
+ *   npx tsx scripts/ios/seed-vault.ts --titles <dir>            (every note's title, as JSON)
  */
 import { mkdirSync } from 'node:fs';
 import { Vault } from '../../packages/core/src/vault.ts';
@@ -19,6 +20,13 @@ if (process.argv[2] === '--strokes') {
   const meta = await vault.readNote(id);
   const pages = meta ? await vault.readPages(meta) : [];
   console.log(JSON.stringify({ strokes: pages.reduce((n, p) => n + p.strokes.length, 0) }));
+  process.exit(0);
+}
+
+if (process.argv[2] === '--titles') {
+  const dir = process.argv[3];
+  if (!dir) throw new Error('usage: tsx scripts/ios/seed-vault.ts --titles <dir>');
+  console.log(JSON.stringify((await new Vault(new NodeFS(dir)).listNotes()).map((n) => n.title)));
   process.exit(0);
 }
 

@@ -8,8 +8,10 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 - The native iOS app: Apple Pencil pressure, tilt and hover, with double-tap and squeeze switching
   to the tool chosen in Settings › Pen button and back; Apple's on-device model (iOS 26, Apple
   Intelligence on) as the assistant's private engine, answering from your notes with citations;
-  notes as plain files in the Files app (On My iPad › Inkwright); Inkwright's own icon (light,
-  dark and tinted) and launch screen, with no white flash in dark mode.
+  notes as plain files in the Files app (On My iPad › Inkwright); **Open in Inkwright** for PDFs,
+  images and text from Files and other apps; `inkwright://` links from Shortcuts and other apps;
+  Inkwright's own icon (light, dark and tinted) and launch screen, with no white flash in dark
+  mode.
 - Every change is built on a Mac and run on the newest iPhone Pro and iPad Pro simulators in light
   and dark mode: the library, a lecture, a pen stroke that must reach the note's file, the
   assistant, a meeting and settings, with screenshots of each.

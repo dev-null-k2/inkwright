@@ -4,7 +4,8 @@ import type { InkEngine } from '../canvas/engine.ts';
 import { inspectPdf } from '../canvas/assets.ts';
 import type { AppVault } from './vault.ts';
 import { useApp } from '../state/app.ts';
-import { InkwrightNative, hasNativePlugin } from '../platform/native.ts';
+import { InkwrightNative, hasNativePlugin, type SharedFile } from '../platform/native.ts';
+import { applePlugin } from '../ai/apple/plugin.ts';
 
 /**
  * Opening files from the device, whichever way they arrive: the library's "Open file", drag and
@@ -229,6 +230,7 @@ function base64Bytes(b64: string): Uint8Array {
  *    files in Cache Storage and reloads the app with `?share=1`.
  *  - Android: MainActivity's intent filters; InkwrightNativePlugin copies the content into the
  *    app's cache and reports it here (`takeSharedFiles` at start, `sharedFiles` while running).
+ *  - iOS: "Open in Inkwright" (Info.plist document types); InkwrightApplePlugin does the same.
  */
 export function installOpenHandlers(): void {
   const lq = (window as Window & { launchQueue?: { setConsumer(cb: (p: { files: FileSystemFileHandle[] }) => void): void } }).launchQueue;
@@ -256,8 +258,10 @@ export function installOpenHandlers(): void {
     })();
   }
 
-  if (hasNativePlugin) {
-    const take = async (list: { name: string; mimeType: string; path: string }[]) => {
+  const intake: Pick<typeof InkwrightNative, 'takeSharedFiles'> & { addListener(e: 'sharedFiles', cb: (e: { files: SharedFile[] }) => void): Promise<unknown> } | null =
+    hasNativePlugin ? InkwrightNative : applePlugin();
+  if (intake) {
+    const take = async (list: SharedFile[]) => {
       if (!list.length) return;
       const { Filesystem } = await import('@capacitor/filesystem');
       const files: File[] = [];
@@ -274,8 +278,8 @@ export function installOpenHandlers(): void {
       await openIncoming(files);
     };
     // Listen first, then take what arrived before: a copy finishing in between is never lost.
-    void InkwrightNative.addListener('sharedFiles', (e) => void take(e.files))
-      .then(() => InkwrightNative.takeSharedFiles())
+    void intake.addListener('sharedFiles', (e) => void take(e.files))
+      .then(() => intake.takeSharedFiles())
       .then((r) => take(r.files))
       .catch(() => {});
   }

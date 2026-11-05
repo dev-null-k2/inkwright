@@ -1,5 +1,6 @@
 import Capacitor
 import UIKit
+import UniformTypeIdentifiers
 #if canImport(FoundationModels)
 import FoundationModels
 #endif
@@ -8,6 +9,10 @@ import FoundationModels
 /// - Apple's on-device model (Foundation Models, iOS 26 and later, Apple Intelligence on), streamed
 ///   to the web app as `llmDelta` events. The web app owns prompting, tools and citations.
 /// - Apple Pencil double-tap and squeeze, sent as `pencil` events so the pen-button setting applies.
+/// - Files opened in Inkwright from other apps (PDFs, images, text: "Open in Inkwright" in Files and
+///   the share sheet), copied into the app's temporary folder and handed to the web layer, which
+///   imports them like the library's Open file (src/lib/openFiles.ts). Same contract as Android's
+///   `takeSharedFiles` / `sharedFiles`.
 @objc(InkwrightApplePlugin)
 public class InkwrightApplePlugin: CAPPlugin, CAPBridgedPlugin, UIPencilInteractionDelegate {
     public let identifier = "InkwrightApplePlugin"
@@ -17,11 +22,18 @@ public class InkwrightApplePlugin: CAPPlugin, CAPBridgedPlugin, UIPencilInteract
         CAPPluginMethod(name: "generate", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "cancel", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "tourSnapshot", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "takeSharedFiles", returnType: CAPPluginReturnPromise),
     ]
 
     private var running: [String: Task<Void, Never>] = [:]
 
+    /// The loaded plugin, for files that arrive through the scene delegate.
+    private static weak var shared: InkwrightApplePlugin?
+    /// Files that arrived before the web layer listened (main thread only).
+    private static var pendingFiles: [[String: String]] = []
+
     override public func load() {
+        InkwrightApplePlugin.shared = self
         DispatchQueue.main.async { [weak self] in
             guard let self, let view = self.bridge?.webView else { return }
             let pencil = UIPencilInteraction()
@@ -117,6 +129,59 @@ public class InkwrightApplePlugin: CAPPlugin, CAPBridgedPlugin, UIPencilInteract
             self.running[id]?.cancel()
             self.running[id] = nil
             call.resolve()
+        }
+    }
+
+    // MARK: Files from other apps
+
+    /// Files handed to Inkwright that the web layer hasn't taken yet.
+    @objc func takeSharedFiles(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            let files = InkwrightApplePlugin.pendingFiles
+            InkwrightApplePlugin.pendingFiles = []
+            call.resolve(["files": files])
+        }
+    }
+
+    /// Called by SceneDelegate with the URLs the app was opened with. File URLs are copied into
+    /// tmp/incoming (reading through a file coordinator, with security-scoped access for files
+    /// opened in place) and reported as `sharedFiles`; anything else is left to Capacitor (deep
+    /// links reach the web layer as `appUrlOpen`).
+    static func receive(_ urls: [URL]) {
+        let fileURLs = urls.filter { $0.isFileURL }
+        guard !fileURLs.isEmpty else { return }
+        DispatchQueue.global(qos: .userInitiated).async {
+            let fm = FileManager.default
+            let dir = fm.temporaryDirectory.appendingPathComponent("incoming", isDirectory: true)
+            try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+            var files: [[String: String]] = []
+            for url in fileURLs {
+                let scoped = url.startAccessingSecurityScopedResource()
+                defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+                let dest = dir.appendingPathComponent(UUID().uuidString + "-" + url.lastPathComponent)
+                var copied = false
+                var coordinationError: NSError?
+                NSFileCoordinator().coordinate(readingItemAt: url, options: [.withoutChanges], error: &coordinationError) { readable in
+                    copied = (try? fm.copyItem(at: readable, to: dest)) != nil
+                }
+                guard copied else {
+                    NSLog("Inkwright: couldn't read %@: %@", url.lastPathComponent, coordinationError?.localizedDescription ?? "copy failed")
+                    continue
+                }
+                // "Copy to Inkwright" leaves a copy in Documents/Inbox, which the Files app shows
+                // next to the notes; it isn't needed once copied.
+                if url.path.contains("/Documents/Inbox/") { try? fm.removeItem(at: url) }
+                let type = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
+                files.append(["name": url.lastPathComponent, "mimeType": type, "path": dest.absoluteString])
+            }
+            guard !files.isEmpty else { return }
+            DispatchQueue.main.async {
+                if let plugin = InkwrightApplePlugin.shared, plugin.hasListeners("sharedFiles") {
+                    plugin.notifyListeners("sharedFiles", data: ["files": files])
+                } else {
+                    InkwrightApplePlugin.pendingFiles.append(contentsOf: files)
+                }
+            }
         }
     }
 

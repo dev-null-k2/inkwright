@@ -3,8 +3,8 @@ import { registerNativeLLM, type NativeLLM, type NativeLLMAvailability, type Nat
 
 /**
  * The iOS shell's own plugin (ios/App/App/InkwrightApplePlugin.swift): Apple's on-device model
- * (Foundation Models, iOS 26 and later with Apple Intelligence on) and Apple Pencil double-tap and
- * squeeze. Absent everywhere else.
+ * (Foundation Models, iOS 26 and later with Apple Intelligence on), Apple Pencil double-tap and
+ * squeeze, and files opened in Inkwright from other apps. Absent everywhere else.
  */
 export interface AppleAvailability {
   state: NativeLLMAvailability;
@@ -18,6 +18,9 @@ export interface InkwrightApplePlugin {
   cancel(o: { id: string }): Promise<void>;
   addListener(event: 'llmDelta', cb: (e: { id: string; text: string }) => void): Promise<PluginListenerHandle>;
   addListener(event: 'pencil', cb: (e: { action: 'doubleTap' | 'squeeze' }) => void): Promise<PluginListenerHandle>;
+  /** Files opened in Inkwright from other apps not yet taken (same contract as Android's). */
+  takeSharedFiles(): Promise<{ files: { name: string; mimeType: string; path: string }[] }>;
+  addListener(event: 'sharedFiles', cb: (e: { files: { name: string; mimeType: string; path: string }[] }) => void): Promise<PluginListenerHandle>;
 }
 
 export const isIOSApp = (() => {

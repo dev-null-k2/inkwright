@@ -5,6 +5,8 @@
 // lecture, a pen stroke on it, the assistant, a meeting, settings) and keeps the pictures the app
 // saves at each step, a full-screen screenshot (status bar and safe areas) and the app's log. Fails
 // when the app does not start, crashes, doesn't finish the walk, or the stroke isn't saved to disk.
+// After each walk it also opens an inkwright://new link, as Shortcuts or another app would, and
+// checks the note it asks for was created.
 //
 //   node scripts/ios/simulator-run.mjs <path/to/App.app> <out-dir>
 import { execFileSync } from 'node:child_process';
@@ -26,6 +28,7 @@ const vault = mkdtempSync(join(tmpdir(), 'inkwright-vault-'));
 const ids = JSON.parse(execFileSync('npx', ['tsx', 'scripts/ios/seed-vault.ts', vault], { encoding: 'utf8' }).trim().split('\n').pop());
 const tourSource = readFileSync(new URL('./tour.js', import.meta.url), 'utf8');
 const strokesOf = (dir, id) => JSON.parse(execFileSync('npx', ['tsx', 'scripts/ios/seed-vault.ts', '--strokes', dir, id], { encoding: 'utf8' }).trim().split('\n').pop()).strokes;
+const titlesOf = (dir) => JSON.parse(execFileSync('npx', ['tsx', 'scripts/ios/seed-vault.ts', '--titles', dir], { encoding: 'utf8' }).trim().split('\n').pop());
 const tourFor = (prefix) => Buffer.from(tourSource.replaceAll('__IDS__', JSON.stringify(ids)).replaceAll('__PREFIX__', JSON.stringify(prefix))).toString('base64');
 
 const list = JSON.parse(simctl(['list', '-j', 'runtimes', 'devicetypes']));
@@ -96,9 +99,19 @@ for (const t of targets) {
       run.inkSaved = after > strokes;
       run.strokes = { before: strokes, after };
       strokes = after;
-      if (!run.finished || !run.running || !run.inkSaved) failed = true;
+      // A link from another app (Info.plist URL scheme → Capacitor's appUrlOpen → deeplinks.ts).
+      const linked = `Opened by a link (${look})`;
+      try {
+        simctl(['openurl', udid, `inkwright://new?title=${encodeURIComponent(linked)}&text=${encodeURIComponent('Made by the iOS simulator run')}`], { timeout: 60_000 });
+        const until = Date.now() + 60_000;
+        while (Date.now() < until && !(run.linkOpened = titlesOf(vaultDir).includes(linked))) await sleep(3000);
+      } catch (e) {
+        run.linkError = String(e?.stderr || e?.message || e).slice(0, 400);
+      }
+      run.linkOpened = !!run.linkOpened;
+      if (!run.finished || !run.running || !run.inkSaved || !run.linkOpened) failed = true;
       entry.runs.push(run);
-      console.log(`${t.type.name} (${look}): ${run.finished ? 'walk finished' : 'walk did NOT finish'}, ${run.running ? 'running' : 'NOT running'}, ink ${run.inkSaved ? 'saved' : 'NOT saved'} (${run.strokes.before} → ${run.strokes.after} strokes), steps: ${run.steps.join(', ')}`);
+      console.log(`${t.type.name} (${look}): ${run.finished ? 'walk finished' : 'walk did NOT finish'}, ${run.running ? 'running' : 'NOT running'}, ink ${run.inkSaved ? 'saved' : 'NOT saved'} (${run.strokes.before} → ${run.strokes.after} strokes), link ${run.linkOpened ? 'opened a note' : 'did NOT open a note'}, steps: ${run.steps.join(', ')}`);
     }
   } catch (e) {
     entry.error = String(e?.stderr || e?.message || e);
