@@ -25,7 +25,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const vault = mkdtempSync(join(tmpdir(), 'inkwright-vault-'));
 const ids = JSON.parse(execFileSync('npx', ['tsx', 'scripts/ios/seed-vault.ts', vault], { encoding: 'utf8' }).trim().split('\n').pop());
 const tourSource = readFileSync(new URL('./tour.js', import.meta.url), 'utf8');
-const tourFor = (prefix) => Buffer.from(tourSource.replace('__IDS__', JSON.stringify(ids)).replace('__PREFIX__', JSON.stringify(prefix))).toString('base64');
+const tourFor = (prefix) => Buffer.from(tourSource.replaceAll('__IDS__', JSON.stringify(ids)).replaceAll('__PREFIX__', JSON.stringify(prefix))).toString('base64');
 
 const list = JSON.parse(simctl(['list', '-j', 'runtimes', 'devicetypes']));
 const runtime = list.runtimes.filter((r) => r.isAvailable && r.platform === 'iOS').sort((a, b) => b.version.localeCompare(a.version, undefined, { numeric: true }))[0];
@@ -85,7 +85,8 @@ for (const t of targets) {
       writeFileSync(join(out, `${t.label}-${look}.log`), log);
       const consoleText = existsSync(consoleFile) ? readFileSync(consoleFile, 'utf8') : '';
       run.tour = consoleText.split('\n').filter((l) => /TOUR /.test(l)).map((l) => l.replace(/^.*TOUR /, '')).slice(0, 40);
-      run.jsErrors = (consoleText + '\n' + log).split('\n').filter((l) => /⚡️\s+\[error\]|Uncaught|TypeError|ReferenceError|Unhandled Promise/.test(l)).slice(0, 40);
+      // Optional files a fresh vault doesn't have yet (OS-PLUG-FILE-0008 "does not exist") are expected.
+      run.jsErrors = (consoleText + '\n' + log).split('\n').filter((l) => /⚡️\s+\[error\]|Uncaught|TypeError|ReferenceError|Unhandled Promise/.test(l) && !/OS-PLUG-FILE-0008/.test(l)).slice(0, 40);
       if (!run.finished || !run.running) failed = true;
       entry.runs.push(run);
       console.log(`${t.type.name} (${look}): ${run.finished ? 'walk finished' : 'walk did NOT finish'}, ${run.running ? 'running' : 'NOT running'}, steps: ${run.steps.join(', ')}`);

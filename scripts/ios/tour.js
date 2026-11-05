@@ -1,6 +1,6 @@
 // A walk through the real app on the iOS simulator (debug builds only): injected by
-// InkwrightBridgeViewController from the INKWRIGHT_TOUR launch environment, with __IDS__ and
-// __PREFIX__ filled in by simulator-run.mjs. It taps through the interface as a person would and
+// InkwrightBridgeViewController from the INKWRIGHT_TOUR launch environment, with the note ids and
+// the snapshot prefix filled in by simulator-run.mjs. It taps through the interface as a person would and
 // asks the native side to save a snapshot of the web view at each step (Documents/tour/*.png).
 (function () {
   if (location.protocol !== 'capacitor:' || window.__inkwrightTour) return;
