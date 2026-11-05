@@ -8,6 +8,8 @@
   var IDS = __IDS__;
   var PREFIX = __PREFIX__;
   var cap = window.Capacitor;
+  var plugin = null;
+  var apple = function () { return plugin || (plugin = cap.registerPlugin ? cap.registerPlugin('InkwrightApple') : cap.Plugins.InkwrightApple); };
   var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
   var log = function (m) { console.log('TOUR ' + m); };
   var find = function (sel, re) {
@@ -25,7 +27,7 @@
   };
   var snap = async function (name) {
     await sleep(900);
-    try { await cap.nativePromise('InkwrightApple', 'tourSnapshot', { name: PREFIX + name }); log('snap ' + name); }
+    try { await apple().tourSnapshot({ name: PREFIX + name }); log('snap ' + name); }
     catch (e) { log('snap failed ' + name + ': ' + (e && e.message)); }
   };
   var go = async function (hash, ready) {

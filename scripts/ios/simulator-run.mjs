@@ -55,7 +55,9 @@ for (const t of targets) {
       simctl(['ui', udid, 'appearance', look]);
       await sleep(1500);
       const started = new Date();
-      simctl(['launch', '--terminate-running-process', udid, BUNDLE], { env: { ...process.env, SIMCTL_CHILD_INKWRIGHT_TOUR: tourFor(`${look}-`) } });
+      // The app's standard output carries the JavaScript console (Capacitor prints it there).
+      const consoleFile = join(out, `${t.label}-${look}-console.txt`);
+      simctl(['launch', '--terminate-running-process', `--stdout=${consoleFile}`, `--stderr=${consoleFile}`, udid, BUNDLE], { env: { ...process.env, SIMCTL_CHILD_INKWRIGHT_TOUR: tourFor(`${look}-`) } });
       const deadline = Date.now() + 240_000;
       while (Date.now() < deadline && !existsSync(join(tourDir, `${look}-done.png`))) await sleep(2000);
       run.finished = existsSync(join(tourDir, `${look}-done.png`));
@@ -69,8 +71,9 @@ for (const t of targets) {
       const since = started.toISOString().replace('T', ' ').slice(0, 19);
       const log = simctl(['spawn', udid, 'log', 'show', '--style', 'compact', '--start', since, '--predicate', 'process == "App"']);
       writeFileSync(join(out, `${t.label}-${look}.log`), log);
-      run.tour = log.split('\n').filter((l) => /TOUR /.test(l)).map((l) => l.replace(/^.*TOUR /, '')).slice(0, 40);
-      run.jsErrors = log.split('\n').filter((l) => /⚡️\s+\[error\]|Uncaught|TypeError|ReferenceError|Unhandled Promise/.test(l)).slice(0, 40);
+      const consoleText = existsSync(consoleFile) ? readFileSync(consoleFile, 'utf8') : '';
+      run.tour = consoleText.split('\n').filter((l) => /TOUR /.test(l)).map((l) => l.replace(/^.*TOUR /, '')).slice(0, 40);
+      run.jsErrors = (consoleText + '\n' + log).split('\n').filter((l) => /⚡️\s+\[error\]|Uncaught|TypeError|ReferenceError|Unhandled Promise/.test(l)).slice(0, 40);
       if (!run.finished || !run.running) failed = true;
       entry.runs.push(run);
       console.log(`${t.type.name} (${look}): ${run.finished ? 'walk finished' : 'walk did NOT finish'}, ${run.running ? 'running' : 'NOT running'}, steps: ${run.steps.join(', ')}`);
