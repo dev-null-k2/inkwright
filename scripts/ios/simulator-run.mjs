@@ -10,9 +10,11 @@
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
-const [appPath, out = 'ios-out'] = process.argv.slice(2);
+const [appPath, outArg = 'ios-out'] = process.argv.slice(2);
+// Absolute: the simulator service resolves the console file paths, not this process.
+const out = resolve(outArg);
 if (!appPath) { console.error('usage: simulator-run.mjs <App.app> <out-dir>'); process.exit(2); }
 mkdirSync(out, { recursive: true });
 const BUNDLE = 'app.inkwright';
@@ -45,7 +47,8 @@ for (const t of targets) {
   const entry = { label: t.label, device: t.type.name, runs: [] };
   try {
     simctl(['boot', udid]);
-    simctl(['bootstatus', udid, '-b'], { timeout: 600_000 });
+    simctl(['bootstatus', udid, '-b'], { timeout: 1_200_000 });
+    await sleep(10_000); // SpringBoard refuses launches for a moment after boot on slow runners
     simctl(['install', udid, appPath]);
     const data = simctl(['get_app_container', udid, BUNDLE, 'data']).trim();
     cpSync(vault, join(data, 'Documents', 'Inkwright'), { recursive: true });
@@ -57,7 +60,16 @@ for (const t of targets) {
       const started = new Date();
       // The app's standard output carries the JavaScript console (Capacitor prints it there).
       const consoleFile = join(out, `${t.label}-${look}-console.txt`);
-      simctl(['launch', '--terminate-running-process', `--stdout=${consoleFile}`, `--stderr=${consoleFile}`, udid, BUNDLE], { env: { ...process.env, SIMCTL_CHILD_INKWRIGHT_TOUR: tourFor(`${look}-`) } });
+      for (let attempt = 1; ; attempt++) {
+        try {
+          simctl(['launch', '--terminate-running-process', `--stdout=${consoleFile}`, `--stderr=${consoleFile}`, udid, BUNDLE], { timeout: 120_000, env: { ...process.env, SIMCTL_CHILD_INKWRIGHT_TOUR: tourFor(`${look}-`) } });
+          break;
+        } catch (e) {
+          if (attempt >= 4) throw e;
+          console.log(`${t.type.name}: launch attempt ${attempt} failed, retrying`);
+          await sleep(15_000);
+        }
+      }
       const deadline = Date.now() + 240_000;
       while (Date.now() < deadline && !existsSync(join(tourDir, `${look}-done.png`))) await sleep(2000);
       run.finished = existsSync(join(tourDir, `${look}-done.png`));
