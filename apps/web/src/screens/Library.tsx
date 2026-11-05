@@ -19,6 +19,7 @@ import { LibraryInkActions, PapersNavItem } from '../inkactions/LibraryParts.tsx
 import { openPalette, usePaletteActions } from '../lib/palette.ts';
 import { isModuleOn, useModules } from '../modules/registry.ts';
 import { ThemeToggle } from '../ui/ThemeToggle.tsx';
+import { LibraryUpdateSlot } from '../updates/slot.tsx';
 
 export function Library() {
   const { notes, trash, notebooks, filter, setFilter, query, setQuery, navigate, vault } = useApp();
@@ -199,6 +200,7 @@ export function Library() {
           onImport={() => { setNewOpen(false); fileInput.current?.click(); }} />
 
         <div className="lib-scroll">
+          {!hits && <LibraryUpdateSlot />}
           {hits ? (
             <section className="results" aria-label="Search results">
               <h1 className="lib-h1">{hits.length ? `${hits.length} ${hits.length === 1 ? 'note' : 'notes'} match “${query}”` : `Nothing matches “${query}”`}</h1>

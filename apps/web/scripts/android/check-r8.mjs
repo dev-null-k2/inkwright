@@ -116,8 +116,11 @@ function main() {
     return 2;
   }
   const plugins = [];
-  // The app's own plugin: registered by class reference (MainActivity), called by method name.
-  for (const file of sourcesUnder(join(app, 'src/main/java'))) {
+  // The app's own plugins: registered by class reference (MainActivity), called by method name.
+  // GitHub builds also have the updater (src/github, app/build.gradle); pass
+  // INKWRIGHT_DISTRIBUTION=play to check a mapping from a Google Play build, which has none.
+  const distribution = process.env.INKWRIGHT_DISTRIBUTION ?? 'github';
+  for (const file of ['src/main/java', `src/${distribution}/java`].flatMap((d) => sourcesUnder(join(app, d)))) {
     const src = readFileSync(file, 'utf8');
     const className = pluginClassIn(src, file);
     if (className) plugins.push({ className, loadedByName: false, methods: callableMethods(src) });

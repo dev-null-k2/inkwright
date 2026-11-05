@@ -38,7 +38,7 @@ export const GROUPS: readonly SettingsGroup[] = [
   { id: 'knowledge', label: 'Knowledge', hint: 'Links, daily notes, import, memory timeline, journal', sections: ['knowledge', 'import', 'recall', 'journal'] },
   { id: 'privacy', label: 'Privacy & trust', hint: 'What AI may see, usage, audit, authorship', sections: ['trust', 'authorship'] },
   { id: 'extend', label: 'Extend', hint: 'Modules, plugins, agents, developer tools', sections: ['modules', 'plugins', 'agents', 'code', 'developer'] },
-  { id: 'about', label: 'About', hint: 'Version, your data, check this device', sections: ['about'] },
+  { id: 'about', label: 'About', hint: 'Version, updates, your data, check this device', sections: ['about'] },
 ];
 
 /** Tab names inside a group: short, because they sit side by side on a folded phone. */
@@ -110,8 +110,11 @@ export interface SettingEntry {
   requires?: Requirement;
 }
 
-/** What some settings need: the Android app's native layer, or access to folders on a computer. */
-export type Requirement = 'android-app' | 'folder-access';
+/**
+ * What some settings need: the Android app's native layer, access to folders on a computer, or the
+ * in-app updater (the Android app installed from GitHub, not from Google Play).
+ */
+export type Requirement = 'android-app' | 'folder-access' | 'in-app-updates';
 
 /**
  * Every setting worth finding by name. Headings and row labels as they appear on screen, plus the
@@ -186,6 +189,8 @@ export const SETTINGS_INDEX: readonly SettingEntry[] = [
   { label: 'Automation API', section: 'developer', keywords: 'window.inkwright scripting', optional: true },
   // About
   { label: 'Your data', section: 'about', keywords: 'storage notes count version' },
+  { label: 'Updates', section: 'about', keywords: 'update upgrade new version release install check github apk', requires: 'in-app-updates' },
+  { label: 'Beta updates', section: 'about', keywords: 'beta test pre-release channel', requires: 'in-app-updates' },
   { label: 'Check this device', section: 'about', keywords: 'diagnostics latency pen pressure screen report test' },
   { label: 'Reset settings to defaults', section: 'about', keywords: 'reset defaults' },
 ];

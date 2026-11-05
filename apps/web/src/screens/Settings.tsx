@@ -1,6 +1,6 @@
 import { PalettePicker } from '../ui/PalettePicker.tsx';
 import { FeelPanel } from '../ui/FeelPanel.tsx';
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import {
   Check, Copy, Download, ExternalLink, FolderOpen, KeyRound, PenLine, Plus, RefreshCw, Trash2, Upload,
 } from 'lucide-react';
@@ -44,6 +44,10 @@ import { ImportSettings } from '../importers/ImportSettings.tsx';
 import { RecallSettings } from '../recall/RecallSettings.tsx';
 import { JournalSettings } from '../journal/JournalSettings.tsx';
 import { DesktopSettings } from '../desktop/DesktopSettings.tsx';
+import { updaterPlugin } from '../updates/plugin.ts';
+
+// Settings › About › Updates (Android app from GitHub only), loaded when About opens.
+const UpdatesSection = lazy(() => import('../updates/UpdatesSection.tsx'));
 
 /**
  * Settings: the groups, tabs and search live in settings/SettingsLayout.tsx (ids and the search
@@ -505,6 +509,7 @@ function AboutSection() {
         <p>{notes.length} notes · {vault?.persistent ? 'stored on this device' : 'this session only (storage blocked)'}{usage ? ` · ${usage}` : ''}</p>
         <p className="muted small">Everything is plain files in an open format (docs/VAULT_FORMAT.md). No account is required and nothing is sent anywhere unless you turn on sync or use AI.</p>
       </Group>
+      {updaterPlugin() && <Suspense fallback={null}><UpdatesSection /></Suspense>}
       <EngineDownloads />
       {isModuleOn('device-check') && (
         <Group title="This device" note="Measures the pen, the screen and how fast ink appears, and makes a report you can copy or share, for example with a bug report.">

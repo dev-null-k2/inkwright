@@ -44,6 +44,25 @@ if (releaseApks && requested.any { it ==~ /(?i)(.*:)?(assemble|package|install)D
 // ABI (scripts/android/build-apk.sh passes -Pinkwright.debugAbis=arm64-v8a,x86_64).
 def debugAbis = ((project.findProperty('inkwright.debugAbis') ?: 'arm64-v8a') as String).split(',')*.trim()
 
+// Where this build is distributed (docs/UPDATES.md, "Builds for Google Play"):
+//   -Pinkwright.distribution=github (default): APKs from GitHub Releases. Adds the in-app updater
+//     (src/github: the InkwrightUpdater plugin and REQUEST_INSTALL_PACKAGES, from
+//     src/github/AndroidManifest.xml), which installs newer releases of itself.
+//   -Pinkwright.distribution=play: the Google Play bundle. Play updates the app and does not allow
+//     REQUEST_INSTALL_PACKAGES for it, so neither the permission nor the updater's code is built in
+//     (src/play has an empty plugin list instead).
+// A source directory rather than product flavors, so task names (assembleRelease) and APK names
+// (app-arm64-v8a-release.apk) stay what release.yml and the emulator scripts expect.
+def distribution = (project.findProperty('inkwright.distribution') ?: 'github') as String
+if (!(distribution in ['github', 'play'])) {
+    throw new GradleException("Inkwright: -Pinkwright.distribution must be github or play, not '${distribution}'.")
+}
+// The GitHub repository whose releases the updater follows (forks set their own).
+def updateRepo = (project.findProperty('inkwright.updateRepo') ?: 'dev-null-k2/inkwright') as String
+if (!(updateRepo ==~ /[A-Za-z0-9-]+\/[A-Za-z0-9._-]+/)) {
+    throw new GradleException("Inkwright: -Pinkwright.updateRepo must look like owner/repo, not '${updateRepo}'.")
+}
+
 android {
     namespace = "app.inkwright"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -58,6 +77,17 @@ android {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+        buildConfigField "String", "DISTRIBUTION", "\"${distribution}\""
+        buildConfigField "String", "UPDATE_REPO", "\"${updateRepo}\""
+    }
+
+    sourceSets {
+        main.java.srcDirs += "src/${distribution}/java"
+        // Build-type overlays merge into the main manifest; there are no other debug/release ones.
+        if (distribution == 'github') {
+            debug.manifest.srcFile 'src/github/AndroidManifest.xml'
+            release.manifest.srcFile 'src/github/AndroidManifest.xml'
         }
     }
 

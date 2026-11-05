@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Merged into GitHub-distributed builds only (-Pinkwright.distribution=github, the default; see
+  app/build.gradle and docs/UPDATES.md). Google Play builds leave it out: Play updates the app
+  itself and restricts this permission.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+      The in-app updater (updates/UpdaterPlugin.kt) installs newer releases of Inkwright itself
+      through a PackageInstaller session. The person still allows "Install unknown apps" for
+      Inkwright once in Android's settings, and Android only accepts an update signed with the
+      same key as the installed app.
+    -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+</manifest>
