@@ -24,8 +24,10 @@ jobs:
         with: { persist-credentials: false }
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with: { node-version: 22, cache: npm }
-      - name: Xcode and simulators available
+      - name: Newest Xcode (26 or later compiles Apple's on-device model)
         run: |
+          x=$(ls -d /Applications/Xcode_2[6-9]*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$x" ]; then sudo xcode-select -s "$x"; fi
           xcodebuild -version
           xcrun simctl list runtimes available
       - run: npm ci

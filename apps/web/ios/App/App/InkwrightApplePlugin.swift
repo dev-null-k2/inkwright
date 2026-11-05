@@ -16,6 +16,7 @@ public class InkwrightApplePlugin: CAPPlugin, CAPBridgedPlugin, UIPencilInteract
         CAPPluginMethod(name: "availability", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "generate", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "cancel", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "tourSnapshot", returnType: CAPPluginReturnPromise),
     ]
 
     private var running: [String: Task<Void, Never>] = [:]
@@ -117,5 +118,30 @@ public class InkwrightApplePlugin: CAPPlugin, CAPBridgedPlugin, UIPencilInteract
             self.running[id] = nil
             call.resolve()
         }
+    }
+
+    // MARK: Simulator tour (debug builds only; scripts/ios/tour.js)
+
+    /// Saves a picture of the web view as Documents/tour/<name>.png for the CI simulator run.
+    @objc func tourSnapshot(_ call: CAPPluginCall) {
+        #if DEBUG
+        let name = (call.getString("name") ?? "snap").replacingOccurrences(of: "/", with: "-")
+        DispatchQueue.main.async {
+            guard let web = self.bridge?.webView else { call.reject("No web view"); return }
+            web.takeSnapshot(with: nil) { image, error in
+                guard let png = image?.pngData() else { call.reject(error.map { String(describing: $0) } ?? "No image"); return }
+                do {
+                    let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("tour", isDirectory: true)
+                    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+                    try png.write(to: dir.appendingPathComponent("\(name).png"))
+                    call.resolve()
+                } catch {
+                    call.reject(String(describing: error))
+                }
+            }
+        }
+        #else
+        call.unimplemented("Debug builds only")
+        #endif
     }
 }
