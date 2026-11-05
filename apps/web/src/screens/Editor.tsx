@@ -14,6 +14,7 @@ import { imageSize, setTags, trashNote, duplicateNote } from '../lib/actions.ts'
 import { PaperFeel } from '../platform/feel.ts';
 import { NativeInkTip } from '../platform/inktip.ts';
 import { InkwrightNative, hasNativePlugin } from '../platform/native.ts';
+import { applePlugin } from '../ai/apple/plugin.ts';
 import { pickFiles } from '../platform/files.ts';
 import { isArtifact, isIOS, isMac, modKey, safeStorage } from '../platform/env.ts';
 import { useApp } from '../state/app.ts';
@@ -212,6 +213,16 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
     if (!engine || !hasNativePlugin) return;
     let handle: { remove: () => void } | null = null;
     void InkwrightNative.addListener('stylusButton', (ev) => { engine.setExternalButton(ev.pressed); setLatched(engine.buttonLatched); }).then((h) => (handle = h));
+    return () => handle?.remove();
+  }, [engine]);
+
+  // Apple Pencil double-tap and squeeze (iOS app): a tap of the pen button, so it toggles to the
+  // tool chosen in Settings › Pen button and back.
+  useEffect(() => {
+    const apple = applePlugin();
+    if (!engine || !apple) return;
+    let handle: { remove: () => void } | null = null;
+    void apple.addListener('pencil', () => { engine.setExternalButton(true); engine.setExternalButton(false); setLatched(engine.buttonLatched); }).then((h) => (handle = h));
     return () => handle?.remove();
   }, [engine]);
 

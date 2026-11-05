@@ -6,6 +6,7 @@ import { registerNativeLLM, type NativeLLMAvailability } from '../platform/nativ
 import { useSettings } from '../state/settings.ts';
 import { createNativeLLM, createNativeTranscriber, runNativeTask, startNativeListening, type NativeListening, type NativeTaskRequest } from '../ai/native/bridge.ts';
 import type { DownloadEvent, NativeAIPlugin, NativeAIStatus, NativeModelInfo, NativeTask } from '../ai/native/plugin.ts';
+import { initAppleAI } from '../ai/apple/plugin.ts';
 import { classifyDownloadError, retriesOnItsOwn, retryDelayMs } from './assistant/download-status.ts';
 
 /**
@@ -104,7 +105,8 @@ let init: Promise<void> | null = null;
 
 /** Reads what the phone offers and registers the engines. Cheap and idempotent. */
 export function initNativeAI(): Promise<void> {
-  if (!plugin) return Promise.resolve();
+  // On iOS the engine is Apple's on-device model (ai/apple/plugin.ts); no downloads to manage.
+  if (!plugin) return initAppleAI();
   if (!init) {
     const p = plugin;
     init = (async () => {

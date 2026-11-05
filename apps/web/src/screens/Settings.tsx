@@ -117,7 +117,9 @@ function InputSection() {
     <>
       <Group title="Pen button" note={isNative && nativePlatform === 'android'
         ? 'Works with the barrel button of USI pens (Moto Pen Ultra), S Pen and Bluetooth stylus buttons. Press once to switch, press again to switch back; hold it to use the tool only while held.'
-        : 'Works with pens whose button the browser reports (barrel button, eraser end). In the Android app, Bluetooth pen buttons like the Moto Pen Ultra’s are supported too.'}>
+        : isNative && nativePlatform === 'ios'
+          ? 'Double-tap or squeeze Apple Pencil to switch, and again to switch back.'
+          : 'Works with pens whose button the browser reports (barrel button, eraser end). In the Android app, Bluetooth pen buttons like the Moto Pen Ultra’s are supported too.'}>
         <label className="field-row">
           <span className="row-label">Pen button switches to</span>
           <select value={s.input.buttonAction} onChange={(e) => setInput({ buttonAction: e.target.value as any })}>
