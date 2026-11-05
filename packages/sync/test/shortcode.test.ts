@@ -369,7 +369,9 @@ describe('meeting by short code', () => {
       const env = JSON.parse(text);
       if (env.k !== 'b' && env.k !== 'c') return text;
       const d = JSON.parse(env.d);
-      d.x = (d.x[5] === 'A' ? 'B' : 'A') + d.x.slice(1);
+      // Always a different character (comparing the one replaced: once in 64 runs the old check
+      // compared another one, left the blob untouched, and the honest connection went through).
+      d.x = (d.x[0] === 'A' ? 'B' : 'A') + d.x.slice(1);
       return JSON.stringify({ ...env, d: JSON.stringify(d) });
     };
     const s = await share(relay, { waitMs: 300 });
