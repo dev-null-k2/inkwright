@@ -80,5 +80,9 @@
 	<string>Inkwright adds images from your photo library to your notes when you pick them.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Inkwright saves exported pages to your photo library when you choose to.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Inkwright turns your voice into text when you dictate a note or talk to the assistant.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

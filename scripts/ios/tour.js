@@ -30,6 +30,27 @@
     try { await apple().tourSnapshot({ name: PREFIX + name }); log('snap ' + name); }
     catch (e) { log('snap failed ' + name + ': ' + (e && e.message)); }
   };
+  // A pen stroke made of real pointer events, as Apple Pencil delivers them to WebKit, drawn on the
+  // open page's empty lower half. The run then checks the note on disk gained a stroke.
+  var write = async function () {
+    var el = document.querySelector('.ed-canvas');
+    if (!el) { log('ink skipped: no canvas'); return; }
+    var r = el.getBoundingClientRect();
+    var x0 = r.left + r.width * 0.3, y0 = r.top + Math.min(r.height * 0.62, window.innerHeight * 0.62), w = r.width * 0.35, n = 60;
+    var fire = function (type, i) {
+      el.dispatchEvent(new PointerEvent(type, {
+        pointerId: 11, pointerType: 'pen', isPrimary: true, bubbles: true, cancelable: true,
+        clientX: x0 + (w * i) / n, clientY: y0 + 10 * Math.sin((i / n) * 10 * Math.PI),
+        pressure: type === 'pointerup' ? 0 : 0.35 + 0.4 * Math.sin((Math.PI * i) / n),
+        buttons: type === 'pointerup' ? 0 : 1, button: type === 'pointermove' ? -1 : 0, tiltX: 20, tiltY: 10, width: 1, height: 1,
+      }));
+    };
+    fire('pointerdown', 0);
+    for (var i = 1; i <= n; i++) { fire('pointermove', i); if (i % 6 === 0) await sleep(16); }
+    fire('pointerup', n);
+    log('ink drawn');
+    await sleep(2500);
+  };
   var go = async function (hash, ready) {
     location.hash = hash;
     await waitFor(ready, 20000);
@@ -38,6 +59,7 @@
   (async function () {
     try {
       await waitFor(function () { return document.querySelector('.welcome, .lib, main'); }, 40000);
+      try { log('apple ' + JSON.stringify(await apple().availability())); } catch (e) { log('apple error ' + (e && e.message)); }
       await sleep(1500);
       if (document.querySelector('.welcome')) {
         await snap('1-welcome');
@@ -50,6 +72,8 @@
       await snap('2-library');
       await go('#note/' + IDS.lecture, function () { return document.querySelector('.ed-canvas canvas'); });
       await snap('3-lecture');
+      await write();
+      await snap('3-ink');
       var ai = document.querySelector('button[aria-label="AI"]');
       if (ai) { ai.click(); await sleep(2000); await snap('4-assistant'); ai.click(); }
       await go('#note/' + IDS.meeting, function () { return document.querySelector('.ed-canvas canvas'); });

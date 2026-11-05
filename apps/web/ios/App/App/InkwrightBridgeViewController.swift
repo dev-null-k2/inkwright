@@ -6,6 +6,13 @@ import WebKit
 class InkwrightBridgeViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(InkwrightApplePlugin())
+        // Paper colour (dark in dark mode) behind the web view until its first frame, so opening the
+        // app never flashes white after the launch screen.
+        let paper = UIColor(named: "LaunchBackground") ?? .systemBackground
+        view.backgroundColor = paper
+        webView?.isOpaque = false
+        webView?.backgroundColor = paper
+        webView?.scrollView.backgroundColor = paper
         #if DEBUG
         // The CI simulator run (scripts/ios/simulator-run.mjs) passes a walk through the app as
         // base64 JavaScript in INKWRIGHT_TOUR. Never present in release builds.

@@ -1,14 +1,26 @@
 /**
  * Writes a vault of real handwritten notes (the README showcase content: a lecture, study notes,
  * thesis notes, a meeting) into <dir>, for the iOS simulator run to copy into the app's Documents
- * folder, and prints the notes' ids as JSON so the tour can open them.
+ * folder, and prints the notes' ids as JSON so the tour can open them. With --strokes it instead
+ * prints how many strokes a note has on disk (how the run checks that ink drawn in the app was saved).
  *
  *   npx tsx scripts/ios/seed-vault.ts <dir>
+ *   npx tsx scripts/ios/seed-vault.ts --strokes <dir> <noteId>
  */
 import { mkdirSync } from 'node:fs';
 import { Vault } from '../../packages/core/src/vault.ts';
 import { NodeFS } from '../../apps/mcp-server/src/nodefs.ts';
 import { NOTEBOOK_COLORS, launchSync, lecture, studyNotes, thesisNotes, type SeedNote } from '../../apps/web/e2e/showcase/content.ts';
+
+if (process.argv[2] === '--strokes') {
+  const [, , , dir, id] = process.argv;
+  if (!dir || !id) throw new Error('usage: tsx scripts/ios/seed-vault.ts --strokes <dir> <noteId>');
+  const vault = new Vault(new NodeFS(dir));
+  const meta = await vault.readNote(id);
+  const pages = meta ? await vault.readPages(meta) : [];
+  console.log(JSON.stringify({ strokes: pages.reduce((n, p) => n + p.strokes.length, 0) }));
+  process.exit(0);
+}
 
 const dir = process.argv[2];
 if (!dir) throw new Error('usage: tsx scripts/ios/seed-vault.ts <dir>');

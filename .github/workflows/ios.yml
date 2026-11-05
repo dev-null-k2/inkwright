@@ -1,6 +1,7 @@
 # Builds the iOS app (Capacitor, apps/web/ios) on a Mac runner, runs it on an iPhone and an iPad
-# simulator, and keeps screenshots and the app's log as artifacts. Nothing is signed: simulator
-# builds need no Apple account. Device builds for TestFlight/App Store are in docs/IOS.md.
+# simulator, and keeps screenshots and the app's log as artifacts. Simulator builds are signed ad hoc
+# (no Apple account), which gives the app its own Keychain the way a device build has. Device builds
+# for TestFlight/App Store are ios-release.yml (docs/IOS.md).
 name: iOS
 on:
   push:
@@ -43,7 +44,9 @@ jobs:
           set -o pipefail
           xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath "$RUNNER_TEMP/dd" CODE_SIGNING_ALLOWED=NO build | tail -40
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= \
+            build | tail -40
       - name: Run on iPhone and iPad
         run: node scripts/ios/simulator-run.mjs "$RUNNER_TEMP/dd/Build/Products/Debug-iphonesimulator/App.app" ios-out
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

@@ -2,9 +2,9 @@
 // Runs the simulator build of the iOS app on a new iPhone and a new iPad simulator. For each, it
 // fills the app's Documents folder with a vault of real handwritten notes (seed-vault.ts), then in
 // light and in dark mode launches the app with a walk through it (tour.js: welcome, library, a
-// lecture, the assistant, a meeting, settings) and keeps the pictures the app saves at each step,
-// a full-screen screenshot (status bar and safe areas) and the app's log. Fails when the app does
-// not start, crashes, or the walk doesn't finish.
+// lecture, a pen stroke on it, the assistant, a meeting, settings) and keeps the pictures the app
+// saves at each step, a full-screen screenshot (status bar and safe areas) and the app's log. Fails
+// when the app does not start, crashes, doesn't finish the walk, or the stroke isn't saved to disk.
 //
 //   node scripts/ios/simulator-run.mjs <path/to/App.app> <out-dir>
 import { execFileSync } from 'node:child_process';
@@ -25,6 +25,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const vault = mkdtempSync(join(tmpdir(), 'inkwright-vault-'));
 const ids = JSON.parse(execFileSync('npx', ['tsx', 'scripts/ios/seed-vault.ts', vault], { encoding: 'utf8' }).trim().split('\n').pop());
 const tourSource = readFileSync(new URL('./tour.js', import.meta.url), 'utf8');
+const strokesOf = (dir, id) => JSON.parse(execFileSync('npx', ['tsx', 'scripts/ios/seed-vault.ts', '--strokes', dir, id], { encoding: 'utf8' }).trim().split('\n').pop()).strokes;
 const tourFor = (prefix) => Buffer.from(tourSource.replaceAll('__IDS__', JSON.stringify(ids)).replaceAll('__PREFIX__', JSON.stringify(prefix))).toString('base64');
 
 const list = JSON.parse(simctl(['list', '-j', 'runtimes', 'devicetypes']));
@@ -53,6 +54,8 @@ for (const t of targets) {
     const data = simctl(['get_app_container', udid, BUNDLE, 'data']).trim();
     cpSync(vault, join(data, 'Documents', 'Inkwright'), { recursive: true });
     const tourDir = join(data, 'Documents', 'tour');
+    const vaultDir = join(data, 'Documents', 'Inkwright');
+    let strokes = strokesOf(vaultDir, ids.lecture);
     for (const look of ['light', 'dark']) {
       const run = { appearance: look, steps: [], finished: false, running: false };
       simctl(['ui', udid, 'appearance', look]);
@@ -70,7 +73,8 @@ for (const t of targets) {
           await sleep(15_000);
         }
       }
-      const deadline = Date.now() + 240_000;
+      // The first launch on a fresh simulator compiles WebKit's caches; Intel runners are slow.
+      const deadline = Date.now() + 600_000;
       while (Date.now() < deadline && !existsSync(join(tourDir, `${look}-done.png`))) await sleep(2000);
       run.finished = existsSync(join(tourDir, `${look}-done.png`));
       simctl(['io', udid, 'screenshot', join(out, `${t.label}-${look}-screen.png`)]);
@@ -86,10 +90,15 @@ for (const t of targets) {
       const consoleText = existsSync(consoleFile) ? readFileSync(consoleFile, 'utf8') : '';
       run.tour = consoleText.split('\n').filter((l) => /TOUR /.test(l)).map((l) => l.replace(/^.*TOUR /, '')).slice(0, 40);
       // Optional files a fresh vault doesn't have yet (OS-PLUG-FILE-0008 "does not exist") are expected.
-      run.jsErrors = (consoleText + '\n' + log).split('\n').filter((l) => /⚡️\s+\[error\]|Uncaught|TypeError|ReferenceError|Unhandled Promise/.test(l) && !/OS-PLUG-FILE-0008/.test(l)).slice(0, 40);
-      if (!run.finished || !run.running) failed = true;
+      run.jsErrors = (consoleText + '\n' + log).split('\n').filter((l) => /⚡️\s+\[error\]|Uncaught|TypeError|ReferenceError|Unhandled Promise/.test(l) && !/OS-PLUG-FILE-0008|does not exist/.test(l)).slice(0, 40);
+      // The pen stroke the walk drew on the lecture must be in the note's file on disk.
+      const after = strokesOf(vaultDir, ids.lecture);
+      run.inkSaved = after > strokes;
+      run.strokes = { before: strokes, after };
+      strokes = after;
+      if (!run.finished || !run.running || !run.inkSaved) failed = true;
       entry.runs.push(run);
-      console.log(`${t.type.name} (${look}): ${run.finished ? 'walk finished' : 'walk did NOT finish'}, ${run.running ? 'running' : 'NOT running'}, steps: ${run.steps.join(', ')}`);
+      console.log(`${t.type.name} (${look}): ${run.finished ? 'walk finished' : 'walk did NOT finish'}, ${run.running ? 'running' : 'NOT running'}, ink ${run.inkSaved ? 'saved' : 'NOT saved'} (${run.strokes.before} → ${run.strokes.after} strokes), steps: ${run.steps.join(', ')}`);
     }
   } catch (e) {
     entry.error = String(e?.stderr || e?.message || e);
