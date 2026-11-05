@@ -4,6 +4,18 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 
 ## Unreleased
 
+### iPhone and iPad
+- The native iOS app: Apple Pencil pressure, tilt and hover, with double-tap and squeeze switching
+  to the tool chosen in Settings › Pen button and back; Apple's on-device model (iOS 26, Apple
+  Intelligence on) as the assistant's private engine, answering from your notes with citations;
+  notes as plain files in the Files app (On My iPad › Inkwright); Inkwright's own icon (light,
+  dark and tinted) and launch screen, with no white flash in dark mode.
+- Every change is built on a Mac and run on the newest iPhone Pro and iPad Pro simulators in light
+  and dark mode: the library, a lecture, a pen stroke that must reach the note's file, the
+  assistant, a meeting and settings, with screenshots of each.
+- Tagged releases upload to TestFlight once the Apple developer account is connected
+  (docs/IOS.md).
+
 ### Updates from inside the app (Android)
 - The Android app checks GitHub Releases on its own and offers new versions in a banner and in Settings › About › Updates, with what's new. Update downloads, verifies (SHA-256 and the same signing key as the installed app) and installs it; on Android 12 and later, updates after the first install without a confirmation screen. Beta updates can be switched off. The Google Play bundle has no updater (docs/UPDATES.md).
 - Every release, betas included, now gets a higher Android version code, so each beta installs as an update over the previous one.

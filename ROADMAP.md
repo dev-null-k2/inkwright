@@ -4,7 +4,7 @@ Inkwright ships in small, tested steps. This page lists what is next and what is
 
 ## Next
 
-- **App stores.** Google Play (listing ready, see `docs/PUBLISHING.md`) and the iOS/iPadOS App Store (the Capacitor project builds; it needs a Mac with Xcode for signing).
+- **App stores.** Google Play (listing ready, see `docs/PUBLISHING.md`) and the iOS/iPadOS App Store (the app is built and tested on every change, and tagged releases upload to TestFlight once the Apple developer account is connected; see `docs/IOS.md`).
 - **Real-device evals.**
   - Pen-to-pixel latency, measured with a high-speed camera on as many styluses as we can borrow.
   - Scribble-erase accuracy on recorded real handwriting rather than synthetic strokes.

@@ -27,13 +27,25 @@ you choose.
 
 ## Building and testing
 
-CI (`.github/workflows/ios.yml`) builds the app on a Mac runner for every change to the app, runs
-it on the newest iPhone Pro and iPad Pro simulators, and keeps light and dark screenshots and the
-app's log (JavaScript console included) as the `ios-simulator` artifact. It fails if the app
-doesn't stay running. `scripts/ios/simulator-run.mjs` does the simulator part and also works
-locally.
+CI (`.github/workflows/ios.yml`) builds the app on a Mac runner for every change to the app and
+runs it on the newest iPhone Pro and iPad Pro simulators, in light and in dark mode. It fills the
+app's Documents folder with real handwritten notes, then walks through the app as a person would:
+the library, a lecture, a pen stroke on it (real pointer events, as Apple Pencil delivers them),
+the assistant, a meeting and settings, saving a picture of each step. It fails if the app doesn't
+start or stay running, the walk doesn't finish, or the stroke isn't in the note's file on disk
+afterwards. The pictures, a full-screen screenshot, the app's log (JavaScript console included)
+and `report.json` are the `ios-simulator` artifact. `scripts/ios/simulator-run.mjs` does the
+simulator part and also works locally:
 
-On a Mac with Xcode:
+```sh
+cd apps/web && npx vite build --mode native && npx cap sync ios
+cd ios/App && xcodebuild -project App.xcodeproj -scheme App -sdk iphonesimulator \
+  -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/dd \
+  CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= build
+cd ../../../.. && node scripts/ios/simulator-run.mjs /tmp/dd/Build/Products/Debug-iphonesimulator/App.app ios-out
+```
+
+To run it yourself on a Mac with Xcode:
 
 ```sh
 npm ci
@@ -43,6 +55,10 @@ cd apps/web && npx vite build --mode native && npx cap sync ios && npx cap open 
 Then pick a simulator or your device in Xcode and press Run. Running on your own device with a
 free Apple ID works for 7 days at a time; TestFlight and the App Store need the Apple Developer
 Program.
+
+Without the native app, iPhone and iPad users can open the web app in Safari and add it to the
+Home Screen: it works offline and Apple Pencil writes with pressure and tilt (no double-tap or
+squeeze, no Apple on-device model, notes stay in Safari's storage until synced).
 
 ## Google sign-in on iOS
 
@@ -54,11 +70,27 @@ Program.
 
 ## Publishing (TestFlight and the App Store)
 
-Needs an Apple Developer Program membership (US$99 a year) under the account owner's name.
+`.github/workflows/ios-release.yml` runs on every version tag, next to the Android, web and
+desktop releases. It archives the app for devices, signs it with Xcode's automatic (cloud-managed)
+signing and uploads it to App Store Connect, where it appears in TestFlight after Apple processes
+it. The version shown is the tag's `MAJOR.MINOR.PATCH`; the build number is the same version code
+Android uses, so each beta is a newer build. There are no certificates or profiles to manage.
 
-1. In App Store Connect, create the app with bundle ID `app.inkwright`.
-2. Create an App Store Connect API key and a distribution certificate; add them as repository
-   secrets for an archive job (`xcodebuild archive` + `-exportArchive`, then upload with
-   `xcrun altool` or `fastlane pilot`).
-3. TestFlight builds reach up to 10,000 testers by link, with no review for internal testers and a
-   short review for external ones. The App Store needs a full review.
+One-time setup (needs the Apple Developer Program, US$99 a year, under the owner's name):
+
+1. In [App Store Connect](https://appstoreconnect.apple.com) › Apps › **+** › New App: platform
+   iOS, name Inkwright, bundle ID `app.inkwright` (register it under Certificates, Identifiers &
+   Profiles › Identifiers first if it isn't offered), SKU `inkwright`.
+2. Users and Access › Integrations › App Store Connect API › **Generate API Key** with the
+   **Admin** role (needed for cloud-managed signing). Download `AuthKey_<id>.p8` (once only).
+3. Add four repository secrets (Settings › Secrets and variables › Actions):
+   - `APPLE_TEAM_ID`: the team ID from developer.apple.com › Membership
+   - `ASC_KEY_ID`: the key's ID
+   - `ASC_ISSUER_ID`: the issuer ID shown above the keys
+   - `ASC_KEY_P8_BASE64`: `base64 -i AuthKey_<id>.p8 | pbcopy` on a Mac
+4. Publish a release as usual. Without the secrets the iOS release job says so in its summary and
+   succeeds.
+
+TestFlight builds reach up to 10,000 testers by link, with no review for internal testers and a
+short review for external ones. Testers install the TestFlight app once; after that each new build
+arrives as an update. The App Store needs a full review.
