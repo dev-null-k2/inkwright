@@ -16,7 +16,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   simulator:
-    runs-on: macos-latest
+    # Intel Macs: the Apple-silicon pool is often out of capacity (jobs never start).
+    runs-on: macos-15-intel
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
