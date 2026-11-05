@@ -181,7 +181,7 @@ jobs:
           # RPM versions can't contain "-" either: a Linux beta ships .deb and .AppImage.
           if [ "$RUNNER_OS" = Linux ] && [[ "$VERSION" == *-* ]]; then ARGS="$ARGS --bundles deb,appimage"; fi
           # Runs the web build and the sidecar first (beforeBuildCommand in tauri.conf.json).
-          npx tauri build $ARGS --config src-tauri/tauri.release.json
+          INKWRIGHT_VERSION="$VERSION" npx tauri build $ARGS --config src-tauri/tauri.release.json
 
       - name: Remove the signing certificate
         if: always() && runner.os == 'Windows' && env.CERT_THUMBPRINT != ''

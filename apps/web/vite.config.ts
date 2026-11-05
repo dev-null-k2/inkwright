@@ -111,8 +111,10 @@ export default defineConfig(({ mode }) => {
       { find: /^\.\/engine-assets\.ts$/, replacement: fileURLToPath(new URL('./src/datasandbox/engine-assets-unavailable.ts', import.meta.url)) },
     ] } : undefined,
     define: {
-      __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '1.0.0'),
-      __BUILD_TARGET__: JSON.stringify(single ? 'single' : desktop ? 'desktop' : 'web'),
+      // The release version (INKWRIGHT_VERSION, set by release.yml and desktop.yml from the tag),
+      // so About, the device check and certificates name the version people installed.
+      __APP_VERSION__: JSON.stringify(process.env.INKWRIGHT_VERSION || process.env.npm_package_version || '1.0.0'),
+      __BUILD_TARGET__: JSON.stringify(single ? 'single' : desktop ? 'desktop' : native ? 'native' : 'web'),
       // INKWRIGHT_E2E_HOOK=1 adds the test hook to other builds too: the Android emulator suite
       // (e2e-android/) drives a native debug build and reads the document through it.
       __E2E__: JSON.stringify(e2e || process.env.INKWRIGHT_E2E_HOOK === '1'),

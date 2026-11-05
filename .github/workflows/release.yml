@@ -67,7 +67,7 @@ jobs:
           ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PW: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          npx vite build --mode native
+          INKWRIGHT_VERSION="$VERSION" npx vite build --mode native
           npx cap sync android
           cd android
           if [ -n "$KEYSTORE" ]; then
@@ -102,7 +102,7 @@ jobs:
       - name: Web (single file)
         env: { VERSION: '${{ steps.v.outputs.version }}' }
         run: |
-          npm run build:single -w @inkwright/web
+          INKWRIGHT_VERSION="$VERSION" npm run build:single -w @inkwright/web
           cp apps/web/dist-single/index.html "out/Inkwright-$VERSION.html"
 
       - name: Source
