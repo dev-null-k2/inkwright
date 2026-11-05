@@ -84,6 +84,12 @@ test('write a formatted document; it is saved as Markdown and survives a reload'
   // Saved in the vault: reopen after a reload.
   const id = await page.evaluate(() => (window as any).__inkwright.doc.meta.id);
   await page.keyboard.press(`${await modKey(page)}+s`);
+  // Reload only once the document is on disk (the save is asynchronous).
+  await expect.poll(() => page.evaluate(async (noteId) => {
+    const v = (window as any).__inkwrightHub.vault.vault;
+    const n = await v.readNote(noteId);
+    return !!n && JSON.stringify(await v.readPages(n)).includes('Stove');
+  }, id), { timeout: 10_000 }).toBe(true);
   await page.reload();
   await page.waitForFunction(() => !!(window as any).__inkwright?.docEditor);
   await expect(page.locator('.doc-prose h1')).toHaveText('Trip plan');

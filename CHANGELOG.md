@@ -2,7 +2,7 @@
 
 All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org).
 
-## Unreleased (0.9.0-beta.2, first beta)
+## Unreleased
 
 ### Updates from inside the app (Android)
 - The Android app checks GitHub Releases on its own and offers new versions in a banner and in Settings › About › Updates, with what's new. Update downloads, verifies (SHA-256 and the same signing key as the installed app) and installs it; on Android 12 and later, updates after the first install without a confirmation screen. Beta updates can be switched off. The Google Play bundle has no updater (docs/UPDATES.md).

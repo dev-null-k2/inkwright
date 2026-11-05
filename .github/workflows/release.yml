@@ -112,7 +112,10 @@ jobs:
       - name: Release notes
         env: { VERSION: '${{ steps.v.outputs.version }}' }
         run: |
+          # The section whose heading names this version; otherwise the "Unreleased" one, so a
+          # release needs no changelog edit (its notes are also the app's "What's new").
           awk -v v="$VERSION" '/^## /{p = index($0, v) > 0; next} p' CHANGELOG.md > out/notes.md
+          [ -s out/notes.md ] || awk '/^## /{p = index($0, "Unreleased") > 0; next} p' CHANGELOG.md > out/notes.md
           [ -s out/notes.md ] || echo "See CHANGELOG.md." > out/notes.md
 
       # What installed Android apps read to update themselves (docs/UPDATES.md): versionCode, notes
