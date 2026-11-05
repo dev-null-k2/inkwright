@@ -1,0 +1,33 @@
+{
+  "$comment": "The versionCode scheme (docs/UPDATES.md, \"Version codes\"), shared by VersionCodeTest.kt, apps/web/src/updates/versionCode.test.ts and scripts/release/version-code.test.mjs so the three implementations cannot drift. code null: not a release version.",
+  "cases": [
+    { "version": "0.9.0-beta.1", "code": 900201 },
+    { "version": "0.9.0-beta.5", "code": 900205 },
+    { "version": "0.9.0-beta.6", "code": 900206 },
+    { "version": "v0.9.0-beta.6", "code": 900206 },
+    { "version": "0.9.0-beta", "code": 900200 },
+    { "version": "0.9.0-beta.99", "code": 900299 },
+    { "version": "0.9.0-alpha.3", "code": 900103 },
+    { "version": "0.9.0-rc.1", "code": 900301 },
+    { "version": "0.9.0", "code": 900900 },
+    { "version": "0.9.1-beta.1", "code": 901201 },
+    { "version": "0.9.1", "code": 901900 },
+    { "version": "0.10.0-beta.1", "code": 1000201 },
+    { "version": "1.0.0-beta.1", "code": 10000201 },
+    { "version": "1.0.0", "code": 10000900 },
+    { "version": "1.2.3", "code": 10203900 },
+    { "version": "209.99.99", "code": 2099999900 },
+    { "version": "210.0.0", "code": null },
+    { "version": "0.100.0", "code": null },
+    { "version": "0.9.100", "code": null },
+    { "version": "0.9.0-beta.100", "code": null },
+    { "version": "0.9.0-dev.1", "code": null },
+    { "version": "0.9", "code": null },
+    { "version": "0.9.0-beta.1+build.7", "code": null },
+    { "version": "latest", "code": null },
+    { "version": "", "code": null }
+  ],
+  "ascending": ["0.9.0-beta.1", "0.9.0-beta.5", "0.9.0-beta.6", "0.9.0-beta.99", "0.9.0-rc.1", "0.9.0", "0.9.1-beta.1", "0.9.1", "0.10.0-beta.1", "1.0.0-beta.1", "1.0.0"],
+  "$legacy": "Builds before this scheme used major*10000 + minor*100 + patch: every 0.9.0-beta.N from GitHub was 900, and a local beta.5 build was 905. Every code above for 0.9.0-beta.6 and later is higher, so those installs update.",
+  "legacyHighest": 905
+}

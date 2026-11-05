@@ -1,5 +1,6 @@
 # Builds a release when a version tag is pushed (git tag v1.2.0 && git push --tags):
-#   - Android: a signed APK for sideloading and an AAB for Google Play
+#   - Android: signed APKs per ABI for sideloading (with the in-app updater), an AAB for Google
+#     Play (without it), and android-update.json, which installed apps read to update themselves
 #   - Web: the single-file offline build (open it from disk, no server)
 #   - Source zip
 # and attaches them to a GitHub release with notes from CHANGELOG.md.
@@ -50,9 +51,11 @@ jobs:
           # and in build.gradle.
           if ! [[ "$tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then tag="0.0.0"; fi
           echo "version=$tag" >> "$GITHUB_OUTPUT"
-          # versionCode: major*10000 + minor*100 + patch
-          IFS=. read -r a b c <<< "${tag%%-*}"
-          echo "code=$(( ${a:-0}*10000 + ${b:-0}*100 + ${c:-0} ))" >> "$GITHUB_OUTPUT"
+          # versionCode = (major*10000 + minor*100 + patch)*1000 + stage + N, stage alpha 100 / beta 200 /
+          # rc 300 / final 900 (docs/UPDATES.md, "Version codes"): every beta gets a higher code and a
+          # final release sorts above its betas. A version outside the scheme fails here.
+          code="$(node apps/web/scripts/release/version-code.mjs "$tag")"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
 
       - name: Android
         working-directory: apps/web
@@ -74,8 +77,10 @@ jobs:
           fi
           sed -i "s/versionCode [0-9]*/versionCode $CODE/; s/versionName \"[^\"]*\"/versionName \"$VERSION\"/" app/build.gradle
           # Two invocations: split release APKs and a shrunk bundle can't be built in one (app/build.gradle).
-          ./gradlew testDebugUnitTest bundleRelease
-          ./gradlew assembleRelease
+          # The bundle is for Google Play: no in-app updater and no REQUEST_INSTALL_PACKAGES
+          # (docs/UPDATES.md, "Builds for Google Play"). The APKs are the GitHub build with the updater.
+          ./gradlew -Pinkwright.distribution=play testDebugUnitTest bundleRelease
+          ./gradlew -Pinkwright.distribution=github testDebugUnitTest assembleRelease
           # Everything Capacitor and native code find by name survived R8 (docs/PERFORMANCE.md).
           node ../scripts/android/check-r8.mjs
           mkdir -p ../../../out
@@ -109,6 +114,12 @@ jobs:
         run: |
           awk -v v="$VERSION" '/^## /{p = index($0, v) > 0; next} p' CHANGELOG.md > out/notes.md
           [ -s out/notes.md ] || echo "See CHANGELOG.md." > out/notes.md
+
+      # What installed Android apps read to update themselves (docs/UPDATES.md): versionCode, notes
+      # and each APK's address, size and SHA-256. After the notes, which it includes.
+      - name: Android update manifest
+        env: { VERSION: '${{ steps.v.outputs.version }}' }
+        run: node apps/web/scripts/release/android-update.mjs --version "$VERSION" --dir out --notes out/notes.md
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with: { name: release, path: out/, if-no-files-found: error }

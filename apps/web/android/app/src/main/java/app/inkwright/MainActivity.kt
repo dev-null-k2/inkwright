@@ -41,6 +41,8 @@ class MainActivity : BridgeActivity(), ModifiedMainActivityForSocialLoginPlugin 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         registerPlugin(InkwrightNativePlugin::class.java)
+        // The in-app updater in GitHub builds, nothing in Google Play builds (Distribution.kt).
+        Distribution.plugins.forEach { registerPlugin(it) }
         super.onCreate(savedInstanceState)
         // A lost WebView renderer recreates the activity instead of crashing the app.
         bridge?.addWebViewListener(RendererRecovery(this))
