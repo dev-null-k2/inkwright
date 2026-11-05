@@ -1,0 +1,45 @@
+/* In-app updates (docs/UPDATES.md): the library banner and Settings › About › Updates.
+   Loaded with their (lazy) components, never at startup. Duan tokens only; no accent colour —
+   an update is news, not an alarm. */
+
+.update-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2) var(--s-3);
+  margin: 0 0 var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel);
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.update-banner-icon { flex: none; color: var(--ink-2); }
+.update-banner-text { flex: 1 1 14rem; min-width: 0; display: flex; flex-direction: column; gap: var(--s-1); }
+.update-banner-title { margin: 0; font-family: var(--font-title); font-size: var(--t-md); color: var(--ink); overflow-wrap: anywhere; }
+.update-banner-detail { margin: 0; font-size: var(--t-sm); color: var(--ink-2); }
+.update-banner-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-left: auto; }
+.update-banner-actions .btn { min-height: var(--tap); }
+
+.update-progress { display: flex; align-items: center; gap: 10px; width: 100%; flex-wrap: wrap; }
+.update-bar { flex: 1; min-width: 120px; height: 6px; border-radius: var(--r-pill); background: var(--chrome-2); overflow: hidden; }
+.update-bar > span { display: block; height: 100%; background: var(--ink); border-radius: inherit; transition: width 0.2s linear; }
+.update-progress-text { font-size: var(--t-xs); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .update-bar > span { transition: none; } }
+
+.update-notes-scroll { max-height: min(55vh, calc(var(--usable-h, 100vh) - 220px)); overflow-y: auto; overscroll-behavior: contain; }
+.update-notes h3 { margin: var(--s-3) 0 var(--s-1); font-size: var(--t-sm); font-weight: 600; color: var(--ink); }
+.update-notes h3:first-child { margin-top: 0; }
+.update-notes p, .update-notes ul { margin: 0 0 var(--s-2); color: var(--ink-2); font-size: var(--t-sm); }
+.update-notes ul { padding-left: 1.2em; }
+.update-notes li + li { margin-top: var(--s-1); }
+.update-notes code { font-family: var(--font-mono); font-size: 0.92em; }
+
+.updates-card .updates-status { display: flex; flex-direction: column; gap: var(--s-1); margin: 8px 0; }
+.updates-card .updates-status p { margin: 0; }
+.updates-version { color: var(--ink); }
+.updates-state { color: var(--ink); font-weight: 560; }
+.updates-reason { color: var(--ink-2); }
+.updates-card > .row-buttons { margin: 8px 0; }
+.updates-card > .row-switch { border-top: 1px solid var(--line); }

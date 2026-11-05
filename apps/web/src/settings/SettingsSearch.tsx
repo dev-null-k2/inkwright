@@ -9,9 +9,10 @@ import { Search, X } from 'lucide-react';
 import { SECTION_LABELS, searchSettings, type Requirement, type SectionId, type SettingMatch } from './groups.ts';
 import { hasNativePlugin } from '../platform/native.ts';
 import { folderSyncSupported } from '../lib/sync.ts';
+import { updaterPlugin } from '../updates/plugin.ts';
 
 /** Whether this device has what a setting needs (see `requires` in groups.ts). */
-const available = (r: Requirement) => (r === 'android-app' ? hasNativePlugin : folderSyncSupported);
+const available = (r: Requirement) => (r === 'android-app' ? hasNativePlugin : r === 'in-app-updates' ? !!updaterPlugin() : folderSyncSupported);
 
 export function SettingsSearch({ query, onQuery, visible, onPick }: {
   query: string;
