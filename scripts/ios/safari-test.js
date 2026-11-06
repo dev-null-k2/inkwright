@@ -78,7 +78,8 @@
     var ai = await waitFor(function () { return document.querySelector('button[aria-label="AI"]'); }, 10000);
     if (!ai) return step('on-device AI answered', false, 'no AI button');
     ai.click();
-    var dl = await waitFor(function () { return find('button', /^(Download|Resume download)/); }, 20000);
+    // The panel can take a while on a busy simulator (it reads what is already on the device).
+    var dl = await waitFor(function () { return find('button', /^(Download|Resume download)/); }, 120000);
     if (!dl) { await snap('ai-no-download'); return step('on-device AI answered', false, 'no download button'); }
     log('AI offer: ' + dl.textContent);
     dl.click();
@@ -155,7 +156,14 @@
         var cached = !!(await caches.match('./').catch(function () { return null; }));
         await step('offline app installed', !!(reg && reg.active) && cached, reg && reg.active ? 'service worker active, app ' + (cached ? 'cached for offline' : 'NOT cached') : 'no service worker');
         await snap('library-reloaded');
-        if (st.ai) await onDeviceAI();
+        if (st.ai) {
+          await onDeviceAI();
+          // Back to the library whatever happened, so the update banner (shown there) can be checked.
+          var close = document.querySelector('button[aria-label="AI"][aria-pressed="true"]');
+          if (close) close.click();
+          location.hash = '';
+          await waitFor(function () { return document.querySelector('.library'); }, 20000);
+        }
         await post('/__switch?what=manifest');
         st.phase = 'banner'; save();
         location.reload();
