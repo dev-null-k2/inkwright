@@ -80,8 +80,8 @@ const supported = new Set((runtime.supportedDeviceTypes ?? []).map((t) => t.iden
 const types = list.devicetypes.filter((t) => supported.size === 0 || supported.has(t.identifier));
 const pick = (re) => types.filter((t) => re.test(t.name)).sort((a, b) => b.name.localeCompare(a.name, undefined, { numeric: true }))[0];
 const targets = [
-  { label: 'iphone', type: pick(/^iPhone \d+ Pro$/) ?? pick(/^iPhone/), ai: withAI, minutes: withAI ? 50 : 12 },
-  { label: 'ipad', type: pick(/^iPad Pro .*13/) ?? pick(/^iPad Pro/) ?? pick(/^iPad/), ai: false, minutes: 12 },
+  { label: 'iphone', type: pick(/^iPhone \d+ Pro$/) ?? pick(/^iPhone/), ai: withAI, minutes: withAI ? 60 : 20 },
+  { label: 'ipad', type: pick(/^iPad Pro .*13/) ?? pick(/^iPad Pro/) ?? pick(/^iPad/), ai: false, minutes: 20 },
 ];
 const REQUIRED = ['Add to Home Screen suggested', 'wrote a note', 'note kept after reload', 'offline app installed', 'update offered', 'updated to the new version'];
 

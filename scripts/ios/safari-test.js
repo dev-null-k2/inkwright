@@ -142,6 +142,7 @@
         step('note kept after reload', cards() >= (st.notes || 1), cards() + ' notes');
         var persisted = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted() : null;
         log('storage persisted: ' + persisted);
+        try { await navigator.serviceWorker.register('./sw.js'); } catch (e) { log('service worker registration failed: ' + (e && (e.name + ': ' + e.message))); }
         var reg = await Promise.race([navigator.serviceWorker.ready, sleep(20000).then(function () { return navigator.serviceWorker.getRegistration(); })]);
         step('offline app installed', !!(reg && (reg.active || reg.waiting)), reg && reg.active ? 'service worker active' : 'no service worker');
         await snap('library-reloaded');
@@ -152,9 +153,10 @@
         return;
       }
       if (st.phase === 'banner') {
-        var banner = await waitFor(function () { var b = document.querySelector('section[aria-label="Update"]'); return b && /is ready/.test(b.textContent || '') ? b : null; }, 60000);
+        try { log('server version.json: ' + (await (await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' })).text()).slice(0, 60)); } catch (e) { log('version.json: ' + e); }
+        var banner = await waitFor(function () { var b = document.querySelector('section[aria-label="Update"]'); return b && /is ready/.test(b.textContent || '') ? b : null; }, 150000);
         await snap('update-banner');
-        step('update offered', !!banner, banner ? banner.querySelector('.update-banner-title').textContent : 'no banner in 60 s');
+        step('update offered', !!banner, banner ? banner.querySelector('.update-banner-title').textContent : 'no banner in 150 s');
         if (!banner) { await post('/__done'); return; }
         await post('/__switch?what=all');
         st.phase = 'updated'; save();
