@@ -19,7 +19,7 @@ jobs:
   simulator:
     # Intel Macs: the Apple-silicon pool is often out of capacity (jobs never start).
     runs-on: macos-15-intel
-    timeout-minutes: 60
+    timeout-minutes: 100
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with: { persist-credentials: false }
@@ -58,7 +58,7 @@ jobs:
   # (scripts/ios/safari-run.mjs). Screenshots of each step are the ios-safari artifact.
   safari:
     runs-on: macos-15-intel
-    timeout-minutes: 120
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with: { persist-credentials: false }

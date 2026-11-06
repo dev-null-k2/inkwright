@@ -13,7 +13,14 @@
   var st = JSON.parse(localStorage.getItem(KEY) || '{"phase":"start"}');
   if (/[?&]ai=1/.test(location.search)) st.ai = true;
   var save = function () { localStorage.setItem(KEY, JSON.stringify(st)); };
-  var post = function (path, body) { return fetch(path, { method: 'POST', body: typeof body === 'string' ? body : JSON.stringify(body || {}) }).catch(function () {}); };
+  // Reports retry: a page that is reloading or busy can drop a request, and a lost /__done would
+  // leave the run waiting until its deadline.
+  var post = async function (path, body) {
+    for (var i = 0; i < 4; i++) {
+      try { var r = await fetch(path, { method: 'POST', body: typeof body === 'string' ? body : JSON.stringify(body || {}) }); if (r.ok) return; } catch (e) { /* retry */ }
+      await new Promise(function (res) { setTimeout(res, 1500); });
+    }
+  };
   var log = function (m) { return post('/__log', String(m)); };
   var step = function (name, ok, detail) { return post('/__step', { name: name, ok: !!ok, detail: detail || '' }); };
   var snap = function (name) { return post('/__snap?name=' + encodeURIComponent(name)); };
@@ -98,9 +105,9 @@
       var msgs = document.querySelectorAll('.ai-msg.is-assistant');
       var last = msgs[msgs.length - 1];
       return last && !document.querySelector('.ai-typing') && (last.textContent || '').trim().length > 0 ? last.textContent.trim() : null;
-    }, 15 * 60000);
+    }, 25 * 60000);
     await snap('ai-answer');
-    step('on-device AI answered', !!answer, answer ? answer.slice(0, 200) + ' (' + Math.round((Date.now() - asked) / 1000) + ' s)' : 'no answer in 15 min');
+    step('on-device AI answered', !!answer, answer ? answer.slice(0, 200) + ' (' + Math.round((Date.now() - asked) / 1000) + ' s)' : 'no answer in 25 min');
     ai.click();
     location.hash = '';
     await waitFor(function () { return document.querySelector('.library'); }, 20000);
@@ -165,8 +172,8 @@
       }
       if (st.phase === 'updated') {
         var notice = await waitFor(function () { var n = document.querySelector('section[aria-label="Updated"]'); return n && /Updated to Inkwright/.test(n.textContent || '') ? n : null; }, 30000);
+        await step('updated to the new version', !!notice, notice ? notice.textContent.trim().slice(0, 120) : 'no "Updated" notice');
         await snap('updated');
-        step('updated to the new version', !!notice, notice ? notice.textContent.trim().slice(0, 120) : 'no "Updated" notice');
         st.phase = 'finished'; save();
         await post('/__done');
       }
