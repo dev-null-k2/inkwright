@@ -10,7 +10,7 @@ describe('the service worker build', () => {
   });
 
   it('names a versioned cache and precaches the built files', () => {
-    expect(src).toContain("const CACHE = 'inkwright-v1';");
+    expect(src).toContain("const CACHE = 'inkwright-app-v1';");
     expect(src).toContain('"assets/index-abc.js"');
     expect(src).not.toContain('${');
   });
@@ -29,5 +29,18 @@ describe('the service worker build', () => {
     let answer: Promise<unknown> = Promise.resolve(null);
     handlers.fetch({ request: { method: 'GET', url: 'https://x.test/app/', mode: 'navigate' }, respondWith: (p: Promise<unknown>) => { answer = p; } });
     expect(await answer).toBe('./');
+  });
+
+  it('on activation removes only its own older caches, never downloaded engines or shared files', async () => {
+    const handlers: Record<string, (e: unknown) => void> = {};
+    const names = ['inkwright-app-v0', 'inkwright-lx2k9q7a', 'inkwright-app-v1', 'inkwright-engines-v1', 'inkwright-share', 'other'];
+    const deleted: string[] = [];
+    const self = { addEventListener: (t: string, h: (e: unknown) => void) => { handlers[t] = h; }, skipWaiting: async () => {}, clients: { claim: async () => {} } };
+    const caches = { keys: async () => names, delete: async (k: string) => { deleted.push(k); return true; } };
+    new Script(src).runInNewContext({ self, caches, location: { origin: 'https://x.test' }, URL, Response, fetch });
+    let done: Promise<unknown> = Promise.resolve();
+    handlers.activate({ waitUntil: (p: Promise<unknown>) => { done = p; } });
+    await done;
+    expect(deleted.sort()).toEqual(['inkwright-app-v0', 'inkwright-lx2k9q7a']);
   });
 });

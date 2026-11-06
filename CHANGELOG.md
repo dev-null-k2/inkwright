@@ -24,6 +24,8 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
   a syntax error since the first release and listed a file the build drops, so browsers never
   installed it. Tests now check that it parses, installs and opens the app without a network, and
   publishing checks every file it installs is there.
+  When it updates it now removes only its own older copies of the app, never downloaded engines
+  or files shared to the app.
 - Downloading an engine in Settings (code parsers, DuckDB, the on-device AI) no longer sometimes
   goes back to "Download" after finishing.
 - **Updates for the web app, like Android's**: a new deployment shows "Inkwright … is ready" with

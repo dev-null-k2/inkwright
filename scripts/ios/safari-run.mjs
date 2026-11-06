@@ -98,7 +98,14 @@ for (const t of targets) {
     simctl(['boot', udid]);
     simctl(['bootstatus', udid, '-b'], { timeout: 1_200_000 });
     await sleep(10_000);
-    simctl(['openurl', udid, `http://localhost:${PORT}/${t.ai ? '?ai=1' : ''}`]);
+    // A busy simulator can time out opening Safari the first time; try again before giving up.
+    for (let i = 1; ; i++) {
+      try { simctl(['openurl', udid, `http://localhost:${PORT}/${t.ai ? '?ai=1' : ''}`], { timeout: 180_000 }); break; } catch (e) {
+        if (i === 3) throw e;
+        console.log(`[${t.label}] opening Safari failed (try ${i}), retrying`);
+        await sleep(20_000);
+      }
+    }
     const deadline = Date.now() + t.minutes * 60_000;
     while (Date.now() < deadline && !current.done) await sleep(3000);
     simctl(['io', udid, 'screenshot', join(out, `${t.label}-end.png`)]);

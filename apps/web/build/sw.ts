@@ -5,10 +5,13 @@
  */
 export function serviceWorkerSource(files: string[], version: string): string {
   return `// Generated at build time. Precaches the app so it opens offline; notes live in IndexedDB.
-const CACHE = 'inkwright-${version}';
+const CACHE = 'inkwright-app-${version}';
 const FILES = ${JSON.stringify(['./', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/icon.svg', ...files])};
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting())); });
-self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k.startsWith('inkwright-') && k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
+// Only this worker's own older app caches are removed: downloaded engines (inkwright-engines-*) and
+// files shared to the app (inkwright-share) are kept. inkwright-<version> is the older name.
+const OLD_APP = (k) => k !== CACHE && (k.startsWith('inkwright-app-') || /^inkwright-[0-9a-z]{8,}$/.test(k));
+self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter(OLD_APP).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   // Web Share Target: files/text shared to the installed app arrive as a POST; keep them in a
