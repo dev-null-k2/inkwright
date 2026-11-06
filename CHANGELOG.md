@@ -17,6 +17,15 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
   assistant, a meeting and settings, with screenshots of each.
 - Tagged releases upload to TestFlight once the Apple developer account is connected
   (docs/IOS.md).
+- **The web app on iPhone and iPad, as a Home Screen app**: Safari suggests Add to Home Screen
+  (which also keeps Safari from clearing notes after a week away), Google sign-in works there
+  (Google's page opens in the app and comes back), and storage is kept when space runs low.
+- **Updates for the web app, like Android's**: a new deployment shows "Inkwright … is ready" with
+  What's new, Later and Update in the library, and Settings › About › Updates; after updating the
+  library says "Updated to …" once. The hosted app's version is now the latest release plus the
+  commits since.
+- CI runs the web app in Safari on the newest iPhone and iPad simulators: writing and keeping a
+  note, the offline app, the on-device AI answering, and an update from one deployment to the next.
 
 ### Updates from inside the app (Android)
 - The Android app checks GitHub Releases on its own and offers new versions in a banner and in Settings › About › Updates, with what's new. Update downloads, verifies (SHA-256 and the same signing key as the installed app) and installs it; on Android 12 and later, updates after the first install without a confirmation screen. Beta updates can be switched off. The Google Play bundle has no updater (docs/UPDATES.md).

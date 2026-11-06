@@ -1,5 +1,6 @@
 import type { ModuleDefinition } from '../modules/registry.ts';
 import { updaterPlugin } from './plugin.ts';
+import { webUpdatesApply } from './web.ts';
 
 /**
  * Updates (docs/UPDATES.md): the Android app, installed from GitHub Releases, finds and installs
@@ -28,4 +29,23 @@ export const UPDATE_MODULES: ModuleDefinition[] = updaterPlugin()
         },
       },
     ]
-  : [];
+  : webUpdatesApply()
+    ? [
+        {
+          // The web app and Home Screen apps on iPhone, iPad and computers (src/updates/web.ts).
+          id: 'updates',
+          name: 'Updates',
+          description: 'Notices when a new version of Inkwright is published and offers it in the library, with what’s new. Update takes a few seconds.',
+          defaultEnabled: true,
+          contributes: {
+            panels: ['Update banner (library)'],
+            background: ['Asking for the published version after launch, on returning to the app and every 30 minutes'],
+          },
+          whenOff: 'No banner. Inkwright still opens the newest version the next time it starts while online.',
+          async activate() {
+            const { startWebUpdateChecks } = await import('./web.ts');
+            return startWebUpdateChecks();
+          },
+        },
+      ]
+    : [];

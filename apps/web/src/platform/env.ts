@@ -20,6 +20,15 @@ export const isAndroid = /Android/.test(ua);
 export const isIOS = /iPhone|iPad|iPod/.test(ua) || (isMac && typeof navigator !== 'undefined' && navigator.maxTouchPoints > 1);
 export const modKey = isMac || isIOS ? '⌘' : 'Ctrl';
 
+/** The web app opened from the Home Screen on iPhone or iPad (not Safari, not the native app). */
+export function isIOSHomeScreenApp(): boolean {
+  if (!isIOS || typeof window === 'undefined') return false;
+  try {
+    return (navigator as Navigator & { standalone?: boolean }).standalone === true
+      || (typeof matchMedia === 'function' && matchMedia('(display-mode: standalone)').matches);
+  } catch { return false; }
+}
+
 /** Running inside a claude.ai artifact (live preview): window.claude.use exists. */
 export function claudeRuntime(): { use: (name: string) => Promise<any> } | null {
   const c = (globalThis as any).claude;

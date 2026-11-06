@@ -18,7 +18,8 @@ Google requires every app that signs users in to register an OAuth client. This 
 
 1. Go to **Credentials → Create credentials → OAuth client ID → Web application**.
 2. Under **Authorized JavaScript origins**, add every address you serve Inkwright from, for example `https://inkwright.example.com` and `http://localhost:5173` for development.
-3. Copy the **client ID**. It ends in `.apps.googleusercontent.com`.
+3. Under **Authorized redirect URIs**, add the app's own address with a trailing slash, for example `https://inkwright.example.com/app/`. Home Screen apps on iPhone and iPad sign in by going to Google's page and coming back there, because sign-in popups can't find their way back to them.
+4. Copy the **client ID**. It ends in `.apps.googleusercontent.com`.
 
 **Android (needed for the native account picker):**
 

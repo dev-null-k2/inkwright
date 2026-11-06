@@ -36,11 +36,14 @@
     var el = document.querySelector('.ed-canvas');
     if (!el) { log('ink skipped: no canvas'); return; }
     var r = el.getBoundingClientRect();
-    var x0 = r.left + r.width * 0.3, y0 = r.top + Math.min(r.height * 0.62, window.innerHeight * 0.62), w = r.width * 0.35, n = 60;
+    // A gentle wave, a different line for each run: a zigzag over earlier ink is the scratch-out
+    // gesture, which would erase the last run's stroke instead of adding one.
+    var row = /dark/.test(PREFIX) ? 0.6 : 0.48;
+    var x0 = r.left + r.width * 0.3, y0 = Math.max(r.top, 0) + window.innerHeight * row, w = r.width * 0.35, n = 60;
     var fire = function (type, i) {
       el.dispatchEvent(new PointerEvent(type, {
         pointerId: 11, pointerType: 'pen', isPrimary: true, bubbles: true, cancelable: true,
-        clientX: x0 + (w * i) / n, clientY: y0 + 10 * Math.sin((i / n) * 10 * Math.PI),
+        clientX: x0 + (w * i) / n, clientY: y0 + 6 * Math.sin((i / n) * 3 * Math.PI),
         pressure: type === 'pointerup' ? 0 : 0.35 + 0.4 * Math.sin((Math.PI * i) / n),
         buttons: type === 'pointerup' ? 0 : 1, button: type === 'pointermove' ? -1 : 0, tiltX: 20, tiltY: 10, width: 1, height: 1,
       }));

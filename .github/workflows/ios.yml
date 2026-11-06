@@ -52,3 +52,32 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with: { name: ios-simulator, path: ios-out/, if-no-files-found: warn }
+
+  # The web app in Safari on iPhone and iPad (no native app): writing and keeping notes, the
+  # offline app, on-device AI and the update banner between two deployments
+  # (scripts/ios/safari-run.mjs). Screenshots of each step are the ios-safari artifact.
+  safari:
+    runs-on: macos-15-intel
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 22, cache: npm }
+      - name: Newest Xcode and simulators
+        run: |
+          x=$(ls -d /Applications/Xcode_2[6-9]*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$x" ]; then sudo xcode-select -s "$x"; fi
+          xcodebuild -version
+      - run: npm ci
+        env: { ONNXRUNTIME_NODE_INSTALL: skip }
+      - name: Two deployments of the web app
+        working-directory: apps/web
+        run: |
+          INKWRIGHT_VERSION=0.0.0-safari.1 npx vite build --outDir "$RUNNER_TEMP/dist-a"
+          INKWRIGHT_VERSION=0.0.0-safari.2 npx vite build --outDir "$RUNNER_TEMP/dist-b"
+      - name: Safari on iPhone and iPad
+        run: node scripts/ios/safari-run.mjs "$RUNNER_TEMP/dist-a" "$RUNNER_TEMP/dist-b" safari-out
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with: { name: ios-safari, path: safari-out/, if-no-files-found: warn }

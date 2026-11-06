@@ -1,4 +1,4 @@
-import { isNative } from '../platform/env.ts';
+import { isIOSHomeScreenApp, isNative, safeStorage } from '../platform/env.ts';
 import { useSettings } from '../state/settings.ts';
 
 /**
@@ -8,7 +8,73 @@ import { useSettings } from '../state/settings.ts';
  */
 export const GOOGLE_SCOPES = ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/drive.file'];
 
-let token: { value: string; expires: number } | null = null;
+const REDIRECT_KEY = 'inkwright.google.redirect';
+const TOKEN_KEY = 'inkwright.google.token';
+let token: { value: string; expires: number } | null = restoredToken();
+
+// ---- Home Screen apps on iPhone and iPad ------------------------------------------------------
+// Sign-in popups lose their way back to a Home Screen app (no window.opener), so there Google's
+// page opens in the app itself and returns to it with the token (OAuth's redirect flow). The
+// app's address must be an authorized redirect URI of the web client (docs/GOOGLE_SETUP.md).
+
+function restoredToken(): { value: string; expires: number } | null {
+  try {
+    const t = JSON.parse(sessionStorage.getItem(TOKEN_KEY) ?? 'null') as { value: string; expires: number } | null;
+    return t && typeof t.value === 'string' && t.expires > Date.now() ? t : null;
+  } catch { return null; }
+}
+
+/** Whether sign-in goes through a full-page redirect here. */
+export function usesRedirectSignIn(): boolean {
+  return !isNative && isIOSHomeScreenApp();
+}
+
+/** The app's own address (its folder), which Google returns to. */
+export function redirectUri(href = location.href): string {
+  return new URL('./', href).href;
+}
+
+/** Google's sign-in page for the redirect flow. */
+export function redirectSignInUrl(clientIdValue: string, state: string, href = location.href): string {
+  const q = new URLSearchParams({
+    client_id: clientIdValue,
+    redirect_uri: redirectUri(href),
+    response_type: 'token',
+    scope: GOOGLE_SCOPES.join(' '),
+    include_granted_scopes: 'true',
+    prompt: 'consent',
+    state,
+  });
+  return `https://accounts.google.com/o/oauth2/v2/auth?${q}`;
+}
+
+function startRedirectSignIn(): Promise<never> {
+  const state = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
+  safeStorage.set(REDIRECT_KEY, JSON.stringify({ state, back: location.hash, at: Date.now() }));
+  location.assign(redirectSignInUrl(clientId(), state));
+  return new Promise<never>(() => {});
+}
+
+/**
+ * Finishes a redirect sign-in when the app opens with Google's answer in the address
+ * (#access_token=…&state=…): keeps the token, puts the address back as it was and completes the
+ * sign-in (account, Drive on). Call before the app renders. Returns true when it handled one.
+ */
+export function finishRedirectSignIn(): boolean {
+  if (typeof location === 'undefined' || !/[#&](access_token|error)=/.test(location.hash)) return false;
+  const params = new URLSearchParams(location.hash.slice(1));
+  let pending: { state: string; back: string; at: number } | null = null;
+  try { pending = JSON.parse(safeStorage.get(REDIRECT_KEY) ?? 'null'); } catch { pending = null; }
+  if (!pending || params.get('state') !== pending.state) return false;
+  safeStorage.remove(REDIRECT_KEY);
+  history.replaceState(null, '', `${location.pathname}${location.search}${pending.back || ''}`);
+  const value = params.get('access_token');
+  if (!value) return true; // Cancelled or refused: back where the person was.
+  token = { value, expires: Date.now() + (Number(params.get('expires_in')) || 3600) * 1000 - 60_000 };
+  try { sessionStorage.setItem(TOKEN_KEY, JSON.stringify(token)); } catch { /* storage unavailable */ }
+  void completeSignIn(value).catch(() => {});
+  return true;
+}
 let gisLoaded: Promise<void> | null = null;
 
 function loadGis(): Promise<void> {
@@ -32,6 +98,10 @@ function clientId(): string {
 }
 
 async function webToken(interactive: boolean): Promise<string> {
+  if (usesRedirectSignIn()) {
+    if (interactive) return startRedirectSignIn();
+    throw new Error('Google sign-in expired. Tap “Sync now” to sign in again.');
+  }
   await loadGis();
   const google = (window as any).google;
   return new Promise((resolve, reject) => {
@@ -89,6 +159,10 @@ export async function getAccessToken(opts: { interactive?: boolean; forceRefresh
 
 export async function signIn(): Promise<{ email: string; name: string; picture?: string }> {
   const t = isNative ? await nativeToken(true) : await webToken(true);
+  return completeSignIn(t);
+}
+
+async function completeSignIn(t: string): Promise<{ email: string; name: string; picture?: string }> {
   const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${t}` } });
   if (!r.ok) throw new Error(`Google profile request failed (${r.status})`);
   const p = await r.json();
@@ -103,5 +177,6 @@ export async function signOut() {
     if (isNative) { const { SocialLogin } = await import('@capgo/capacitor-social-login'); await SocialLogin.logout({ provider: 'google' } as any); }
   } catch { /* ignore */ }
   token = null;
+  try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* ignore */ }
   useSettings.getState().update((s) => ({ sync: { ...s.sync, account: null, drive: { ...s.sync.drive, enabled: false } } }));
 }

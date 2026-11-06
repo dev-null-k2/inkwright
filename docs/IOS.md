@@ -67,9 +67,20 @@ Then pick a simulator or your device in Xcode and press Run. Running on your own
 free Apple ID works for 7 days at a time; TestFlight and the App Store need the Apple Developer
 Program.
 
-Without the native app, iPhone and iPad users can open the web app in Safari and add it to the
-Home Screen: it works offline and Apple Pencil writes with pressure and tilt (no double-tap or
-squeeze, no Apple on-device model, notes stay in Safari's storage until synced).
+## The web app on iPhone and iPad (no App Store needed)
+
+Open the web app in Safari, then Share › Add to Home Screen (the app suggests it). It runs full
+screen and offline, Apple Pencil writes with pressure and tilt, the assistant works with any AI key
+or with the on-device model (downloaded once, then offline), Google Drive sync signs in by
+opening Google's page in the app and returning, and new versions are offered in the library with
+What's new, like the Android app (docs/UPDATES.md). Safari doesn't clear a Home Screen app's
+storage. Not available there: Pencil double-tap and squeeze, Apple's on-device model, and notes as
+files in the Files app (back them up with Drive, WebDAV or Export).
+
+CI's `safari` job checks it in Safari on the iPhone and iPad simulators
+(`scripts/ios/safari-run.mjs`): the Add to Home Screen hint, writing a note and keeping it across a
+reload, the offline app, the on-device AI downloading and answering (iPhone), and the update banner
+from one deployment to the next. Screenshots are the `ios-safari` artifact.
 
 ## Google sign-in on iOS
 

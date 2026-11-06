@@ -1,4 +1,4 @@
-# In-app updates (Android, from GitHub Releases)
+# In-app updates (Android from GitHub Releases, and the web app)
 
 Inkwright for Android is distributed from [GitHub Releases](https://github.com/dev-null-k2/inkwright/releases).
 An installed copy finds new releases by itself and updates from inside the app. No other app is
@@ -78,9 +78,27 @@ The Gradle property `-Pinkwright.distribution=github|play` (default `github`) de
 bundle (`.aab`, built with `play`) has neither the permission nor the updater's code, and the app
 shows no Updates section. The APKs on GitHub are built with `github`.
 
-## Desktop and web
+## Web app and Home Screen apps (iPhone, iPad, computers)
 
-- The web app updates itself through its service worker on the next load.
+The hosted web app (and the same app added to the Home Screen on iPhone or iPad, or installed
+from Chrome or Edge) gets the same banner as Android, from `src/updates/web.ts`:
+
+- Every deployment publishes `version.json` next to the app: its version (the latest release plus
+  the commits since, such as `0.9.0-beta.6+12.gd047863`, from `pages.yml`) and the CHANGELOG notes
+  for it (the version's section, else Unreleased).
+- After launch, when the app comes back to the foreground and every 30 minutes, it fetches that
+  file, bypassing every cache. When the deployment differs from the running version the library
+  shows "Inkwright … is ready" with What's new, Later and Update. Update fetches the new service
+  worker and reloads, which takes a few seconds; notes live in the browser's storage and are not
+  touched. After the reload the library says "Updated to Inkwright …" once.
+- Settings › About › Updates shows the version, Check now and the automatic-check switch (the
+  Updates module).
+- Without any click, the next launch while online opens the new version anyway: the service worker
+  asks the network first for the page.
+
+## Desktop
+
+- The web app updates itself through its service worker on the next load (above).
 - The desktop app (Tauri) has its own updater, which reads `latest.json` from the release when the
   updater signing key is set (docs/DESKTOP.md); until then, new versions are downloaded from the
   Releases page.

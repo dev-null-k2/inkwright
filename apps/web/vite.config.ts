@@ -3,8 +3,10 @@ import react from '@vitejs/plugin-react';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 import type { Plugin } from 'vite';
 import { fileURLToPath } from 'node:url';
+import { existsSync, readFileSync } from 'node:fs';
 import { engineAssets, engineSourceFromEnv, keepEngineWasmOut, type EngineSourceMode } from './build/engines.ts';
 import { desktopOcrAssets } from './scripts/vite-desktop-assets.ts';
+import { changelogNotes } from './build/changelog.ts';
 
 /**
  * Content Security Policy for hosted/native builds. Any AI endpoint may be configured by the user
@@ -31,6 +33,25 @@ function csp(native: boolean): Plugin {
     name: 'inkwright-csp',
     apply: 'build',
     transformIndexHtml: (html) => html.replace('<meta charset="UTF-8" />', `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${policy}" />`),
+  };
+}
+
+const APP_VERSION = process.env.INKWRIGHT_VERSION || process.env.npm_package_version || '1.0.0';
+
+/**
+ * version.json next to the web app: the version this deployment serves and its notes. A running
+ * copy compares it with its own version to offer "Update" (src/updates/web.ts), which is how the
+ * web app and Home Screen apps on iPhone and iPad get the same update banner as Android.
+ */
+function versionManifest(): Plugin {
+  return {
+    name: 'inkwright-version',
+    apply: 'build',
+    generateBundle() {
+      const file = fileURLToPath(new URL('../../CHANGELOG.md', import.meta.url));
+      const notes = existsSync(file) ? changelogNotes(readFileSync(file, 'utf8'), APP_VERSION) : '';
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ version: APP_VERSION, notes, built: new Date().toISOString() }) });
+    },
   };
 }
 
@@ -69,6 +90,8 @@ self.addEventListener('fetch', (e) => {
     return;
   }
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  // The update check must see what the server has now, never a cached copy.
+  if (new URL(req.url).pathname.endsWith('/version.json')) return;
   // Engine files have their own cache (src/engines/store.ts); keeping a second copy here would
   // double tens of MB of storage.
   if (new URL(req.url).pathname.includes('/engines/')) return;
@@ -100,7 +123,7 @@ export default defineConfig(({ mode }) => {
   const engines: EngineSourceMode = single ? 'none' : engineSourceFromEnv(process.env.INKWRIGHT_ENGINE_SOURCE) ?? (native || desktop ? 'cdn' : 'app');
   return {
     base: './',
-    plugins: [react(), engineAssets(engines), keepEngineWasmOut(), ...(single ? [viteSingleFile({ removeViteModuleLoader: true })] : native ? [csp(true)] : desktop ? [] : [serviceWorker(), csp(false)]), ...(desktop || e2e ? [desktopOcrAssets()] : [])],
+    plugins: [react(), engineAssets(engines), keepEngineWasmOut(), ...(single ? [viteSingleFile({ removeViteModuleLoader: true })] : native ? [csp(true)] : desktop ? [] : [serviceWorker(), versionManifest(), csp(false)]), ...(desktop || e2e ? [desktopOcrAssets()] : [])],
     publicDir: single ? false : 'public',
     // The single-file preview leaves the on-device AI runtime out (see src/ai/spawn-unavailable.ts).
     // It also leaves out the developer module's grammars and SQLite (src/dev/wasm-assets-unavailable.ts).
@@ -113,7 +136,7 @@ export default defineConfig(({ mode }) => {
     define: {
       // The release version (INKWRIGHT_VERSION, set by release.yml and desktop.yml from the tag),
       // so About, the device check and certificates name the version people installed.
-      __APP_VERSION__: JSON.stringify(process.env.INKWRIGHT_VERSION || process.env.npm_package_version || '1.0.0'),
+      __APP_VERSION__: JSON.stringify(APP_VERSION),
       __BUILD_TARGET__: JSON.stringify(single ? 'single' : desktop ? 'desktop' : native ? 'native' : 'web'),
       // INKWRIGHT_E2E_HOOK=1 adds the test hook to other builds too: the Android emulator suite
       // (e2e-android/) drives a native debug build and reads the document through it.

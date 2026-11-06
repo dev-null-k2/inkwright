@@ -28,11 +28,19 @@ import './styles/ux.css';
 import { App } from './App.tsx';
 import { BUILD_TARGET, isNative } from './platform/env.ts';
 import { handleOAuthRedirect } from './lib/agent/oauth-callback.ts';
+import { finishRedirectSignIn } from './lib/google.ts';
 
 // Installable, offline-capable web app (Mac/Windows/Linux/ChromeOS/iPad "Add to Dock/Home Screen").
 if (BUILD_TARGET === 'web' && !isNative && 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(() => {}); });
+  // Ask the browser to keep notes (IndexedDB, models) when space runs low. Safari and Chrome decide
+  // silently (Home Screen and installed apps qualify); Firefox would ask with a prompt at startup,
+  // so it isn't asked there.
+  if (!/Firefox\//.test(navigator.userAgent)) void navigator.storage?.persist?.().catch(() => false);
 }
+
+// Back from Google's sign-in page in a Home Screen app on iPhone/iPad (lib/google.ts).
+finishRedirectSignIn();
 
 // A connected app's sign-in popup only hands the result back to the main window.
 if (!handleOAuthRedirect()) {

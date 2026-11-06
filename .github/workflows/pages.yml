@@ -15,10 +15,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with: { persist-credentials: false }
+        # Full history and tags: the version is the latest release plus the commits since.
+        with: { persist-credentials: false, fetch-depth: 0 }
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with: { node-version: 22, cache: npm }
       - run: npm ci
+      # The web app's version (About, version.json for the update banner): the latest release tag,
+      # plus "+<commits>.<sha>" for what's been merged since (0.9.0-beta.6+12.gd047863).
+      - name: Version
+        run: |
+          d="$(git describe --tags --match 'v[0-9]*' --long 2>/dev/null || true)"
+          if [[ "$d" =~ ^v(.+)-([0-9]+)-(g[0-9a-f]+)$ ]]; then
+            v="${BASH_REMATCH[1]}"; n="${BASH_REMATCH[2]}"; h="${BASH_REMATCH[3]}"
+            [ "$n" = 0 ] && echo "INKWRIGHT_VERSION=$v" >> "$GITHUB_ENV" || echo "INKWRIGHT_VERSION=$v+$n.$h" >> "$GITHUB_ENV"
+          fi
       - run: npm run build
       # The landing page at the root, the app under /app/, README art and screenshots under /media/.
       - run: |
