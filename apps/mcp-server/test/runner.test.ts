@@ -17,7 +17,9 @@ function fakeTime(start: number) {
     clock: () => now,
     setTimer: (fn: () => void, ms: number) => { const id = ++seq; timers.push({ at: now + ms, fn, id }); return id; },
     clearTimer: (id: unknown) => { const i = timers.findIndex((t) => t.id === id); if (i >= 0) timers.splice(i, 1); },
-    async advance(ms: number, settle: () => Promise<void>) {
+    /** Timers set so far (a fired timer that re-arms itself raises it). */
+    get armed() { return seq; },
+    async advance(ms: number, settle: (armedBefore: number) => Promise<void>) {
       const end = now + ms;
       for (;;) {
         timers.sort((a, b) => a.at - b.at);
@@ -25,8 +27,9 @@ function fakeTime(start: number) {
         if (!t || t.at > end) break;
         timers.shift();
         now = t.at;
+        const before = seq;
         t.fn();
-        await settle();
+        await settle(before);
       }
       now = end;
     },
@@ -43,17 +46,22 @@ function scripted(script: ScriptStep[] | ((c: never) => never)): AgentAI {
 
 // Coarse ticks keep fake-time tests fast; the lease outlives a tick as it does in production (60 s tick, 10 min lease).
 function runner(time: ReturnType<typeof fakeTime>, ai: AgentAI | null, holder: string, scanMs = 60 * 60_000) {
+  clockFor = time;
   const r = new RoutineRunner({ ctx, ai, holder, label: `Runner ${holder}`, clock: time.clock, setTimer: time.setTimer, clearTimer: time.clearTimer, tickMs: 5 * 60_000, scanMs, saveDebounceMs: 20_000, leaseTtlMs: 12 * 60_000, watch: false, log: (m) => process.env.DEBUG_RUNNER && console.error(holder, new Date(time.clock()).toTimeString().slice(0, 8), m) });
   runners.push(r);
   return r;
 }
 
-/** Waits (real time) for a fired timer's file I/O, then until nothing is running or queued. */
-const idle = (r: RoutineRunner) => async () => {
+/** Waits (real time) for a fired timer's file I/O: until nothing is running or queued and the runner
+ *  has armed its next timer. A tick reads routines from disk before it re-arms; moving the clock on
+ *  before that (a busy machine) would skip the next slot. Timers that don't re-arm wait out the cap. */
+let clockFor: ReturnType<typeof fakeTime> | null = null;
+const idle = (r: RoutineRunner) => async (armedBefore?: number) => {
   await new Promise((res) => setTimeout(res, 25));
-  for (let i = 0; i < 200; i++) {
+  for (let i = 0; i < 400; i++) {
+    const rearmed = armedBefore === undefined || !clockFor || clockFor.armed > armedBefore;
+    if (!r.scheduler.runningId && !r.scheduler.queued.length && rearmed) return;
     await new Promise((res) => setTimeout(res, 5));
-    if (!r.scheduler.runningId && !r.scheduler.queued.length) return;
   }
 };
 
@@ -73,7 +81,8 @@ afterEach(async () => {
   await fx.cleanup();
 });
 
-describe('always-on runner', () => {
+// Fake time with real file I/O between timers: hours of ticks take a few real seconds.
+describe('always-on runner', { timeout: 30_000 }, () => {
   it('catches up once, then runs at the next slot; runs are logged like the app’s', async () => {
     const store = new RoutineStore(ctx.fs);
     const routine = newRoutine({ name: 'Evening tidy', prompt: 'Append a line to my launch plan please.', triggers: [{ kind: 'daily', time: '18:00' }] }, at(2026, 11, 1, 9));
@@ -88,7 +97,7 @@ describe('always-on runner', () => {
     expect(lease).toMatchObject({ holder: 'runner:a', label: 'Runner runner:a', kind: 'runner' });
     // The app now defers to it.
     expect(await routineLeaseHeldByOther(ctx.fs, time.clock())).not.toBeNull();
-    let runs = await new ActivityStore(ctx.fs).list();
+    let runs = await runsWhen(1, new ActivityStore(ctx.fs));
     expect(runs).toHaveLength(1);
     expect(runs[0]).toMatchObject({ source: 'routine', label: 'Evening tidy', routineId: routine.id, status: 'done', reply: 'Added a line.' });
     expect(runs[0]!.prompt).toMatch(/missed while Inkwright was closed/);
@@ -121,7 +130,7 @@ describe('always-on runner', () => {
     expect(await ctx.fs.readText(ROUTINE_LEASE_PATH)).toBeNull();
     await time.advance(15 * 60_000, idle(b));
     expect(b.holdsLease).toBe(true);
-    const runs = await new ActivityStore(ctx.fs).list();
+    const runs = await runsWhen(1, new ActivityStore(ctx.fs));
     expect(runs.map((x) => x.reply)).toEqual(['Morning from B']);
   });
 
@@ -139,7 +148,7 @@ describe('always-on runner', () => {
     expect(b.holdsLease).toBe(false);
     await time.advance(15 * 60_000, idle(b));
     expect(b.holdsLease).toBe(true);
-    const runs = await new ActivityStore(ctx.fs).list();
+    const runs = await runsWhen(1, new ActivityStore(ctx.fs));
     expect(runs.map((x) => x.reply)).toEqual(['A ran']); // 09:00 already ran on A; B doesn't repeat it
   });
 
@@ -156,7 +165,7 @@ describe('always-on runner', () => {
     await time.advance(15_000, idle(r)); // scan
     expect(await new ActivityStore(ctx.fs).list()).toHaveLength(0); // still debouncing
     await time.advance(25_000, idle(r));
-    const runs = await new ActivityStore(ctx.fs).list();
+    const runs = await runsWhen(1, new ActivityStore(ctx.fs));
     expect(runs).toHaveLength(1);
     expect(runs[0]!.prompt).toBe('Saved “Grocery list” (#email)');
   });
@@ -180,7 +189,7 @@ describe('always-on runner', () => {
     const r = runner(fakeTime(at(2026, 11, 4)), null, 'runner:a');
     await r.start();
     await r.scheduler.runNow((await store.list())[0]!.id);
-    const [run] = await new ActivityStore(ctx.fs).list();
+    const [run] = await runsWhen(1, new ActivityStore(ctx.fs));
     expect(run).toMatchObject({ source: 'routine', status: 'error' });
     expect(run!.error).toMatch(/--ai-provider/);
   });
