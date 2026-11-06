@@ -57,6 +57,13 @@ const idle = (r: RoutineRunner) => async () => {
   }
 };
 
+/** Polls the activity log until it has n runs (a run's log entry is written just after it ends). */
+async function runsWhen(n: number, store: ActivityStore) {
+  let runs = await store.list();
+  for (let i = 0; i < 100 && runs.length < n; i++) { await new Promise((res) => setTimeout(res, 20)); runs = await store.list(); }
+  return runs;
+}
+
 beforeEach(async () => {
   fx = await makeFixture();
   ctx = await fx.ctx();
@@ -90,7 +97,7 @@ describe('always-on runner', () => {
     await time.advance(9 * 3600_000, idle(r));
     expect(await new ActivityStore(ctx.fs).list()).toHaveLength(1);
     await time.advance(3600_000 + 60_000, idle(r));
-    runs = await new ActivityStore(ctx.fs).list();
+    runs = await runsWhen(2, new ActivityStore(ctx.fs));
     expect(runs).toHaveLength(2);
     expect(runs[0]!.prompt).toBe('Daily at 18:00');
     // Its own append didn't count as "the user saved a note".
