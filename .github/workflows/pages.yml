@@ -30,6 +30,7 @@ jobs:
             [ "$n" = 0 ] && echo "INKWRIGHT_VERSION=$v" >> "$GITHUB_ENV" || echo "INKWRIGHT_VERSION=$v+$n.$h" >> "$GITHUB_ENV"
           fi
       - run: npm run build
+      - run: node scripts/check-offline-app.mjs apps/web/dist
       # The landing page at the root, the app under /app/, README art and screenshots under /media/.
       - run: |
           node scripts/brand/privacy-page.mjs

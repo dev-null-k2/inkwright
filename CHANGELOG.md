@@ -21,8 +21,11 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
   (which also keeps Safari from clearing notes after a week away), Google sign-in works there
   (Google's page opens in the app and comes back), and storage is kept when space runs low.
 - **The web app works offline again in every browser.** Its offline part (the service worker) had
-  a syntax error since the first release, so browsers never installed it; a test now checks that
-  it parses, installs and opens the app without a network.
+  a syntax error since the first release and listed a file the build drops, so browsers never
+  installed it. Tests now check that it parses, installs and opens the app without a network, and
+  publishing checks every file it installs is there.
+- Downloading an engine in Settings (code parsers, DuckDB, the on-device AI) no longer sometimes
+  goes back to "Download" after finishing.
 - **Updates for the web app, like Android's**: a new deployment shows "Inkwright … is ready" with
   What's new, Later and Update in the library, and Settings › About › Updates; after updating the
   library says "Updated to …" once. The hosted app's version is now the latest release plus the

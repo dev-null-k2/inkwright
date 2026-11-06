@@ -3,7 +3,8 @@ import react from '@vitejs/plugin-react';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 import type { Plugin } from 'vite';
 import { fileURLToPath } from 'node:url';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { engineAssets, engineSourceFromEnv, keepEngineWasmOut, type EngineSourceMode } from './build/engines.ts';
 import { desktopOcrAssets } from './scripts/vite-desktop-assets.ts';
 import { changelogNotes } from './build/changelog.ts';
@@ -61,13 +62,15 @@ function serviceWorker(): Plugin {
   return {
     name: 'inkwright-sw',
     apply: 'build',
-    generateBundle(_opts, bundle) {
+    // Written after the bundle is on disk, from what is on disk: plugins drop chunks late (Vite
+    // removes CSS-only chunks), and one missing file makes the install fail in every browser.
+    writeBundle(opts, bundle) {
+      const dir = opts.dir!;
       // Engines (DuckDB, the on-device AI runtime, code parsers: tens of MB of WebAssembly) download
       // on first use into their own verified cache (src/engines), never at install.
-      const files = Object.keys(bundle).filter((f) => !f.endsWith('.map') && !f.startsWith('engines/') && !/ort-wasm|\.wasm$/.test(f));
-      const version = Date.now().toString(36);
-      const source = serviceWorkerSource(files, version);
-      this.emitFile({ type: 'asset', fileName: 'sw.js', source });
+      const files = Object.keys(bundle).filter((f) => !f.endsWith('.map') && f !== 'version.json' && !f.startsWith('engines/') && !/ort-wasm|\.wasm$/.test(f)
+        && existsSync(join(dir, f)) && statSync(join(dir, f)).isFile());
+      writeFileSync(join(dir, 'sw.js'), serviceWorkerSource(files, Date.now().toString(36)));
     },
   };
 }

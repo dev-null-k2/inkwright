@@ -151,7 +151,9 @@
         log('storage persisted: ' + persisted);
         try { await navigator.serviceWorker.register('./sw.js'); } catch (e) { log('service worker registration failed: ' + (e && (e.name + ': ' + e.message))); }
         var reg = await Promise.race([navigator.serviceWorker.ready, sleep(20000).then(function () { return navigator.serviceWorker.getRegistration(); })]);
-        step('offline app installed', !!(reg && (reg.active || reg.waiting)), reg && reg.active ? 'service worker active' : 'no service worker');
+        if (reg && !reg.active) { var w = reg.installing || reg.waiting; log('service worker ' + (w ? w.state : 'missing')); await sleep(15000); }
+        var cached = !!(await caches.match('./').catch(function () { return null; }));
+        step('offline app installed', !!(reg && reg.active) && cached, reg && reg.active ? 'service worker active, app ' + (cached ? 'cached for offline' : 'NOT cached') : 'no service worker');
         await snap('library-reloaded');
         if (st.ai) await onDeviceAI();
         await post('/__switch?what=manifest');

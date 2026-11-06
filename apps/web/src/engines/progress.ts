@@ -15,11 +15,19 @@ interface EngineState {
 
 export const useEngines = create<EngineState>(() => ({ downloads: {}, status: {} }));
 
+// Reads can finish out of order (a slow one started when Settings opened can land after the one a
+// finished download started); only the newest read of each engine is applied.
+const reads: Partial<Record<EngineId, number>> = {};
+let readSeq = 0;
+
 /** Re-reads what is stored for one engine (or all). */
 export async function refreshEngineStatus(id?: EngineId): Promise<void> {
   const ids = id ? [id] : ENGINES.map((e) => e.id);
+  const seq = ++readSeq;
+  for (const i of ids) reads[i] = seq;
   const entries = await Promise.all(ids.map(async (i) => [i, await engineStatus(i)] as const));
-  useEngines.setState((s) => ({ status: { ...s.status, ...Object.fromEntries(entries) } }));
+  const current = entries.filter(([i]) => reads[i] === seq);
+  if (current.length) useEngines.setState((s) => ({ status: { ...s.status, ...Object.fromEntries(current) } }));
 }
 
 let watching = false;
