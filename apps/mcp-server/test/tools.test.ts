@@ -378,7 +378,10 @@ describe('resources and prompts', () => {
   it('builds prompts from note content', async () => {
     const s = await summarizeNotePrompt(ctx, { id: 'LAUNCH' });
     expect((s.messages[0]!.content as { text: string }).text).toContain('Launch the beta on Friday');
-    const today = await dailyReviewPrompt(ctx, {});
+    // The day the sketch was written (30 min ago): just after midnight that is yesterday.
+    const d = new Date(Date.now() - 30 * 60_000);
+    const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const today = await dailyReviewPrompt(ctx, { date: day });
     expect((today.messages[0]!.content as { text: string }).text).toContain('Whiteboard sketch');
     const todos = await todosFromNotesPrompt(ctx, { days: '30', notebook: 'Work' });
     const t = (todos.messages[0]!.content as { text: string }).text;
