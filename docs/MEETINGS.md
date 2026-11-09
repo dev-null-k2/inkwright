@@ -69,7 +69,7 @@ regression test in `packages/ai/test/meetings.test.ts`.
 |---|---|---|---|---|---|
 | Enhanced notes, templates, recipes, ask, briefs, people | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Recording in the room, transcript, speakers by name | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Recording both sides of a call | ✓ (tab or system sound) | — | Windows ✓ | — | — |
+| Recording both sides of a call | ✓ (tab or system sound) | — | Windows (WebView2 offers the same sharing; not yet tested on a real call) | — | — |
 | Calendar by address | via `.ics` file when the server refuses browsers | same | ✓ | ✓ | ✓ |
 | Slack, Discord, Linear, GitHub, Todoist, webhooks | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Teams, Notion, Jira, HubSpot, Attio | — (those services refuse browsers) | — | ✓ | ✓ | ✓ |

@@ -15,8 +15,8 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 - **Meetings** in the library: coming up from your calendars with join links, one tap to take
   notes (attendees, call link and template filled in), a brief before each meeting from earlier
   ones with the same people, reminders, people and companies, and ask across meetings.
-- **Record a call** without a bot: both sides of Zoom, Meet or Teams in Chrome, Edge and the
-  Windows app, with who spoke; delete transcript lines and name speakers; optionally delete the
+- **Record a call** without a bot: both sides of Zoom, Meet or Teams in Chrome and Edge, with
+  who spoke; delete transcript lines and name speakers; optionally delete the
   audio once it is transcribed.
 - **Share** to Slack, Teams, Discord, Notion, Linear, Jira, GitHub, Todoist, HubSpot, Attio and
   any webhook, always with a preview; copy as rich text, Markdown or for Slack; email attendees.
