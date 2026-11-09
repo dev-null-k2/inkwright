@@ -365,6 +365,13 @@ export class Vault {
     try { return await openBytes(key, bytes, assetAad(name)); } catch { return null; }
   }
 
+  /** Deletes an asset (e.g. a recording's audio once it is transcribed, when the person asked for that). */
+  async deleteAsset(noteId: string, name: string): Promise<void> {
+    requireSafeId(noteId);
+    if (!/^[0-9A-Za-z_.-]{1,96}$/.test(name) || name.includes('..')) throw new Error(`Unsafe asset name: ${name}`);
+    await this.fs.delete(VaultLayout.asset(noteId, name));
+  }
+
   // ---- Notebooks ------------------------------------------------------------------------
 
   async listNotebooks(): Promise<NotebookMeta[]> {

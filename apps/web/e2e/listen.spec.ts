@@ -109,7 +109,7 @@ test('live transcript lines up with ink; ask while recording; summaries after', 
   await newNote(page);
 
   await page.getByRole('button', { name: 'Record audio' }).click();
-  const panel = page.getByRole('complementary', { name: 'Transcript' });
+  const panel = page.getByRole('complementary', { name: 'Meeting' });
   await expect(panel).toBeVisible();
   await expect(panel.locator('.lis-where')).toContainText('Sent to Custom (OpenAI-compatible)');
 
@@ -142,7 +142,7 @@ test('live transcript lines up with ink; ask while recording; summaries after', 
   // Stop: the transcript is saved next to the clip and pages get summaries.
   await page.getByRole('button', { name: 'Stop recording' }).click();
   await expect(page.locator('.audio-bar')).toBeVisible();
-  await editorMenu(page, 'Audio', 'Transcript');
+  await editorMenu(page, 'Audio', 'Meeting notes');
   await expect(panel.locator('.lis-where')).toContainText('Transcribed by your AI provider');
   await expect(panel.locator('.lis-lecture')).toContainText('An introduction to convolution.', { timeout: 20_000 });
   await expect(panel.locator('.lis-todos')).toContainText('Homework three due Friday');
@@ -191,7 +191,7 @@ test('search finds what was said and opens that moment', async ({ page }) => {
   await page.getByRole('button', { name: 'Record audio' }).click();
   await page.waitForTimeout(800);
   await pen(page, word(120, 140, 160));
-  await editorMenu(page, 'Audio', 'Transcript');
+  await editorMenu(page, 'Audio', 'Meeting notes');
   await expect(page.locator('.lis-seg')).toHaveCount(2, { timeout: 20_000 });
   await page.getByRole('button', { name: 'Stop recording' }).click();
   await expect(page.locator('.lis-where')).toContainText('Transcribed by your AI provider');
@@ -247,7 +247,7 @@ test('on this device: offers the speech model download and never uploads audio',
   await openApp(page);
   await newNote(page);
   await page.getByRole('button', { name: 'Record audio' }).click();
-  const panel = page.getByRole('complementary', { name: 'Transcript' });
+  const panel = page.getByRole('complementary', { name: 'Meeting' });
   await expect(panel.locator('.lis-offer')).toContainText(/Transcribe privately on this device/);
   await expect(panel.getByRole('button', { name: /^Download · \d+ MB$/ })).toBeVisible();
   await page.waitForTimeout(2500);

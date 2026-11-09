@@ -14,7 +14,7 @@ import { InkRipple, NotebookCover } from '../ui/Cover.tsx';
 import { LockedCover } from '../studio/LockedCover.tsx';
 import { syncNow, useSync } from '../lib/sync.ts';
 import { OPENABLE, useFileDrop } from '../lib/openFiles.ts';
-import { GraphNavItem, TodayNavItem } from '../ui/knowledge/LibraryParts.tsx';
+import { GraphNavItem, MeetingsNavItem, TodayNavItem } from '../ui/knowledge/LibraryParts.tsx';
 import { LibraryInkActions, PapersNavItem } from '../inkactions/LibraryParts.tsx';
 import { openPalette, usePaletteActions } from '../lib/palette.ts';
 import { isModuleOn, useModules } from '../modules/registry.ts';
@@ -121,6 +121,7 @@ export function Library() {
       </div>
       <NavItem icon={<BookOpen size={17} />} label="All notes" count={notes.length} on={filter.kind === 'all'} onClick={() => { setFilter({ kind: 'all' }); setDrawer(false); }} />
       {isModuleOn('knowledge', mods) && <TodayNavItem onDone={() => setDrawer(false)} />}
+      {isModuleOn('meetings', mods) && <MeetingsNavItem onDone={() => setDrawer(false)} />}
       <NavItem icon={<Pin size={17} />} label="Pinned" count={notes.filter((n) => n.pinned).length} on={filter.kind === 'pinned'} onClick={() => { setFilter({ kind: 'pinned' }); setDrawer(false); }} />
       <NavItem icon={<Clock size={17} />} label="This week" on={filter.kind === 'recent'} onClick={() => { setFilter({ kind: 'recent' }); setDrawer(false); }} />
       <NavItem icon={<Inbox size={17} />} label="Unfiled" on={filter.kind === 'unfiled'} onClick={() => { setFilter({ kind: 'unfiled' }); setDrawer(false); }} />

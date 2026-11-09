@@ -23,6 +23,10 @@ export interface IcsEvent {
   allDay: boolean;
   location?: string;
   description?: string;
+  /** People invited (ATTENDEE), the organizer first when the file names one. */
+  attendees?: IcsPerson[];
+  /** URL property (some calendars put the video call link here). */
+  url?: string;
   rrule?: RRule;
   /** Excluded occurrence starts (epoch ms). */
   exdates: number[];
@@ -65,6 +69,17 @@ export interface IcsOccurrence {
   allDay: boolean;
   location?: string;
   description?: string;
+  /** People invited (ATTENDEE), the organizer first when the file names one. */
+  attendees?: IcsPerson[];
+  /** URL property (some calendars put the video call link here). */
+  url?: string;
+}
+
+/** Someone on an event: the display name (CN) and address, either may be missing. */
+export interface IcsPerson {
+  name?: string;
+  email?: string;
+  organizer?: boolean;
 }
 
 // ---- Lines -----------------------------------------------------------------------------------------
@@ -260,6 +275,19 @@ function buildEvent(props: Prop[]): IcsEvent | null {
   if (loc) ev.location = icsUnescape(loc).trim();
   const desc = get('DESCRIPTION')?.value;
   if (desc) ev.description = icsUnescape(desc).trim();
+  const people: IcsPerson[] = [];
+  for (const p of props.filter((x) => x.name === 'ORGANIZER' || x.name === 'ATTENDEE')) {
+    const email = /^mailto:/i.test(p.value) ? p.value.replace(/^mailto:/i, '').trim().toLowerCase() : undefined;
+    const name = p.params.CN ? icsUnescape(p.params.CN).trim() : undefined;
+    if (!email && !name) continue;
+    const known = people.find((x) => (email && x.email === email) || (!email && name && x.name === name));
+    if (known) { if (p.name === 'ORGANIZER') known.organizer = true; if (!known.name && name) known.name = name; continue; }
+    if ((p.params.PARTSTAT ?? '').toUpperCase() === 'DECLINED' || (p.params.CUTYPE ?? '').toUpperCase() === 'ROOM' || (p.params.CUTYPE ?? '').toUpperCase() === 'RESOURCE') continue;
+    people.push({ ...(name ? { name } : {}), ...(email ? { email } : {}), ...(p.name === 'ORGANIZER' ? { organizer: true } : {}) });
+  }
+  if (people.length) ev.attendees = people.sort((a, b) => Number(!!b.organizer) - Number(!!a.organizer));
+  const url = get('URL')?.value.trim();
+  if (url && /^https?:\/\//i.test(url)) ev.url = url;
   const rr = get('RRULE');
   if (rr) { const r = parseRRule(rr.value, start); if (r) ev.rrule = r; }
   for (const p of props.filter((x) => x.name === 'EXDATE')) {
@@ -336,7 +364,7 @@ export function expandEvents(events: readonly IcsEvent[], from: number, to: numb
     if (e.cancelled) return;
     const end = start + len;
     if (end > from && start < to || (len === 0 && start >= from && start < to)) {
-      out.push({ uid: e.uid, title: e.title, start, end, allDay: e.allDay, ...(e.location ? { location: e.location } : {}), ...(e.description ? { description: e.description } : {}) });
+      out.push({ uid: e.uid, title: e.title, start, end, allDay: e.allDay, ...(e.location ? { location: e.location } : {}), ...(e.description ? { description: e.description } : {}), ...(e.attendees ? { attendees: e.attendees } : {}), ...(e.url ? { url: e.url } : {}) });
     }
   };
   for (const e of events) {

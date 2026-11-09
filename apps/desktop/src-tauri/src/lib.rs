@@ -11,6 +11,7 @@
 //! - the memory timeline's window facts and pixels (recall.rs), and calendar fetching (calendar.rs).
 
 mod calendar;
+mod integrations;
 mod recall;
 mod settings;
 mod sidecar;
@@ -273,6 +274,13 @@ async fn calendar_fetch(url: String) -> Result<String, String> {
     calendar::fetch(&url).await
 }
 
+// ---- Integrations (meeting notes to other tools) ---------------------------------------------------
+
+#[tauri::command]
+async fn integration_request(req: integrations::Request) -> Result<integrations::Response, String> {
+    integrations::send(req).await
+}
+
 // ---- Opened files --------------------------------------------------------------------------------
 
 #[derive(Serialize)]
@@ -471,6 +479,7 @@ pub fn run() {
             recall_request_permission,
             recall_tray_state,
             calendar_fetch,
+            integration_request,
             opened_files_take,
             opened_file_read,
         ])

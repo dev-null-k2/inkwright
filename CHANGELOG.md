@@ -4,6 +4,24 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 
 ## Unreleased
 
+### Meetings
+- **Enhanced notes**: write what matters during a meeting; afterwards your notes are written out
+  in full from what was said, shaped by a template. Your own words stay, in ink colour; what the AI
+  added is grey and links to the moment it was said. Edit by asking, check off action items, edit
+  a line, versions with restore. Works with the on-device model, offline ([MEETINGS.md](docs/MEETINGS.md)).
+- **15 templates** (1:1, stand-up, sales call, customer discovery, interview, investor, kickoff,
+  retro, design review, lecture and more) and your own; **recipes** on one meeting or across
+  meetings (follow-up email, PRD, coach me, feature requests, weekly recap…) and your own.
+- **Meetings** in the library: coming up from your calendars with join links, one tap to take
+  notes (attendees, call link and template filled in), a brief before each meeting from earlier
+  ones with the same people, reminders, people and companies, and ask across meetings.
+- **Record a call** without a bot: both sides of Zoom, Meet or Teams in Chrome, Edge and the
+  Windows app, with who spoke; delete transcript lines and name speakers; optionally delete the
+  audio once it is transcribed.
+- **Share** to Slack, Teams, Discord, Notion, Linear, Jira, GitHub, Todoist, HubSpot, Attio and
+  any webhook, always with a preview; copy as rich text, Markdown or for Slack; email attendees.
+- The AI's additions written onto the page in AI ink, in a hand matched to yours.
+
 ### iPhone and iPad
 - The native iOS app: Apple Pencil pressure, tilt and hover, with double-tap and squeeze switching
   to the tool chosen in Settings › Pen button and back; Apple's on-device model (iOS 26, Apple

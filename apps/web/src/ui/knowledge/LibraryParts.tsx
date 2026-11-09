@@ -1,4 +1,4 @@
-import { CalendarDays, Waypoints } from 'lucide-react';
+import { CalendarDays, NotebookPen, Waypoints } from 'lucide-react';
 import { dayKey, findDailyNote } from '@inkwright/core';
 import { openToday } from '../../lib/knowledge.ts';
 import { useApp } from '../../state/app.ts';
@@ -24,6 +24,17 @@ export function GraphNavItem() {
     <button type="button" className="nav-item" title={`Graph of your notes (${GRAPH_KEYS})`} onClick={() => navigate({ name: 'graph' })}>
       <span className="nav-icon"><Waypoints size={17} /></span>
       <span className="nav-label">Graph</span>
+    </button>
+  );
+}
+
+/** "Meetings" in the library sidebar: coming up, recent meetings, people, companies, ask across. */
+export function MeetingsNavItem({ onDone }: { onDone?: () => void }) {
+  const navigate = useApp((s) => s.navigate);
+  return (
+    <button type="button" className="nav-item" title="Meetings: coming up, people, companies, ask across meetings" onClick={() => { onDone?.(); navigate({ name: 'meetings' }); }}>
+      <span className="nav-icon"><NotebookPen size={17} /></span>
+      <span className="nav-label">Meetings</span>
     </button>
   );
 }

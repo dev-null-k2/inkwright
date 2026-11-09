@@ -60,6 +60,7 @@ import { clearFillRequest, wantsFill } from '../fill/signIntent.ts';
 
 // Document notes (documents/) open in the rich-text editor, loaded only when one is opened.
 const DocumentEditor = lazy(() => import('../documents/DocumentEditor.tsx'));
+const MeetingPanel = lazy(() => import('../meetings/MeetingPanel.tsx').then((m) => ({ default: m.MeetingPanel })));
 
 declare const __E2E__: boolean;
 /** Test builds (`vite build --mode e2e`) expose the document to end-to-end tests; releases never do. */
@@ -375,7 +376,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   };
 
   // ---- Audio -----------------------------------------------------------------------------------
-  const toggleRecording = async () => {
+  const toggleRecording = async (opts: { call?: boolean } = {}) => {
     if (!doc || !vault) return;
     const r = recorder.current;
     if (r.recording) {
@@ -386,11 +387,15 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
       await vault.vault.writeAsset(doc.meta.id, asset, new Uint8Array(await out.blob.arrayBuffer()));
       doc.updateMeta((m) => ({ ...m, recordings: [...(m.recordings ?? []), { ...out.clip, asset }] }));
       toast({ text: `Saved recording (${formatDuration(out.clip.durationMs)})`, tone: 'success' });
-      void finishListening({ vault, doc, clip: { ...out.clip, asset } });
+      const listened = finishListening({ vault, doc, clip: { ...out.clip, asset }, ...(r.call ? { energy: r.energy } : {}) });
+      if (isModuleOn('meetings')) void listened.then(() => import('../meetings/auto.ts')).then((m) => m.afterMeetingRecording(vault, doc, { ...out.clip, asset }));
     } else {
       try {
-        await r.start();
+        // A meeting note for an online meeting records both sides of the call (no bot joins).
+        const call = opts.call ?? (isModuleOn('meetings') && !!doc.meta.meeting?.event?.link && Recorder.callSupported() && (await import('../meetings/store.ts')).useMeetingPrefs.getState().callAudio);
+        await r.start({ call });
         setRecording(Date.now());
+        if (r.call) toast({ text: 'Recording you and the call', tone: 'success' });
         // Live transcript of the same microphone audio (on this device by default).
         if (r.mediaStream && isModuleOn('listen')) void startListening({ noteId: doc.meta.id, clipId: r.clipId, startedAt: r.startedAt, stream: r.mediaStream });
         if (useSpeechPrefs.getState().autoOpen && useSpeechPrefs.getState().engine !== 'off') setPanel((p) => (p === 'ai' ? p : 'transcript'));
@@ -408,9 +413,16 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
 
   const clips = doc?.meta.recordings ?? [];
 
+  // A meeting started from the calendar or "New meeting" asks to record as soon as the note opens.
+  useEffect(() => {
+    if (!doc || !vault || recording != null || !isModuleOn('meetings')) return;
+    void import('../meetings/calendar.ts').then((m) => { if (m.consumeRecordOnOpen(doc.meta.id)) void toggleRecording(); });
+  }, [doc, vault]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const playClip = async (clipId: string, fromMs = 0) => {
     const clip = clips.find((c) => c.id === clipId);
     if (!clip || !vault || !doc) return;
+    if (clip.audioDeletedAt) return toast({ text: 'The audio of this recording was deleted after it was transcribed (Settings › Meetings).' });
     let a = audioEl.current;
     if (!a || a.dataset.clip !== clipId) {
       if (a) { a.pause(); URL.revokeObjectURL(a.src); }
@@ -647,9 +659,14 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
             vault={vault!} onOpenNote={(id) => void session?.flush().then(() => navigate({ name: 'editor', noteId: id }))}
             onDelete={async (i) => { if (await askConfirm(`Delete page ${i + 1}?`, 'The page and its ink are removed from this note.', 'Delete page', true)) doc!.deletePage(i); }} />
         )}
-        {sidePanel && panel === 'transcript' && (
+        {sidePanel && panel === 'transcript' && (on('meetings') ? (
+          <Suspense fallback={null}>
+            <MeetingPanel doc={doc!} vault={vault!} recording={recording != null} playing={playback} onClose={() => setPanel(null)}
+              onWriteOnPage={(v, style) => void import('../meetings/onpage.ts').then((m) => m.writeMeetingNotesOnPage(doc!, engine?.currentPageIndex ?? 0, v, style)).then((r) => { engine?.scrollToPage(r.pageIndex); toast({ text: style === 'hand' ? 'Written on the page in AI ink' : 'Added to the page' }); }).catch((e) => toast({ text: (e as Error).message, tone: 'error' }))} />
+          </Suspense>
+        ) : (
           <TranscriptPanel doc={doc!} vault={vault!} recording={recording != null} playing={playback} onClose={() => setPanel(null)} />
-        )}
+        ))}
         {sidePanel && panel === 'links' && kb.panel(() => setPanel(null))}
         {doc && !panel && plugins.panel}
         {sidePanel && panel === 'ai' && on('assistant') && (
@@ -711,9 +728,10 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
               { label: 'Draw with finger', icon: <Pointer size={16} />, hint: finger.on ? 'On' : 'Off', onClick: finger.toggle },
             ],
             audio: [
-              ...(narrow && !isArtifact ? [{ label: recording != null ? 'Stop recording' : 'Record audio', icon: <Mic size={16} />, onClick: () => void toggleRecording() }] : []),
+              ...(narrow && !isArtifact ? [{ label: recording != null ? 'Stop recording' : 'Record audio', icon: <Mic size={16} />, onClick: () => void toggleRecording({ call: false }) }] : []),
+              ...(!isArtifact && recording == null && on('meetings') && Recorder.callSupported() ? [{ label: 'Record a call', icon: <Mic size={16} />, hint: 'You and the call, no bot', onClick: () => void toggleRecording({ call: true }) }] : []),
               ...(!isArtifact && on('listen') ? [
-                { label: 'Transcript', icon: <Captions size={16} />, hint: listening ? 'Live' : clips.length ? `${clips.length}` : undefined, onClick: () => setPanel('transcript') },
+                { label: on('meetings') ? 'Meeting notes' : 'Transcript', icon: <Captions size={16} />, hint: listening ? 'Live' : clips.length ? `${clips.length}` : undefined, onClick: () => setPanel('transcript') },
                 { label: 'Dictate', icon: <MicVocal size={16} />, hint: recording != null ? 'Not while recording' : undefined, disabled: recording != null, onClick: () => void startDictation('page') },
               ] : []),
             ],

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AudioLines, Cloud, Download, Globe, ListChecks, RefreshCw, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { formatBytes, whereExplanation } from '@inkwright/ai';
-import { formatStamp, newId, type AudioClip, type NoteDocument, type SpeechWhere, type TranscriptFile, type TranscriptSegment } from '@inkwright/core';
+import { formatStamp, newId, speakerName, type AudioClip, type NoteDocument, type SpeechWhere, type TranscriptFile, type TranscriptSegment } from '@inkwright/core';
 import { useApp } from '../state/app.ts';
 import type { AppVault } from '../lib/vault.ts';
 import { downloadModel, modelKey, refOf, useLocalAI } from '../lib/localai.ts';
@@ -56,7 +56,7 @@ const whereOfEngine = (t: TranscriptFile): { where: SpeechWhere; label: string }
  * (text appears as it is transcribed), saved ones afterwards. Tap a sentence to highlight the ink
  * written then and hear it; tap ink to find the sentence (the editor routes that here).
  */
-export function TranscriptPanel({ doc, vault, recording, playing, onClose }: { doc: NoteDocument; vault: AppVault; recording: boolean; playing: { clipId: string; position: number; playing: boolean } | null; onClose: () => void }) {
+export function TranscriptPanel({ doc, vault, recording, playing, onClose, embedded }: { doc: NoteDocument; vault: AppVault; recording: boolean; playing: { clipId: string; position: number; playing: boolean } | null; onClose: () => void; /** Inside the meeting panel's Transcript tab: no frame or header of its own. */ embedded?: boolean }) {
   const toast = useApp((s) => s.toast);
   const live = useListen();
   const isLive = live.noteId === doc.meta.id && (recording || live.status !== 'idle');
@@ -65,6 +65,7 @@ export function TranscriptPanel({ doc, vault, recording, playing, onClose }: { d
   const [clipId, setClipId] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [offer, setOffer] = useState<ResolvedSpeech | null>(null);
+  const [editing, setEditing] = useState(false);
   const list = useRef<HTMLOListElement>(null);
   const follow = useRef(true);
 
@@ -137,17 +138,29 @@ export function TranscriptPanel({ doc, vault, recording, playing, onClose }: { d
     }
   };
 
+  /** Transcript editing: remove a line (said by mistake, private), or name a speaker. */
+  const deleteSegment = async (id: string) => {
+    if (!file || !shownClip) return;
+    await writeTranscript(vault, doc.meta.id, { ...file, segments: file.segments.filter((x) => x.id !== id), updatedAt: Date.now() });
+    await reindexTranscripts(vault, doc.meta.id, doc.meta);
+  };
+  const renameSpeaker = async (label: string) => {
+    if (!file) return;
+    const { askText } = await import('./prompts.tsx');
+    const name = await askText('Who is this?', 'Name', file.speakers?.[label] ?? '', 'Save');
+    if (name == null) return;
+    const speakers = { ...(file.speakers ?? {}) };
+    if (name.trim()) speakers[label] = name.trim(); else delete speakers[label];
+    await writeTranscript(vault, doc.meta.id, { ...file, speakers, updatedAt: Date.now() });
+  };
+
   const lecture = !isLive ? file?.lecture : undefined;
   const statusLine = isLive
     ? live.status === 'finishing' ? 'Finishing the transcript…' : live.working ? 'Transcribing…' : live.where ? 'Listening' : ''
     : live.summarizing ? 'Writing summaries…' : busy ?? '';
 
-  return (
-    <aside className="side-panel lis-panel" aria-label="Transcript">
-      <header className="side-head">
-        <h2><AudioLines size={16} /> Transcript</h2>
-        <IconButton label="Close transcript" onClick={onClose}><X size={18} /></IconButton>
-      </header>
+  const body = (
+    <>
       <div className="lis-meta">
         {where && <WhereBadge where={where.where} label={where.label} />}
         {!isLive && clips.length > 1 && (
@@ -176,13 +189,21 @@ export function TranscriptPanel({ doc, vault, recording, playing, onClose }: { d
         </section>
       )}
       <ol className="lis-list" ref={list} onScroll={(e) => { const el = e.currentTarget; follow.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40; }}>
-        {segments.map((s) => (
-          <li key={s.id} data-seg={s.id}>
-            <button type="button" className={cx('lis-seg', s.id === current && 'is-on')} onClick={() => activeClip && focusSaid(doc.meta.id, activeClip, s.startMs, 'transcript')}>
-              <time>{formatStamp(s.startMs)}</time><span>{s.text}</span>
-            </button>
-          </li>
-        ))}
+        {segments.map((s, i) => {
+          const name = speakerName(isLive ? null : file, s.speaker, { them: (doc.meta.meeting?.attendees?.length ?? 0) === 1 ? doc.meta.meeting!.attendees![0]!.name : undefined });
+          const showName = name && s.speaker !== segments[i - 1]?.speaker;
+          return (
+            <li key={s.id} data-seg={s.id} className={cx(s.speaker && `is-${s.speaker === 'me' ? 'me' : 'other'}`)}>
+              {showName && (editing && file ? <button type="button" className="lis-speaker is-edit" onClick={() => void renameSpeaker(s.speaker!)}>{name}</button> : <span className="lis-speaker">{name}</span>)}
+              <span className="lis-seg-row">
+                <button type="button" className={cx('lis-seg', s.id === current && 'is-on')} onClick={() => activeClip && focusSaid(doc.meta.id, activeClip, s.startMs, 'transcript')}>
+                  <time>{formatStamp(s.startMs)}</time><span>{s.text}</span>
+                </button>
+                {editing && file && <IconButton label="Delete this line" onClick={() => void deleteSegment(s.id)}><X size={14} /></IconButton>}
+              </span>
+            </li>
+          );
+        })}
         {isLive && live.partial && <li className="lis-partial" aria-live="polite">{live.partial}</li>}
       </ol>
       {!segments.length && !live.partial && (
@@ -196,9 +217,20 @@ export function TranscriptPanel({ doc, vault, recording, playing, onClose }: { d
         <div className="lis-actions">
           <button type="button" className="btn btn-sm" disabled={!!busy || live.summarizing} onClick={() => void transcribeClip(shownClip)}><RefreshCw size={14} /> {file ? 'Transcribe again' : 'Transcribe recording'}</button>
           {file && file.segments.length > 0 && <button type="button" className="btn btn-sm" disabled={!!busy || live.summarizing} onClick={() => void summarize(shownClip)}><Sparkles size={14} /> Summarize pages</button>}
+          {file && file.segments.length > 0 && <button type="button" className={cx('btn btn-sm', editing && 'btn-primary')} aria-pressed={editing} onClick={() => setEditing((v) => !v)}>{editing ? 'Done' : 'Edit'}</button>}
         </div>
       )}
       {segments.length > 0 && <p className="lis-hint">{isLive ? 'Tap a sentence to see what you were writing.' : 'Tap a sentence to hear it and see what you wrote. Tap ink to find what was said.'}</p>}
+    </>
+  );
+  if (embedded) return <div className="lis-panel lis-embedded">{body}</div>;
+  return (
+    <aside className="side-panel lis-panel" aria-label="Transcript">
+      <header className="side-head">
+        <h2><AudioLines size={16} /> Transcript</h2>
+        <IconButton label="Close transcript" onClick={onClose}><X size={18} /></IconButton>
+      </header>
+      {body}
     </aside>
   );
 }

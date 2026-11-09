@@ -26,9 +26,15 @@ import {
   type NotebookMeta,
   type PageInk,
   type TextBox,
+  MEETINGS_LIBRARY_PATH,
+  decodeMeetingNotes,
+  decodeMeetingsLibrary,
+  encodeMeetingNotes,
+  encodeMeetingsLibrary,
+  mergeMeetingsLibraries,
 } from '@inkwright/core';
 import { utf8Decode, utf8Encode } from './util.ts';
-import { mergePageSummaries, mergeTranscript } from './merge-listen.ts';
+import { mergeMeetingNotes, mergePageSummaries, mergeTranscript } from './merge-listen.ts';
 import { mergeDocumentBodies } from './merge-document.ts';
 import { mergeApiKeys, mergePluginsConfig } from './merge-platform.ts';
 import { mergeCaptureFiles, mergeErasureFiles } from './merge-recall.ts';
@@ -403,7 +409,7 @@ export function mergeNotebook(base: NotebookMeta | null, local: NotebookMeta, re
 
 // ---- Files -------------------------------------------------------------------------------------
 
-export type MergeKind = 'page' | 'note' | 'notebook' | 'transcript' | 'page-summaries' | 'provenance' | 'study-deck' | 'plugins' | 'api-keys' | 'recall-captures' | 'recall-erasures';
+export type MergeKind = 'page' | 'note' | 'notebook' | 'transcript' | 'page-summaries' | 'provenance' | 'study-deck' | 'plugins' | 'api-keys' | 'recall-captures' | 'recall-erasures' | 'meeting-notes' | 'meetings-library';
 
 /** Which merge applies to a vault path, or null when the file can't be merged structurally. */
 export function mergeKindOf(path: string): MergeKind | null {
@@ -413,6 +419,9 @@ export function mergeKindOf(path: string): MergeKind | null {
   // Recording transcripts and page summaries live next to the recordings (merge-listen.ts).
   if (/^notes\/[^/]+\/assets\/[^/]+\.transcript\.json$/.test(path)) return 'transcript';
   if (/^notes\/[^/]+\/assets\/page-summaries\.json$/.test(path)) return 'page-summaries';
+  // Meetings: enhanced notes per note, and your templates and recipes.
+  if (/^notes\/[^/]+\/assets\/meeting-notes\.json$/.test(path)) return 'meeting-notes';
+  if (path === MEETINGS_LIBRARY_PATH) return 'meetings-library';
   // Context compiler (docs/COMPILER.md): provenance of AI text per note, flashcard decks.
   if (/^notes\/[^/]+\/assets\/provenance\.json$/.test(path)) return 'provenance';
   if (/^ai\/study\/[^/]+\.json$/.test(path)) return 'study-deck';
@@ -494,6 +503,18 @@ export function mergeFileBytes(path: string, base: Uint8Array | null, local: Uin
       const r = dec(decodePluginsConfig, remote);
       if (!l || !r) return null;
       return utf8Encode(encodePluginsConfig(mergePluginsConfig(dec(decodePluginsConfig, base), l, r, { prefer: opts.prefer })));
+    }
+    case 'meeting-notes': {
+      const l = dec(decodeMeetingNotes, local);
+      const r = dec(decodeMeetingNotes, remote);
+      if (!l || !r) return null;
+      return utf8Encode(encodeMeetingNotes(mergeMeetingNotes(l, r, { prefer: opts.prefer })));
+    }
+    case 'meetings-library': {
+      const l = dec(decodeMeetingsLibrary, local);
+      const r = dec(decodeMeetingsLibrary, remote);
+      if (!l || !r) return null;
+      return utf8Encode(encodeMeetingsLibrary(mergeMeetingsLibraries(l, r)));
     }
     case 'recall-captures':
       return utf8Encode(mergeCaptureFiles(base ? utf8Decode(base) : null, utf8Decode(local), utf8Decode(remote)));

@@ -6,6 +6,7 @@
 
 import type { PageObject } from './objects.ts';
 import type { PageAuthorship } from './authorship.ts';
+import type { MeetingInfo } from './meetings/model.ts';
 
 export type { PageObject };
 
@@ -371,7 +372,13 @@ export interface AudioClip {
   durationMs: number;
   mimeType: string;
   title?: string;
+  /**
+   * Set when the audio was deleted after it was transcribed (Meetings › keep audio off): the
+   * transcript and the ink's timing stay; there is nothing to play.
+   */
+  audioDeletedAt?: number;
 }
+
 
 export interface NoteMeta {
   id: string;
@@ -430,6 +437,11 @@ export interface NoteMeta {
    * docs/VAULT_FORMAT.md › Documents): the layout width ink annotations were written against.
    */
   document?: { width: number };
+  /**
+   * Set on notes taken in a meeting: attendees, the calendar event and the template the enhanced
+   * notes follow (meetings/model.ts). Optional; see docs/VAULT_FORMAT.md › Meetings.
+   */
+  meeting?: MeetingInfo;
   formatVersion: number;
 }
 

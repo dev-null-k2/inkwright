@@ -26,6 +26,11 @@ export interface TranscriptSegment {
   startMs: number;
   endMs: number;
   text: string;
+  /**
+   * Who said it, when known: `me` / `them` (a call recorded with both sides, told apart by which
+   * side was louder) or a provider's speaker label (`A`, `B`…). Names are in `TranscriptFile.speakers`.
+   */
+  speaker?: string;
 }
 
 /** Where the audio was turned into text (shown as the privacy indicator). */
@@ -60,6 +65,8 @@ export interface TranscriptFile {
   updatedAt: number;
   segments: TranscriptSegment[];
   lecture?: LectureSummary;
+  /** Display names for speaker labels (`{ "them": "Dana", "B": "Priya" }`). */
+  speakers?: Record<string, string>;
 }
 
 /** A summary of one page: what was said while it was written, plus what is on it. */
@@ -109,7 +116,7 @@ export function decodeTranscript(json: string): TranscriptFile {
   for (const s of Array.isArray(o.segments) ? o.segments : []) {
     if (!s || typeof s !== 'object' || typeof (s as TranscriptSegment).id !== 'string' || typeof (s as TranscriptSegment).text !== 'string') continue;
     const seg = s as TranscriptSegment;
-    segments.push({ id: seg.id, startMs: Math.max(0, num(seg.startMs)), endMs: Math.max(num(seg.startMs), num(seg.endMs)), text: seg.text });
+    segments.push({ id: seg.id, startMs: Math.max(0, num(seg.startMs)), endMs: Math.max(num(seg.startMs), num(seg.endMs)), text: seg.text, ...(typeof seg.speaker === 'string' && /^[\w -]{1,40}$/.test(seg.speaker) ? { speaker: seg.speaker } : {}) });
   }
   const where = o.where === 'device' || o.where === 'browser' || o.where === 'provider' ? o.where : 'provider';
   const out: TranscriptFile = {
@@ -125,7 +132,53 @@ export function decodeTranscript(json: string): TranscriptFile {
   if (typeof o.language === 'string') out.language = o.language;
   const lecture = decodeLecture(o.lecture);
   if (lecture) out.lecture = lecture;
+  if (o.speakers && typeof o.speakers === 'object') {
+    const sp: Record<string, string> = {};
+    for (const [k, v] of Object.entries(o.speakers as Record<string, unknown>)) if (/^[\w -]{1,40}$/.test(k) && typeof v === 'string' && v.trim()) sp[k] = v.trim().slice(0, 80);
+    if (Object.keys(sp).length) out.speakers = sp;
+  }
   return out;
+}
+
+/** Loudness of each side of a call over time (from the recorder), to tell who was speaking. */
+export interface SideEnergy {
+  /** ms from the start of the recording. */
+  t: number;
+  me: number;
+  them: number;
+}
+
+/**
+ * Labels segments `me` or `them` from the two sides' loudness while each was said: whichever
+ * side carried more energy (by a clear margin) is the speaker; too close to call stays unlabelled.
+ * Echo of the far side in the microphone is why a margin is needed.
+ */
+export function assignSides(segments: readonly TranscriptSegment[], energy: readonly SideEnergy[], margin = 1.6): TranscriptSegment[] {
+  if (!energy.length) return [...segments];
+  return segments.map((s) => {
+    let me = 0, them = 0;
+    for (const e of energy) if (e.t >= s.startMs - 100 && e.t <= s.endMs + 100) { me += e.me; them += e.them; }
+    if (me === 0 && them === 0) return s;
+    const speaker = me > them * margin ? 'me' : them > me * margin ? 'them' : undefined;
+    const { speaker: _old, ...rest } = s;
+    return speaker ? { ...rest, speaker } : rest;
+  });
+}
+
+/** The display name of a segment's speaker ("You" for me), or null. */
+export function speakerName(file: Pick<TranscriptFile, 'speakers'> | null | undefined, speaker: string | undefined, opts: { them?: string } = {}): string | null {
+  if (!speaker) return null;
+  const named = file?.speakers?.[speaker];
+  if (named) return named;
+  if (speaker === 'me') return 'You';
+  // A call with one other person: "them" is that person.
+  if (speaker === 'them') return opts.them ?? 'Them';
+  return `Speaker ${speaker}`;
+}
+
+/** Transcript text with speakers ("You: …", "Dana: …") when they are known. */
+export function transcriptTextWithSpeakers(file: Pick<TranscriptFile, 'segments' | 'speakers'>): string {
+  return file.segments.map((s) => { const n = speakerName(file, s.speaker); return `[${formatStamp(s.startMs)}] ${n ? `${n}: ` : ''}${s.text}`; }).join('\n');
 }
 
 export function encodeTranscript(t: TranscriptFile): string {

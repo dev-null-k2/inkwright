@@ -30,6 +30,7 @@ export * from './mcp/index.ts';
 export * from './local/index.ts';
 export * from './tools/memory.ts';
 export * from './speech/index.ts';
+export * from './meetings/index.ts';
 export * from './tools/dev.ts';
 export * from './compiler/index.ts';
 export * from './trust/index.ts';

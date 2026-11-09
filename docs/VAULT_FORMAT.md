@@ -275,6 +275,46 @@ the user adds a summary to it (as an ordinary text box).
 Readers that don't know these files ignore them (they look like any other asset). Search indexes
 transcript segments as "what was said" passages anchored to the page and the ink written then.
 
+### Meetings (`meeting`, `assets/meeting-notes.json`, `ai/meetings/library.json`)
+
+A note taken in a meeting may carry `meeting` in note.json (`packages/core/src/meetings/`):
+
+```jsonc
+"meeting": {
+  "template": "sales-call",                                   // built-in or custom template id
+  "attendees": [ { "name": "Jane Doe", "email": "jane@acme.com" } ],
+  "event": { "uid": "abc@1762786800000", "start": 0, "end": 0, "calendar": "Work", "location": "…", "link": "https://acme.zoom.us/j/…" }
+}
+```
+
+Enhanced notes are `assets/meeting-notes.json`: versions of the notes, the shown one in `current`.
+A version is never changed after it is written; regenerating, asking for a change or editing by
+hand adds one (the newest 12 are kept).
+
+```jsonc
+{
+  "formatVersion": 1, "current": "01JX…", "updatedAt": 0,
+  "versions": [ {
+    "id": "01JX…", "at": 0, "by": "On this device · Qwen3 1.7B", "template": "general",
+    "clipIds": ["01JC…"], "reason": "enhance",                // enhance | regenerate | ask | edit; "request" for ask
+    "tldr": "One line.",
+    "sections": [ { "heading": "Decisions", "items": [
+      { "id": "a", "text": "Ship offline sync in March", "mine": true },           // your own words
+      { "id": "b", "text": "Conflicts merge per stroke", "depth": 1, "cites": [62000], "clipId": "01JC…" },
+      { "id": "c", "text": "Write the merge spec", "owner": "Jane", "done": false } // action items
+    ] } ]
+  } ]
+}
+```
+
+`mine` marks lines that are the writer's own notes (shown in ink colour); other lines were added
+from the transcript and `cites` gives the moments (ms into recording `clipId`) they came from.
+Your own templates and recipes, and deletions of them (tombstones, kept 90 days), are in
+`ai/meetings/library.json`: `{ "formatVersion": 1, "templates": [...], "recipes": [...], "deleted": { "<id>": <ms> }, "updatedAt" }`.
+
+Sync unions enhanced-notes versions by id (the shown one comes from the side changed last) and
+merges the library by id, newest edit winning and a deletion winning over older edits.
+
 ### PDF form values (`forms`, "Fill & sign")
 
 Values the user typed into the AcroForm fields of an imported PDF. Keys are the PDF's asset name,

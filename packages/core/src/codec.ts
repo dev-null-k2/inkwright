@@ -1,3 +1,4 @@
+import { decodeMeetingInfo } from './meetings/model.ts';
 import {
   DEFAULT_PAPER,
   NO_VALUE,
@@ -93,7 +94,7 @@ export function encodeNote(n: NoteMeta): string {
 export function decodeNote(json: string): NoteMeta {
   const o = JSON.parse(json);
   if (!o || typeof o.id !== 'string') throw new Error('Invalid note file');
-  return {
+  const note: NoteMeta = {
     ...o,
     id: o.id,
     title: typeof o.title === 'string' ? o.title : 'Untitled',
@@ -107,6 +108,12 @@ export function decodeNote(json: string): NoteMeta {
     pinned: Boolean(o.pinned),
     formatVersion: typeof o.formatVersion === 'number' ? o.formatVersion : 1,
   };
+  if ('meeting' in o) {
+    const m = decodeMeetingInfo(o.meeting);
+    if (m) note.meeting = m;
+    else delete note.meeting;
+  }
+  return note;
 }
 
 export function encodeNotebook(n: NotebookMeta): string {

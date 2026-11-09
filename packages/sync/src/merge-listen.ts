@@ -1,3 +1,4 @@
+import { MEETING_NOTES_FORMAT, MEETING_NOTES_KEEP, type MeetingNotesFile, type MeetingNotesVersion } from '@inkwright/core';
 import {
   sortSegments,
   type LectureSummary,
@@ -65,6 +66,9 @@ export function mergeTranscript(base: TranscriptFile | null, local: TranscriptFi
   };
   if (lecture) out.lecture = lecture;
   else delete out.lecture;
+  // Speaker names: union, the more recently changed side winning for a label named on both.
+  const o = newer === 'a' ? remote : local;
+  if (local.speakers || remote.speakers) out.speakers = { ...(o.speakers ?? {}), ...(n.speakers ?? {}) };
   return out;
 }
 
@@ -80,4 +84,18 @@ export function mergePageSummaries(base: PageSummariesFile | null, local: PageSu
     }
   }
   return { formatVersion: Math.max(local.formatVersion, remote.formatVersion), updatedAt: Math.max(local.updatedAt, remote.updatedAt), pages };
+}
+
+/**
+ * Enhanced meeting notes (`assets/meeting-notes.json`): versions are unioned by id (a version is
+ * never edited after it is written; an edit adds a version), the newest `MEETING_NOTES_KEEP` are
+ * kept, and the version shown is the one the most recently changed side shows.
+ */
+export function mergeMeetingNotes(local: MeetingNotesFile, remote: MeetingNotesFile, opts: { prefer?: 'local' | 'remote' } = {}): MeetingNotesFile {
+  const byId = new Map<string, MeetingNotesVersion>();
+  for (const v of [...local.versions, ...remote.versions]) if (!byId.has(v.id)) byId.set(v.id, v);
+  const versions = [...byId.values()].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1)).slice(-MEETING_NOTES_KEEP);
+  const newer = local.updatedAt > remote.updatedAt ? local : remote.updatedAt > local.updatedAt ? remote : opts.prefer === 'remote' ? remote : local;
+  const current = versions.some((v) => v.id === newer.current) ? newer.current : versions[versions.length - 1]!.id;
+  return { formatVersion: MEETING_NOTES_FORMAT, current, versions, updatedAt: Math.max(local.updatedAt, remote.updatedAt) };
 }

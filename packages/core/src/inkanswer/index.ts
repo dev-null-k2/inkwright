@@ -1,5 +1,5 @@
 import { boundsOf, rectIntersects, type Rect } from '../geometry.ts';
-import { handwrite, type HandwritingStyle } from '../handwrite.ts';
+import { handwrite, type HandStyle, type HandwritingStyle } from '../handwrite.ts';
 import type { InkStroke, PageInk, TextBox } from '../model.ts';
 import { objectRect } from '../objects.ts';
 
@@ -102,6 +102,8 @@ export interface InkAnswerOptions {
   seed?: number;
   startTime?: number;
   newId?: () => string;
+  /** Write in a hand like the writer's (`handStyleOf`): pen, tip size, slant and messiness. */
+  hand?: Partial<Pick<HandStyle, 'pen' | 'size' | 'slant' | 'messiness'>>;
 }
 
 /** Lays an answer out as handwriting in an area; returns the strokes and the box they fill. */
@@ -109,7 +111,7 @@ export function layoutInkAnswer(text: string, area: { x: number; y: number; widt
   const plain = plainForHandwriting(text);
   let xh = o.xHeight ?? 8.5;
   for (;;) {
-    const r = handwrite(plain, { x: area.x, y: area.y, width: area.width, xHeight: xh, style: o.style ?? 'script', color: o.color, seed: o.seed, startTime: o.startTime, origin: 'ai', pen: 'ballpoint', size: Math.max(1.1, xh * 0.17), messiness: 0.3, ...(o.newId ? { newId: o.newId } : {}) });
+    const r = handwrite(plain, { x: area.x, y: area.y, width: area.width, xHeight: xh, style: o.style ?? 'script', color: o.color, seed: o.seed, startTime: o.startTime, origin: 'ai', pen: o.hand?.pen ?? 'ballpoint', size: o.hand?.size ?? Math.max(1.1, xh * 0.17), messiness: o.hand?.messiness ?? 0.3, ...(o.hand?.slant != null ? { slant: o.hand.slant } : {}), ...(o.newId ? { newId: o.newId } : {}) });
     const pts = r.strokes.flatMap((s) => s.points);
     const b = pts.length ? boundsOf(pts) : { minX: area.x, minY: area.y, maxX: area.x, maxY: area.y };
     const rect = { minX: area.x, minY: area.y, maxX: Math.max(b.maxX, area.x), maxY: Math.max(r.bottom, b.maxY) };

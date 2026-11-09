@@ -224,3 +224,56 @@ export function handwrite(text: string, o: HandwriteOptions): HandwriteResult {
   const last = baselines[baselines.length - 1] ?? o.y + xh;
   return { strokes, bottom: last + xh * 1.4, baselines };
 }
+
+// ---- A hand like yours ------------------------------------------------------------------------------
+
+/** The measurable traits of someone's handwriting, for writing AI text that sits well beside it. */
+export interface HandStyle {
+  xHeight: number;
+  /** Forward slant in degrees (positive leans right). */
+  slant: number;
+  pen: PenType;
+  size: number;
+  /** 0 neat … 1 hurried (from how much their baselines wander). */
+  messiness: number;
+  style: HandwritingStyle;
+}
+
+const median = (xs: number[]) => { const s = [...xs].sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)]! : NaN; };
+
+/**
+ * Estimates the hand from the writer's own strokes (not AI or other people's): the x-height from
+ * the height of short letter strokes, the slant from the near-vertical parts of strokes, the pen
+ * and tip size they use most, connectedness (script or print) from how long strokes are. Null
+ * when there is too little writing to tell (fewer than 40 strokes).
+ */
+export function handStyleOf(strokes: readonly Pick<InkStroke, 'points' | 'pen' | 'size' | 'origin' | 'author' | 'shape'>[]): HandStyle | null {
+  const own = strokes.filter((s) => !s.origin && !s.author && !s.shape && s.points.length >= 2);
+  if (own.length < 40) return null;
+  const heights: number[] = [];
+  const widths: number[] = [];
+  const angles: number[] = [];
+  for (const s of own) {
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const p of s.points) { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y); }
+    const h = maxY - minY;
+    if (h > 1.5 && h < 80) { heights.push(h); widths.push(maxX - minX); }
+    for (let i = 3; i < s.points.length; i += 3) {
+      const a = s.points[i - 3]!, b = s.points[i]!;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      if (Math.abs(dy) > 2 && Math.abs(dy) > Math.abs(dx) * 2) angles.push((Math.atan2(dy > 0 ? -dx : dx, Math.abs(dy)) * 180) / Math.PI);
+    }
+  }
+  if (heights.length < 20) return null;
+  // Letter strokes cluster around the x-height; ascenders and descenders are about twice that.
+  const mh = median(heights);
+  const xHeight = Math.max(5, Math.min(22, median(heights.filter((h) => h <= mh * 1.1)) * 0.95));
+  const slant = angles.length >= 10 ? Math.max(-15, Math.min(25, median(angles))) : 6;
+  const pens = new Map<PenType, number>();
+  for (const s of own) pens.set(s.pen, (pens.get(s.pen) ?? 0) + 1);
+  const pen = [...pens.entries()].sort((a, b) => b[1] - a[1])[0]![0];
+  const size = median(own.filter((s) => s.pen === pen).map((s) => s.size));
+  const spread = median(heights.map((h) => Math.abs(h - mh) / mh));
+  const style: HandwritingStyle = median(widths) > xHeight * 2.2 ? 'script' : 'print';
+  return { xHeight, slant, pen, size: Number.isFinite(size) ? size : Math.max(1.1, xHeight * 0.17), messiness: Math.max(0.15, Math.min(0.8, spread * 1.2)), style };
+}

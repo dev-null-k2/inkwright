@@ -9,6 +9,7 @@ import {
   pageSizeOf,
   textBoxBounds,
   writeOnFrame,
+  type HandStyle,
   type HandwritingStyle,
   type NoteDocument,
   type Rect,
@@ -61,10 +62,11 @@ function place(doc: NoteDocument, pageIndex: number, near: Rect | null, heightFo
 }
 
 /** Writes `text` in AI ink (see the module comment). Resolves when the ink is committed. */
-export async function writeInInk(doc: NoteDocument, pageIndex: number, text: string, o: { near?: Rect | null; style?: HandwritingStyle; animate?: boolean; label?: string } = {}): Promise<PlacedAnswer> {
-  const style = o.style ?? 'script';
-  const spot = place(doc, pageIndex, o.near ?? null, (w) => inkAnswerHeight(text, w, { style }));
-  const { strokes, rect } = layoutInkAnswer(text, { x: spot.rect.minX, y: spot.rect.minY, width: spot.rect.maxX - spot.rect.minX }, { style, color: aiInkColor(), seed: seedOf(text), startTime: Date.now(), newId: () => newId() });
+export async function writeInInk(doc: NoteDocument, pageIndex: number, text: string, o: { near?: Rect | null; style?: HandwritingStyle; animate?: boolean; label?: string; hand?: HandStyle | null } = {}): Promise<PlacedAnswer> {
+  const style = o.style ?? o.hand?.style ?? 'script';
+  const xHeight = o.hand?.xHeight;
+  const spot = place(doc, pageIndex, o.near ?? null, (w) => inkAnswerHeight(text, w, { style, ...(xHeight ? { xHeight } : {}) }));
+  const { strokes, rect } = layoutInkAnswer(text, { x: spot.rect.minX, y: spot.rect.minY, width: spot.rect.maxX - spot.rect.minX }, { style, color: aiInkColor(), seed: seedOf(text), startTime: Date.now(), newId: () => newId(), ...(xHeight ? { xHeight } : {}), ...(o.hand ? { hand: o.hand } : {}) });
   if (!strokes.length) throw new Error('Nothing to write');
   const i = spot.pageIndex;
   if (o.animate !== false && !prefersReducedMotion() && typeof requestAnimationFrame !== 'undefined') {

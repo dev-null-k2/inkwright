@@ -50,3 +50,10 @@
 .dict-main { flex: 1; min-width: 0; display: grid; gap: 4px; justify-items: start; }
 .dict-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ink-3); flex: none; }
 .dict-dot.is-live { background: var(--seal); animation: breathe 1.2s infinite; }
+
+/* Speakers and transcript editing */
+.lis-list li.is-me .lis-seg span { color: var(--ink); }
+.lis-speaker { display: block; margin: 8px 0 2px 46px; font-size: var(--t-xs); font-weight: 700; color: var(--ink-2); background: none; border: 0; padding: 0; font-family: inherit; text-align: left; }
+.lis-speaker.is-edit { text-decoration: underline dotted; cursor: pointer; }
+.lis-seg-row { display: flex; align-items: flex-start; gap: 2px; }
+.lis-seg-row .lis-seg { flex: 1; min-width: 0; }

@@ -15,7 +15,7 @@ export type SectionId =
   | 'appearance' | 'reading'
   | 'ai' | 'ink-actions'
   | 'sync' | 'devices' | 'desktop'
-  | 'knowledge' | 'import' | 'recall' | 'journal'
+  | 'meetings' | 'knowledge' | 'import' | 'recall' | 'journal'
   | 'trust' | 'authorship'
   | 'modules' | 'plugins' | 'agents' | 'code' | 'developer'
   | 'about';
@@ -35,7 +35,7 @@ export const GROUPS: readonly SettingsGroup[] = [
   { id: 'appearance', label: 'Appearance', hint: 'Theme, paper, reading', sections: ['appearance', 'reading'] },
   { id: 'ai', label: 'AI', hint: 'Models, keys, assistant, ink actions', sections: ['ai', 'ink-actions'] },
   { id: 'sync', label: 'Sync & devices', hint: 'Google Drive, WebDAV, backup, pairing, desktop app', sections: ['sync', 'devices', 'desktop'] },
-  { id: 'knowledge', label: 'Knowledge', hint: 'Links, daily notes, import, memory timeline, journal', sections: ['knowledge', 'import', 'recall', 'journal'] },
+  { id: 'knowledge', label: 'Knowledge', hint: 'Meetings, links, daily notes, import, memory timeline, journal', sections: ['meetings', 'knowledge', 'import', 'recall', 'journal'] },
   { id: 'privacy', label: 'Privacy & trust', hint: 'What AI may see, usage, audit, authorship', sections: ['trust', 'authorship'] },
   { id: 'extend', label: 'Extend', hint: 'Modules, plugins, agents, developer tools', sections: ['modules', 'plugins', 'agents', 'code', 'developer'] },
   { id: 'about', label: 'About', hint: 'Version, updates, your data, check this device', sections: ['about'] },
@@ -56,6 +56,7 @@ export const SECTION_LABELS: Record<SectionId, string> = {
   import: 'Import & clip',
   recall: 'Memory timeline',
   journal: 'Journal',
+  meetings: 'Meetings',
   desktop: 'Desktop app',
   trust: 'AI privacy',
   authorship: 'Authorship',
@@ -170,6 +171,14 @@ export const SETTINGS_INDEX: readonly SettingEntry[] = [
   { label: 'Paired devices', section: 'devices', keywords: 'devices remove', optional: true },
   // Knowledge
   { label: 'Daily notes', section: 'knowledge', keywords: 'journal today template' },
+  // Knowledge › Meetings
+  { label: 'Enhance notes when a recording ends', section: 'meetings', keywords: 'meeting notes ai summary granola automatic' },
+  { label: 'Keep audio after transcribing', section: 'meetings', keywords: 'delete recording privacy audio retention' },
+  { label: 'Your email addresses', section: 'meetings', keywords: 'attendees me myself company' },
+  { label: 'Remind before meetings', section: 'meetings', keywords: 'notification calendar brief' },
+  { label: 'Templates', section: 'meetings', keywords: 'meeting templates 1:1 standup sales interview custom' },
+  { label: 'Recipes', section: 'meetings', keywords: 'prompts follow-up email action items prd custom' },
+  { label: 'Connections', section: 'meetings', keywords: 'slack notion linear jira github todoist hubspot attio teams discord zapier webhook integrations' },
   { label: 'Templates', section: 'knowledge', keywords: 'template' },
   { label: 'Obsidian', section: 'knowledge', keywords: 'import export markdown vault' },
   // Privacy & trust

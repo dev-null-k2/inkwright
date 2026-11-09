@@ -10,6 +10,7 @@ import { useEffect } from 'react';
 import { create } from 'zustand';
 import { linkStampCitations, liveTranscriptContext } from '@inkwright/ai';
 import {
+  assignSides,
   clipAtTime,
   formatStamp,
   inkForSegment,
@@ -23,6 +24,7 @@ import {
   type NoteMeta,
   type SpeechWhere,
   type TranscriptFile,
+  type SideEnergy,
   type TranscriptSegment,
 } from '@inkwright/core';
 import type { InkEngine } from '../../canvas/engine.ts';
@@ -102,7 +104,7 @@ export async function startListening(a: { noteId: string; clipId: string; starte
  * transcript next to the clip, index it, then (if enabled) summarize the pages and the recording.
  * Routines with "when a recording ends" wait for this (`whenListenSettled`).
  */
-export function finishListening(a: { vault: AppVault; doc: NoteDocument; clip: AudioClip }): Promise<void> {
+export function finishListening(a: { vault: AppVault; doc: NoteDocument; clip: AudioClip; /** Both sides' loudness, for a recorded call (who spoke). */ energy?: SideEnergy[] }): Promise<void> {
   const job = (async () => {
     const st = useListen.getState();
     if (st.clipId !== a.clip.id) return;
@@ -123,7 +125,7 @@ export function finishListening(a: { vault: AppVault; doc: NoteDocument; clip: A
     }
     const file: TranscriptFile = {
       formatVersion: 1, clipId: a.clip.id, run: newId(), engine: live.engineId, where: live.where, language: speechLanguage(),
-      complete: true, updatedAt: Date.now(), segments: segments.map((x) => ({ ...x, endMs: Math.min(x.endMs, a.clip.durationMs) })),
+      complete: true, updatedAt: Date.now(), segments: assignSides(segments.map((x) => ({ ...x, endMs: Math.min(x.endMs, a.clip.durationMs) })), a.energy ?? []),
     };
     await writeTranscript(a.vault, a.doc.meta.id, file);
     lastLive = { noteId: a.doc.meta.id, clipId: a.clip.id, segments: file.segments };

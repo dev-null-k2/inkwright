@@ -43,6 +43,7 @@ import { History, Monitor, NotebookPen } from 'lucide-react';
 import { ImportSettings } from '../importers/ImportSettings.tsx';
 import { RecallSettings } from '../recall/RecallSettings.tsx';
 import { JournalSettings } from '../journal/JournalSettings.tsx';
+import { MeetingSettings } from '../meetings/MeetingSettings.tsx';
 import { DesktopSettings } from '../desktop/DesktopSettings.tsx';
 import { updaterPlugin } from '../updates/plugin.ts';
 import { webUpdatesApply } from '../updates/web.ts';
@@ -80,6 +81,7 @@ function renderSection(id: SectionId) {
     case 'developer': return <DeveloperSettings />;
     case 'recall': return <RecallSettings />;
     case 'journal': return <JournalSettings />;
+    case 'meetings': return <MeetingSettings />;
     case 'desktop': return <DesktopSettings />;
     case 'import': return <ImportSettings />;
     case 'about': return <AboutSection />;

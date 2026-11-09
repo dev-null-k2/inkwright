@@ -23,6 +23,7 @@ registerBuiltinModules();
 
 // The graph (three.js) loads only when opened, so it never slows the library or the editor.
 const GraphView = lazy(() => import('./graph/GraphView.tsx'));
+const MeetingsView = lazy(() => import('./meetings/MeetingsView.tsx'));
 
 export function App() {
   const { ready, route, error, setVault, refresh, navigate } = useApp();
@@ -30,6 +31,7 @@ export function App() {
   const palette = useSettings((s) => s.palette);
   const themesOn = useModule('themes');
   const graphOn = useModule('graph');
+  const meetingsOn = useModule('meetings');
   const searchOn = useModule('search');
   const assistantOn = useModule('assistant');
   const compilerOn = useModule('compiler');
@@ -140,6 +142,8 @@ export function App() {
       </Suspense>
       {route.name === 'graph' && !graphOn && <Library />}
       {route.name === 'graph' && graphOn && <Suspense fallback={screenFallback}><GraphView /></Suspense>}
+      {route.name === 'meetings' && !meetingsOn && <Library />}
+      {route.name === 'meetings' && meetingsOn && <Suspense fallback={screenFallback}><MeetingsView initialTab={route.tab} /></Suspense>}
       {/* First run only: how you write, colours, AI and sync (welcome/, loaded only then). */}
       <WelcomeGate />
       {background && <Suspense fallback={null}>

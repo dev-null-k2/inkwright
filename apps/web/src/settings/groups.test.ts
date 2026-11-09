@@ -30,7 +30,7 @@ describe('settings groups', () => {
     const withoutDeveloper = new Set([...ALL_SECTIONS].filter((s) => s !== 'developer'));
     expect(resolveSettingsTarget('developer', withoutDeveloper)).toEqual({ group: 'extend', section: 'modules' });
     // Knowledge holds the notes settings plus the opt-in memory timeline and journal.
-    const withoutKnowledge = new Set([...ALL_SECTIONS].filter((s) => !['knowledge', 'import', 'recall', 'journal'].includes(s)));
+    const withoutKnowledge = new Set([...ALL_SECTIONS].filter((s) => !['meetings', 'knowledge', 'import', 'recall', 'journal'].includes(s)));
     expect(resolveSettingsTarget('knowledge', withoutKnowledge)).toBeNull();
   });
 

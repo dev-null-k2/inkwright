@@ -39,6 +39,26 @@ export const BUILTIN_MODULES: ModuleDefinition[] = [
     whenOff: 'Recording audio still works. Existing transcripts are kept in the note and come back when it is on.',
   },
   {
+    id: 'meetings',
+    name: 'Meetings',
+    description: 'Notes made better with what was said: enhanced notes in your words plus the details, templates, recipes, coming-up meetings with briefs, people and companies, and sending notes and action items to Slack, Notion, Linear and more.',
+    defaultEnabled: true,
+    dependencies: ['listen'],
+    contributes: {
+      menuItems: ['Meeting notes'],
+      panels: ['Meeting (notes, transcript, recipes)', 'Share'],
+      paletteActions: ['meetings.open', 'meetings.new'],
+      screens: ['Meetings'],
+      settingsSections: ['meetings'],
+      background: ['Reminders before meetings with their brief'],
+    },
+    whenOff: 'Enhanced notes stay in each note and come back when it is on; the transcript panel works as before.',
+    async activate() {
+      const { activateMeetings } = await import('../meetings/activate.ts');
+      return activateMeetings();
+    },
+  },
+  {
     id: 'knowledge',
     name: 'Links & daily notes',
     description: '[[Links]] between notes with backlinks and unlinked mentions, #tags, daily notes, templates and Obsidian import and export.',

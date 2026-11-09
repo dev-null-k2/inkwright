@@ -51,6 +51,7 @@ export * from './inkanswer/index.ts';
 export * from './readaloud/index.ts';
 export * from './recall/index.ts';
 export * from './icalendar.ts';
+export * from './meetings/index.ts';
 export * from './importers/index.ts';
 export * from './textquality.ts';
 export * from './mathink/index.ts';

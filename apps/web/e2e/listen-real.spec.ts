@@ -77,7 +77,7 @@ test('real on-device live transcript (opt-in, downloads 32 MB)', async ({ page }
   await openApp(page);
   await newNote(page);
   await page.getByRole('button', { name: 'Record audio' }).click();
-  const panel = page.getByRole('complementary', { name: 'Transcript' });
+  const panel = page.getByRole('complementary', { name: 'Meeting' });
   await expect(panel.locator('.lis-where')).toContainText('On this device · Moonshine Tiny');
   await expect(panel.locator('.lis-list')).toContainText(/country/i, { timeout: 180_000 });
   const lines = await panel.locator('.lis-seg').allInnerTexts();

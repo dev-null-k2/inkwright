@@ -6,7 +6,8 @@ export type Route =
   | { name: 'library' }
   | { name: 'editor'; noteId: string; page?: number }
   | { name: 'settings'; section?: string }
-  | { name: 'graph'; focus?: string };
+  | { name: 'graph'; focus?: string }
+  | { name: 'meetings'; tab?: 'upcoming' | 'ask' | 'people' | 'companies' };
 
 export type LibraryFilter =
   | { kind: 'all' }
@@ -73,7 +74,7 @@ export const useApp = create<AppState>((set, get) => ({
   navigate: (r, opts) => {
     set({ route: r });
     try {
-      const url = r.name === 'editor' ? `#note/${r.noteId}` : r.name === 'settings' ? `#settings${r.section ? '/' + r.section : ''}` : r.name === 'graph' ? '#graph' : '#';
+      const url = r.name === 'editor' ? `#note/${r.noteId}` : r.name === 'settings' ? `#settings${r.section ? '/' + r.section : ''}` : r.name === 'graph' ? '#graph' : r.name === 'meetings' ? '#meetings' : '#';
       if (opts?.replace) history.replaceState(r, '', url);
       else history.pushState(r, '', url);
     } catch { /* sandboxed iframes may refuse history */ }
@@ -94,5 +95,6 @@ export function routeFromHash(hash: string): Route {
   if (h.startsWith('note/')) return { name: 'editor', noteId: h.slice(5) };
   if (h.startsWith('settings')) return { name: 'settings', section: h.split('/')[1] };
   if (h === 'graph') return { name: 'graph' };
+  if (h === 'meetings') return { name: 'meetings' };
   return { name: 'library' };
 }
