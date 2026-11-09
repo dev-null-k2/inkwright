@@ -21,6 +21,7 @@ owns all of it and can be switched off; enhanced notes stay in each note.
 | **Mark** a moment while recording (it is sure to be in the notes; a star in the transcript), **Catch me up** on the last few minutes, **live translated captions** | Meeting panel › Transcript, while recording |
 | **How the conversation went** — talk share, pace, questions, longest stretch, filler words — and **Coach me** with those numbers | Meeting panel › Recipes |
 | **Clips** — a short audio clip of a marked moment (or any line, in Edit) to share | Meeting panel › Transcript |
+| **Import a recording** — an audio or video file from Voice Memos, a phone recorder, a Plaud or other voice recorder, or a call's cloud recording: kept with the note, transcribed and (in a meeting note) enhanced | Meetings › Import a recording; Editor › ••• › Audio › Import a recording… |
 | **Pen gestures** — a star drawn while recording marks the moment; a small box before a line makes it an action item; each handwritten line is matched to the moment it was written | On the page, while recording |
 | **Mind map** of the notes (no AI; download as SVG) and **audio overview** — a short two-voice conversation about the notes, read aloud with the device's voices | Meeting panel › Notes › More |
 | **Transcript editing** — delete a line, name a speaker | Meeting panel › Transcript › Edit |

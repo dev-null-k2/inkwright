@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowLeft, Camera, CloudUpload, Undo2, Redo2, FileImage, FileText, FileType2, Files, Layers,
+  ArrowLeft, Camera, CloudUpload, FileAudio, Undo2, Redo2, FileImage, FileText, FileType2, Files, Layers,
   AudioLines, Mic, MoreHorizontal, Pause, Play, Sparkles, Square, Tag, Trash2, Maximize2, FilePlus2, Copy, Scan, Search,
   Signature, FileUp, Captions, MicVocal, Fingerprint, Pointer, SunMoon,
 } from 'lucide-react';
@@ -414,11 +414,26 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
   }, [recording]);
 
   const clips = doc?.meta.recordings ?? [];
+  const [importing, setImporting] = useState<string | null>(null);
+  const importRecordingFile = async (file?: File) => {
+    if (!doc || !vault) return;
+    const m = await import('../meetings/importer.ts');
+    const f = file ?? (await pickFiles(m.RECORDING_ACCEPT, false))[0];
+    if (!f) return;
+    setPanel('transcript');
+    try {
+      const r = await m.importRecording(vault, doc, f, setImporting);
+      if (r.lines) toast({ text: `Imported ${f.name} · ${r.lines} lines`, tone: 'success' });
+    } catch (e) {
+      toast({ text: (e as Error).message, tone: 'error' });
+    }
+  };
 
   // A meeting started from the calendar or "New meeting" asks to record as soon as the note opens.
   useEffect(() => {
     if (!doc || !vault || recording != null || !isModuleOn('meetings')) return;
     void import('../meetings/calendar.ts').then((m) => { if (m.consumeRecordOnOpen(doc.meta.id)) void toggleRecording(); });
+    void import('../meetings/importer.ts').then((m) => { const f = m.consumeImportOnOpen(doc.meta.id); if (f) void importRecordingFile(f); });
   }, [doc, vault]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const playClip = async (clipId: string, fromMs = 0) => {
@@ -583,6 +598,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
             {recording != null ? <Square size={16} fill="currentColor" /> : <Mic size={19} />}
           </IconButton>}
           {recording != null && <span className="rec-time">{formatDuration(Date.now() - recording)}</span>}
+          {importing && <span className="rec-time is-import" role="status">{importing}</span>}
           {roomForTheme && <ThemeToggle repaint={() => engine?.invalidate()} />}
           <NewNoteButton meta={doc?.meta ?? null} flush={async () => { await session?.flush(); }}
             onNewPage={doc && engine && doc.meta.kind === 'paged' ? () => { const i = doc.addPage(engine.currentPageIndex + 1); setTimeout(() => engine.scrollToPage(i), 30); } : undefined} />
@@ -732,6 +748,7 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
             audio: [
               ...(narrow && !isArtifact ? [{ label: recording != null ? 'Stop recording' : 'Record audio', icon: <Mic size={16} />, onClick: () => void toggleRecording({ call: false }) }] : []),
               ...(!isArtifact && recording == null && on('meetings') && Recorder.callSupported() ? [{ label: 'Record a call', icon: <Mic size={16} />, hint: 'You and the call, no bot', onClick: () => void toggleRecording({ call: true }) }] : []),
+              ...(!isArtifact && recording == null && on('listen') ? [{ label: 'Import a recording…', icon: <FileAudio size={16} />, hint: 'Voice Memos, Plaud, any audio', disabled: importing != null, onClick: () => void importRecordingFile() }] : []),
               ...(!isArtifact && on('listen') ? [
                 { label: on('meetings') ? 'Meeting notes' : 'Transcript', icon: <Captions size={16} />, hint: listening ? 'Live' : clips.length ? `${clips.length}` : undefined, onClick: () => setPanel('transcript') },
                 { label: 'Dictate', icon: <MicVocal size={16} />, hint: recording != null ? 'Not while recording' : undefined, disabled: recording != null, onClick: () => void startDictation('page') },

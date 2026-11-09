@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Building2, CalendarPlus, ChevronRight, Mic, NotebookPen, RefreshCw, Sparkles, Users, Video } from 'lucide-react';
+import { ArrowLeft, Building2, FileAudio, CalendarPlus, ChevronRight, Mic, NotebookPen, RefreshCw, Sparkles, Users, Video } from 'lucide-react';
 import {
   callService,
   companyName,
@@ -14,6 +14,7 @@ import { IconButton, Segmented, cx, relativeTime } from '../ui/primitives.tsx';
 import { addCalendarUrl, importCalendarFile } from '../journal/config.ts';
 import { pickFiles } from '../platform/files.ts';
 import { loadUpcoming, noteForEvent, startMeetingNote, useUpcoming } from './calendar.ts';
+import { RECORDING_ACCEPT, importOnOpen } from './importer.ts';
 import { runRecipe, writeBrief } from './enhance.ts';
 import { meetingReplyHtml } from './render.ts';
 import { allRecipes, loadMeetingsLibrary, readMeetingNotes, useMeetingPrefs, useMeetingsLibrary } from './store.ts';
@@ -46,12 +47,19 @@ export default function MeetingsView({ initialTab }: { initialTab?: Tab }) {
   const self = useMeetingPrefs((s) => s.selfEmails);
   const pc = useMemo(() => peopleAndCompanies(notes, self), [notes, self]);
   const askAbout = (label: string, ids: string[]) => { setScope({ label, ids }); setTab('ask'); };
+  const importFromScreen = async () => {
+    const [f] = await pickFiles(RECORDING_ACCEPT, false);
+    if (!f || !vault) return;
+    const title = f.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim() || 'Recording';
+    await startMeetingNote(vault, null, { title, beforeOpen: (id) => importOnOpen(id, f) });
+  };
   if (!vault) return null;
   return (
     <div className="mtv-screen">
       <header className="mtv-top">
         <IconButton label="Back to library" onClick={() => navigate({ name: 'library' })}><ArrowLeft size={20} /></IconButton>
         <h1 className="mtv-title">Meetings</h1>
+        <button type="button" className="btn btn-sm" onClick={() => void importFromScreen()}><FileAudio size={15} /> Import a recording</button>
         <button type="button" className="btn btn-primary btn-sm" onClick={() => void startMeetingNote(vault, null, { record: true })}><Mic size={15} /> New meeting</button>
       </header>
       <div className="mtv-tabs">

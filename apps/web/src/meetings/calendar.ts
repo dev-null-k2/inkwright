@@ -60,7 +60,7 @@ export const consumeRecordOnOpen = (noteId: string) => {
 };
 
 /** Creates (or opens) the meeting note for an event and goes to it; optionally starts recording. */
-export async function startMeetingNote(vault: AppVault, e: UpcomingMeeting | null, opts: { record?: boolean; title?: string } = {}): Promise<string> {
+export async function startMeetingNote(vault: AppVault, e: UpcomingMeeting | null, opts: { record?: boolean; title?: string; /** Runs with the new note's id before it opens. */ beforeOpen?: (id: string) => void } = {}): Promise<string> {
   const app = useApp.getState();
   const existing = e ? noteForEvent(app.notes, e.key) : undefined;
   if (existing) {
@@ -78,6 +78,7 @@ export async function startMeetingNote(vault: AppVault, e: UpcomingMeeting | nul
   await noteChanged(id);
   const note = { id };
   if (opts.record) recordOnOpen = note.id;
+  opts.beforeOpen?.(note.id);
   app.navigate({ name: 'editor', noteId: note.id });
   return note.id;
 }

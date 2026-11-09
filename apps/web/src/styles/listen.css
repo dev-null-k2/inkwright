@@ -61,3 +61,4 @@
 .lis-star { color: var(--ochre); vertical-align: -1px; margin-right: 4px; }
 .lis-clip { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border: 0; border-radius: 50%; background: transparent; color: var(--ink-3); cursor: pointer; }
 .lis-clip:hover { background: var(--chrome-2); color: var(--ink); }
+.rec-time.is-import { color: var(--ink-2); max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

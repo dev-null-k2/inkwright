@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page, type Route } from '@playwright/test';
 import { editorMenu, modKey, newNote, openApp, pen, pointer, word } from './helpers';
+import { libraryButton } from './mtg-helpers';
 
 /**
  * Notes that listen, end to end in Chromium: a real microphone path (Chromium's fake capture
@@ -225,6 +226,35 @@ test('search finds what was said and opens that moment', async ({ page }) => {
   await page.waitForFunction(() => !!(window as any).__inkwright?.engine);
   // Opening the moment plays the recording from there.
   await expect(page.locator('.audio-hint')).toHaveText('Tap ink to hear that moment');
+});
+
+test('import a recording from elsewhere (Voice Memos, a Plaud): a meeting note with its transcript', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.addInitScript(() => { localStorage.setItem('inkwright.speech.v1', JSON.stringify({ engine: 'provider', autoSummary: false, autoOpen: false })); });
+  const mock = await mockProvider(page);
+  await openApp(page);
+  await addProvider(page);
+  await openApp(page);
+  await libraryButton(page, 'Meetings');
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Import a recording' }).click();
+  await (await chooser).setFiles(WAV);
+  await page.waitForFunction(() => (window as any).__inkwright?.doc?.meta.title?.startsWith('listen-fixture'));
+  // Transcribed, then (a meeting note) enhanced: the panel opens on the notes.
+  const panel = page.getByRole('complementary', { name: 'Meeting' });
+  await expect(panel.locator('.mtg-notes li').first()).toContainText('convolution', { timeout: 60_000 });
+  await panel.getByRole('tab', { name: 'Transcript' }).click();
+  await expect(panel.locator('.lis-seg').first()).toContainText('Today we cover convolution.');
+  expect(mock.transcriptions.length).toBeGreaterThan(0);
+  const meta = await page.evaluate(() => (window as any).__inkwright.doc.meta);
+  expect(meta.tags).toContain('meeting');
+  expect(meta.recordings).toHaveLength(1);
+  expect(meta.recordings[0].durationMs).toBeGreaterThan(4000);
+  // And from the note's own menu, a second one.
+  const chooser2 = page.waitForEvent('filechooser');
+  await editorMenu(page, 'Audio', 'Import a recording…');
+  await (await chooser2).setFiles(WAV);
+  await expect.poll(() => page.evaluate(() => (window as any).__inkwright.doc.meta.recordings.length), { timeout: 60_000 }).toBe(2);
 });
 
 test('dictate puts speech on the page, processed where the indicator says', async ({ page }) => {
