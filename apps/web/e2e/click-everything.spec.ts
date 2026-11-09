@@ -205,7 +205,7 @@ test('editor: top bar, every ••• command, the "+" menu and the pen dock', 
 
   // Every ••• command: opens what it says and it fits (file pickers, downloads and the microphone excluded).
   // Fit to width only moves the canvas (no DOM change to see), so it isn't judged here.
-  const NOT_PRESSED = /^(Page › Fit to width|Insert › (Image|Photo from camera|Scan document|PDF pages|Add data)|Share & export › (PDF|PNG image|SVG|Markdown)|Audio › (Record audio|Dictate|Read aloud)|Note › (Duplicate note|Save now)|Move to Trash)$/;
+  const NOT_PRESSED = /^(Page › Fit to width|Insert › (Image|Photo from camera|Scan document|PDF pages|Add data)|Share & export › (PDF|PNG image|SVG|Markdown)|Audio › (Record audio|Record a call|Import a recording…|Dictate|Read aloud)|Note › (Duplicate note|Save now)|Move to Trash)$/;
   const commands = (await editorMenuCommands(page)).filter((c) => !NOT_PRESSED.test(c));
   expect(commands.length).toBeGreaterThan(15);
   const dead: string[] = [];
