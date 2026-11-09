@@ -126,6 +126,15 @@ test('live transcript lines up with ink; ask while recording; summaries after', 
   // Mark this moment: it is saved with the transcript and can be shared as a clip.
   await panel.getByRole('button', { name: /^Mark/ }).click();
   await expect(panel.getByRole('button', { name: /^Mark · 1/ })).toBeVisible();
+  // A star drawn with the pen marks the moment too, and stays on the page as ink.
+  const before = (await strokesNow(page)).length;
+  const star: [number, number][] = [];
+  const v = Array.from({ length: 6 }, (_, i) => { const a = -Math.PI / 2 + (i * 4 * Math.PI) / 5; return [170 + 22 * Math.cos(a), 330 + 22 * Math.sin(a)] as [number, number]; });
+  for (let i = 1; i < v.length; i++) for (let k = 0; k < 8; k++) star.push([v[i - 1]![0] + ((v[i]![0] - v[i - 1]![0]) * k) / 8, v[i - 1]![1] + ((v[i]![1] - v[i - 1]![1]) * k) / 8]);
+  star.push(v[5]!);
+  await pen(page, star);
+  await expect(panel.getByRole('button', { name: /^Mark · 2/ })).toBeVisible();
+  expect((await strokesNow(page)).length).toBe(before + 1);
 
   // Ask while it's happening: the live transcript (with times) goes along; the answer cites it.
   await page.getByRole('button', { name: 'AI', exact: true }).click();
@@ -151,10 +160,10 @@ test('live transcript lines up with ink; ask while recording; summaries after', 
   await expect(panel.locator('.lis-todos')).toContainText('Homework three due Friday');
   const n = await panel.locator('.lis-seg').count();
   expect(n).toBeGreaterThanOrEqual(2);
-  // The marked line has a star, and its clip is a real WAV of that moment.
-  await expect(panel.locator('.lis-star')).toHaveCount(1);
+  // The marked lines have a star, and a clip is a real WAV of that moment.
+  await expect(panel.locator('.lis-star').first()).toBeVisible();
   const download = page.waitForEvent('download');
-  await panel.getByRole('button', { name: 'Share a clip of this moment' }).click();
+  await panel.getByRole('button', { name: 'Share a clip of this moment' }).first().click();
   const dl = await download;
   expect(dl.suggestedFilename()).toMatch(/\.wav$/);
   const wav = await (await import('node:fs/promises')).readFile(await dl.path());

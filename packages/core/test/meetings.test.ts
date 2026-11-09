@@ -304,3 +304,76 @@ describe('coaching stats and clips', () => {
     expect(v.getInt16(50, true)).toBe(32767); // clipped
   });
 });
+
+describe('meetings and the pen', () => {
+  const pts = (xy: Array<[number, number]>, t0 = 0) => {
+    const out: Array<{ x: number; y: number; t: number; p: number; tilt: number; orient: number }> = [];
+    for (let i = 1; i < xy.length; i++) {
+      const [ax, ay] = xy[i - 1]!, [bx, by] = xy[i]!;
+      for (let k = 0; k < 8; k++) out.push({ x: ax + ((bx - ax) * k) / 8, y: ay + ((by - ay) * k) / 8, t: t0 + out.length * 8, p: 0.5, tilt: 0, orient: 0 });
+    }
+    out.push({ x: xy.at(-1)![0], y: xy.at(-1)![1], t: t0 + out.length * 8, p: 0.5, tilt: 0, orient: 0 });
+    return out;
+  };
+  const star = () => {
+    const v = Array.from({ length: 5 }, (_, i) => { const a = -Math.PI / 2 + (i * 4 * Math.PI) / 5; return [30 + 20 * Math.cos(a), 30 + 20 * Math.sin(a)] as [number, number]; });
+    return pts([...v, v[0]!]);
+  };
+
+  it('knows a star from handwriting, boxes and circles', async () => {
+    const { isStarStroke, isBoxStroke, handwrite } = await import('../src/index.ts');
+    expect(isStarStroke({ points: star() })).toBe(true);
+    expect(isStarStroke({ points: star(), origin: 'ai' })).toBe(false);
+    const circle = Array.from({ length: 60 }, (_, i) => ({ x: 30 + 20 * Math.cos((i / 59) * 2 * Math.PI), y: 30 + 20 * Math.sin((i / 59) * 2 * Math.PI), t: i * 8, p: 0.5, tilt: 0, orient: 0 }));
+    expect(isStarStroke({ points: circle })).toBe(false);
+    const box = pts([[0, 0], [16, 0], [16, 16], [0, 16], [0, 0]]);
+    expect(isStarStroke({ points: box })).toBe(false);
+    expect(isBoxStroke({ points: box })).toBe(true);
+    const words = handwrite('meeting notes with Dana about pricing, security review, and the pilot. www mmm kkk', { x: 0, y: 0, width: 600, xHeight: 10, style: 'script', seed: 4 });
+    expect(words.strokes.filter((s) => isStarStroke(s)).length).toBe(0);
+    expect(words.strokes.filter((s) => isBoxStroke(s)).length).toBe(0);
+  });
+
+  it('puts each handwritten line at the moment it was written, and boxes make tasks', async () => {
+    const { inkNoteLines, inkNotesText } = await import('../src/index.ts');
+    const start = 1_000_000;
+    const stroke = (id: string, t: number, xy: Array<[number, number]>) => ({ id, pen: 'ballpoint' as const, color: '#FF000000', size: 1.5, createdAt: t, points: pts(xy) });
+    const page = {
+      id: 'p', strokes: [
+        stroke('a', start + 62_000, [[100, 100], [160, 104]]),
+        stroke('box', start + 150_000, [[60, 196], [76, 196], [76, 212], [60, 212], [60, 196]]),
+        stroke('b', start + 151_000, [[100, 200], [180, 204]]),
+      ],
+      recognizedLines: [
+        { text: 'send SOC 2 report', strokeIds: ['b'], bounds: { minX: 100, minY: 195, maxX: 180, maxY: 214 } },
+        { text: 'security review?', strokeIds: ['a'], bounds: { minX: 100, minY: 95, maxX: 160, maxY: 110 } },
+      ],
+      texts: [{ id: 't', x: 100, y: 300, width: 300, text: 'typed later', fontSize: 14, color: '#FF000000', font: 'sans' as const, createdAt: start + 400_000 }],
+    } as never;
+    const lines = inkNoteLines([page], { startedAt: start, durationMs: 300_000 });
+    expect(lines.map((l) => [l.text, l.ms, !!l.task])).toEqual([['security review?', 62_000, false], ['send SOC 2 report', 151_000, true], ['typed later', undefined, false]]);
+    expect(inkNotesText(lines)).toBe('[1:02] security review?\n[2:31] [ ] send SOC 2 report\ntyped later');
+  });
+});
+
+describe('mind map', () => {
+  it('lays sections round the title and points beyond them, and draws an SVG', async () => {
+    const { mindMapLayout, mindMapSvg } = await import('../src/index.ts');
+    const v = { sections: [
+      { heading: 'Decisions', items: [{ id: 'a', text: 'Ship in March', mine: true }, { id: 'b', text: 'Merge per stroke' }, { id: 'c', text: 'detail', depth: 1 as const }] },
+      { heading: 'Action items', items: [{ id: 'd', text: 'Write the spec' }] },
+      { heading: 'Empty', items: [] },
+    ] };
+    const nodes = mindMapLayout('Design review', v);
+    expect(nodes.map((n) => n.id)).toEqual(['root', 's0', 's0p0', 's0p1', 's1', 's1p0']);
+    const dist = (n: { x: number; y: number }) => Math.round(Math.hypot(n.x, n.y));
+    expect(dist(nodes[1]!)).toBe(190);
+    expect(dist(nodes[2]!)).toBe(360);
+    expect(nodes[2]!.mine).toBe(true);
+    const svg = mindMapSvg(nodes);
+    expect(svg).toMatch(/^<svg /);
+    expect(svg).toContain('>Design review<');
+    expect(svg.match(/<path /g)).toHaveLength(5);
+    expect(mindMapSvg(mindMapLayout('<b>', { sections: [] }))).toContain('&lt;b&gt;');
+  });
+});

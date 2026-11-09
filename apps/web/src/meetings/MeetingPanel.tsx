@@ -4,8 +4,10 @@ import {
   Check,
   ChevronDown,
   Copy,
+  Headphones,
   History,
   Mail,
+  Network,
   NotebookPen,
   PenLine,
   Plus,
@@ -52,6 +54,7 @@ import { askConfirm, askText } from '../ui/prompts.tsx';
 import { editMeetingNotesByAsking, enhanceMeetingNotes, notesTextOf, runRecipe, saveHandEdit } from './enhance.ts';
 import { meetingReplyHtml } from './render.ts';
 import { ShareDialog } from './ShareDialog.tsx';
+import { AudioOverviewDialog, MindMapDialog } from './Overview.tsx';
 import { allRecipes, allTemplates, loadMeetingsLibrary, onMeetingNotesChanged, readMeetingNotes, showMeetingNotesVersion, useMeetingsLibrary } from './store.ts';
 import './meetings.css';
 
@@ -201,6 +204,7 @@ function NotesTab({ doc, vault, isLive, onWriteOnPage }: { doc: NoteDocument; va
   const [partial, setPartial] = useState('');
   const [ask, setAsk] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
+  const [view, setView] = useState<null | 'mindmap' | 'audio'>(null);
   const [menu, setMenu] = useState<null | 'copy' | 'versions' | 'more'>(null);
   const copyBtn = useRef<HTMLButtonElement>(null);
   const verBtn = useRef<HTMLButtonElement>(null);
@@ -355,6 +359,8 @@ function NotesTab({ doc, vault, isLive, onWriteOnPage }: { doc: NoteDocument; va
             { label: 'Write on the page in my handwriting', icon: <PenLine size={15} />, onClick: () => onWriteOnPage(version, 'hand') },
             { label: 'Add to the page as text', icon: <NotebookPen size={15} />, onClick: () => onWriteOnPage(version, 'typed') },
           ] : []),
+          { label: 'Mind map', icon: <Network size={15} />, onClick: () => setView('mindmap') },
+          { label: 'Audio overview', icon: <Headphones size={15} />, hint: 'Two voices, on this device', onClick: () => setView('audio') },
           { label: 'Use another template…', icon: <Wand2 size={15} />, onClick: () => void (async () => {
             const lib = useMeetingsLibrary.getState().library;
             const names = allTemplates(lib).map((t) => t.name).join(', ');
@@ -371,6 +377,8 @@ function NotesTab({ doc, vault, isLive, onWriteOnPage }: { doc: NoteDocument; va
         </form>
       )}
       {shareOpen && version && <ShareDialog header={header} version={version} onClose={() => setShareOpen(false)} />}
+      {view === 'mindmap' && version && <MindMapDialog doc={doc} version={version} onClose={() => setView(null)} />}
+      {view === 'audio' && version && <AudioOverviewDialog doc={doc} version={version} onClose={() => setView(null)} />}
     </div>
   );
 }

@@ -104,8 +104,26 @@ test('enhanced notes: your words, the details, moments, edits, versions, page, r
   await expect(panel.locator('.lis-tr').first()).toHaveText(/^ES: /, { timeout: 15_000 });
   await panel.getByRole('combobox', { name: 'Translate captions into' }).selectOption('');
 
-  // Share to a webhook (connected in Settings › Meetings).
+  // Mind map (from the notes, no AI) and audio overview (two voices).
   await panel.getByRole('tab', { name: 'Notes' }).click();
+  await panel.getByRole('button', { name: 'More' }).click();
+  await page.getByRole('menuitem', { name: 'Mind map' }).click();
+  const map = page.getByRole('dialog', { name: 'Mind map' });
+  await expect(map.locator('svg text', { hasText: 'Acme discovery call' })).toHaveCount(1);
+  expect(await map.locator('svg text').count()).toBeGreaterThan(5);
+  const svgDl = page.waitForEvent('download');
+  await map.getByRole('button', { name: 'Download SVG' }).click();
+  expect((await svgDl).suggestedFilename()).toBe('Acme discovery call.svg');
+  await map.getByRole('button', { name: 'Close' }).click();
+  await panel.getByRole('button', { name: 'More' }).click();
+  await page.getByRole('menuitem', { name: /^Audio overview/ }).click();
+  const ov = page.getByRole('dialog', { name: 'Audio overview' });
+  await expect(ov.locator('.mtg-overview li')).toHaveCount(5);
+  await expect(ov.locator('.mtg-overview li.is-b').first()).toContainText('And the price works?');
+  await expect(ov.getByRole('button', { name: 'Play' })).toBeEnabled();
+  await ov.getByRole('button', { name: 'Close' }).click();
+
+  // Share to a webhook (connected in Settings › Meetings).
   await page.getByRole('button', { name: 'Back to library' }).click();
   await libraryButton(page, 'Settings');
   await settingsGroup(page, 'Knowledge', 'Meetings');

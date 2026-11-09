@@ -131,3 +131,12 @@
 .mtg-stats-table th, .mtg-stats-table td { text-align: left; padding: 3px 4px; }
 .mtg-stats-table thead th { color: var(--ink-3); font-weight: 600; }
 .mtg-stats-table tbody th { font-weight: 650; color: var(--ink); }
+
+/* Mind map and audio overview */
+.mtg-mindmap { width: 100%; max-height: 70vh; overflow: auto; border-radius: var(--r-control); background: var(--paper); }
+.mtg-mindmap svg { display: block; width: 100%; height: auto; min-width: 640px; }
+.mtg-overview { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-height: 55vh; overflow-y: auto; }
+.mtg-overview button { width: 100%; text-align: left; padding: 8px 10px; border: 0; border-radius: var(--r-control); background: transparent; color: var(--ink-2); font: inherit; font-size: var(--t-sm); line-height: 1.5; cursor: pointer; }
+.mtg-overview li.is-b button { padding-left: 28px; }
+.mtg-overview b { color: var(--ink); margin-right: 6px; }
+.mtg-overview li.is-on button { background: var(--chrome-2); color: var(--ink); }

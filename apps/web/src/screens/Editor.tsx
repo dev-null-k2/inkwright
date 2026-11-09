@@ -174,6 +174,8 @@ export function Editor({ noteId, initialPage }: { noteId: string; initialPage?: 
       onCommitted: (pageIndex, res) => {
         if (res.kind === 'scratched') toast({ text: `Scratched out ${res.erased} ${res.erased === 1 ? 'stroke' : 'strokes'}`, action: { label: 'Undo', run: () => e.undo() } });
         if (pageIndex >= 0) session.scheduleRecognition(pageIndex);
+        // A star drawn while recording marks the moment (Meetings).
+        if (res.kind === 'added' && pageIndex >= 0 && useListen.getState().noteId === session.doc.meta.id && isModuleOn('meetings')) void import('../meetings/gestures.ts').then((m) => m.onMeetingInk(session.doc, pageIndex));
       },
       onButtonToggle: () => setLatched(e.buttonLatched),
       onSeek: (createdAt) => live.current.seekTo(createdAt),

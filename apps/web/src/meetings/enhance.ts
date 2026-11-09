@@ -18,6 +18,8 @@ import {
 import {
   currentMeetingNotes,
   findTemplate,
+  inkNoteLines,
+  inkNotesText,
   pageText,
   meetingStats,
   relatedMeetings,
@@ -119,7 +121,11 @@ export async function enhanceMeetingNotes(a: EnhanceArgs): Promise<MeetingNotesV
     : suggestTemplate(a.note.title, custom, a.note.meeting?.attendees?.length ? a.note.meeting.attendees.length + 1 : 0);
   const recs = await loadNoteTranscripts(a.vault, a.note);
   const { lines, clipId, durationMs } = transcriptLines(recs, { them: themOf(a.note) });
-  const notes = notesTextOf(a.pages);
+  // Your notes, each at the moment you wrote it (handwriting and typing both carry their time).
+  let offset = 0;
+  const clips = recs.map((r) => { const c = { startedAt: r.clip.startedAt, durationMs: r.clip.durationMs, offsetMs: recs.length > 1 ? offset : 0 }; offset += r.clip.durationMs; return c; });
+  const inkLines = inkNoteLines(a.pages, clips);
+  const notes = inkLines.length ? inkNotesText(inkLines) : notesTextOf(a.pages);
   if (!lines.length && !notes.trim()) throw new Error('There is nothing to enhance yet: write some notes or record the meeting.');
   const budget = ai.contextTokens ? Math.max(3000, Math.min(24000, (ai.contextTokens - 1500) * 3)) : 14000;
   const marks = marksOf(recs);

@@ -79,7 +79,7 @@ export function enhanceMessages(a: EnhanceInput): ChatMessage[] {
   const user = [
     `Meeting: ${a.title || 'Untitled'}${a.at ? ` (${new Date(a.at).toDateString()})` : ''}`,
     who,
-    `Their notes:\n${a.notes.trim() || '(none — write the notes from the transcript)'}`,
+    `Their notes${/^\[\d/m.test(a.notes) ? ' (with the time each was written; the details are in the transcript around then; "[ ]" marks an action item)' : ''}:\n${a.notes.trim() || '(none — write the notes from the transcript)'}`,
     a.marks?.length ? `They marked these moments as important; make sure what was said then is in the notes: ${a.marks.map((m) => `[${formatStamp(m)}]`).join(', ')}` : '',
     `Transcript, with times from the start of the recording:\n${render(lines) || '(nothing was recorded)'}`,
   ].filter(Boolean).join('\n\n');
@@ -148,7 +148,7 @@ export function noteOverlap(note: string, line: string): number {
 
 /** The writer's note lines: one point each, bullets and empty lines removed. */
 export function noteLines(notes: string): string[] {
-  return notes.split('\n').map((l) => l.replace(/^\s*(?:(?:[-*•–]|\d+[.)]|\[[ x]\])\s*)+/i, '').trim()).filter((l) => l.length > 0 && /[\p{L}\p{N}]/u.test(l)).slice(0, 300);
+  return notes.split('\n').map((l) => l.replace(/^\s*(?:(?:[-*•–]|\d+[.)]|\[[ x]\]|\[(?:\d+:)?\d{1,2}:\d{2}\])\s*)+/i, '').trim()).filter((l) => l.length > 0 && /[\p{L}\p{N}]/u.test(l)).slice(0, 300);
 }
 
 const STAMP = /\[((?:\d+:)?\d{1,2}:\d{2}(?:\s*[,–-]\s*(?:\d+:)?\d{1,2}:\d{2})*)\]\s*$/;
@@ -435,6 +435,39 @@ export function parseNumberedLines(text: string, count: number): Array<string | 
     if (!m) continue;
     const i = Number(m[1]) - 1;
     if (i >= 0 && i < count && !out[i]) out[i] = m[2]!.trim();
+  }
+  return out;
+}
+
+// ---- Audio overview -----------------------------------------------------------------------------------
+
+export interface OverviewLine { voice: 'A' | 'B'; text: string }
+
+/**
+ * A short two-voice conversation about notes (like a podcast), to listen to on the way to the next
+ * meeting. Read aloud on the device with two system voices.
+ */
+export function audioOverviewMessages(a: { title: string; notes: string; minutes?: number }): ChatMessage[] {
+  const words = Math.round((a.minutes ?? 3) * 150);
+  return [
+    { role: 'system', content: [
+      `Write a lively two-person conversation (about ${words} words) that walks a listener through these notes, like a short podcast. Speaker A guides; speaker B asks the questions a listener would and adds the interesting details.`,
+      'Format: each line starts with "A:" or "B:". No stage directions, no sound effects, no headings. Plain spoken English (or the notes\' language). Mention names, numbers and decisions exactly as in the notes; never invent any.',
+      'Start straight in with what matters most; end with what happens next.',
+    ].join('\n') },
+    { role: 'user', content: `Notes: ${a.title}\n\n${a.notes.slice(0, 9000)}` },
+  ];
+}
+
+export function parseOverview(text: string): OverviewLine[] {
+  const out: OverviewLine[] = [];
+  for (const raw of strip(text).split('\n')) {
+    const m = /^\s*\**\s*(A|B|Host A|Host B|Speaker A|Speaker B)\s*\**\s*[:：]\s*(.+)$/i.exec(raw);
+    if (m) {
+      const voice = /b$/i.test(m[1]!.trim()) ? 'B' : 'A';
+      const text = m[2]!.replace(/\*+/g, '').replace(/\[[^\]]*\]|\([^)]*(laughs|pause|music)[^)]*\)/gi, '').replace(/\s+/g, ' ').trim();
+      if (text) out.push({ voice, text });
+    } else if (out.length && raw.trim() && !/^#/.test(raw)) out[out.length - 1]!.text += ` ${raw.trim()}`;
   }
   return out;
 }

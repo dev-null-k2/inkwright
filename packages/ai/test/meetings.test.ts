@@ -179,3 +179,16 @@ describe('during the meeting', () => {
     expect(parseNumberedLines('2. Solo', 2)).toEqual([null, 'Solo']);
   });
 });
+
+describe('audio overview', () => {
+  it('asks for a two-voice script and reads it back', async () => {
+    const { audioOverviewMessages, parseOverview } = await import('../src/index.ts');
+    const m = audioOverviewMessages({ title: 'Acme call', notes: '- 40 reps', minutes: 2 });
+    expect(m[0]!.content).toContain('about 300 words');
+    expect(parseOverview('<think>x</think>\n**A:** So, Acme. [music]\nB: Forty reps?\nand two regions.\n\n## Outro\nA: Yes (laughs) exactly.')).toEqual([
+      { voice: 'A', text: 'So, Acme.' },
+      { voice: 'B', text: 'Forty reps? and two regions.' },
+      { voice: 'A', text: 'Yes exactly.' },
+    ]);
+  });
+});

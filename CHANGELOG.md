@@ -25,6 +25,11 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
   few minutes, and **live translated captions** in 19 languages. Afterwards: **how the
   conversation went** (talk share, pace, questions, longest stretch, filler words) and **Coach me**
   using those numbers, and **clips** of a moment to share.
+- **Pen gestures in meetings**: a star drawn while recording marks the moment; a small box drawn
+  before a line makes it an action item; each handwritten line is placed at the moment it was
+  written, so the details added to it come from what was being said then.
+- **Mind map** of the notes (download as SVG) and an **audio overview**: a short two-voice
+  conversation about the meeting, written by the AI and read aloud on the device.
 
 ### iPhone and iPad
 - The native iOS app: Apple Pencil pressure, tilt and hover, with double-tap and squeeze switching
