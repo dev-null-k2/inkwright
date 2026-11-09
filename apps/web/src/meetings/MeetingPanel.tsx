@@ -36,6 +36,8 @@ import {
   type MeetingNotesVersion,
   type NoteDocument,
   type Recipe,
+  type TranscriptFile,
+  type TranscriptSegment,
 } from '@inkwright/core';
 import { parseEnhancedNotes } from '@inkwright/ai';
 import { useApp } from '../state/app.ts';
@@ -44,6 +46,7 @@ import { ensurePageRecognized } from '../lib/assistant/context.ts';
 import { focusSaid, useListen } from '../lib/listen/session.ts';
 import { loadNoteTranscripts } from '../lib/listen/transcripts.ts';
 import { TranscriptPanel } from '../ui/TranscriptPanel.tsx';
+import { CaptionPicker, LiveBar, StatsCard, shareClip, useCaptionLanguage, useTranslations } from './LiveTools.tsx';
 import { IconButton, Menu, Popover, cx } from '../ui/primitives.tsx';
 import { askConfirm, askText } from '../ui/prompts.tsx';
 import { editMeetingNotesByAsking, enhanceMeetingNotes, notesTextOf, runRecipe, saveHandEdit } from './enhance.ts';
@@ -106,9 +109,32 @@ export function MeetingPanel({ doc, vault, recording, playing, onClose, onWriteO
         ))}
       </div>
       {tab === 'notes' && <NotesTab doc={doc} vault={vault} isLive={isLive} onWriteOnPage={onWriteOnPage} />}
-      {tab === 'transcript' && <TranscriptPanel embedded doc={doc} vault={vault} recording={recording} playing={playing} onClose={onClose} />}
+      {tab === 'transcript' && <TranscriptTab doc={doc} vault={vault} recording={recording} playing={playing} onClose={onClose} isLive={isLive} />}
       {tab === 'recipes' && <RecipesTab doc={doc} vault={vault} />}
     </aside>
+  );
+}
+
+// ---- Transcript, with live tools, captions and clips ----------------------------------------------
+
+function TranscriptTab({ doc, vault, recording, playing, onClose, isLive }: { doc: NoteDocument; vault: AppVault; recording: boolean; playing: MeetingPanelProps['playing']; onClose: () => void; isLive: boolean }) {
+  const toast = useApp((s) => s.toast);
+  const live = useListen();
+  const [lang, setLang] = useCaptionLanguage();
+  const [saved, setSaved] = useState<TranscriptSegment[]>([]);
+  useEffect(() => {
+    if (isLive) return;
+    void loadNoteTranscripts(vault, doc.meta).then((rs) => setSaved(rs.at(-1)?.file.segments ?? []));
+  }, [vault, doc.meta.id, isLive, live.version]); // eslint-disable-line react-hooks/exhaustive-deps
+  const segments = isLive ? live.segments : saved;
+  const translations = useTranslations(segments, lang, [doc.meta]);
+  return (
+    <div className="mtg-body">
+      {isLive && <LiveBar doc={doc} />}
+      <div className="mtg-tr-tools"><CaptionPicker lang={lang} onChange={setLang} /></div>
+      <TranscriptPanel embedded doc={doc} vault={vault} recording={recording} playing={playing} onClose={onClose}
+        extras={{ translations, onClip: (clip, segs, ms) => void shareClip(vault, doc, clip, segs, ms).then((r) => toast({ text: r === 'saved' ? 'Clip saved' : 'Clip shared' })).catch((e) => toast({ text: (e as Error).message, tone: 'error' })) }} />
+    </div>
   );
 }
 
@@ -357,12 +383,14 @@ function RecipesTab({ doc, vault }: { doc: NoteDocument; vault: AppVault }) {
   const lib = useMeetingsLibrary((s) => s.library);
   const recipes = allRecipes(lib).filter((r) => r.scope === 'meeting');
   const [result, setResult] = useState<{ recipe: Recipe; text: string; done: boolean } | null>(null);
-  const [single, setSingle] = useState<{ noteId: string; clipId: string; segments: import('@inkwright/core').TranscriptSegment[] } | null>(null);
+  const [single, setSingle] = useState<{ noteId: string; clipId: string; segments: TranscriptSegment[] } | null>(null);
+  const [files, setFiles] = useState<TranscriptFile[]>([]);
   const abort = useRef<AbortController | null>(null);
   useEffect(() => {
     void loadNoteTranscripts(vault, doc.meta).then((rs) => {
       const r = rs[rs.length - 1];
       setSingle(r ? { noteId: doc.meta.id, clipId: r.clip.id, segments: r.file.segments } : null);
+      setFiles(rs.map((x) => x.file));
     });
   }, [vault, doc.meta.id, doc.meta.recordings?.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -386,6 +414,7 @@ function RecipesTab({ doc, vault }: { doc: NoteDocument; vault: AppVault }) {
       <div className="mtg-scroll">
         {!result && (
           <>
+            <StatsCard files={files} them={(doc.meta.meeting?.attendees?.length ?? 0) === 1 ? doc.meta.meeting!.attendees![0]!.name : undefined} />
             <p className="mtg-hint mtg-pad">Run a recipe on this meeting. Across several meetings: Meetings in the library.</p>
             <ul className="mtg-recipes">
               {recipes.map((r) => (

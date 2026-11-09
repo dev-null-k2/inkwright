@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AudioLines, Cloud, Download, Globe, ListChecks, RefreshCw, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { AudioLines, Cloud, Download, Globe, ListChecks, RefreshCw, Scissors, ShieldCheck, Sparkles, Star, X } from 'lucide-react';
 import { formatBytes, whereExplanation } from '@inkwright/ai';
 import { formatStamp, newId, speakerName, type AudioClip, type NoteDocument, type SpeechWhere, type TranscriptFile, type TranscriptSegment } from '@inkwright/core';
 import { useApp } from '../state/app.ts';
@@ -56,7 +56,14 @@ const whereOfEngine = (t: TranscriptFile): { where: SpeechWhere; label: string }
  * (text appears as it is transcribed), saved ones afterwards. Tap a sentence to highlight the ink
  * written then and hear it; tap ink to find the sentence (the editor routes that here).
  */
-export function TranscriptPanel({ doc, vault, recording, playing, onClose, embedded }: { doc: NoteDocument; vault: AppVault; recording: boolean; playing: { clipId: string; position: number; playing: boolean } | null; onClose: () => void; /** Inside the meeting panel's Transcript tab: no frame or header of its own. */ embedded?: boolean }) {
+export interface TranscriptExtras {
+  /** Translated captions by segment id. */
+  translations?: Record<string, string>;
+  /** Share a clip of a moment (meetings). */
+  onClip?: (clip: AudioClip, segments: TranscriptSegment[], ms: number) => void;
+}
+
+export function TranscriptPanel({ doc, vault, recording, playing, onClose, embedded, extras }: { doc: NoteDocument; vault: AppVault; recording: boolean; playing: { clipId: string; position: number; playing: boolean } | null; onClose: () => void; /** Inside the meeting panel's Transcript tab: no frame or header of its own. */ embedded?: boolean; extras?: TranscriptExtras }) {
   const toast = useApp((s) => s.toast);
   const live = useListen();
   const isLive = live.noteId === doc.meta.id && (recording || live.status !== 'idle');
@@ -138,6 +145,14 @@ export function TranscriptPanel({ doc, vault, recording, playing, onClose, embed
     }
   };
 
+  // Lines that were said at a moment someone marked (live marks, or the saved ones).
+  const marked = useMemo(() => {
+    const ms = isLive ? (live.noteId === doc.meta.id ? live.marks.map((m) => m.ms) : []) : (file?.marks ?? []).map((m) => m.ms);
+    const ids = new Set<string>();
+    for (const t of ms) { const seg = segments.find((x) => t >= x.startMs - 500 && t <= x.endMs + 500) ?? [...segments].reverse().find((x) => x.startMs <= t); if (seg) ids.add(seg.id); }
+    return ids;
+  }, [isLive, live.marks, file, segments]); // eslint-disable-line react-hooks/exhaustive-deps
+
   /** Transcript editing: remove a line (said by mistake, private), or name a speaker. */
   const deleteSegment = async (id: string) => {
     if (!file || !shownClip) return;
@@ -197,10 +212,12 @@ export function TranscriptPanel({ doc, vault, recording, playing, onClose, embed
               {showName && (editing && file ? <button type="button" className="lis-speaker is-edit" onClick={() => void renameSpeaker(s.speaker!)}>{name}</button> : <span className="lis-speaker">{name}</span>)}
               <span className="lis-seg-row">
                 <button type="button" className={cx('lis-seg', s.id === current && 'is-on')} onClick={() => activeClip && focusSaid(doc.meta.id, activeClip, s.startMs, 'transcript')}>
-                  <time>{formatStamp(s.startMs)}</time><span>{s.text}</span>
+                  <time>{formatStamp(s.startMs)}</time><span>{marked.has(s.id) && <Star size={12} className="lis-star" aria-label="Marked" />}{s.text}</span>
                 </button>
                 {editing && file && <IconButton label="Delete this line" onClick={() => void deleteSegment(s.id)}><X size={14} /></IconButton>}
+                {!isLive && extras?.onClip && shownClip && !shownClip.audioDeletedAt && (marked.has(s.id) || editing) && <button type="button" className="lis-clip" aria-label="Share a clip of this moment" title="Share a clip of this moment" onClick={() => extras.onClip!(shownClip, segments, s.startMs)}><Scissors size={13} /></button>}
               </span>
+              {extras?.translations?.[s.id] && <span className="lis-tr" lang="">{extras.translations[s.id]}</span>}
             </li>
           );
         })}

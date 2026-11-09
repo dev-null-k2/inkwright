@@ -55,9 +55,11 @@ export interface ListenState {
   focus: { noteId: string; clipId: string; ms: number; seq: number; from: 'transcript' | 'link' | 'ink' } | null;
   /** Bumped when a transcript file of a note changes (panels re-read). */
   version: number;
+  /** Moments marked during this recording (saved with its transcript). */
+  marks: Array<{ id: string; ms: number; label?: string }>;
 }
 
-const initial: ListenState = { noteId: null, clipId: null, startedAt: 0, segments: [], partial: '', working: false, status: 'idle', where: null, label: '', error: null, offer: null, summarizing: false, focus: null, version: 0 };
+const initial: ListenState = { noteId: null, clipId: null, startedAt: 0, segments: [], partial: '', working: false, status: 'idle', where: null, label: '', error: null, offer: null, summarizing: false, focus: null, version: 0, marks: [] };
 
 export const useListen = create<ListenState>(() => initial);
 // Any transcript or summary written (here, by a re-transcription or a summary) refreshes panels.
@@ -125,6 +127,7 @@ export function finishListening(a: { vault: AppVault; doc: NoteDocument; clip: A
     }
     const file: TranscriptFile = {
       formatVersion: 1, clipId: a.clip.id, run: newId(), engine: live.engineId, where: live.where, language: speechLanguage(),
+      ...(s.marks.length ? { marks: s.marks } : {}),
       complete: true, updatedAt: Date.now(), segments: assignSides(segments.map((x) => ({ ...x, endMs: Math.min(x.endMs, a.clip.durationMs) })), a.energy ?? []),
     };
     await writeTranscript(a.vault, a.doc.meta.id, file);
@@ -157,6 +160,15 @@ export function whenListenSettled(noteId: string, timeoutMs = 5 * 60_000): Promi
   const p = settled.get(noteId);
   if (!p) return Promise.resolve();
   return Promise.race([p, new Promise<void>((r) => setTimeout(r, timeoutMs))]);
+}
+
+/** Marks this moment of the recording in progress as important; returns its time, or null when not recording. */
+export function markMoment(label?: string): number | null {
+  const s = useListen.getState();
+  if (!s.clipId || s.status === 'idle') return null;
+  const ms = Math.max(0, Date.now() - s.startedAt - 1500); // what was just said, not the tap
+  useListen.setState({ marks: [...s.marks, { id: newId(), ms, ...(label ? { label } : {}) }] });
+  return ms;
 }
 
 /** Stops without saving (the editor closed mid-recording). */

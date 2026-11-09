@@ -123,6 +123,9 @@ test('live transcript lines up with ink; ask while recording; summaries after', 
   await expect(panel.locator('.lis-seg')).toHaveCount(2, { timeout: 15_000 });
   await expect(panel.locator('.lis-seg').nth(1)).toContainText('Convolution flips');
   expect(mock.transcriptions.every((n) => n > 1000)).toBe(true); // real audio went to the endpoint
+  // Mark this moment: it is saved with the transcript and can be shared as a clip.
+  await panel.getByRole('button', { name: /^Mark/ }).click();
+  await expect(panel.getByRole('button', { name: /^Mark · 1/ })).toBeVisible();
 
   // Ask while it's happening: the live transcript (with times) goes along; the answer cites it.
   await page.getByRole('button', { name: 'AI', exact: true }).click();
@@ -148,6 +151,15 @@ test('live transcript lines up with ink; ask while recording; summaries after', 
   await expect(panel.locator('.lis-todos')).toContainText('Homework three due Friday');
   const n = await panel.locator('.lis-seg').count();
   expect(n).toBeGreaterThanOrEqual(2);
+  // The marked line has a star, and its clip is a real WAV of that moment.
+  await expect(panel.locator('.lis-star')).toHaveCount(1);
+  const download = page.waitForEvent('download');
+  await panel.getByRole('button', { name: 'Share a clip of this moment' }).click();
+  const dl = await download;
+  expect(dl.suggestedFilename()).toMatch(/\.wav$/);
+  const wav = await (await import('node:fs/promises')).readFile(await dl.path());
+  expect(wav.subarray(0, 4).toString()).toBe('RIFF');
+  expect(wav.length).toBeGreaterThan(16_000 * 2 * 4); // at least four seconds of 16 kHz audio
 
   // Tap a sentence: the strokes written while it was said light up and the audio plays from there.
   const strokes = await strokesNow(page);

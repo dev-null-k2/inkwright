@@ -67,6 +67,8 @@ export interface TranscriptFile {
   lecture?: LectureSummary;
   /** Display names for speaker labels (`{ "them": "Dana", "B": "Priya" }`). */
   speakers?: Record<string, string>;
+  /** Moments marked while recording (meetings/stats.ts `MeetingMark`). */
+  marks?: Array<{ id: string; ms: number; label?: string }>;
 }
 
 /** A summary of one page: what was said while it was written, plus what is on it. */
@@ -136,6 +138,15 @@ export function decodeTranscript(json: string): TranscriptFile {
     const sp: Record<string, string> = {};
     for (const [k, v] of Object.entries(o.speakers as Record<string, unknown>)) if (/^[\w -]{1,40}$/.test(k) && typeof v === 'string' && v.trim()) sp[k] = v.trim().slice(0, 80);
     if (Object.keys(sp).length) out.speakers = sp;
+  }
+  if (Array.isArray(o.marks)) {
+    const marks = (o.marks as unknown[]).flatMap((m) => {
+      if (!m || typeof m !== 'object') return [];
+      const mo = m as Record<string, unknown>;
+      if (typeof mo.id !== 'string' || !Number.isFinite(Number(mo.ms))) return [];
+      return [{ id: mo.id.slice(0, 64), ms: Math.max(0, Number(mo.ms)), ...(typeof mo.label === 'string' && mo.label.trim() ? { label: mo.label.trim().slice(0, 200) } : {}) }];
+    }).slice(0, 500);
+    if (marks.length) out.marks = marks;
   }
   return out;
 }

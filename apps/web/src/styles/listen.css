@@ -57,3 +57,7 @@
 .lis-speaker.is-edit { text-decoration: underline dotted; cursor: pointer; }
 .lis-seg-row { display: flex; align-items: flex-start; gap: 2px; }
 .lis-seg-row .lis-seg { flex: 1; min-width: 0; }
+.lis-tr { display: block; margin: -2px 0 4px 46px; font-size: var(--t-xs); font-style: italic; color: var(--ink-3); }
+.lis-star { color: var(--ochre); vertical-align: -1px; margin-right: 4px; }
+.lis-clip { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border: 0; border-radius: 50%; background: transparent; color: var(--ink-3); cursor: pointer; }
+.lis-clip:hover { background: var(--chrome-2); color: var(--ink); }

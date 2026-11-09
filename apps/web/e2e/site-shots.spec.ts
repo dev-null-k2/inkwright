@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { handwrite } from '../../../packages/core/src/handwrite.ts';
 import { editorMenu, newNote, openApp } from './helpers';
-import { addProvider, libraryButton, mockAI } from './meetings-helpers';
+import { addProvider, libraryButton, mockAI } from './mtg-helpers';
 
 /**
  * Screenshots of Meetings for the website (docs/media/screens/meeting-*.png), taken from the real

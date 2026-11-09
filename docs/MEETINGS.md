@@ -18,6 +18,9 @@ owns all of it and can be switched off; enhanced notes stay in each note.
 | **Coming up** — meetings from your calendars (Google, Outlook, iCloud by their private iCal address, or an `.ics` file), join link, **Prepare notes / Take notes** (title, attendees, call link and template filled in; recording starts), a **brief** before it from earlier meetings with the same people, and a reminder a few minutes before | Meetings |
 | **People and companies** — from attendees, companies by work email domain (your own and personal providers left out), each with **Ask** | Meetings › People, Companies |
 | **Record a call** — both sides of Zoom, Meet, Teams or any call, without a bot: the browser shares the call's tab or window sound, mixed with your microphone; **who spoke** (you or them, by which side was louder; the other person's name on a two-person call) | Editor › ••• › Audio › Record a call; automatic for meetings with a call link |
+| **Mark** a moment while recording (it is sure to be in the notes; a star in the transcript), **Catch me up** on the last few minutes, **live translated captions** | Meeting panel › Transcript, while recording |
+| **How the conversation went** — talk share, pace, questions, longest stretch, filler words — and **Coach me** with those numbers | Meeting panel › Recipes |
+| **Clips** — a short audio clip of a marked moment (or any line, in Edit) to share | Meeting panel › Transcript |
 | **Transcript editing** — delete a line, name a speaker | Meeting panel › Transcript › Edit |
 | **Keep audio** off — each recording's audio is deleted once its transcript is saved | Settings › Knowledge › Meetings › Privacy |
 | **Onto the page** — the AI's additions written beside your notes in AI ink, in a hand matched to yours (size, slant, pen, messiness), or as a text box | Meeting panel › Notes › ✎ |

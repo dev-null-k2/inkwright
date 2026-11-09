@@ -167,3 +167,15 @@ describe('recipes and briefs', () => {
     expect(briefMessages({ title: 'New', at: 0, attendees: [], past: [] })[1]!.content).toContain('No earlier meetings');
   });
 });
+
+describe('during the meeting', () => {
+  it('catches up on the last minutes and translates numbered lines', async () => {
+    const { catchUpMessages, translateLinesMessages, parseNumberedLines } = await import('../src/index.ts');
+    const lines = [{ ms: 0, text: 'old' }, { ms: 300_000, text: 'pricing first' }, { ms: 420_000, text: 'now security' }];
+    const m = catchUpMessages(lines, 3);
+    expect(m[1]!.content).toBe('[5:00] pricing first\n[7:00] now security');
+    expect(translateLinesMessages(['Hello there', 'Price is $24'], 'Spanish')[1]!.content).toBe('1. Hello there\n2. Price is $24');
+    expect(parseNumberedLines('<think>x</think>\n1. Hola\nnoise\n2) El precio es $24\n9. extra', 2)).toEqual(['Hola', 'El precio es $24']);
+    expect(parseNumberedLines('2. Solo', 2)).toEqual([null, 'Solo']);
+  });
+});

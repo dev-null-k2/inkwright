@@ -59,7 +59,7 @@ export async function activateMeetings(): Promise<() => void> {
   if (E2E_BUILD) {
     // Tests: put a recording's transcript on a note without a microphone (every engine).
     (window as any).__inkwrightMeetings = {
-      async seedRecording(noteId: string, segments: Array<{ startMs: number; endMs: number; text: string; speaker?: string }>, durationMs: number) {
+      async seedRecording(noteId: string, segments: Array<{ startMs: number; endMs: number; text: string; speaker?: string }>, durationMs: number, marks: number[] = []) {
         const v = vault()!;
         const { writeTranscript } = await import('../lib/listen/transcripts.ts');
         const { reindexTranscripts } = await import('../lib/listen/session.ts');
@@ -67,7 +67,7 @@ export async function activateMeetings(): Promise<() => void> {
         const doc = (window as any).__inkwright?.doc;
         if (doc?.meta.id === noteId) doc.updateMeta((m: any) => ({ ...m, recordings: [...(m.recordings ?? []), clip] }));
         else await v.vault.updateNote(noteId, (m) => ({ ...m, recordings: [...(m.recordings ?? []), clip] }));
-        await writeTranscript(v, noteId, { formatVersion: 1, clipId: clip.id, run: 'e2e', engine: 'e2e', where: 'device', complete: true, updatedAt: Date.now(), segments: segments.map((x, i) => ({ id: `s${i}`, ...x })) });
+        await writeTranscript(v, noteId, { formatVersion: 1, clipId: clip.id, run: 'e2e', engine: 'e2e', where: 'device', complete: true, updatedAt: Date.now(), segments: segments.map((x, i) => ({ id: `s${i}`, ...x })), ...(marks.length ? { marks: marks.map((ms, i) => ({ id: `m${i}`, ms })) } : {}) });
         await reindexTranscripts(v, noteId, doc?.meta.id === noteId ? doc.meta : undefined);
         return clip.id;
       },

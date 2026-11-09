@@ -22,8 +22,8 @@ const SLOW = 90_000;
 const otherEngines = [
   { name: 'webkit-desktop', timeout: SLOW, use: { ...devices['Desktop Safari'], viewport: { width: 1280, height: 860 } } },
   // iPadOS Safari reports a Mac user agent by default; only the touch points give it away.
-  { name: 'webkit-ipad', timeout: SLOW, use: { ...devices['iPad Pro 11'], userAgent: devices['Desktop Safari'].userAgent }, testMatch: /layout|touch|meetings/ },
-  { name: 'webkit-iphone', timeout: SLOW, use: { ...devices['iPhone 15'] }, testMatch: /layout|touch|meetings/ },
+  { name: 'webkit-ipad', timeout: SLOW, use: { ...devices['iPad Pro 11'], userAgent: devices['Desktop Safari'].userAgent }, testMatch: /(layout|touch|meetings)\.spec\.ts$/ },
+  { name: 'webkit-iphone', timeout: SLOW, use: { ...devices['iPhone 15'] }, testMatch: /(layout|touch|meetings)\.spec\.ts$/ },
   { name: 'firefox-desktop', timeout: SLOW, use: { ...devices['Desktop Firefox'], viewport: { width: 1280, height: 860 } } },
 ];
 
@@ -53,8 +53,8 @@ export default defineConfig({
   },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 860 } } },
-    { name: 'foldable', use: { viewport: { width: 884, height: 1104 }, deviceScaleFactor: 2.5, isMobile: true, hasTouch: true }, testMatch: /layout|touch|meetings/ },
-    { name: 'phone', use: { ...devices['Pixel 7'] }, testMatch: /layout|touch|meetings/ },
+    { name: 'foldable', use: { viewport: { width: 884, height: 1104 }, deviceScaleFactor: 2.5, isMobile: true, hasTouch: true }, testMatch: /(layout|touch|meetings)\.spec\.ts$/ },
+    { name: 'phone', use: { ...devices['Pixel 7'] }, testMatch: /(layout|touch|meetings)\.spec\.ts$/ },
     ...(process.env.INKWRIGHT_ENGINES === 'all' ? otherEngines : []),
   ],
 });

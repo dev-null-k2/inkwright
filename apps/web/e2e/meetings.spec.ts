@@ -1,6 +1,6 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
 import { editorMenu, newNote, openApp, settingsGroup } from './helpers';
-import { addProvider, libraryButton, meetingNote, mockAI } from './meetings-helpers';
+import { addProvider, libraryButton, meetingNote, mockAI } from './mtg-helpers';
 
 /**
  * Meetings end to end, in every engine: a meeting note with a recording's transcript, enhanced
@@ -17,7 +17,7 @@ test('enhanced notes: your words, the details, moments, edits, versions, page, r
   await openApp(page);
   await addProvider(page);
   await openApp(page);
-  const noteId = await meetingNote(page);
+  const noteId = await meetingNote(page, 'Acme discovery call', [124_000]);
 
   await editorMenu(page, 'Audio', 'Meeting notes');
   const panel = page.getByRole('complementary', { name: 'Meeting' });
@@ -33,6 +33,7 @@ test('enhanced notes: your words, the details, moments, edits, versions, page, r
   expect(req.user).toContain('acme 40 reps');
   expect(req.user).toContain('[0:11] Dana Ross: We have about forty reps');
   expect(req.user).toContain('You: Thanks for making time');
+  expect(req.user).toContain('They marked these moments as important; make sure what was said then is in the notes: [2:04]');
   // Your line is yours (ink colour); the AI's detail is grey, with its moment.
   await expect(panel.locator('.mtg-item.is-mine')).toContainText(['spreadsheets, hate it']);
   const detail = panel.locator('.mtg-item.is-ai', { hasText: 'Forecasts live in spreadsheets' });
@@ -84,10 +85,24 @@ test('enhanced notes: your words, the details, moments, edits, versions, page, r
   await expect(panel.locator('.mtg-result a[href^="#said/"]')).toHaveCount(1);
   await expect(panel.getByRole('button', { name: 'Open in mail' })).toBeVisible();
 
-  // Transcript tab: speakers.
+  // Coaching: who talked how much, from the call's two sides; Coach me gets the numbers.
+  await panel.getByRole('button', { name: '← Recipes' }).click();
+  const stats = panel.getByRole('region', { name: 'Meeting stats' });
+  await expect(stats.locator('tbody tr')).toHaveCount(2);
+  await expect(stats.locator('tbody th')).toHaveText(['You', 'Dana Ross']);
+  await panel.getByRole('button', { name: /^Coach me/ }).click();
+  await expect(panel.locator('.mtg-result .md')).not.toBeEmpty();
+  expect(mock.chats.at(-1)!.system).toContain('Measured from the recording:\nYou: talked');
+
+  // Transcript tab: speakers, the marked moment, translated captions.
   await panel.getByRole('tab', { name: 'Transcript' }).click();
   await expect(panel.locator('.lis-speaker').first()).toHaveText('You');
   await expect(panel.locator('.lis-speaker').nth(1)).toHaveText('Dana Ross');
+  await expect(panel.locator('.lis-seg', { hasText: 'twenty-four dollars' }).locator('.lis-star')).toHaveCount(1);
+  await expect(panel.getByRole('button', { name: 'Share a clip of this moment' })).toHaveCount(1);
+  await panel.getByRole('combobox', { name: 'Translate captions into' }).selectOption('Spanish');
+  await expect(panel.locator('.lis-tr').first()).toHaveText(/^ES: /, { timeout: 15_000 });
+  await panel.getByRole('combobox', { name: 'Translate captions into' }).selectOption('');
 
   // Share to a webhook (connected in Settings › Meetings).
   await panel.getByRole('tab', { name: 'Notes' }).click();

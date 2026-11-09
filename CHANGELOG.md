@@ -21,6 +21,10 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 - **Share** to Slack, Teams, Discord, Notion, Linear, Jira, GitHub, Todoist, HubSpot, Attio and
   any webhook, always with a preview; copy as rich text, Markdown or for Slack; email attendees.
 - The AI's additions written onto the page in AI ink, in a hand matched to yours.
+- During a meeting: **Mark** a moment (it is sure to be in the notes), **Catch me up** on the last
+  few minutes, and **live translated captions** in 19 languages. Afterwards: **how the
+  conversation went** (talk share, pace, questions, longest stretch, filler words) and **Coach me**
+  using those numbers, and **clips** of a moment to share.
 
 ### iPhone and iPad
 - The native iOS app: Apple Pencil pressure, tilt and hover, with double-tap and squeeze switching

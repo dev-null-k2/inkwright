@@ -113,3 +113,21 @@
 .mtg-edit .mtg-edit-check { display: flex; align-items: center; gap: 4px; font-weight: 500; font-size: var(--t-xs); white-space: nowrap; }
 .mtg-edit .mtg-edit-check input { min-height: 0; }
 @media (max-width: 640px) { .mtg-edit-sec { grid-template-columns: 1fr auto; } .mtg-edit-sec > input:nth-child(2) { grid-column: 1 / -1; } }
+
+/* Live tools, captions, stats */
+.mtg-livebar { padding: 8px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+.mtg-livebar-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.mtg-catchup { padding: 10px 12px; border-radius: var(--r-control); background: var(--chrome-2); font-size: var(--t-sm); line-height: 1.5; }
+.mtg-catchup ul { margin: 0 0 6px; padding-left: 18px; }
+.mtg-tr-tools { display: flex; justify-content: flex-end; padding: 6px 12px 0; }
+.mtg-captions { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-xs); color: var(--ink-3); }
+.mtg-captions select { font: inherit; font-size: var(--t-xs); }
+.mtg-stats { margin: 12px 14px 4px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-control); background: var(--raised); }
+.mtg-stats h3 { margin: 0 0 8px; font-size: var(--t-sm); }
+.mtg-share-bar { display: flex; height: 22px; border-radius: var(--r-pill); overflow: hidden; background: var(--chrome-2); margin-bottom: 8px; }
+.mtg-share-seg { display: flex; align-items: center; padding: 0 8px; font-size: 11px; font-weight: 650; color: var(--ink-2); white-space: nowrap; overflow: hidden; background: color-mix(in srgb, var(--ink) 10%, transparent); }
+.mtg-share-seg.is-me { background: color-mix(in srgb, var(--moss) 30%, transparent); color: var(--ink); }
+.mtg-stats-table { width: 100%; border-collapse: collapse; font-size: var(--t-xs); font-variant-numeric: tabular-nums; }
+.mtg-stats-table th, .mtg-stats-table td { text-align: left; padding: 3px 4px; }
+.mtg-stats-table thead th { color: var(--ink-3); font-weight: 600; }
+.mtg-stats-table tbody th { font-weight: 650; color: var(--ink); }

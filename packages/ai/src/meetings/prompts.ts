@@ -42,6 +42,8 @@ export interface EnhanceInput {
   transcript: readonly StampedLine[];
   /** Language of the material ("en-US"); the notes are written in it. */
   language?: string;
+  /** Moments they marked as important while recording (ms): these must be in the notes. */
+  marks?: readonly number[];
   maxChars?: number;
 }
 
@@ -78,6 +80,7 @@ export function enhanceMessages(a: EnhanceInput): ChatMessage[] {
     `Meeting: ${a.title || 'Untitled'}${a.at ? ` (${new Date(a.at).toDateString()})` : ''}`,
     who,
     `Their notes:\n${a.notes.trim() || '(none — write the notes from the transcript)'}`,
+    a.marks?.length ? `They marked these moments as important; make sure what was said then is in the notes: ${a.marks.map((m) => `[${formatStamp(m)}]`).join(', ')}` : '',
     `Transcript, with times from the start of the recording:\n${render(lines) || '(nothing was recorded)'}`,
   ].filter(Boolean).join('\n\n');
   return [{ role: 'system', content: system }, { role: 'user', content: user }];
@@ -403,4 +406,35 @@ export function briefMessages(a: { title: string; at: number; attendees: readonl
     past.length ? `Earlier meetings (newest first):\n\n${past.join('\n\n---\n\n')}` : 'No earlier meetings with these people.',
   ].filter(Boolean).join('\n\n');
   return [{ role: 'system', content: system }, { role: 'user', content: user }];
+}
+
+// ---- During the meeting -------------------------------------------------------------------------------
+
+/** "Catch me up": what was said in the last few minutes, briefly, with times. */
+export function catchUpMessages(lines: readonly StampedLine[], minutes = 3): ChatMessage[] {
+  const end = lines.length ? lines[lines.length - 1]!.ms : 0;
+  const recent = lines.filter((l) => l.ms >= end - minutes * 60_000);
+  return [
+    { role: 'system', content: `Someone in a meeting lost the thread. Tell them what was said in the last ${minutes} minutes: 2 to 4 short bullets ("- …"), the most important first, each with the time of the line it comes from like [12:03]. Then one line starting "Now:" saying what is being discussed right now. Only what is in the transcript.` },
+    { role: 'user', content: recent.length ? render(recent) : '(nothing transcribed yet)' },
+  ];
+}
+
+/** Translation of transcript lines, for live captions: numbered in, numbered out. */
+export function translateLinesMessages(lines: readonly string[], language: string): ChatMessage[] {
+  return [
+    { role: 'system', content: `Translate each numbered line into ${language}. Reply with the same numbers, one line each ("1. …"), nothing else. Keep names, numbers and product terms as they are. If a line is already in ${language}, repeat it.` },
+    { role: 'user', content: lines.map((l, i) => `${i + 1}. ${l.replace(/\s+/g, ' ').trim()}`).join('\n') },
+  ];
+}
+
+export function parseNumberedLines(text: string, count: number): Array<string | null> {
+  const out: Array<string | null> = Array.from({ length: count }, () => null);
+  for (const raw of strip(text).split('\n')) {
+    const m = /^\s*(\d{1,3})[.):]\s*(.+)$/.exec(raw);
+    if (!m) continue;
+    const i = Number(m[1]) - 1;
+    if (i >= 0 && i < count && !out[i]) out[i] = m[2]!.trim();
+  }
+  return out;
 }

@@ -40,6 +40,7 @@ export async function mockAI(page: Page, opts: { enhanced?: string } = {}): Prom
     if (system.includes('You write clear meeting notes')) reply = opts.enhanced ?? ENHANCED;
     else if (system.includes('You edit meeting notes')) reply = ENHANCED.replace(/^TLDR: .*$/m, 'TLDR: Shorter: Acme fits if security passes.');
     else if (system.includes('get more out of their meeting notes')) reply = user.includes('Answer this question') ? 'Customers asked for faster forecasting [M1].' : 'Subject: Thanks, Dana\n\nThanks for your time today. I will send the SOC 2 report [2:30].';
+    else if (system.includes('Translate each numbered line')) reply = user.split('\n').map((l) => l.replace(/^(\d+)\. /, '$1. ES: ')).join('\n');
     else if (system.includes('prepare someone for a meeting')) reply = '**Who** — Dana Ross runs sales ops at Acme; Priya Shah is the CFO and signs off.\n\n**Last time** — Forecasts take two days; $24 per rep fits if IT’s three-week security review passes [M1].\n\n**Still open** — You: send the SOC 2 report. Dana: intro to Priya [M1].\n\n**To raise** — Has security started? Pilot start date for the east region?';
     const chunk = (delta: object, finish: string | null = null) => `data: ${JSON.stringify({ id: 'c', object: 'chat.completion.chunk', choices: [{ index: 0, delta, finish_reason: finish }] })}\n\n`;
     if (body.stream) {
@@ -77,7 +78,7 @@ export async function addProvider(page: Page) {
 }
 
 /** A meeting note with typed notes and a recorded call's transcript (no microphone needed). */
-export async function meetingNote(page: Page, title = 'Acme discovery call') {
+export async function meetingNote(page: Page, title = 'Acme discovery call', marks: number[] = []) {
   await newNote(page);
   const id: string = await page.evaluate((title) => {
     const doc = (window as any).__inkwright.doc;
@@ -87,7 +88,7 @@ export async function meetingNote(page: Page, title = 'Acme discovery call') {
     return doc.meta.id;
   }, title);
   await page.waitForFunction(() => !!(window as any).__inkwrightMeetings);
-  await page.evaluate(({ id, segs }) => (window as any).__inkwrightMeetings.seedRecording(id, segs, 170_000), { id, segs: TRANSCRIPT });
+  await page.evaluate(({ id, segs, marks }) => (window as any).__inkwrightMeetings.seedRecording(id, segs, 170_000, marks), { id, segs: TRANSCRIPT, marks });
   return id;
 }
 

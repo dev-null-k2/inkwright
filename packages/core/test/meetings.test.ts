@@ -266,3 +266,41 @@ describe('a hand like yours', () => {
     expect(handStyleOf(big.strokes.map((s) => ({ ...s, origin: 'ai' as const })))).toBeNull();
   });
 });
+
+describe('coaching stats and clips', () => {
+  it('measures talk share, pace, questions, fillers, longest stretch and turns', async () => {
+    const { meetingStats, statsText } = await import('../src/index.ts');
+    const st = meetingStats([
+      { id: 'a', startMs: 0, endMs: 10_000, text: 'Um, so, tell me about the team? Basically how big is it?', speaker: 'me' },
+      { id: 'b', startMs: 10_000, endMs: 40_000, text: 'We have forty reps across two regions and everything lives in spreadsheets which everyone hates you know', speaker: 'them' },
+      { id: 'c', startMs: 40_000, endMs: 70_000, text: 'And the forecast takes two days every month, it is painful for the whole team and the managers', speaker: 'them' },
+      { id: 'd', startMs: 70_000, endMs: 80_000, text: 'Right, what would success look like?', speaker: 'me' },
+    ], 90_000);
+    const me = st.speakers.find((s) => s.speaker === 'me')!;
+    const them = st.speakers.find((s) => s.speaker === 'them')!;
+    expect(st.speakers[0]!.speaker).toBe('me');
+    expect(me.share).toBeCloseTo(0.25, 2);
+    expect(them.share).toBeCloseTo(0.75, 2);
+    expect(me.questions).toBe(3);
+    expect(them.longestMs).toBe(60_000);
+    expect(me.fillers).toBeGreaterThanOrEqual(3); // um, basically, right
+    expect(them.fillers).toBe(1); // you know
+    expect(st.turnsPerMinute).toBeCloseTo(1.3, 1);
+    expect(statsText(st, (s) => (s === 'me' ? 'You' : 'Dana'))).toContain('You: talked 25%');
+  });
+
+  it('cuts a clip around a moment and writes a WAV', async () => {
+    const { clipSpan, encodeWav } = await import('../src/index.ts');
+    const segs = [{ startMs: 10_000, endMs: 18_000 }, { startMs: 20_000, endMs: 30_000 }];
+    expect(clipSpan(segs, 22_000)).toEqual({ startMs: 16_000, endMs: 34_000 });
+    expect(clipSpan(segs, 19_000)).toEqual({ startMs: 15_000, endMs: 34_000 });
+    expect(clipSpan([], 5_000)).toEqual({ startMs: 1_000, endMs: 17_000 });
+    const wav = encodeWav(new Float32Array([0, 0.5, -1, 2]), 16_000);
+    expect(new TextDecoder().decode(wav.slice(0, 4))).toBe('RIFF');
+    expect(wav.length).toBe(44 + 8);
+    const v = new DataView(wav.buffer);
+    expect(v.getUint32(24, true)).toBe(16_000);
+    expect(v.getInt16(46, true)).toBe(16383);
+    expect(v.getInt16(50, true)).toBe(32767); // clipped
+  });
+});

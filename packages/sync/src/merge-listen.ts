@@ -69,6 +69,11 @@ export function mergeTranscript(base: TranscriptFile | null, local: TranscriptFi
   // Speaker names: union, the more recently changed side winning for a label named on both.
   const o = newer === 'a' ? remote : local;
   if (local.speakers || remote.speakers) out.speakers = { ...(o.speakers ?? {}), ...(n.speakers ?? {}) };
+  // Marked moments: union by id.
+  if (local.marks || remote.marks) {
+    const m = new Map([...(o.marks ?? []), ...(n.marks ?? [])].map((x) => [x.id, x]));
+    out.marks = [...m.values()].sort((a, b) => a.ms - b.ms);
+  }
   return out;
 }
 

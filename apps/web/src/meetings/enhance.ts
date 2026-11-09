@@ -19,7 +19,9 @@ import {
   currentMeetingNotes,
   findTemplate,
   pageText,
+  meetingStats,
   relatedMeetings,
+  statsText,
   speakerName,
   suggestTemplate,
   type MeetingAttendee,
@@ -84,6 +86,17 @@ export function transcriptLines(recs: readonly RecordingTranscript[], opts: { th
   return { lines, clipId: longest.clip.id, durationMs: offset };
 }
 
+/** Marked moments of the note's recordings, on the same timeline as `transcriptLines`. */
+export function marksOf(recs: readonly RecordingTranscript[]): number[] {
+  const out: number[] = [];
+  let offset = 0;
+  for (const r of recs) {
+    for (const m of r.file.marks ?? []) out.push(offset + m.ms);
+    if (recs.length > 1) offset += r.clip.durationMs;
+  }
+  return out;
+}
+
 export interface EnhanceArgs {
   vault: AppVault;
   note: Pick<NoteMeta, 'id' | 'title' | 'recordings' | 'meeting' | 'createdAt'>;
@@ -109,7 +122,8 @@ export async function enhanceMeetingNotes(a: EnhanceArgs): Promise<MeetingNotesV
   const notes = notesTextOf(a.pages);
   if (!lines.length && !notes.trim()) throw new Error('There is nothing to enhance yet: write some notes or record the meeting.');
   const budget = ai.contextTokens ? Math.max(3000, Math.min(24000, (ai.contextTokens - 1500) * 3)) : 14000;
-  const messages = enhanceMessages({ title: a.note.title, at: a.note.meeting?.event?.start ?? a.note.createdAt, attendees: a.note.meeting?.attendees, template, notes, transcript: lines, maxChars: budget });
+  const marks = marksOf(recs);
+  const messages = enhanceMessages({ title: a.note.title, at: a.note.meeting?.event?.start ?? a.note.createdAt, attendees: a.note.meeting?.attendees, template, notes, transcript: lines, maxChars: budget, ...(marks.length ? { marks } : {}) });
   const raw = await chat(ai, messages, 1400, a.signal, a.onText);
   const parsed = parseEnhancedNotes(raw, { notes, ...(clipId ? { clipId } : {}), durationMs, headings: template.sections.map((s) => s.heading), transcript: lines });
   if (!parsed.sections.length) throw new Error('The AI didn’t write any notes. Try again, or choose a larger model in Settings › AI.');
@@ -172,7 +186,14 @@ export async function runRecipe(a: { vault: AppVault; recipe: Recipe; notes: Not
   const single = notes.length === 1;
   const meetings = await Promise.all(notes.map((n) => meetingForRecipe(a.vault, n, { transcript: single || notes.length <= 3 })));
   const budget = ai.contextTokens ? Math.max(3000, Math.min(30000, (ai.contextTokens - 1500) * 3)) : 16000;
-  const text = await chat(ai, recipeMessages(a.recipe, meetings, { maxChars: budget }), 1500, a.signal, a.onText);
+  // Coaching gets the numbers (talk share, pace, questions, fillers) from the transcript.
+  let extra = '';
+  if (single && a.recipe.id === 'coach-me') {
+    const recs = await loadNoteTranscripts(a.vault, notes[0]!);
+    const segs = recs.flatMap((r) => r.file.segments);
+    if (segs.some((x) => x.speaker)) extra = `Measured from the recording:\n${statsText(meetingStats(segs), (sp) => speakerName(recs[0]?.file, sp, { them: themOf(notes[0]!) }) ?? sp)}`;
+  }
+  const text = await chat(ai, recipeMessages(a.recipe, meetings, { maxChars: budget, ...(extra ? { extra } : {}) }), 1500, a.signal, a.onText);
   return { text: text.replace(/<think>[\s\S]*?<\/think>/g, '').trim(), meetings: notes, by: ai.label };
 }
 
